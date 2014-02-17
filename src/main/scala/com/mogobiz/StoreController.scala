@@ -13,7 +13,7 @@ class StoreControllerActor extends Actor with StoreController  {
 
   def actorRefFactory = context
 
-  def receive = runRoute(storeRoutes)
+  def receive = runRoute(allRoutes)
 
 }
 
@@ -38,4 +38,19 @@ trait StoreController extends HttpService {
         }
       }
     }
+
+  val brandsRoutes = path("brands") {
+    respondWithMediaType(`application/json`) {
+        parameters('hidden?false,'category.?,'inactive?false).as(BrandRequest) { brandRequest =>
+        complete {
+//          println("hidden="+brandRequest.hidden+" categoryOption="+brandRequest.category+" inactive="+brandRequest.inactive)
+
+          val brands = Brand(1,"nike",Nil)::Brand(2,"rebook",Nil)::Brand(3,"addidas",Nil)::Nil
+          brands
+        }
+      }
+     }
+  }
+
+  val allRoutes = storeRoutes ~ brandsRoutes
 }
