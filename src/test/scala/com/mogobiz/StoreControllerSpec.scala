@@ -21,4 +21,11 @@ class StoreControllerSpec  extends Specification with Specs2RouteTest with  Stor
       responseAs[String] must contain("nike")
     }
   }
+
+  "return countries " in {
+    Get("/countries?store=mogobiz&lang=fr") ~> allRoutes ~> check {
+      responseAs[String] must contain("France")
+    }
+  }
+
 }
