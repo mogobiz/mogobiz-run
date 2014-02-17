@@ -34,4 +34,9 @@ class StoreControllerSpec  extends Specification with Specs2RouteTest with  Stor
     }
   }
 
+  "return categories " in {
+    Get("/categories?lang=fr&store=mogobiz") ~> allRoutes ~> check {
+      responseAs[String] must contain("Cinéma")
+    }
+  }
 }
