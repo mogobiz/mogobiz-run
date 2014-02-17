@@ -22,6 +22,13 @@ class StoreControllerSpec  extends Specification with Specs2RouteTest with  Stor
     }
   }
 
+  "return tags " in {
+    Get("/tags?category=10&lang=fr&store=companycode-5") ~> allRoutes ~> check {
+      responseAs[String] must contain("chaussure")
+    }
+  }
+
+
   "return countries " in {
     Get("/countries?store=mogobiz&lang=fr") ~> allRoutes ~> check {
       responseAs[String] must contain("France")

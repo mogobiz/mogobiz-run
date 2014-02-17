@@ -78,6 +78,9 @@ trait StoreController extends HttpService {
     respondWithMediaType(`application/json`) {
         parameters('hidden?false,'category.?,'inactive?false).as(BrandRequest) { brandRequest =>
         complete {
+//          println("hidden="+brandRequest.hidden+" categoryOption="+brandRequest.category+" inactive="+brandRequest.inactive)
+
+          //TODO search with ES
           val brands = Brand(1,"nike",Nil)::Brand(2,"rebook",Nil)::Brand(3,"addidas",Nil)::Nil
           brands
         }
@@ -85,5 +88,21 @@ trait StoreController extends HttpService {
      }
   }
 
+  val tagsRoutes = path("tags") {
+    respondWithMediaType(`application/json`) {
+      parameters('hidden?false,'category,'inactive?false,'lang,'store).as(TagRequest) { tagRequest =>
+        complete {
+
+          //TODO search with ES
+          val tags = Tag(1, "basket", Nil)::Tag(2, "chaussure",Nil)::Tag(3,"vetement",Nil)::Nil
+          tags
+        }
+      }
+    }
+  }
+
+
+
+  val allRoutes = storeRoutes ~ brandsRoutes ~ tagsRoutes
   val allRoutes = storeRoutes ~ brandsRoutes ~ countriesRoutes ~ currenciesRoutes ~ categoriesRoutes
 }
