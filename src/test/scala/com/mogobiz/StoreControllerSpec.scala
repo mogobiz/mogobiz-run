@@ -28,4 +28,10 @@ class StoreControllerSpec  extends Specification with Specs2RouteTest with  Stor
     }
   }
 
+  "return currencies " in {
+    Get("/currencies?store=mogobiz") ~> allRoutes ~> check {
+      responseAs[String] must contain("EUR")
+    }
+  }
+
 }

@@ -60,5 +60,15 @@ trait StoreController extends HttpService {
      }
   }
 
-  val allRoutes = storeRoutes ~ brandsRoutes ~ countriesRoutes
+  val currenciesRoutes = path("currencies") {
+    respondWithMediaType(`application/json`) {
+      parameters('store.?).as(CurrencyRequest) { cr =>
+        complete {
+          val  currencies = Currency(1,"EUR")::Currency(2,"USD")::Nil
+          currencies
+        }
+      }
+    }
+  }
+  val allRoutes = storeRoutes ~ brandsRoutes ~ countriesRoutes ~ currenciesRoutes
 }
