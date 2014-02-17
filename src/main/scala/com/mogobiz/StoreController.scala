@@ -101,8 +101,47 @@ trait StoreController extends HttpService {
     }
   }
 
+  val productsRoutes = path("products"){
+    respondWithMediaType(`application/json`){
+      parameters('maxItemPerPage.?,'pageOffset.?,'xtype.?,'name.?,'code.?,'categoryId.?,'brandId.?,'tagName.?,'priceMin.?,'priceMax.?,'creationDateMin.?,'orderBy.?,'orderDirection.?,'lang,'store,'currency,'country).as(ProductRequest){ productRequest =>
+        complete {
+
+          //TODO search with ES
+          val products = Product("1","Nike Air","",100L)::Product("2","Rebook 5230","",140L)::Product("3","New Balance 1080","",150L)::Product("4","Mizuno Wave Legend","",60L)::Nil
+          products
+        }
+      }
+    }
+  }
+
+  val featuredProductsRoutes = path("featured-products"){
+    respondWithMediaType(`application/json`){
+      parameters('maxItemPerPage.?,'pageOffset.?,'xtype.?,'name.?,'code.?,'categoryId.?,'brandId.?,'tagName.?,'priceMin.?,'priceMax.?,'creationDateMin.?,'orderBy.?,'orderDirection.?,'lang,'store,'currency,'country).as(ProductRequest){ productRequest =>
+        complete {
+
+          //TODO search with ES
+          val products = Product("1","Nike Air","",100L)::Product("2","Rebook 5230","",140L)::Product("3","New Balance 1080","",150L)::Product("4","Mizuno Wave Legend","",60L)::Nil
+          products
+        }
+      }
+    }
+  }
+
+  val findRoute = path("find") {
+    respondWithMediaType(`application/json`) {
+      parameters('query,'lang,'store) { (query, lang, storeCode) =>
+        complete {
+
+          //TODO search with ES
+          val results = List(query,lang,storeCode)
+          results
+        }
+      }
+    }
+  }
 
 
+  val allRoutes = storeRoutes ~ brandsRoutes ~ tagsRoutes ~ productsRoutes ~ featuredProductsRoutes ~ findRoute
   val allRoutes = storeRoutes ~ brandsRoutes ~ tagsRoutes
   val allRoutes = storeRoutes ~ brandsRoutes ~ countriesRoutes ~ currenciesRoutes ~ categoriesRoutes
 }
