@@ -32,19 +32,27 @@ trait StoreController extends HttpService {
         respondWithMediaType(`application/json`) {
           complete {
             val langs = List("fr","en","de","it","es")
-
             langs
           }
         }
       }
     }
 
+  val countriesRoutes = path("countries") {
+    respondWithMediaType(`application/json`) {
+      parameters('store.?, 'lang.?).as(CountryRequest) { cr =>
+        complete {
+          val countries = Country(1,"FR","France",None)::Country(2,"EN","Royaumes Unis",None)::Nil
+          countries
+        }
+      }
+    }
+  }
+
   val brandsRoutes = path("brands") {
     respondWithMediaType(`application/json`) {
         parameters('hidden?false,'category.?,'inactive?false).as(BrandRequest) { brandRequest =>
         complete {
-//          println("hidden="+brandRequest.hidden+" categoryOption="+brandRequest.category+" inactive="+brandRequest.inactive)
-
           val brands = Brand(1,"nike",Nil)::Brand(2,"rebook",Nil)::Brand(3,"addidas",Nil)::Nil
           brands
         }
@@ -52,5 +60,5 @@ trait StoreController extends HttpService {
      }
   }
 
-  val allRoutes = storeRoutes ~ brandsRoutes
+  val allRoutes = storeRoutes ~ brandsRoutes ~ countriesRoutes
 }
