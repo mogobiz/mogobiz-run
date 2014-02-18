@@ -78,6 +78,9 @@ trait StoreController extends HttpService {
     respondWithMediaType(`application/json`) {
         parameters('hidden?false,'category.?,'inactive?false).as(BrandRequest) { brandRequest =>
         complete {
+//          println("hidden="+brandRequest.hidden+" categoryOption="+brandRequest.category+" inactive="+brandRequest.inactive)
+
+          //TODO search with ES
           val brands = Brand(1,"nike",Nil)::Brand(2,"rebook",Nil)::Brand(3,"addidas",Nil)::Nil
           brands
         }
@@ -85,5 +88,58 @@ trait StoreController extends HttpService {
      }
   }
 
-  val allRoutes = storeRoutes ~ brandsRoutes ~ countriesRoutes ~ currenciesRoutes ~ categoriesRoutes
+  val tagsRoutes = path("tags") {
+    respondWithMediaType(`application/json`) {
+      parameters('hidden?false,'category,'inactive?false,'lang,'store).as(TagRequest) { tagRequest =>
+        complete {
+
+          //TODO search with ES
+          val tags = Tag(1, "basket", Nil)::Tag(2, "chaussure",Nil)::Tag(3,"vetement",Nil)::Nil
+          tags
+        }
+      }
+    }
+  }
+
+  val productsRoutes = path("products"){
+    respondWithMediaType(`application/json`){
+      parameters('maxItemPerPage.?,'pageOffset.?,'xtype.?,'name.?,'code.?,'categoryId.?,'brandId.?,'tagName.?,'priceMin.?,'priceMax.?,'creationDateMin.?,'orderBy.?,'orderDirection.?,'lang,'store,'currency,'country).as(ProductRequest){ productRequest =>
+        complete {
+
+          //TODO search with ES
+          val products = Product("1","Nike Air","",100L)::Product("2","Rebook 5230","",140L)::Product("3","New Balance 1080","",150L)::Product("4","Mizuno Wave Legend","",60L)::Nil
+          products
+        }
+      }
+    }
+  }
+
+  val featuredProductsRoutes = path("featured-products"){
+    respondWithMediaType(`application/json`){
+      parameters('maxItemPerPage.?,'pageOffset.?,'xtype.?,'name.?,'code.?,'categoryId.?,'brandId.?,'tagName.?,'priceMin.?,'priceMax.?,'creationDateMin.?,'orderBy.?,'orderDirection.?,'lang,'store,'currency,'country).as(ProductRequest){ productRequest =>
+        complete {
+
+          //TODO search with ES
+          val products = Product("1","Nike Air","",100L)::Product("2","Rebook 5230","",140L)::Product("3","New Balance 1080","",150L)::Product("4","Mizuno Wave Legend","",60L)::Nil
+          products
+        }
+      }
+    }
+  }
+
+  val findRoute = path("find") {
+    respondWithMediaType(`application/json`) {
+      parameters('query,'lang,'store) { (query, lang, storeCode) =>
+        complete {
+
+          //TODO search with ES
+          val results = List(query,lang,storeCode)
+          results
+        }
+      }
+    }
+  }
+
+
+  val allRoutes = countriesRoutes ~ currenciesRoutes ~ categoriesRoutes ~ storeRoutes ~ brandsRoutes ~ tagsRoutes ~ productsRoutes ~ featuredProductsRoutes ~ findRoute
 }

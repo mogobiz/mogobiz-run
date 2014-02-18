@@ -1,0 +1,8 @@
+# IntelliJ-idea
+.history
+.idea
+.idea_modules
+project/project
+project/target
+target
+libraries
