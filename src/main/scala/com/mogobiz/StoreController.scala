@@ -32,19 +32,52 @@ trait StoreController extends HttpService {
         respondWithMediaType(`application/json`) {
           complete {
             val langs = List("fr","en","de","it","es")
-
             langs
           }
         }
       }
     }
 
+  val countriesRoutes = path("countries") {
+    respondWithMediaType(`application/json`) {
+      parameters('store, 'lang).as(CountryRequest) { cr =>
+        complete {
+          val countries = Country(1,"FR","France",None)::Country(2,"EN","Royaumes Unis",None)::Nil
+          countries
+        }
+      }
+    }
+  }
+
+
+  val currenciesRoutes = path("currencies") {
+    respondWithMediaType(`application/json`) {
+      parameters('store).as(CurrencyRequest) { cr =>
+        complete {
+          val  currencies = Currency(1,"EUR")::Currency(2,"USD")::Nil
+          currencies
+        }
+      }
+    }
+  }
+
+
+  val categoriesRoutes = path("categories") {
+    respondWithMediaType(`application/json`) {
+      parameters('hidden?false,'parentId.?,'lang,'store).as(CategoryRequest) { cr =>
+        complete {
+          val  categories = Category(1,"CNM","Cinéma",Nil)::Category(2,"HBG","Habillage",Nil)::Nil
+          categories
+        }
+      }
+    }
+  }
+
+
   val brandsRoutes = path("brands") {
     respondWithMediaType(`application/json`) {
         parameters('hidden?false,'category.?,'inactive?false).as(BrandRequest) { brandRequest =>
         complete {
-//          println("hidden="+brandRequest.hidden+" categoryOption="+brandRequest.category+" inactive="+brandRequest.inactive)
-
           val brands = Brand(1,"nike",Nil)::Brand(2,"rebook",Nil)::Brand(3,"addidas",Nil)::Nil
           brands
         }
@@ -52,5 +85,5 @@ trait StoreController extends HttpService {
      }
   }
 
-  val allRoutes = storeRoutes ~ brandsRoutes
+  val allRoutes = storeRoutes ~ brandsRoutes ~ countriesRoutes ~ currenciesRoutes ~ categoriesRoutes
 }
