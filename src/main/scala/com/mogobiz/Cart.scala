@@ -14,11 +14,24 @@ case class Cart(
                  , currencyRate: String)
 
 case class CartItem(
-                     email: String
-                     , firstName: Option[String]
-                     , lastName: Option[String]
-                     , phone: Option[String]
-                     , birthdate: Option[String])
+                     cartItemId: Int
+                     , price: Long
+                     , tax: Float
+                     , endPrice: Long
+                     , totalPrice: Long
+                     , totalEndPrice: Long
+                     , hidden: Boolean
+                     , startDate: String
+                     , endDate: String
+                     , quantity: Int
+                     )
+
+case class RegisteredCartItem(
+                               email: String
+                               , firstName: String
+                               , lastName: String
+                               , phone: String
+                               , birthday: String)
 
 case class CartRequest(
                         cartId: Int
@@ -32,7 +45,7 @@ case class AddCartRequest(
                            , skuId: Int
                            , dateTime: String
                            , quantity: Int
-                           , registeredCartItems: List[CartItem]
+                           //, registeredCartItems: List[RegisteredCartItem] //TODO
                            , storeCode: String
                            , currencyCode: String
                            , countryCode: String
