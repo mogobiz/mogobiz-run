@@ -141,7 +141,5 @@ trait StoreController extends HttpService {
   }
 
 
-  val allRoutes = storeRoutes ~ brandsRoutes ~ tagsRoutes ~ productsRoutes ~ featuredProductsRoutes ~ findRoute
-  val allRoutes = storeRoutes ~ brandsRoutes ~ tagsRoutes
-  val allRoutes = storeRoutes ~ brandsRoutes ~ countriesRoutes ~ currenciesRoutes ~ categoriesRoutes
+  val allRoutes = countriesRoutes ~ currenciesRoutes ~ categoriesRoutes ~ storeRoutes ~ brandsRoutes ~ tagsRoutes ~ productsRoutes ~ featuredProductsRoutes ~ findRoute
 }
