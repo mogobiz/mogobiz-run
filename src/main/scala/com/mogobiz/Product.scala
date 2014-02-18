@@ -85,15 +85,15 @@ case class VisitorHistoryRequest(
 
 case class ProductDatesRequest(
                                 productId: Int
-                                , startDate: DateTime
-                                , endDate: DateTime
+                                , startDate: String
+                                , endDate: String
                                 , storeCode: String
                                 , lang: String)
 
 
 case class ProductTimesRequest(
                                 productId: Int
-                                , date: DateTime
+                                , date: String
                                 , storeCode: String
                                 , lang: String)
 

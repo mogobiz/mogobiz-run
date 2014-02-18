@@ -40,9 +40,6 @@ class StoreControllerSpec  extends Specification with Specs2RouteTest with  Stor
     }
   }
 
-
-
-
   "return countries " in {
     Get("/countries?store=mogobiz&lang=fr") ~> allRoutes ~> check {
       responseAs[String] must contain("France")
@@ -58,6 +55,12 @@ class StoreControllerSpec  extends Specification with Specs2RouteTest with  Stor
   "return categories " in {
     Get("/categories?lang=fr&store=mogobiz") ~> allRoutes ~> check {
       responseAs[String] must contain("Cinéma")
+    }
+  }
+
+  "return product details" in {
+    Get("/productDetails?productId=1&visitorId=2&storeCode&currencyCode=4&countryCode=5&lang=FR") ~> allRoutes ~> check {
+      responseAs[String] must contain("Nike Air")
     }
   }
 }
