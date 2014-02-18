@@ -12,11 +12,11 @@ case class Product(
                     ,facebookCredit:Option[Long]
                     ,nbSales:Long = 0
                     ,picture:Option[String]
-,stockDisplay:Boolean = true
-,calendarType:Option[String]
-,uuid:Option[String]
-,hide:Boolean = false
-,sanitazedName:String*/
+                    ,stockDisplay:Boolean = true
+                    ,calendarType:Option[String]
+                    ,uuid:Option[String]
+                    ,hide:Boolean = false
+                    ,sanitazedName:String*/
                     ){
 
 //  def this(code:String,name:String,xtype:String,price:Long) = this(code,name,xtype,price,None,new DateTime(),None,"",None,None,None,None,None,0,None,true,None,None,false,name)
