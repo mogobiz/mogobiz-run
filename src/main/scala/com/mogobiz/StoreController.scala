@@ -41,7 +41,7 @@ trait StoreController extends HttpService {
     pathPrefix("store" / Segment){ storeCode => {
         pathEnd{
           complete("the store code is "+storeCode)
-        }~langsRoutes ~ brandsRoutes(storeCode)
+        }~langsRoutes ~ brandsRoutes(storeCode) ~ tagsRoutes(storeCode)
 
     }
     }
@@ -61,6 +61,28 @@ trait StoreController extends HttpService {
       }
     }
   }
+
+  def tagsRoutes(storeCode: String) = path("tags") {
+    respondWithMediaType(`application/json`) {
+      get{
+      parameters('hidden?false,'category,'inactive?false,'lang).as(TagRequest) { tagRequest =>
+        onSuccess(esClient.queryTags(storeCode)){ response =>
+          val json = parse(response.entity.asString)
+          val subset = json \ "hits" \ "hits" \ "_source"
+          complete(subset)
+        }
+
+        /*
+        complete {
+          val tags = Tag(1, "basket", Nil)::Tag(2, "chaussure",Nil)::Tag(3,"vetement",Nil)::Nil
+          tags
+        }
+        */
+      }
+      }
+    }
+  }
+
   val langsRoutes =
     path("langs") {
       get {
@@ -72,6 +94,8 @@ trait StoreController extends HttpService {
         }
       }
     }
+
+
 
   val countriesRoutes = path("countries") {
     respondWithMediaType(`application/json`) {
@@ -103,19 +127,6 @@ trait StoreController extends HttpService {
         complete {
           val  categories = Category(1,"CNM","Cinéma",Nil)::Category(2,"HBG","Habillage",Nil)::Nil
           categories
-        }
-      }
-    }
-  }
-
-  val tagsRoutes = path("tags") {
-    respondWithMediaType(`application/json`) {
-      parameters('hidden?false,'category,'inactive?false,'lang,'store).as(TagRequest) { tagRequest =>
-        complete {
-
-          //TODO search with ES
-          val tags = Tag(1, "basket", Nil)::Tag(2, "chaussure",Nil)::Tag(3,"vetement",Nil)::Nil
-          tags
         }
       }
     }
@@ -188,5 +199,5 @@ trait StoreController extends HttpService {
     }*/
   }
 
-  val allRoutes = testES ~ storeRoutes ~ langsRoutes ~countriesRoutes ~ currenciesRoutes ~ categoriesRoutes  ~ tagsRoutes ~ productsRoutes ~ featuredProductsRoutes ~ findRoute
+  val allRoutes = testES ~ storeRoutes ~ langsRoutes ~countriesRoutes ~ currenciesRoutes ~ categoriesRoutes ~ productsRoutes ~ featuredProductsRoutes ~ findRoute
 }

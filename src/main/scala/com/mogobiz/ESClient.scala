@@ -45,7 +45,11 @@ class ESClient  /*extends Actor*/ {
 
   def queryBrands(store:String): Future[HttpResponse] = {
     val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/_search"),"{\n  \"query\": {\n    \"term\": {\n      \"_type\": \"brand\"\n    }\n  }\n}"))
+    response
+  }
 
+  def queryTags(store:String): Future[HttpResponse] = {
+    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/_search"),"{\n  \"query\": {\n    \"term\": {\n      \"_type\": \"tag\"\n    }\n  }\n}"))
     response
   }
 
