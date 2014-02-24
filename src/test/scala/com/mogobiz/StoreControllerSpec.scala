@@ -10,56 +10,58 @@ class StoreControllerSpec extends Specification with Specs2RouteTest with StoreS
 
   def actorRefFactory = system
 
+  val store = "mogobiz"
+
   "return list of lang codes" in {
-    Get("/langs") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/langs") ~> storeRoutes ~> check {
       responseAs[String] must contain("fr") //["fr","en","de","it","es"]
     }
   }
 
   "return brands " in {
-    Get("/brands") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/brands") ~> storeRoutes ~> check {
       responseAs[String] must contain("nike")
     }
   }
 
   "return tags " in {
-    Get("/tags?category=10&lang=fr") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/tags?category=10&lang=fr") ~> storeRoutes ~> check {
       responseAs[String] must contain("chaussure")
     }
   }
 
   "return products " in {
-    Get("/products?lang=fr&store=companycode-6&currency=euro&country=fr") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/products?lang=fr&store=companycode-6&currency=euro&country=fr") ~> storeRoutes ~> check {
       responseAs[String] must contain("Nike")
     }
   }
 
   "return products " in {
-    Get("/find?lang=fr&store=companycode-2&query=imprimante") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/find?lang=fr&store=companycode-2&query=imprimante") ~> storeRoutes ~> check {
       responseAs[String] must contain("imprimante")
     }
   }
 
   "return countries " in {
-    Get("/countries?store=mogobiz&lang=fr") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/countries?store=mogobiz&lang=fr") ~> storeRoutes ~> check {
       responseAs[String] must contain("France")
     }
   }
 
   "return currencies " in {
-    Get("/currencies?store=mogobiz") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/currencies?store=mogobiz") ~> storeRoutes ~> check {
       responseAs[String] must contain("EUR")
     }
   }
 
   "return categories " in {
-    Get("/categories?lang=fr&store=mogobiz") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/categories?lang=fr&store=mogobiz") ~> storeRoutes ~> check {
       responseAs[String] must contain("Cinéma")
     }
   }
 
   "return product details" in {
-    Get("/productDetails?productId=1&visitorId=2&storeCode&currencyCode=4&countryCode=5&lang=FR") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/productDetails?productId=1&visitorId=2&storeCode&currencyCode=4&countryCode=5&lang=FR") ~> storeRoutes ~> check {
       responseAs[String] must contain("Nike Air")
     }
   }

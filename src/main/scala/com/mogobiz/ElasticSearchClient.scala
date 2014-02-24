@@ -12,21 +12,21 @@ import spray.client.pipelining._
 import spray.util._
 import spray.http._
 
-
-
-
 /**
  * Created by Christophe on 18/02/14.
  */
-class ESClient  /*extends Actor*/ {
 
+class ElasticSearchClient /*extends Actor*/ {
+
+  implicit val system = ActorSystem("es-client")
+  import system.dispatcher // execution context for futures
+
+//  def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
 //  override def receive: Actor.Receive = execute
 
   private val ES_URL = "http://localhost"
   private val ES_HTTP_PORT = 9200
 
-  implicit val system = ActorSystem("es-client")
-  import system.dispatcher // execution context for futures
 
   /*
   val pipeline: Future[SendReceive] =

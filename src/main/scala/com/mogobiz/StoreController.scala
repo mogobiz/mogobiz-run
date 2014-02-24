@@ -12,7 +12,7 @@ import org.json4s.native.JsonMethods._
 
 /**
  * Created by Christophe on 17/02/14.
- */
+
 class StoreControllerActor extends Actor with StoreController  {
 
   def actorRefFactory = context
@@ -35,65 +35,7 @@ trait StoreController extends HttpService {
 //  import org.json4s._
 //  import org.json4s.native.JsonMethods._
 
-  private val esClient = new ESClient()
 
-  val storeRoutes = {
-    pathPrefix("store" / Segment){ storeCode => {
-        pathEnd{
-          complete("the store code is "+storeCode)
-        }~langsRoutes ~ brandsRoutes(storeCode) ~ tagsRoutes(storeCode)
-
-    }
-    }
-  }
-
-  def brandsRoutes(storeCode:String) = path("brands") {
-    respondWithMediaType(`application/json`) {
-      get {
-        parameters('hidden?false,'category.?,'inactive?false).as(BrandRequest) { brandRequest =>
-          //TODO manque la lang
-          onSuccess(esClient.queryBrands(storeCode)){ response =>
-            val json = parse(response.entity.asString)
-            val subset = json \ "hits" \ "hits" \ "_source"
-            complete(subset)
-          }
-        }
-      }
-    }
-  }
-
-  def tagsRoutes(storeCode: String) = path("tags") {
-    respondWithMediaType(`application/json`) {
-      get{
-      parameters('hidden?false,'category,'inactive?false,'lang).as(TagRequest) { tagRequest =>
-        onSuccess(esClient.queryTags(storeCode)){ response =>
-          val json = parse(response.entity.asString)
-          val subset = json \ "hits" \ "hits" \ "_source"
-          complete(subset)
-        }
-
-        /*
-        complete {
-          val tags = Tag(1, "basket", Nil)::Tag(2, "chaussure",Nil)::Tag(3,"vetement",Nil)::Nil
-          tags
-        }
-        */
-      }
-      }
-    }
-  }
-
-  val langsRoutes =
-    path("langs") {
-      get {
-        respondWithMediaType(`application/json`) {
-          complete {
-            val langs = List("fr","en","de","it","es")
-            langs
-          }
-        }
-      }
-    }
 
 
 
@@ -201,3 +143,4 @@ trait StoreController extends HttpService {
 
   val allRoutes = testES ~ storeRoutes ~ langsRoutes ~countriesRoutes ~ currenciesRoutes ~ categoriesRoutes ~ productsRoutes ~ featuredProductsRoutes ~ findRoute
 }
+ */
