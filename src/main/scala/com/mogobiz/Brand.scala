@@ -5,4 +5,4 @@ package com.mogobiz
  */
 case class Brand(id:Int, name:String, translations: List[String])
 
-case class BrandRequest(hidden:Boolean,category:Option[Int],inactive:Boolean)
+case class BrandRequest(hidden:Boolean,lang:String)

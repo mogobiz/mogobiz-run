@@ -42,9 +42,36 @@ class ElasticSearchClient /*extends Actor*/ {
 
   private def route(url:String):String = ES_FULL_URL+url
 
+  /**
+   * Effectue la recheche de brands dans ES
+   * @param store code store
+   * @param qr parameters
+   * @return
+   */
+  def queryBrands(store:String,qr:BrandRequest): Future[HttpResponse] = {
 
-  def queryBrands(store:String): Future[HttpResponse] = {
-    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/_search"),"{\n  \"query\": {\n    \"term\": {\n      \"_type\": \"brand\"\n    }\n  }\n}"))
+    val name = if(qr.lang=="_all"){"\"name*\""}else{"\"name\",\"name."+qr.lang+"\""}
+    val website = if(qr.lang=="_all"){"\"website*\""}else{"\"website\",\"website."+qr.lang+"\""}
+    //TODO hide param
+    val template = (name:String,website:String) =>
+      s"""
+        | {
+        | "_source": {
+        |    "include": [
+        |      "id",
+        |      $name,
+        |      $website
+        |    ]
+        |  }
+        |  }
+        |
+      """.stripMargin
+
+    val query = template(name,website)
+
+    //println(query)
+    //OLD "{\n  \"query\": {\n    \"term\": {\n      \"_type\": \"brand\"\n    }\n  }\n}"
+    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/brand/_search"),query))
     response
   }
 

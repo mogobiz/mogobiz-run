@@ -34,9 +34,9 @@ trait StoreService extends HttpService {
   def brandsRoutes(storeCode:String) = path("brands") {
     respondWithMediaType(`application/json`) {
       get {
-        parameters('hidden?false,'category.?,'inactive?false).as(BrandRequest) { brandRequest =>
+        parameters('hidden?false,'lang).as(BrandRequest) { brandRequest =>
         //TODO manque la lang
-          onSuccess(esClient.queryBrands(storeCode)){ response =>
+          onSuccess(esClient.queryBrands(storeCode,brandRequest)){ response =>
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
             complete(subset)
