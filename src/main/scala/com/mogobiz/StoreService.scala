@@ -1,11 +1,14 @@
 package com.mogobiz
 
+import spray.http.DateTime
+import scala.util.{Success, Failure}
+import akka.actor.Actor
 import spray.routing.HttpService
 import spray.http.MediaTypes._
 import spray.httpx.Json4sSupport
 import org.json4s._
-import spray.http.DateTime
-
+import scala.concurrent.ExecutionContext
+import org.json4s.native.JsonMethods._
 /**
  * Created by Christophe on 17/02/14.
  */
@@ -13,13 +16,63 @@ import spray.http.DateTime
 trait StoreService extends HttpService {
 
   import Json4sProtocol._
+  import ExecutionContext.Implicits.global
 
-  val langRoutes =
+
+  val esClient = new ElasticSearchClient
+
+  val storeRoutes = {
+    pathPrefix("store" / Segment){ storeCode => {
+      pathEnd{
+        complete("the store code is "+storeCode)
+      }~langsRoutes ~ brandsRoutes(storeCode) ~ tagsRoutes(storeCode) ~ countriesRoutes ~ currenciesRoutes ~ categoriesRoutes ~ productsRoutes ~ featuredProductsRoutes ~ findRoute ~ productDetailsRoute ~ addToVisitorHistoryRoute ~ visitorHistoryRoute ~ productDatesRoute ~ productTimesRoute
+
+    }
+    }
+  }
+
+  def brandsRoutes(storeCode:String) = path("brands") {
+    respondWithMediaType(`application/json`) {
+      get {
+        parameters('hidden?false,'category.?,'inactive?false).as(BrandRequest) { brandRequest =>
+        //TODO manque la lang
+          onSuccess(esClient.queryBrands(storeCode)){ response =>
+            val json = parse(response.entity.asString)
+            val subset = json \ "hits" \ "hits" \ "_source"
+            complete(subset)
+          }
+        }
+      }
+    }
+  }
+
+  def tagsRoutes(storeCode: String) = path("tags") {
+    respondWithMediaType(`application/json`) {
+      get{
+        parameters('hidden?false,'category,'inactive?false,'lang).as(TagRequest) { tagRequest =>
+          onSuccess(esClient.queryTags(storeCode)){ response =>
+            val json = parse(response.entity.asString)
+            val subset = json \ "hits" \ "hits" \ "_source"
+            complete(subset)
+          }
+
+          /*
+          complete {
+            val tags = Tag(1, "basket", Nil)::Tag(2, "chaussure",Nil)::Tag(3,"vetement",Nil)::Nil
+            tags
+          }
+          */
+        }
+      }
+    }
+  }
+
+  val langsRoutes =
     path("langs") {
       get {
         respondWithMediaType(`application/json`) {
           complete {
-            val langs = List("fr", "en", "de", "it", "es")
+            val langs = List("fr","en","de","it","es")
             langs
           }
         }
@@ -59,36 +112,6 @@ trait StoreService extends HttpService {
           complete {
             val categories = Category(1, "CNM", "Cinéma", Nil) :: Category(2, "HBG", "Habillage", Nil) :: Nil
             categories
-          }
-      }
-    }
-  }
-
-
-  val brandsRoutes = path("brands") {
-    respondWithMediaType(`application/json`) {
-      parameters('hidden ? false, 'category.?, 'inactive ? false).as(BrandRequest) {
-        brandRequest =>
-          complete {
-            //          println("hidden="+brandRequest.hidden+" categoryOption="+brandRequest.category+" inactive="+brandRequest.inactive)
-
-            //TODO search with ES
-            val brands = Brand(1, "nike", Nil) :: Brand(2, "rebook", Nil) :: Brand(3, "addidas", Nil) :: Nil
-            brands
-          }
-      }
-    }
-  }
-
-  val tagsRoutes = path("tags") {
-    respondWithMediaType(`application/json`) {
-      parameters('hidden ? false, 'category, 'inactive ? false, 'lang, 'store).as(TagRequest) {
-        tagRequest =>
-          complete {
-
-            //TODO search with ES
-            val tags = Tag(1, "basket", Nil) :: Tag(2, "chaussure", Nil) :: Tag(3, "vetement", Nil) :: Nil
-            tags
           }
       }
     }
@@ -232,19 +255,4 @@ trait StoreService extends HttpService {
     }
   }
 
-  val storeRoutes =
-    countriesRoutes ~
-      currenciesRoutes ~
-      categoriesRoutes ~
-      langRoutes ~
-      brandsRoutes ~
-      tagsRoutes ~
-      productsRoutes ~
-      featuredProductsRoutes ~
-      findRoute ~
-      productDetailsRoute ~
-      addToVisitorHistoryRoute ~
-      visitorHistoryRoute ~
-      productDatesRoute ~
-      productTimesRoute
  }
