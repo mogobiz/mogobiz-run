@@ -42,19 +42,27 @@ class ElasticSearchClient /*extends Actor*/ {
 
   private def route(url:String):String = ES_FULL_URL+url
 
+  private def buildTemplateFromLang(fieldName: String, lang: String): String = {
+    if (lang == "_all") {
+      "\"" + fieldName + "*\""
+    } else {
+      "\"" + fieldName + "\",\"" + fieldName + "." + lang + "\""
+    }
+  }
+
   /**
-   * Effectue la recheche de brands dans ES
+    * Effectue la recheche de brands dans ES
    * @param store code store
    * @param qr parameters
    * @return
    */
   def queryBrands(store:String,qr:BrandRequest): Future[HttpResponse] = {
 
-    val name = if(qr.lang=="_all"){"\"name*\""}else{"\"name\",\"name."+qr.lang+"\""}
-    val website = if(qr.lang=="_all"){"\"website*\""}else{"\"website\",\"website."+qr.lang+"\""}
+    val name = buildTemplateFromLang("name",qr.lang)
+    val website = buildTemplateFromLang("website",qr.lang)
     //TODO hide param
     val template = (name:String,website:String) =>
-      s"""
+    s"""
         | {
         | "_source": {
         |    "include": [
@@ -75,8 +83,25 @@ class ElasticSearchClient /*extends Actor*/ {
     response
   }
 
-  def queryTags(store:String): Future[HttpResponse] = {
-    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/_search"),"{\n  \"query\": {\n    \"term\": {\n      \"_type\": \"tag\"\n    }\n  }\n}"))
+
+
+  def queryTags(store:String, qr:TagRequest): Future[HttpResponse] = {
+    val name = buildTemplateFromLang("name",qr.lang)
+    val template = (name:String) =>
+      s"""
+        | {
+        | "_source": {
+        |    "include": [
+        |      "id",
+        |      $name
+        |    ]
+        |  }
+        |  }
+        |
+      """.stripMargin
+    val query = template(name)
+    //println(query)
+    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/tag/_search"),query))
     response
   }
 

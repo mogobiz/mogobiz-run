@@ -6,4 +6,4 @@ package com.mogobiz
 
 case class Tag(id:Int,name:String,translations:List[String])
 
-case class TagRequest(hidden:Boolean,categoryId: Int,inactive:Boolean, lang:String)
+case class TagRequest(hidden:Boolean,inactive:Boolean, lang:String)

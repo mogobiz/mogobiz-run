@@ -22,12 +22,26 @@ trait StoreService extends HttpService {
   val esClient = new ElasticSearchClient
 
   val storeRoutes = {
-    pathPrefix("store" / Segment){ storeCode => {
-      pathEnd{
-        complete("the store code is "+storeCode)
-      }~langsRoutes ~ brandsRoutes(storeCode) ~ tagsRoutes(storeCode) ~ countriesRoutes ~ currenciesRoutes ~ categoriesRoutes ~ productsRoutes ~ featuredProductsRoutes ~ findRoute ~ productDetailsRoute ~ addToVisitorHistoryRoute ~ visitorHistoryRoute ~ productDatesRoute ~ productTimesRoute
+    pathPrefix("store" / Segment) {
+      storeCode => {
+        pathEnd {
+          complete("the store code is " + storeCode)
+        } ~ langsRoutes ~
+          brandsRoutes(storeCode) ~
+          tagsRoutes(storeCode) ~
+          countriesRoutes ~
+          currenciesRoutes ~
+          categoriesRoutes ~
+          productsRoutes ~
+          featuredProductsRoutes ~
+          findRoute ~
+          productDetailsRoute ~
+          addToVisitorHistoryRoute ~
+          visitorHistoryRoute ~
+          productDatesRoute ~
+          productTimesRoute
 
-    }
+      }
     }
   }
 
@@ -35,7 +49,6 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       get {
         parameters('hidden?false,'lang).as(BrandRequest) { brandRequest =>
-        //TODO manque la lang
           onSuccess(esClient.queryBrands(storeCode,brandRequest)){ response =>
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
@@ -49,8 +62,9 @@ trait StoreService extends HttpService {
   def tagsRoutes(storeCode: String) = path("tags") {
     respondWithMediaType(`application/json`) {
       get{
-        parameters('hidden?false,'category,'inactive?false,'lang).as(TagRequest) { tagRequest =>
-          onSuccess(esClient.queryTags(storeCode)){ response =>
+        //TODO hidden and inactive ???
+        parameters('hidden?false,'inactive?false,'lang).as(TagRequest) { tagRequest =>
+          onSuccess(esClient.queryTags(storeCode, tagRequest)){ response =>
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
             complete(subset)
