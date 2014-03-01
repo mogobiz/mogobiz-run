@@ -50,6 +50,9 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
+
+//TODO  def queryCountries()
+
   /**
     * Effectue la recheche de brands dans ES
    * @param store code store
