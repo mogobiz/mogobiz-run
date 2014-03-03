@@ -1,6 +1,6 @@
 //STATUS : OK
 // StoreController
-restpath = "/mogobiz/store/{storeCode}/currencies"
+restpath = "/api/store/{storeCode}/currencies"
 
 /* TODO dans StoreController
 

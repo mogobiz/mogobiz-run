@@ -1,34 +1,15 @@
+// Statut : OK
 // StoreController
-restpath = "/mogobiz/store/{storeCode}/products/{productId}/details?lang=fr&historize=true&visitorId={visitorId}&currency={curCode}&country={countryCode}"
+restpath = "/api/store/{storeCode}/products/{productId}?lang=fr&historize=true&visitorId={visitorId}&currency={curCode}&country={countryCode}"
 
 /* TODO dans StoreController
 si historize==true alors la méthode déclenche l'appel à la méthode addToHistory avec visitorId en paramètre
 calcul des prix
-virer les traductions en trop (voir remarque ES en-dessous)
+virer les traductions en trop
  */
 
 //Requete ES
 method = "GET"
-curl = "http://localhost:9200/mogobiz/product/57"
-query = {
+curl = "http://localhost:9200/{storeCode}/product/{productId}"
+ex = "http://localhost:9200/mogobiz/product/57"
 
-}
-
-/*
- REMARQUE : IMPOSSIBLE de filter les traductions avec le paramètre _source/exclude avec un GET
- le document étant énorme, faire la suppression des langs dans le StoreController
-
- */
-
-/*
- {
- "fields": [
- "website.en"
- ],
- "_source": {
- "excludes": [
- "*.*"
- ]
- }
- }
- */

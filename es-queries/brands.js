@@ -1,15 +1,15 @@
 //STATUS : a finir
 // TODO  gestion du hide
 // StoreController
-restpath = "/mogobiz/store/{storeCode}/brands?lang=fr"
+restpath = "/api/store/{storeCode}/brands?lang=fr&hidden=true"
 
 /* TODO dans StoreController
-ne récupérer que la source
+ne récupérer que la _source
  */
 
 //Requete ES
 method = "POST"
-curl = "http://localhost:9200/mogobiz/brand/_search"
+curl = "http://localhost:9200/{storeCode}/brand/_search"
 //si lang=_all
 query = {
     "_source": {
@@ -20,7 +20,7 @@ query = {
         ]
     }
 }
-//sinon
+//sinon lang=en
 query = {
     "_source": {
         "include": [

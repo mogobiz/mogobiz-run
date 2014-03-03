@@ -1,7 +1,7 @@
 //STATUS : a finir
 // TODO  gestion du hide
 // StoreController
-restpath = "/mogobiz/store/{storeCode}/tags?lang=fr"
+restpath = "/api/store/{storeCode}/tags?lang=fr"
 
 /* TODO dans StoreController
  ne récupérer que la source

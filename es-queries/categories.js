@@ -1,7 +1,7 @@
 //STATUS : waiting for data => jeux de données non pertinent
 // TODO gestion du HIDE et ParentId
 // StoreController
-restpath = "/mogobiz/store/{storeCode}/categories?parent=id&hidden=true&lang=fr"
+restpath = "/api/store/{storeCode}/categories?parent=id&hidden=true&lang=fr"
 
 /* TODO dans StoreController
 

@@ -1,6 +1,6 @@
 // Statut : requete fausse, manque de donnnées valorisé (endPeriods) ==> revoir le jeu de données
 // StoreController
-restpath = "/api/store/{storeCode}/product/productId}/dates?start={startDate}&end={endDate}"
+restpath = "/api/store/{storeCode}/product/productId}/times?start={startDate}&end={endDate}"
 method="GET"
 
 /* TODO dans StoreController

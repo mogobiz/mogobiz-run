@@ -1,17 +1,15 @@
-//STATUS : a tester
+//STATUS : a tester => pas de jeux de données
 // StoreController
-restpath = "/mogobiz/store/{storeCode}/countries?lang=fr"
+restpath = "/api/store/{storeCode}/countries?lang=fr"
 
 /* TODO dans StoreController
-
+ récuperer le _source
  */
 
 //Requete ES
 method = "POST"
 curl = "http://localhost:9200/mogobiz/country/_search"
-query = {
 
-}
 //si lang=_all
 query = {
     "_source": {
@@ -22,7 +20,7 @@ query = {
         ]
     }
 }
-//sinon
+//sinon lang=en
 query = {
     "_source": {
         "include": [

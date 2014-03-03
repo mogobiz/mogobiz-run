@@ -1,5 +1,6 @@
+// Statut : comme add-to-history, en attente mapping ES parent/enfant + jeux de données pour tester requete
 // StoreController
-restpath = "/mogobiz/store/{storeCode}/history/{visitorId}?lang={lang}&currency={curCode}&country={countryCode}"
+restpath = "/api/store/{storeCode}/history/{visitorId}?lang={lang}&currency={curCode}&country={countryCode}"
 method="GET"
 
 /* TODO dans StoreController

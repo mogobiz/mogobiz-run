@@ -1,7 +1,13 @@
 // StoreController
-restpath = "/mogobiz/store/{storeCode}/products?lang=fr&currency={curCode}&country={countryCode}"
+restpath = "/api/store/{storeCode}/products?lang=fr&currency={curCode}&country={countryCode}"
 method = "POST" // et/ou "GET"
 
+/* les post-params sont:
+ maxItemsPerPage => valeur pour size
+ pageOffset => valeur à TRANSFORMER pour from car from est l'index à partir duquelle on renvoie les données et pas la page
+
+
+*/
 /* TODO dans StoreController
  si historize==true alors la méthode déclenche l'appel à la méthode addToHistory avec visitorId en paramètre
  calcul des prix
