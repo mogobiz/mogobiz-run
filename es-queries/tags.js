@@ -1,5 +1,4 @@
-//STATUS : a finir
-// TODO  gestion du hide
+//STATUS : OK
 // StoreController
 restpath = "/api/store/{storeCode}/tags?lang=fr"
 
@@ -10,22 +9,12 @@ restpath = "/api/store/{storeCode}/tags?lang=fr"
 //Requete ES
 method = "POST"
 curl = "http://localhost:9200/mogobiz/tag/_search"
-//si lang=_all
-query = {
+//si lang=_all alors lang_prefix=* sinon =fr
+esquery = {
     "_source": {
         "include": [
             "id",
-            "name*"
-        ]
-    }
-}
-//sinon
-query = {
-    "_source": {
-        "include": [
-            "id",
-            "name",
-            "name.en"
+            "<lang_prefix>.*"
         ]
     }
 }

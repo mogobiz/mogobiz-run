@@ -1,4 +1,4 @@
-//STATUS : a tester => pas de jeux de données
+// STATUS : OK
 // StoreController
 restpath = "/api/store/{storeCode}/countries?lang=fr"
 
@@ -8,26 +8,13 @@ restpath = "/api/store/{storeCode}/countries?lang=fr"
 
 //Requete ES
 method = "POST"
-curl = "http://localhost:9200/mogobiz/country/_search"
-
-//si lang=_all
-query = {
+curl = "http://localhost:9200/mogobiz/country/_search" //en GET rajouter ?fields=code,name,fr.*
+esquery = {
     "_source": {
         "include": [
-            "id",
-            "code",
-            "name*"
-        ]
-    }
-}
-//sinon lang=en
-query = {
-    "_source": {
-        "include": [
-            "id",
             "code",
             "name",
-            "name.en"
+            "<lang_prefix>.*"
         ]
     }
 }
