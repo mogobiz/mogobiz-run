@@ -11,28 +11,14 @@ method="GET"
 
 //Requete ES
 method = "POST"
-curl = "http://localhost:9200/mogobiz/product/_search"
+curl = "http://localhost:9200/mogobiz/product/_search?q=_id:106" //Id du produit à passer en parametre
+
 query = {
-    "query": {
-        "filtered": {
-            "query": {
-                "bool": {
-                    "must": [
-                        {
-                            "range": {
-                                "startDate": {
-                                    "from": "2013-12-31",
-                                    "to": "2014-02-01"
-                                }
-                            }
-                        }
-                ]
-                }
-            }
-        }
+    "_source": {
+        "includes": [
+            "intraDayPeriods",
+            "datePeriods"
+        ]
     }
 }
-/* TODO ES : renvoyer la liste de dates
 
-
- */
