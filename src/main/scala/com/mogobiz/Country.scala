@@ -5,4 +5,4 @@ package com.mogobiz
  */
 case class Country(id: Int, code: String, label: String, translations: Option[List[String]])
 
-case class CountryRequest(store: String, lang: String)
+case class CountryRequest(lang: String)

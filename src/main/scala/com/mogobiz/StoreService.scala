@@ -29,9 +29,9 @@ trait StoreService extends HttpService {
         } ~ langsRoutes ~
           brandsRoutes(storeCode) ~
           tagsRoutes(storeCode) ~
-          countriesRoutes ~
-          currenciesRoutes ~
-          categoriesRoutes ~
+          countriesRoutes(storeCode) ~
+          currenciesRoutes(storeCode) ~
+          categoriesRoutes(storeCode) ~
           productsRoutes ~
           featuredProductsRoutes ~
           findRoute ~
@@ -93,40 +93,47 @@ trait StoreService extends HttpService {
       }
     }
 
-  val countriesRoutes = path("countries") {
+  def countriesRoutes(storeCode: String) = path("countries") {
     respondWithMediaType(`application/json`) {
-      parameters('store, 'lang).as(CountryRequest) {
-        cr =>
-          complete {
-            val countries = Country(1, "FR", "France", None) :: Country(2, "EN", "Royaumes Unis", None) :: Nil
-            countries
+      get{
+        parameters('lang).as(CountryRequest) { countryReq =>
+          onSuccess(esClient.queryCountries(storeCode, countryReq.lang)){ response =>
+            val json = parse(response.entity.asString)
+            val subset = json \ "hits" \ "hits" \ "_source"
+            complete(subset)
           }
+        }
       }
     }
   }
 
 
-  val currenciesRoutes = path("currencies") {
+  def currenciesRoutes(storeCode: String) = path("currencies") {
     respondWithMediaType(`application/json`) {
-      parameters('store).as(CurrencyRequest) {
-        cr =>
-          complete {
-            val currencies = Currency(1, "EUR") :: Currency(2, "USD") :: Nil
-            currencies
+      get{
+        parameters('lang).as(CurrencyRequest) { currencyReq =>
+          onSuccess(esClient.queryCurrencies(storeCode, currencyReq.lang)){ response =>
+            val json = parse(response.entity.asString)
+            val subset = json \ "hits" \ "hits" \ "_source"
+            complete(subset)
           }
+        }
       }
     }
   }
 
 
-  val categoriesRoutes = path("categories") {
+  def categoriesRoutes(storeCode: String) = path("categories") {
     respondWithMediaType(`application/json`) {
-      parameters('hidden ? false, 'parentId.?, 'lang, 'store).as(CategoryRequest) {
-        cr =>
-          complete {
-            val categories = Category(1, "CNM", "Cinéma", Nil) :: Category(2, "HBG", "Habillage", Nil) :: Nil
-            categories
+      get{
+        parameters('hidden ? false, 'parentId.?, 'lang).as(CategoryRequest) { categoryReq =>
+          onSuccess(esClient.queryCategories(storeCode,categoryReq)){ response =>
+            val json = parse(response.entity.asString)
+          //TODO renvoyer les fils directs si parentId renseigné
+            val subset = json \ "hits" \ "hits" \ "_source"
+            complete(subset)
           }
+        }
       }
     }
   }

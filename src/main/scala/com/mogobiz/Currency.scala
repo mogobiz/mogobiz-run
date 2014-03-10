@@ -5,4 +5,4 @@ package com.mogobiz
  */
 case class Currency(id: Int, code: String)
 
-case class CurrencyRequest(store:String)
+case class CurrencyRequest(lang: String)

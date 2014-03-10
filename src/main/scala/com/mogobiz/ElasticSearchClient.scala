@@ -42,16 +42,69 @@ class ElasticSearchClient /*extends Actor*/ {
 
   private def route(url:String):String = ES_FULL_URL+url
 
-  private def buildTemplateFromLang(fieldName: String, lang: String): String = {
-    if (lang == "_all") {
-      "\"" + fieldName + "*\""
-    } else {
-      "\"" + fieldName + "\",\"" + fieldName + "." + lang + "\""
-    }
+
+  /**
+   *
+   * @param store
+   * @param lang
+   * @return
+   */
+  def queryCountries(store:String,lang:String):Future[HttpResponse] = {
+
+    val template = (lang:String) =>
+      s"""
+        | {
+        |  "_source": {
+        |    "include": [
+        |      "id",
+        |      "code",
+        |      "name",
+        |      "$lang.*"
+        |    ]
+        |   }
+        | }
+        |
+      """.stripMargin
+
+    val plang = if(lang=="_all") "*" else lang
+    val query = template(plang)
+    println(query)
+    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/country/_search"),query))
+    response
   }
 
 
-//TODO  def queryCountries()
+  /**
+   *
+   * @param store
+   * @param lang
+   * @return
+   */
+  def queryCurrencies(store:String,lang:String):Future[HttpResponse] = {
+
+    val template = (lang:String) =>
+      s"""
+        | {
+        |  "_source": {
+        |    "include": [
+        |      "id",
+        |      "currencyFractionDigits",
+        |      "rate",
+        |      "code",
+        |      "name",
+        |      "$lang.*"
+        |    ]
+        |   }
+        | }
+        |
+      """.stripMargin
+
+    val plang = if(lang=="_all") "*" else lang
+    val query = template(plang)
+    println(query)
+    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/rate/_search"),query))
+    response
+  }
 
   /**
     * Effectue la recheche de brands dans ES
@@ -61,50 +114,110 @@ class ElasticSearchClient /*extends Actor*/ {
    */
   def queryBrands(store:String,qr:BrandRequest): Future[HttpResponse] = {
 
-    val name = buildTemplateFromLang("name",qr.lang)
-    val website = buildTemplateFromLang("website",qr.lang)
-    //TODO hide param
-    val template = (name:String,website:String) =>
+    val templateSource = (lang:String,hiddenFilter: String) =>
     s"""
         | {
         | "_source": {
         |    "include": [
         |      "id",
-        |      $name,
-        |      $website
+        |      "$lang.*"
         |    ]
-        |  }
-        |  }
+        |  }$hiddenFilter
+        | }
         |
       """.stripMargin
 
-    val query = template(name,website)
+    val templateQuery = (hideValue:Boolean) =>
+      s"""
+        | ,"query": {
+        |    "filtered": {
+        |      "filter": {
+        |        "term": {
+        |          "hide": $hideValue
+        |        }
+        |      }
+        |    }
+        |  }
+      """.stripMargin
 
-    //println(query)
-    //OLD "{\n  \"query\": {\n    \"term\": {\n      \"_type\": \"brand\"\n    }\n  }\n}"
+    val qfilter = if(qr.hidden) "" else templateQuery(qr.hidden)
+    val plang = if(qr.lang=="_all") "*" else qr.lang
+    val query = templateSource(plang,qfilter)
+    println(query)
+
     val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/brand/_search"),query))
     response
   }
 
 
-
+  /**
+   *
+   * @param store
+   * @param qr
+   * @return
+   */
   def queryTags(store:String, qr:TagRequest): Future[HttpResponse] = {
-    val name = buildTemplateFromLang("name",qr.lang)
-    val template = (name:String) =>
+
+    val template = (lang:String) =>
       s"""
         | {
-        | "_source": {
+        |  "_source": {
         |    "include": [
         |      "id",
-        |      $name
+        |      "$lang.*"
         |    ]
-        |  }
-        |  }
+        |   }
+        | }
         |
       """.stripMargin
-    val query = template(name)
-    //println(query)
+    val plang = if(qr.lang=="_all") "*" else qr.lang
+    val query = template(plang)
+    println(query)
     val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/tag/_search"),query))
+    response
+  }
+
+
+  def queryCategories(store:String, qr:CategoryRequest): Future[HttpResponse] = {
+
+  //"name","description","keywords",
+    val template = (lang:String,query:String) =>
+      s"""
+        | {
+        |  "_source": {
+        |    "include": [
+        |      "id","uuid","path",
+        |      "$lang.*"
+        |    ]
+        |   }$query
+        | }
+        |
+      """.stripMargin
+
+    val queryWrapper = (filter:String) =>
+      s"""
+       |,"query":{"filtered":{"filter":$filter}}
+      """.stripMargin
+
+    val andFilter = (filter1:String, filter2:String ) =>
+      s"""
+        | {"and":[$filter1,$filter2]}
+      """.stripMargin
+
+    val hiddenFilter = """{"term":{"hide":false}}"""
+    val parentFilter = (parent:String) => s"""{"regexp":{"path":"(?)*$parent*"}}"""
+
+    val filters = if(!qr.hidden && !qr.parent.isEmpty)
+      queryWrapper(andFilter(hiddenFilter,parentFilter(qr.parent.get)))
+    else if(!qr.hidden)
+      queryWrapper(hiddenFilter)
+    else
+      queryWrapper(parentFilter(qr.parent.get))
+
+    val plang = if(qr.lang=="_all") "*" else qr.lang
+    val query = template(plang, filters)
+    println(query)
+    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/category/_search"),query))
     response
   }
 
