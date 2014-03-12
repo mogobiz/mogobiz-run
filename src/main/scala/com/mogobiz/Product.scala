@@ -52,15 +52,15 @@ case class ProductRequest(
                            , orderBy: Option[String]
                            , orderDirection: Option[String]
                            , lang: String
-                           , storeCode: String
+//                           , storeCode: String
                            , currencyCode: String
                            , countryCode: String)
 
 case class ProductDetailsRequest(
-                                  addToHistory: Boolean
-                                  , productId: Int
-                                  , visitorId: Int
-                                  , storeCode: String
+                                  historize: Boolean = false
+                                  //, productId: Int
+                                  , visitorId: Option[Long]
+                                  //, storeCode: String
                                   , currencyCode: String
                                   , countryCode: String
                                   , lang: String)

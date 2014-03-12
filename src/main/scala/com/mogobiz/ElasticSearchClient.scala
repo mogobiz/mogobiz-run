@@ -221,6 +221,24 @@ class ElasticSearchClient /*extends Actor*/ {
     response
   }
 
+
+  def queryProductsByCriteria(store: String, criteria: ProductRequest): Future[HttpResponse]= {
+
+    val query = "{}"
+    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/product/_search"),query))
+    response
+  }
+
+  def queryProductById(store: String,id:Long,req: ProductDetailsRequest): Future[HttpResponse]= {
+
+    if(req.historize){
+      //TODO call addToHistory
+    }
+
+    val response: Future[HttpResponse] = pipeline(Get(route("/"+store+"/product/"+id)))
+    response
+  }
+
   def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
 
   def execute(){

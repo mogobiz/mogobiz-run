@@ -32,14 +32,14 @@ trait StoreService extends HttpService {
           countriesRoutes(storeCode) ~
           currenciesRoutes(storeCode) ~
           categoriesRoutes(storeCode) ~
-          productsRoutes ~
-          featuredProductsRoutes ~
+          productsRoutes(storeCode) ~
+//          featuredProductsRoutes ~
           findRoute ~
-          productDetailsRoute ~
-          addToVisitorHistoryRoute ~
-          visitorHistoryRoute ~
+          productDetailsRoute(storeCode) ~
           productDatesRoute ~
-          productTimesRoute
+          productTimesRoute ~
+          addToVisitorHistoryRoute ~
+          visitorHistoryRoute
 
       }
     }
@@ -138,20 +138,29 @@ trait StoreService extends HttpService {
     }
   }
 
-  val productsRoutes = path("products") {
+  /**
+   *
+   * ex : http://localhost:8082/store/mogobiz/products?currency=EUR&country=FR&lang=FR
+   * @param storeCode
+   * @return
+   */
+  def productsRoutes(storeCode:String) = path("products") {
     respondWithMediaType(`application/json`) {
-      parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'creationDateMin.?, 'orderBy.?, 'orderDirection.?, 'lang, 'store, 'currency, 'country).as(ProductRequest) {
-        productRequest =>
-          complete {
 
-            //TODO search with ES
-            val products = Product("1", "Nike Air", "", 100L) :: Product("2", "Rebook 5230", "", 140L) :: Product("3", "New Balance 1080", "", 150L) :: Product("4", "Mizuno Wave Legend", "", 60L) :: Nil
-            products
+
+      parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'creationDateMin.?, 'orderBy.?, 'orderDirection.?, 'lang, 'currency, 'country).as(ProductRequest) {
+        productRequest =>
+          onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ response =>
+            val json = parse(response.entity.asString)
+            //TODO calcul prix
+            val subset = json \ "hits" \ "hits" \ "_source"
+            complete(subset)
           }
       }
     }
   }
 
+  /*
   val featuredProductsRoutes = path("featuredProducts") {
     respondWithMediaType(`application/json`) {
       parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'creationDateMin.?, 'orderBy.?, 'orderDirection.?, 'lang, 'store, 'currency, 'country).as(ProductRequest) {
@@ -165,8 +174,8 @@ trait StoreService extends HttpService {
       }
     }
   }
-
-  val findRoute = path("find") {
+  */
+  val findRoute/*(storeCode:String)*/ = path("find") {
     respondWithMediaType(`application/json`) {
       parameters('query, 'lang, 'store) {
         (query, lang, storeCode) =>
@@ -181,21 +190,23 @@ trait StoreService extends HttpService {
   }
 
 
-  val productDetailsRoute = path("productDetails") {
+  def productDetailsRoute(storeCode:String) = path("product"/Segment) { productId =>
     respondWithMediaType(`application/json`) {
       parameters(
-        'addToHistory ? false
-        , 'productId
-        , 'visitorId
-        , 'storeCode
+        'historize ? false
+//        , 'productId
+        , 'visitorId.?
+//        , 'storeCode
         , 'currencyCode
         , 'countryCode
         , 'lang).as(ProductDetailsRequest) {
         pdr =>
-          complete {
-            //TODO search with ES
-            val product = Product("1", "Nike Air", "", 100L)
-            product
+          onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
+            val json = parse(response.entity.asString)
+            println(pdr)
+            //TODO calcul prix
+            val subset = json \ "_source"
+            complete(subset)
           }
       }
     }

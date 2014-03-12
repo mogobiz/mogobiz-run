@@ -12,15 +12,13 @@ method = "POST" // et/ou "GET"
 /* TODO dans StoreController
  si historize==true alors la méthode déclenche l'appel à la méthode addToHistory avec visitorId en paramètre
  calcul des prix
- virer les traductions en trop (voir remarque ES en-dessous)
  */
 
 method="POST"
 curl = "http://localhost:9200/mogobiz/product/_search"
 
 // remarque sur le exclude:
-// 1. permet de virer toute les langues non voulu mais il faut les lister dans la query => donc connaitre la liste des lang sur le store
-// 2. TODO revoir le mapping car le pattern du exclude peut virer des champs finissant par la code_lang. => utiliser un mapping trad.<code_land> :{ nested_objects }
+// permet de virer toute les langues non voulu mais il faut les lister dans la query => donc connaitre la liste des lang sur le store
 
 esquery={
     "_source": {
