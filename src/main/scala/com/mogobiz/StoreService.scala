@@ -49,11 +49,21 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       get {
         parameters('hidden?false,'lang).as(BrandRequest) { brandRequest =>
+
           onSuccess(esClient.queryBrands(storeCode,brandRequest)){ response =>
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
             complete(subset)
           }
+
+/*TODO
+            esClient.queryBrands(storeCode, brandRequest) onSuccess {
+              case response =>           complete{
+                val json = parse(response.entity.asString)
+                val subset = json \ "hits" \ "hits" \ "_source"
+
+            }
+          }*/
         }
       }
     }
@@ -146,9 +156,7 @@ trait StoreService extends HttpService {
    */
   def productsRoutes(storeCode:String) = path("products") {
     respondWithMediaType(`application/json`) {
-
-
-      parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'creationDateMin.?, 'orderBy.?, 'orderDirection.?, 'lang, 'currency, 'country).as(ProductRequest) {
+      parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?, 'lang, 'currency, 'country).as(ProductRequest) {
         productRequest =>
           onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ response =>
             val json = parse(response.entity.asString)
@@ -190,6 +198,8 @@ trait StoreService extends HttpService {
   }
 
 
+
+
   def productDetailsRoute(storeCode:String) = path("product"/Segment) { productId =>
     respondWithMediaType(`application/json`) {
       parameters(
@@ -201,16 +211,49 @@ trait StoreService extends HttpService {
         , 'countryCode
         , 'lang).as(ProductDetailsRequest) {
         pdr =>
+
           onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
             val json = parse(response.entity.asString)
             println(pdr)
             //TODO calcul prix
+
+
+            val lang = pdr.lang
+            val currency = pdr.currencyCode
+            esClient.queryCurrencies(storeCode,lang) onSuccess {
+              case curResp => {
+
+                val jsoncur = parse(curResp.entity.asString)
+                val subset = jsoncur \ "hits" \ "hits" \ "_source"
+
+                val currencies = subset.extract[List[Currency]]
+                //println(currencies)
+                val rate = for{
+                  cur <- currencies
+                  if(cur.code==currency)
+                } yield cur
+                println(rate)
+
+              }
+            }
+
             val subset = json \ "_source"
             complete(subset)
           }
       }
     }
   }
+/*
+  // formatting price
+  float taxRate = taxRateService.findTaxRateByProduct(product, locale?.country)
+  long endPrice = taxRateService.calculateEndPrix(product.price, taxRate)
+  Map price = [:]
+  price["price"] = rateService.format(product.price, currencyCode, locale);
+  price["taxRate"] = taxRate
+  price["endPrice"] = rateService.format(endPrice, currencyCode, locale);
+  */
+
+  def convertPrice (value:Double, rate:Double) : Double  = value * rate
 
 
   val addToVisitorHistoryRoute = path("addToVisitorHistory") {

@@ -177,6 +177,24 @@ class ElasticSearchClient /*extends Actor*/ {
     response
   }
 
+  def listAllLanguages() : List[String] = {
+    "fr"::"en"::"es"::"de"::Nil
+  }
+
+  def getAllExcludedLanguagesExcept(langRequested:String) : List[String] = {
+    listAllLanguages().filter{
+      lang => lang!=langRequested
+    }
+  }
+
+  def getAllExcludedLanguagesExceptAsString(lang:String) : String = {
+    val langs = getAllExcludedLanguagesExcept(lang)
+    val langsTokens = langs.map{ l => "*"+l}
+    //.flatMap{ l => "*"+l::"*."+l::Nil}.
+    langsTokens.mkString("\"","\",\"","\"")
+  }
+
+
 
   def queryCategories(store:String, qr:CategoryRequest): Future[HttpResponse] = {
 
@@ -186,7 +204,7 @@ class ElasticSearchClient /*extends Actor*/ {
         | {
         |  "_source": {
         |    "include": [
-        |      "id","uuid","path",
+        |      "id","uuid","name","path","parentId",
         |      "$lang.*"
         |    ]
         |   }$query
@@ -222,11 +240,119 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
 
-  def queryProductsByCriteria(store: String, criteria: ProductRequest): Future[HttpResponse]= {
+  def queryProductsByCriteria(store: String, req: ProductRequest): Future[HttpResponse]= {
 
-    val query = "{}"
+    val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)
+    val source = s"""
+        |  "_source": {
+        |    "exclude": [
+        |      $langsToExclude
+        |    ]
+        |   }
+      """.stripMargin
+    val nameCriteria = if(req.name.isEmpty){
+      ""
+    }else {
+      val name = req.name.get
+      s"""
+      "query": {
+                "match": {
+                    "name": {
+                        "query": "$name",
+                        "operator": "and"
+                    }
+                }
+            }
+      """.stripMargin
+    }
+
+    val queryCriteria = s"""
+      "query": {
+        "filtered": {
+          $nameCriteria
+        }
+      }
+      """.stripMargin
+
+
+    val codeFilter = createTermFilterWithStr("code",req.code)
+    val categoryFilter = createTermFilterWithNum("category.id",req.categoryId)
+    val xtypeFilter = createTermFilterWithStr("xtype",req.xtype)
+    val pathFilter = createTermFilterWithStr("path",req.path)
+    val brandFilter = createTermFilterWithNum("brand.id",req.brandId)
+    val tagsFilter = createTermFilterWithStr("tags.name",req.tagName)
+    val priceFilter = createRangeFilter("price",req.priceMin,req.priceMax)
+
+    val filters = (codeFilter::categoryFilter::xtypeFilter::pathFilter::brandFilter::tagsFilter::priceFilter::Nil).filter {s => !s.isEmpty}.mkString(",")
+    println(filters)
+
+
+    val filterCriteria = if(filters.isEmpty) "" else s"""
+      "filter": {
+        "bool": {
+          "must": [$filters]
+        }
+      }
+    """.stripMargin
+
+    val pagingAndSortingCriteria = (from:Int,size:Int,sortField:String,sortOrder:String) =>
+      s"""
+        |"sort": {"$sortField": "$sortOrder"},
+        |"from": $from,
+        |"size": $size
+      """.stripMargin
+
+    val pageAndSort = pagingAndSortingCriteria(req.pageOffset.getOrElse(0) * req.maxItemPerPage.getOrElse(100), req.maxItemPerPage.getOrElse(100), req.orderBy.getOrElse("name"), req.orderDirection.getOrElse("asc"))
+
+    val query = List(source,queryCriteria,filterCriteria,pageAndSort).filter { str => !str.isEmpty }.mkString("{",",","}")
+
+    println(query)
     val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/product/_search"),query))
     response
+  }
+
+  def createRangeFilter(field:String,gte:Option[Long],lte:Option[Long]): String ={
+
+    if(gte.isEmpty && lte.isEmpty) ""
+    else{
+      val gteStr = if(gte.isEmpty) "" else {
+        val gteVal = gte.get
+        s""" "gte":$gteVal """.stripMargin
+      }
+
+      val lteStr = if(lte.isEmpty) "" else {
+        val lteVal = lte.get
+        s""" "lte":$lteVal """.stripMargin
+      }
+
+      val range = (gteStr :: lteStr :: Nil).filter { str => !str.isEmpty }
+      if(range.isEmpty) ""
+      val ranges = range.mkString(",")
+      s"""{
+        "range": {
+          "$field": { $ranges }
+        }
+      }""".stripMargin
+    }
+  }
+
+  def createTermFilterWithStr(field:String,value:Option[String]) : String = {
+    if(value.isEmpty) ""
+    else
+     s"""{
+      "term": {
+        "$field": "$value"
+      }
+      """.stripMargin
+  }
+
+  def createTermFilterWithNum(field:String,value:Option[Int]) : String = {
+    if(value.isEmpty) ""
+    else s"""{
+      "term": {
+        "$field": "$value"
+      }
+      """.stripMargin
   }
 
   def queryProductById(store: String,id:Long,req: ProductDetailsRequest): Future[HttpResponse]= {
