@@ -34,12 +34,17 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
   "query product" in {
     val store = "mogobiz"
     val criteria = new ProductRequest("fr","EUR","FR")
-    criteria.name=Some("pull")
+//    criteria.name=Some("pull")
     val response = Await.result(esClient.queryProductsByCriteria(store,criteria), 1 second)
+/*
     val json = parse(response.entity.asString)
-    println(response.entity)
-//    val subset = json \ "hits" \ "hits" \ "_source"
-//    println(subset)
+    println(response.entity.asString)
+    val subset = json \ "hits" \ "hits" \ "_source"
+    println(subset)
+*/
+
+
+
     response.entity must not beEmpty
 
     /* onComplete {

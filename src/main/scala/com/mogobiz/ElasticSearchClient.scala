@@ -11,6 +11,17 @@ import spray.httpx.SprayJsonSupport
 import spray.client.pipelining._
 import spray.util._
 import spray.http._
+import org.json4s.native.JsonMethods._
+import scala.util.Failure
+import spray.http.HttpResponse
+import scala.util.Success
+import com.mogobiz.CategoryRequest
+import com.mogobiz.ProductDetailsRequest
+import spray.http.HttpRequest
+import com.mogobiz.BrandRequest
+import com.mogobiz.ProductRequest
+import com.mogobiz.TagRequest
+import org.json4s.{DefaultFormats, Formats, JsonAST}
 
 /**
  * Created by Christophe on 18/02/14.
@@ -189,8 +200,8 @@ class ElasticSearchClient /*extends Actor*/ {
 
   def getAllExcludedLanguagesExceptAsString(lang:String) : String = {
     val langs = getAllExcludedLanguagesExcept(lang)
-    val langsTokens = langs.map{ l => "*"+l}
-    //.flatMap{ l => "*"+l::"*."+l::Nil}.
+    val langsTokens = langs.flatMap{ l => l::"*."+l::Nil} //map{ l => "*."+l}
+
     langsTokens.mkString("\"","\",\"","\"")
   }
 
@@ -245,6 +256,7 @@ class ElasticSearchClient /*extends Actor*/ {
     val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)
     val source = s"""
         |  "_source": {
+        |     "include":["id","price","taxRate"],
         |    "exclude": [
         |      $langsToExclude
         |    ]
@@ -308,7 +320,53 @@ class ElasticSearchClient /*extends Actor*/ {
 
     println(query)
     val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/product/_search"),query))
+
+    //code temporaire pour ne avoir à gérer l'asyncro tout de suite
+    val json = parse(Await.result(response, 1 second).entity.asString)
+    val subset = json \ "hits" \ "hits" \ "_source"
+
+    println(render(subset))
+
+    val products = subset.children.map{
+      p => println("+++"+p+"+++");
+        renderProduct(p)
+    }
+//    val products = subset.values
+
+
+
+    /* + tard
+    response onSuccess {
+      case response => {
+
+      }
+    }*/
+
     response
+  }
+
+  def renderProduct(product:JsonAST.JValue):JsonAST.JValue = {
+    implicit def json4sFormats: Formats = DefaultFormats
+    val price = (product \ "price").extract[Int]
+    println(price)
+
+    product \ "taxRate"
+
+    product
+
+
+    /* calcul prix Groovy
+    def localTaxRates = product['taxRate'] ? product['taxRate']['localTaxRates'] as List<Map> : []
+    def localTaxRate = localTaxRates?.find { ltr ->
+      ltr['countryCode'] == country && (!state || ltr['stateCode'] == state)
+    }
+    def taxRate = localTaxRate ? localTaxRate['rate'] : 0f
+    def price = product['price'] ?: 0l
+    def endPrice = (price as long) + ((price * taxRate / 100f) as long)
+    product << ['localTaxRate': taxRate,
+    formatedPrice: format(price as long, currencyCode, locale, rate as double),
+    formatedEndPrice: format(endPrice, currencyCode, locale, rate as double)
+    */
   }
 
   def createRangeFilter(field:String,gte:Option[Long],lte:Option[Long]): String ={
