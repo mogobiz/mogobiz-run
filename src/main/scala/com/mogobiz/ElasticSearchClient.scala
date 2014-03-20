@@ -12,16 +12,9 @@ import spray.client.pipelining._
 import spray.util._
 import spray.http._
 import org.json4s.native.JsonMethods._
-import scala.util.Failure
-import spray.http.HttpResponse
-import scala.util.Success
-import com.mogobiz.CategoryRequest
-import com.mogobiz.ProductDetailsRequest
-import spray.http.HttpRequest
-import com.mogobiz.BrandRequest
-import com.mogobiz.ProductRequest
-import com.mogobiz.TagRequest
-import org.json4s.{DefaultFormats, Formats, JsonAST}
+import org.json4s._
+import org.json4s.JsonDSL._
+import scala.Some
 
 /**
  * Created by Christophe on 18/02/14.
@@ -251,7 +244,7 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
 
-  def queryProductsByCriteria(store: String, req: ProductRequest): Future[HttpResponse]= {
+  def queryProductsByCriteria(store: String, req: ProductRequest): Future[HttpResponse] = { //
 
     val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)
     val source = s"""
@@ -325,15 +318,10 @@ class ElasticSearchClient /*extends Actor*/ {
     val json = parse(Await.result(response, 1 second).entity.asString)
     val subset = json \ "hits" \ "hits" \ "_source"
 
-    println(render(subset))
 
     val products = subset.children.map{
-      p => println("+++"+p+"+++");
-        renderProduct(p)
+      p => renderProduct(p,req.countryCode,req.currencyCode)
     }
-//    val products = subset.values
-
-
 
     /* + tard
     response onSuccess {
@@ -341,18 +329,39 @@ class ElasticSearchClient /*extends Actor*/ {
 
       }
     }*/
-
+    println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    println(pretty(render(products)))
     response
+    //Future{render(products)}
   }
 
-  def renderProduct(product:JsonAST.JValue):JsonAST.JValue = {
+  def renderProduct(product:JsonAST.JValue,countryCode:String, currencyCode:String):JsonAST.JValue = {
     implicit def json4sFormats: Formats = DefaultFormats
     val price = (product \ "price").extract[Int]
     println(price)
 
-    product \ "taxRate"
+    val lrt = for {
+      localTaxRate @ JObject(x) <- product \ "taxRate" \ "localTaxRates"
+      if (x contains JField("countryCode", JString(countryCode)))
+      JField("rate",value) <- x } yield value
 
-    product
+    val taxRate = lrt.headOption match {
+      case Some(JDouble(x)) => x
+      case Some(JInt(x)) => x.toDouble
+      case Some(JNothing) => 0.toDouble
+      case _ => 0.toDouble
+    }
+
+    val endPrice = price + (price*taxRate/100d)
+
+    val additionalFields = (
+      ("localTaxRate"->taxRate) ~
+        ("endPrice"->endPrice) ~
+        ("formatedPrice"-> (price+" "+currencyCode)) ~
+        ("formatedEndPrice"-> (endPrice+" "+currencyCode))
+      )
+
+    product merge additionalFields
 
 
     /* calcul prix Groovy
