@@ -117,7 +117,7 @@ trait StoreService extends HttpService {
     }
   }
 
-
+  /* avant
   def currenciesRoutes(storeCode: String) = path("currencies") {
     respondWithMediaType(`application/json`) {
       get{
@@ -126,6 +126,17 @@ trait StoreService extends HttpService {
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
             complete(subset)
+          }
+        }
+      }
+    }
+  }*/
+  def currenciesRoutes(storeCode: String) = path("currencies") {
+    respondWithMediaType(`application/json`) {
+      get{
+        parameters('lang).as(CurrencyRequest) { currencyReq =>
+          onSuccess(esClient.queryCurrencies(storeCode, currencyReq.lang)){ json =>
+            complete(json)
           }
         }
       }
@@ -158,11 +169,8 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?, 'lang, 'currency, 'country).as(ProductRequest) {
         productRequest =>
-          onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ response =>
-            val json = parse(response.entity.asString)
-            //TODO calcul prix
-            val subset = json \ "hits" \ "hits" \ "_source"
-            complete(subset)
+          onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ products =>
+            complete(products)
           }
       }
     }
@@ -220,14 +228,9 @@ trait StoreService extends HttpService {
 
             val lang = pdr.lang
             val currency = pdr.currencyCode
-            esClient.queryCurrencies(storeCode,lang) onSuccess {
-              case curResp => {
+            esClient.getCurrencies(storeCode,lang) onSuccess {
+              case currencies => {
 
-                val jsoncur = parse(curResp.entity.asString)
-                val subset = jsoncur \ "hits" \ "hits" \ "_source"
-
-                val currencies = subset.extract[List[Currency]]
-                //println(currencies)
                 val rate = for{
                   cur <- currencies
                   if(cur.code==currency)

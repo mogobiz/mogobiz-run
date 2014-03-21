@@ -15,6 +15,8 @@ import org.json4s.native.JsonMethods._
 import org.json4s._
 import org.json4s.JsonDSL._
 import scala.Some
+import java.util.Locale
+import java.text.NumberFormat
 
 /**
  * Created by Christophe on 18/02/14.
@@ -45,6 +47,8 @@ class ElasticSearchClient /*extends Actor*/ {
   private val ES_FULL_URL = ES_URL + ":" + ES_HTTP_PORT
 
   private def route(url:String):String = ES_FULL_URL+url
+
+
 
 
   /**
@@ -84,7 +88,7 @@ class ElasticSearchClient /*extends Actor*/ {
    * @param lang
    * @return
    */
-  def queryCurrencies(store:String,lang:String):Future[HttpResponse] = {
+  def queryCurrencies(store:String,lang:String):Future[JValue] = {
 
     val template = (lang:String) =>
       s"""
@@ -107,7 +111,23 @@ class ElasticSearchClient /*extends Actor*/ {
     val query = template(plang)
     println(query)
     val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/rate/_search"),query))
-    response
+    response.flatMap{
+      response => {
+        val json = parse(response.entity.asString)
+        val subset = json \ "hits" \ "hits" \ "_source"
+        future(subset)
+      }
+    }
+  }
+
+  def getCurrencies(store:String,lang:String): Future[List[Currency]] = {
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val currencies = queryCurrencies(store,lang).flatMap {
+      json => future(json.extract[List[Currency]])
+    }
+
+    currencies
   }
 
   /**
@@ -244,7 +264,7 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
 
-  def queryProductsByCriteria(store: String, req: ProductRequest): Future[HttpResponse] = { //
+  def queryProductsByCriteria(store: String, req: ProductRequest): Future[JValue]  = {
 
     val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)
     val source = s"""
@@ -318,9 +338,12 @@ class ElasticSearchClient /*extends Actor*/ {
     val json = parse(Await.result(response, 1 second).entity.asString)
     val subset = json \ "hits" \ "hits" \ "_source"
 
+    val currencies = Await.result(getCurrencies(store,req.lang), 1 second)
+    val currency = currencies.filter { cur => cur.code==req.currencyCode}.headOption getOrElse(new Currency(2,1,"EUR","euro"))
+
 
     val products = subset.children.map{
-      p => renderProduct(p,req.countryCode,req.currencyCode)
+      p => renderProduct(p,req.countryCode,req.currencyCode,req.lang, currency)
     }
 
     /* + tard
@@ -331,14 +354,12 @@ class ElasticSearchClient /*extends Actor*/ {
     }*/
     println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     println(pretty(render(products)))
-    response
-    //Future{render(products)}
+    future(products)
   }
 
-  def renderProduct(product:JsonAST.JValue,countryCode:String, currencyCode:String):JsonAST.JValue = {
+  def renderProduct(product:JsonAST.JValue,countryCode:String, currencyCode:String,lang:String, cur: Currency):JsonAST.JValue = {
     implicit def json4sFormats: Formats = DefaultFormats
-    val price = (product \ "price").extract[Int]
-    println(price)
+    val price = (product \ "price").extract[Int].toLong
 
     val lrt = for {
       localTaxRate @ JObject(x) <- product \ "taxRate" \ "localTaxRates"
@@ -348,17 +369,19 @@ class ElasticSearchClient /*extends Actor*/ {
     val taxRate = lrt.headOption match {
       case Some(JDouble(x)) => x
       case Some(JInt(x)) => x.toDouble
-      case Some(JNothing) => 0.toDouble
+//      case Some(JNothing) => 0.toDouble
       case _ => 0.toDouble
     }
 
+    val locale = new Locale(lang);
     val endPrice = price + (price*taxRate/100d)
-
+    val formatedPrice = format(price,currencyCode, locale,cur.rate)
+    val formatedEndPrice = format(price, currencyCode, locale, cur.rate)
     val additionalFields = (
       ("localTaxRate"->taxRate) ~
         ("endPrice"->endPrice) ~
-        ("formatedPrice"-> (price+" "+currencyCode)) ~
-        ("formatedEndPrice"-> (endPrice+" "+currencyCode))
+        ("formatedPrice"-> formatedPrice) ~
+        ("formatedEndPrice"-> formatedEndPrice)
       )
 
     product merge additionalFields
@@ -377,6 +400,13 @@ class ElasticSearchClient /*extends Actor*/ {
     formatedEndPrice: format(endPrice, currencyCode, locale, rate as double)
     */
   }
+
+  private def format(amount:Long, currencyCode:String , locale:Locale  = Locale.getDefault, rate : Double = 0):String = {
+    val numberFormat = NumberFormat.getCurrencyInstance(locale);
+    numberFormat.setCurrency(java.util.Currency.getInstance(currencyCode));
+    return numberFormat.format(amount * rate);
+  }
+
 
   def createRangeFilter(field:String,gte:Option[Long],lte:Option[Long]): String ={
 
