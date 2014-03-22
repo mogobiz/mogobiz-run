@@ -36,6 +36,13 @@ case class Product(
 
 }
 
+//class LangParam(lang:String)
+
+class CommonProductParameters(val lang:String,val currencyCode:String,val countryCode:String)
+//,lang:String,currencyCode:String,countryCode:String
+case class FulltextSearchProductParameters(
+                                            _lang:String,_currencyCode:String,_countryCode:String,
+                                            val query:String) extends CommonProductParameters(_lang,_currencyCode,_countryCode)
 
 case class ProductRequest(
                            maxItemPerPage: Option[Int]
@@ -60,9 +67,7 @@ case class ProductRequest(
 
 case class ProductDetailsRequest(
                                   historize: Boolean// = false
-                                  //, productId: Int
                                   , visitorId: Option[Long]
-                                  //, storeCode: String
                                   , currencyCode: String
                                   , countryCode: String
                                   , lang: String)

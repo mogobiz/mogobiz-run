@@ -350,29 +350,41 @@ class ElasticSearchClient /*extends Actor*/ {
     val query = List(source,queryCriteria,filterCriteria,pageAndSort).filter { str => !str.isEmpty }.mkString("{",",","}")
 
     println(query)
-    val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/product/_search"),query))
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/"+store+"/product/_search"),query))
+    fresponse.flatMap {
+      response => {
+        if(response.status.isSuccess){
 
-    //code temporaire pour ne avoir à gérer l'asyncro tout de suite
-    val json = parse(Await.result(response, 1 second).entity.asString)
-    val subset = json \ "hits" \ "hits" \ "_source"
+          //code temporaire pour ne avoir à gérer l'asyncro tout de suite
+          //val json = parse(Await.result(response, 1 second).entity.asString)
+          val json = parse(response.entity.asString)
+          val subset = json \ "hits" \ "hits" \ "_source"
 
-    val currencies = Await.result(getCurrencies(store,req.lang), 1 second)
-    val currency = currencies.filter { cur => cur.code==req.currencyCode}.headOption getOrElse(new Currency(2,1,"EUR","euro"))
+          val currencies = Await.result(getCurrencies(store,req.lang), 1 second)
+          val currency = currencies.filter { cur => cur.code==req.currencyCode}.headOption getOrElse(new Currency(2,1,"EUR","euro"))
 
 
-    val products = subset.children.map{
-      p => renderProduct(p,req.countryCode,req.currencyCode,req.lang, currency)
+          val products = subset.children.map{
+            p => renderProduct(p,req.countryCode,req.currencyCode,req.lang, currency)
+          }
+
+          /* + tard
+          response onSuccess {
+            case response => {
+
+            }
+          }*/
+          println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+          println(pretty(render(products)))
+          future(products)
+        }else{
+          //TODO log l'erreur
+          future(parse(response.entity.asString))
+          //throw new ElasticSearchClientException(resp.status.reason)
+        }
+      }
     }
 
-    /* + tard
-    response onSuccess {
-      case response => {
-
-      }
-    }*/
-    println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    println(pretty(render(products)))
-    future(products)
   }
 
   def renderProduct(product:JsonAST.JValue,countryCode:String, currencyCode:String,lang:String, cur: Currency):JsonAST.JValue = {
@@ -470,14 +482,76 @@ class ElasticSearchClient /*extends Actor*/ {
       """.stripMargin
   }
 
-  def queryProductById(store: String,id:Long,req: ProductDetailsRequest): Future[HttpResponse]= {
+  def queryProductById(store: String,id:Long,req: ProductDetailsRequest): Future[JValue]= {
 
     if(req.historize){
       //TODO call addToHistory
     }
 
-    val response: Future[HttpResponse] = pipeline(Get(route("/"+store+"/product/"+id)))
-    response
+
+    val fresponse: Future[HttpResponse] = pipeline(Get(route("/"+store+"/product/"+id)))
+    fresponse.flatMap {
+      response => {
+        if(response.status.isSuccess){
+
+          val json = parse(response.entity.asString)
+          val subset = json \ "_source"
+
+          val currencies = Await.result(getCurrencies(store,req.lang), 1 second)
+          val currency = currencies.filter { cur => cur.code==req.currencyCode}.headOption getOrElse(new Currency(2,1,"EUR","euro"))
+
+          val product = renderProduct(subset,req.countryCode,req.currencyCode,req.lang, currency)
+
+          future(product)
+        }else{
+          //TODO log l'erreur
+          future(parse(response.entity.asString))
+          //throw new ElasticSearchClientException(resp.status.reason)
+        }
+      }
+    }
+  }
+
+  def queryProductsByFulltextCriteria(store: String, params:FulltextSearchProductParameters) : Future[JValue] = {
+
+//    excluded.addAll(['skus', 'features', 'resources', 'datePeriods', 'intraDayPeriods'])
+
+    var tplquery = (excludedFields: String, text: String) => s"""
+      {
+        "_source": {
+          "exclude": ["skus", "features", "resources", "datePeriods", "intraDayPeriods","imported",$excludedFields]
+        },
+        "query": {
+          "query_string": {
+            "query": "$text"
+          }
+        }
+      }""".stripMargin
+
+    val query = tplquery(getAllExcludedLanguagesExceptAsString(params.lang),params.query)
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/"+store+"/product/_search"),query))
+    fresponse.flatMap {
+      response => {
+        if(response.status.isSuccess){
+
+          val json = parse(response.entity.asString)
+          val subset = json \ "hits" \ "hits" \ "_source"
+
+          val currencies = Await.result(getCurrencies(store,params.lang), 1 second)
+          val currency = currencies.filter { cur => cur.code==params.currencyCode}.headOption getOrElse(new Currency(2,1,"EUR","euro"))
+
+          val products = subset.children.map{
+            p => renderProduct(p,params.countryCode,params.currencyCode,params.lang, currency)
+          }
+
+          future(products)
+        }else{
+          //TODO log l'erreur
+          future(parse(response.entity.asString))
+          //throw new ElasticSearchClientException(resp.status.reason)
+        }
+      }
+    }
   }
 
   def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))

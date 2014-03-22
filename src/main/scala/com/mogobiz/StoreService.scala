@@ -33,11 +33,6 @@ trait StoreService extends HttpService {
           currenciesRoutes(storeCode) ~
           categoriesRoutes(storeCode) ~
           productsRoutes(storeCode) ~
-//          featuredProductsRoutes ~
-          findRoute ~
-          productDetailsRoute(storeCode) ~
-          productDatesRoute ~
-          productTimesRoute ~
           addToVisitorHistoryRoute ~
           visitorHistoryRoute
 
@@ -45,6 +40,13 @@ trait StoreService extends HttpService {
     }
   }
 
+  /**
+   *
+   *
+   *
+   * @param storeCode
+   * @return
+   */
   def brandsRoutes(storeCode:String) = path("brands") {
     respondWithMediaType(`application/json`) {
       get {
@@ -116,20 +118,11 @@ trait StoreService extends HttpService {
     }
   }
 
-  /* avant
-  def currenciesRoutes(storeCode: String) = path("currencies") {
-    respondWithMediaType(`application/json`) {
-      get{
-        parameters('lang).as(CurrencyRequest) { currencyReq =>
-          onSuccess(esClient.queryCurrencies(storeCode, currencyReq.lang)){ response =>
-            val json = parse(response.entity.asString)
-            val subset = json \ "hits" \ "hits" \ "_source"
-            complete(subset)
-          }
-        }
-      }
-    }
-  }*/
+  /**
+   * http://localhost:8082/store/mogobiz/product/38?currencyCode=EUR&countryCode=FR&lang=FR
+   * @param storeCode
+   * @return
+   */
   def currenciesRoutes(storeCode: String) = path("currencies") {
     respondWithMediaType(`application/json`) {
       get{
@@ -161,99 +154,69 @@ trait StoreService extends HttpService {
   /**
    *
    * ex : http://localhost:8082/store/mogobiz/products?currency=EUR&country=FR&lang=FR
+   *
+   * products?lang=fr&currency=EUR&country=FR&hidden=false&orderBy=price&orderDirection=asc&offset=0&maxItemsPerPage=10
+   * products?lang=fr&currency=EUR&country=FR&hidden=false&brandId=1&categoryId=1&code=SHOE&priceMin=0&priceMax=1000&name=puma&xtype=basket&tagName=running&featured=true&orderBy=price&orderDirection=asc&offset=0&maxItemsPerPage=10
    * @param storeCode
    * @return
    */
-  def productsRoutes(storeCode:String) = path("products") {
+  def productsRoutes(storeCode:String) = pathPrefix("products") {
+    pathEnd{
+      respondWithMediaType(`application/json`) {
+        //TODO gestion des erreurs si lang,country,currency présent mais null ou vide
+        //FIXME currency=eur error
+        parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?, 'lang, 'currency, 'country).as(ProductRequest) {
+          productRequest =>
+            onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ products =>
+              complete(products)
+            }
+        }
+      }
+    } ~ findRoute(storeCode) ~
+      productDetailsRoute(storeCode) //~
+//      productDatesRoute ~
+//      productTimesRoute
+
+  }
+
+  /**
+   * Recherche de produit fulltext
+   * @param storeCode
+   * @return
+   */
+  def findRoute(storeCode:String) = path("find") {
     respondWithMediaType(`application/json`) {
-      parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?, 'lang, 'currency, 'country).as(ProductRequest) {
-        productRequest =>
-          onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ products =>
+      parameters('lang,'currency,'country, 'query).as(FulltextSearchProductParameters) {
+        req =>
+          onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
             complete(products)
           }
       }
     }
   }
 
-  /*
-  val featuredProductsRoutes = path("featuredProducts") {
-    respondWithMediaType(`application/json`) {
-      parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'creationDateMin.?, 'orderBy.?, 'orderDirection.?, 'lang, 'store, 'currency, 'country).as(ProductRequest) {
-        productRequest =>
-          complete {
 
-            //TODO search with ES
-            val products = Product("1", "Nike Air", "", 100L) :: Product("2", "Rebook 5230", "", 140L) :: Product("3", "New Balance 1080", "", 150L) :: Product("4", "Mizuno Wave Legend", "", 60L) :: Nil
-            products
-          }
-      }
-    }
-  }
-  */
-  val findRoute/*(storeCode:String)*/ = path("find") {
-    respondWithMediaType(`application/json`) {
-      parameters('query, 'lang, 'store) {
-        (query, lang, storeCode) =>
-          complete {
-
-            //TODO search with ES
-            val results = List(query, lang, storeCode)
-            results
-          }
-      }
-    }
-  }
-
-
-
-
-  def productDetailsRoute(storeCode:String) = path("product"/Segment) { productId =>
+  /**
+   * {id}?lang=fr&currency=historize=false&visitorId=1
+   * @param storeCode
+   * @return
+   */
+  def productDetailsRoute(storeCode:String) = path(Segment) { productId =>
     respondWithMediaType(`application/json`) {
       parameters(
         'historize ? false
-//        , 'productId
         , 'visitorId.?
-//        , 'storeCode
-        , 'currencyCode
-        , 'countryCode
+        , 'currency
+        , 'country
         , 'lang).as(ProductDetailsRequest) {
         pdr =>
 
           onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
-            val json = parse(response.entity.asString)
-            println(pdr)
-            //TODO calcul prix
-
-
-            val lang = pdr.lang
-            val currency = pdr.currencyCode
-            esClient.getCurrencies(storeCode,lang) onSuccess {
-              case currencies => {
-
-                val rate = for{
-                  cur <- currencies
-                  if(cur.code==currency)
-                } yield cur
-                println(rate)
-
-              }
-            }
-
-            val subset = json \ "_source"
-            complete(subset)
+            complete(response)
           }
       }
     }
   }
-/*
-  // formatting price
-  float taxRate = taxRateService.findTaxRateByProduct(product, locale?.country)
-  long endPrice = taxRateService.calculateEndPrix(product.price, taxRate)
-  Map price = [:]
-  price["price"] = rateService.format(product.price, currencyCode, locale);
-  price["taxRate"] = taxRate
-  price["endPrice"] = rateService.format(endPrice, currencyCode, locale);
-  */
 
   def convertPrice (value:Double, rate:Double) : Double  = value * rate
 
