@@ -51,9 +51,8 @@ trait StoreService extends HttpService {
         parameters('hidden?false,'lang).as(BrandRequest) { brandRequest =>
 
           onSuccess(esClient.queryBrands(storeCode,brandRequest)){ response =>
-            val json = parse(response.entity.asString)
-            val subset = json \ "hits" \ "hits" \ "_source"
-            complete(subset)
+
+            complete(response)
           }
 
 /*TODO

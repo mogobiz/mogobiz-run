@@ -136,15 +136,16 @@ class ElasticSearchClient /*extends Actor*/ {
    * @param qr parameters
    * @return
    */
-  def queryBrands(store:String,qr:BrandRequest): Future[HttpResponse] = {
+  def queryBrands(store:String,qr:BrandRequest): Future[JValue] = {
 
     val templateSource = (lang:String,hiddenFilter: String) =>
     s"""
         | {
         | "_source": {
-        |    "include": [
-        |      "id",
-        |      "$lang.*"
+        |    "exclude": [
+        |       "imported",
+        |      "hide"
+        |      $lang
         |    ]
         |  }$hiddenFilter
         | }
@@ -165,12 +166,29 @@ class ElasticSearchClient /*extends Actor*/ {
       """.stripMargin
 
     val qfilter = if(qr.hidden) "" else templateQuery(qr.hidden)
-    val plang = if(qr.lang=="_all") "*" else qr.lang
-    val query = templateSource(plang,qfilter)
-    println(query)
+    val langToExclude = if(qr.lang=="_all") "" else ","+getAllExcludedLanguagesExceptAsString(qr.lang)
 
+    val query = templateSource(langToExclude,qfilter)
+    println(query)
+    //TODO logger pour les query
+    //TODO logger pour les reponses
+    //TODO logger WARNING pour les requetes trop longues
+    //TODO créer une PartialFunction qui s'occupe de la gestion d'erreur quand requetes ES KO
     val response: Future[HttpResponse] = pipeline(Post(route("/"+store+"/brand/_search"),query))
-    response
+
+    response.flatMap {
+      resp => {
+        if(resp.status.isSuccess){
+          val json = parse(resp.entity.asString)
+          val subset = json \ "hits" \ "hits" \ "_source"
+          future(subset)
+        }else{
+          //TODO log l'erreur
+          future(parse(resp.entity.asString))
+          //throw new ElasticSearchClientException(resp.status.reason)
+        }
+      }
+    }
   }
 
 
