@@ -7,16 +7,18 @@ import scala.util.{Success, Failure}
 import scala.concurrent._
 import scala.concurrent.duration._
 import spray.can.Http
-import spray.httpx.SprayJsonSupport
 import spray.client.pipelining._
 import spray.util._
-import spray.http._
 import org.json4s.native.JsonMethods._
 import org.json4s._
 import org.json4s.JsonDSL._
+import java.util.{Calendar, Locale}
+import java.text.{SimpleDateFormat, NumberFormat}
+import scala.util.Failure
 import scala.Some
-import java.util.Locale
-import java.text.NumberFormat
+import spray.http.HttpResponse
+import scala.util.Success
+import spray.http.HttpRequest
 
 /**
  * Created by Christophe on 18/02/14.
@@ -288,11 +290,11 @@ class ElasticSearchClient /*extends Actor*/ {
 
   def queryProductsByCriteria(store: String, req: ProductRequest): Future[JValue]  = {
     val fieldsToExclude = (getAllExcludedLanguagesExceptAsList(req.lang):::fieldsToRemoveForProductSearchRendering).mkString("\"","\",\"","\"")
+//TODO propose a way to request include / exclude fields         "include":["id","price","taxRate"],
 
-//    val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)
+    //    val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)
     val source = s"""
         |  "_source": {
-        |     "include":["id","price","taxRate"],
         |    "exclude": [$fieldsToExclude]
         |   }
       """.stripMargin
@@ -328,8 +330,9 @@ class ElasticSearchClient /*extends Actor*/ {
     val brandFilter = createTermFilterWithNum("brand.id",req.brandId)
     val tagsFilter = createTermFilterWithStr("tags.name",req.tagName)
     val priceFilter = createRangeFilter("price",req.priceMin,req.priceMax)
+    val featuredFilter = createFeaturedFilter(req.featured)
 
-    val filters = (codeFilter::categoryFilter::xtypeFilter::pathFilter::brandFilter::tagsFilter::priceFilter::Nil).filter {s => !s.isEmpty}.mkString(",")
+    val filters = (codeFilter::categoryFilter::xtypeFilter::pathFilter::brandFilter::tagsFilter::priceFilter::featuredFilter::Nil).filter {s => !s.isEmpty}.mkString(",")
     println(filters)
 
 
@@ -362,12 +365,20 @@ class ElasticSearchClient /*extends Actor*/ {
           //val json = parse(Await.result(response, 1 second).entity.asString)
           val json = parse(response.entity.asString)
           val subset = json \ "hits" \ "hits" \ "_source"
+          /*
+          println("----------------------------")
+          println(subset.getClass.getName)
+          println(subset)
+          println("----------------------------")
+          */
+          val currencies = Await.result(getCurrencies(store,req.lang), 1 second) //TODO parrallele for loop
+          val currency = currencies.filter { cur => cur.code==req.currencyCode}.headOption getOrElse(defaultCurrency)
 
-          val currencies = Await.result(getCurrencies(store,req.lang), 1 second)
-          val currency = currencies.filter { cur => cur.code==req.currencyCode}.headOption getOrElse(new Currency(2,1,"EUR","euro"))
-
-
-          val products = subset.children.map{
+          val products:JValue = (subset match {
+            case arr:JArray => arr.children
+            case obj:JObject => List(obj)
+            case _ => List()
+          }).map{
             p => renderProduct(p,req.countryCode,req.currencyCode,req.lang, currency, fieldsToRemoveForProductSearchRendering)
           }
 
@@ -377,8 +388,8 @@ class ElasticSearchClient /*extends Actor*/ {
 
             }
           }*/
-          println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-          println(pretty(render(products)))
+//          println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+//          println(pretty(render(products)))
           future(products)
         }else{
           //TODO log l'erreur
@@ -389,11 +400,21 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
+  private val defaultCurrency = new Currency(2,1,"EUR","euro") //FIXME trouvez autre chose
+
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
 
   def renderProduct(product:JsonAST.JValue,countryCode:String, currencyCode:String,lang:String, cur: Currency, fieldsToRemove: List[String]):JsonAST.JValue = {
     implicit def json4sFormats: Formats = DefaultFormats
-    val price = (product \ "price").extract[Int].toLong
+    println(product)
+    val jprice = (product \ "price")
+    /*
+    println(jprice)
+    val price = jprice match {
+      case JInt(v) =>  v.longValue()
+      case JLong(v) => v
+    }*/
+    val price = jprice.extract[Int].toLong //FIXME ???
 
     val lrt = for {
       localTaxRate @ JObject(x) <- product \ "taxRate" \ "localTaxRates"
@@ -449,8 +470,20 @@ class ElasticSearchClient /*extends Actor*/ {
     return numberFormat.format(amount * rate);
   }
 
+  private val sdf = new SimpleDateFormat("yyyy-MM-dd") //THH:mm:ssZ
 
-  def createRangeFilter(field:String,gte:Option[Long],lte:Option[Long]): String ={
+  private def createFeaturedFilter(doFilter:Boolean) :String = {
+    if(!doFilter) ""
+    else{
+      val today = sdf.format(Calendar.getInstance().getTime())
+      s"""
+       {"range": {"startFeatureDate": {"lte": "$today"}}},{"range": {"stopFeatureDate": { "gte": "$today"}}}
+       """.stripMargin
+    }
+  }
+
+
+  private def createRangeFilter(field:String,gte:Option[Long],lte:Option[Long]): String ={
 
     if(gte.isEmpty && lte.isEmpty) ""
     else{
@@ -475,23 +508,24 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  def createTermFilterWithStr(field:String,value:Option[String]) : String = {
+  private def createTermFilterWithStr(field:String,value:Option[String]) : String = {
     if(value.isEmpty) ""
-    else
+    else{
+      val valu = value.get
      s"""{
-      "term": {
-        "$field": "$value"
-      }
-      """.stripMargin
+      "term": {"$field": "$valu"}
+     }""".stripMargin
+    }
   }
 
-  def createTermFilterWithNum(field:String,value:Option[Int]) : String = {
+  private def createTermFilterWithNum(field:String,value:Option[Int]) : String = {
     if(value.isEmpty) ""
-    else s"""{
-      "term": {
-        "$field": "$value"
-      }
-      """.stripMargin
+    else {
+      val valu = value.get
+      s"""{
+      "term": {"$field": $valu}
+      }""".stripMargin
+    }
   }
 
   def queryProductById(store: String,id:Long,req: ProductDetailsRequest): Future[JValue]= {
@@ -551,7 +585,7 @@ class ElasticSearchClient /*extends Actor*/ {
           val subset = json \ "hits" \ "hits" \ "_source"
 
           val currencies = Await.result(getCurrencies(store,params.lang), 1 second)
-          val currency = currencies.filter { cur => cur.code==params.currencyCode}.headOption getOrElse(new Currency(2,1,"EUR","euro"))
+          val currency = currencies.filter { cur => cur.code==params.currencyCode}.headOption getOrElse(defaultCurrency)
 
           val products = subset.children.map{
             p => renderProduct(p,params.countryCode,params.currencyCode,params.lang, currency,fieldsToRemoveForProductSearchRendering)

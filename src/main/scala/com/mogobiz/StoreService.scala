@@ -165,7 +165,7 @@ trait StoreService extends HttpService {
       respondWithMediaType(`application/json`) {
         //TODO gestion des erreurs si lang,country,currency présent mais null ou vide
         //FIXME currency=eur error
-        parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?, 'lang, 'currency, 'country).as(ProductRequest) {
+        parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?,'featured.?, 'lang, 'currency, 'country).as(ProductRequest) {
           productRequest =>
             onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ products =>
               complete(products)

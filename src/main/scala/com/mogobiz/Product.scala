@@ -58,11 +58,11 @@ case class ProductRequest(
                            , priceMax: Option[Long]
                            , orderBy: Option[String]
                            , orderDirection: Option[String]
+                           , featured: Boolean = false
                            , lang: String
-//                           , storeCode: String
                            , currencyCode: String
                            , countryCode: String){
-  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,None,lang,currencyCode,countryCode)
+  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,None,false,lang,currencyCode,countryCode)
 }
 
 case class ProductDetailsRequest(
