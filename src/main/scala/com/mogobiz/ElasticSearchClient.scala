@@ -229,14 +229,18 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
+  def getAllExcludedLanguagesExceptAsList(lang:String) : List[String]= {
+    val langs = getAllExcludedLanguagesExcept(lang)
+    val langsTokens = langs.flatMap{ l => l::"*."+l::Nil} //map{ l => "*."+l}
+
+    langsTokens
+  }
   def getAllExcludedLanguagesExceptAsString(lang:String) : String = {
     val langs = getAllExcludedLanguagesExcept(lang)
     val langsTokens = langs.flatMap{ l => l::"*."+l::Nil} //map{ l => "*."+l}
 
     langsTokens.mkString("\"","\",\"","\"")
   }
-
-
 
   def queryCategories(store:String, qr:CategoryRequest): Future[HttpResponse] = {
 
@@ -283,14 +287,13 @@ class ElasticSearchClient /*extends Actor*/ {
 
 
   def queryProductsByCriteria(store: String, req: ProductRequest): Future[JValue]  = {
+    val fieldsToExclude = (getAllExcludedLanguagesExceptAsList(req.lang):::fieldsToRemoveForProductSearchRendering).mkString("\"","\",\"","\"")
 
-    val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)
+//    val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)
     val source = s"""
         |  "_source": {
         |     "include":["id","price","taxRate"],
-        |    "exclude": [
-        |      $langsToExclude
-        |    ]
+        |    "exclude": [$fieldsToExclude]
         |   }
       """.stripMargin
     val nameCriteria = if(req.name.isEmpty){
@@ -365,7 +368,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
 
           val products = subset.children.map{
-            p => renderProduct(p,req.countryCode,req.currencyCode,req.lang, currency)
+            p => renderProduct(p,req.countryCode,req.currencyCode,req.lang, currency, fieldsToRemoveForProductSearchRendering)
           }
 
           /* + tard
@@ -384,16 +387,17 @@ class ElasticSearchClient /*extends Actor*/ {
         }
       }
     }
-
   }
 
-  def renderProduct(product:JsonAST.JValue,countryCode:String, currencyCode:String,lang:String, cur: Currency):JsonAST.JValue = {
+  private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
+
+  def renderProduct(product:JsonAST.JValue,countryCode:String, currencyCode:String,lang:String, cur: Currency, fieldsToRemove: List[String]):JsonAST.JValue = {
     implicit def json4sFormats: Formats = DefaultFormats
     val price = (product \ "price").extract[Int].toLong
 
     val lrt = for {
       localTaxRate @ JObject(x) <- product \ "taxRate" \ "localTaxRates"
-      if (x contains JField("countryCode", JString(countryCode)))
+      if (x contains JField("countryCode", JString(countryCode.toUpperCase()))) //WARNING toUpperCase ??
       JField("rate",value) <- x } yield value
 
     val taxRate = lrt.headOption match {
@@ -406,7 +410,7 @@ class ElasticSearchClient /*extends Actor*/ {
     val locale = new Locale(lang);
     val endPrice = price + (price*taxRate/100d)
     val formatedPrice = format(price,currencyCode, locale,cur.rate)
-    val formatedEndPrice = format(price, currencyCode, locale, cur.rate)
+    val formatedEndPrice = format(endPrice, currencyCode, locale, cur.rate)
     val additionalFields = (
       ("localTaxRate"->taxRate) ~
         ("endPrice"->endPrice) ~
@@ -414,8 +418,9 @@ class ElasticSearchClient /*extends Actor*/ {
         ("formatedEndPrice"-> formatedEndPrice)
       )
 
-    product merge additionalFields
-
+    val renderedProduct = product merge additionalFields
+    //removeFields(renderedProduct,fieldsToRemove)
+    renderedProduct
 
     /* calcul prix Groovy
     def localTaxRates = product['taxRate'] ? product['taxRate']['localTaxRates'] as List<Map> : []
@@ -431,7 +436,14 @@ class ElasticSearchClient /*extends Actor*/ {
     */
   }
 
-  private def format(amount:Long, currencyCode:String , locale:Locale  = Locale.getDefault, rate : Double = 0):String = {
+  private def removeFields(product: JValue,fields:List[String]):JValue = {
+    if(fields.isEmpty) product
+    else{
+      removeFields(product removeField { f => f._1 == fields.head }, fields.tail )
+    }
+  }
+
+  private def format(amount:Double, currencyCode:String , locale:Locale  = Locale.getDefault, rate : Double = 0):String = {
     val numberFormat = NumberFormat.getCurrencyInstance(locale);
     numberFormat.setCurrency(java.util.Currency.getInstance(currencyCode));
     return numberFormat.format(amount * rate);
@@ -500,7 +512,7 @@ class ElasticSearchClient /*extends Actor*/ {
           val currencies = Await.result(getCurrencies(store,req.lang), 1 second)
           val currency = currencies.filter { cur => cur.code==req.currencyCode}.headOption getOrElse(new Currency(2,1,"EUR","euro"))
 
-          val product = renderProduct(subset,req.countryCode,req.currencyCode,req.lang, currency)
+          val product = renderProduct(subset,req.countryCode,req.currencyCode,req.lang, currency,List())
 
           future(product)
         }else{
@@ -514,12 +526,11 @@ class ElasticSearchClient /*extends Actor*/ {
 
   def queryProductsByFulltextCriteria(store: String, params:FulltextSearchProductParameters) : Future[JValue] = {
 
-//    excluded.addAll(['skus', 'features', 'resources', 'datePeriods', 'intraDayPeriods'])
-
+    //"skus", "features", "resources", "datePeriods", "intraDayPeriods","imported",
     var tplquery = (excludedFields: String, text: String) => s"""
       {
         "_source": {
-          "exclude": ["skus", "features", "resources", "datePeriods", "intraDayPeriods","imported",$excludedFields]
+          "exclude": [$excludedFields]
         },
         "query": {
           "query_string": {
@@ -528,7 +539,9 @@ class ElasticSearchClient /*extends Actor*/ {
         }
       }""".stripMargin
 
-    val query = tplquery(getAllExcludedLanguagesExceptAsString(params.lang),params.query)
+
+    val fields = (getAllExcludedLanguagesExceptAsList(params.lang):::fieldsToRemoveForProductSearchRendering).mkString("\"","\",\"","\"")
+    val query = tplquery(fields,params.query)
     val fresponse: Future[HttpResponse] = pipeline(Post(route("/"+store+"/product/_search"),query))
     fresponse.flatMap {
       response => {
@@ -541,7 +554,7 @@ class ElasticSearchClient /*extends Actor*/ {
           val currency = currencies.filter { cur => cur.code==params.currencyCode}.headOption getOrElse(new Currency(2,1,"EUR","euro"))
 
           val products = subset.children.map{
-            p => renderProduct(p,params.countryCode,params.currencyCode,params.lang, currency)
+            p => renderProduct(p,params.countryCode,params.currencyCode,params.lang, currency,fieldsToRemoveForProductSearchRendering)
           }
 
           future(products)
