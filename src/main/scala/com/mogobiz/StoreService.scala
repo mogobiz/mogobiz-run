@@ -173,10 +173,7 @@ trait StoreService extends HttpService {
         }
       }
     } ~ findRoute(storeCode) ~
-      productDetailsRoute(storeCode) //~
-//      productDatesRoute ~
-//      productTimesRoute
-
+      productDetailsRoute(storeCode)
   }
 
   /**
@@ -186,12 +183,12 @@ trait StoreService extends HttpService {
    */
   def findRoute(storeCode:String) = path("find") {
     respondWithMediaType(`application/json`) {
-      parameters('lang,'currency,'country, 'query).as(FulltextSearchProductParameters) {
-        req =>
-          onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
-            complete(products)
-          }
-      }
+        parameters('lang,'currency,'country, 'query).as(FulltextSearchProductParameters) {
+          req =>
+            onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
+              complete(products)
+            }
+        }
     }
   }
 
@@ -201,24 +198,57 @@ trait StoreService extends HttpService {
    * @param storeCode
    * @return
    */
-  def productDetailsRoute(storeCode:String) = path(Segment) { productId =>
-    respondWithMediaType(`application/json`) {
-      parameters(
-        'historize ? false
-        , 'visitorId.?
-        , 'currency
-        , 'country
-        , 'lang).as(ProductDetailsRequest) {
-        pdr =>
+  def productDetailsRoute(storeCode:String) = pathPrefix(Segment) {
+    productId => pathEnd {
+      respondWithMediaType(`application/json`) {
+        get{
+        parameters(
+          'historize ? false
+          , 'visitorId.?
+          , 'currency
+          , 'country
+          , 'lang).as(ProductDetailsRequest) {
+          pdr =>
 
-          onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
-            complete(response)
-          }
+            onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
+              complete(response)
+            }
+        }
+        }
+      }
+    } ~ productDatesRoute(storeCode,productId.toLong) ~ productTimesRoute(storeCode,productId.toLong)
+  }
+
+  def productDatesRoute(storeCode:String, productId: Long) = path("dates") {
+    respondWithMediaType(`application/json`) {
+      get{
+        parameters('date.?,'startDate.?, 'endDate.?).as(ProductDatesRequest) {
+          pdr =>
+            complete {
+              onSuccess(esClient.queryProductDates(storeCode,productId.toLong, pdr)){ response =>
+                complete(response)
+                //val dates = DateTime.fromIsoDateTimeString("2014-04-18T11:23:00Z") :: DateTime.fromIsoDateTimeString("2014-04-30T11:23:00Z") :: Nil
+              }
+            }
+        }
       }
     }
   }
 
-  def convertPrice (value:Double, rate:Double) : Double  = value * rate
+  def productTimesRoute(storeCode:String, productId: Long) = path("times") {
+    respondWithMediaType(`application/json`) {
+      get{
+        parameters('date.?).as(ProductTimesRequest) {
+          pdr =>
+            complete {
+              //TODO search with ES
+              val dates = DateTime.fromIsoDateTimeString("2014-04-18T11:00:00Z") :: DateTime.fromIsoDateTimeString("2014-04-18T23:00:00Z") :: Nil
+              dates
+            }
+        }
+      }
+    }
+  }
 
 
   val addToVisitorHistoryRoute = path("addToVisitorHistory") {
@@ -244,7 +274,7 @@ trait StoreService extends HttpService {
   val visitorHistoryRoute = path("visitorHistory") {
     respondWithMediaType(`application/json`) {
       parameters(
-          'visitorId
+        'visitorId
         , 'storeCode
         , 'currencyCode
         , 'countryCode
@@ -258,41 +288,6 @@ trait StoreService extends HttpService {
       }
     }
   }
-
-
-  val productDatesRoute = path("productDates") {
-    respondWithMediaType(`application/json`) {
-      parameters(
-        'productId
-        , 'startDate
-        , 'endDate
-        , 'storeCode
-        , 'lang).as(ProductDatesRequest) {
-        pdr =>
-          complete {
-            //TODO search with ES
-            val dates = DateTime.fromIsoDateTimeString("2014-04-18T11:23:00Z") :: DateTime.fromIsoDateTimeString("2014-04-30T11:23:00Z") :: Nil
-            dates
-          }
-      }
-    }
-  }
-
-  val productTimesRoute = path("productTimes") {
-    respondWithMediaType(`application/json`) {
-      parameters(
-        'productId
-        , 'date
-        , 'storeCode
-        , 'lang).as(ProductTimesRequest) {
-        pdr =>
-          complete {
-            //TODO search with ES
-            val dates = DateTime.fromIsoDateTimeString("2014-04-18T11:00:00Z") :: DateTime.fromIsoDateTimeString("2014-04-18T23:00:00Z") :: Nil
-            dates
-          }
-      }
-    }
-  }
+  //  def convertPrice (value:Double, rate:Double) : Double  = value * rate
 
  }

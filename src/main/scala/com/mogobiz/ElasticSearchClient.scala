@@ -601,7 +601,110 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
+
+  def queryProductDates(store:String,id:Long,req:ProductDatesRequest):Future[JValue] = {
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val query = s"""{"_source": {"include": ["datePeriods","intraDayPeriods"]},
+      "query": {"filtered": {"filter": {"term": {"id": $id}}}}}"""
+    println(query)
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/"+store+"/product/_search"),query))
+    fresponse.flatMap {
+      response => {
+        if(response.status.isSuccess){
+
+          val json = parse(response.entity.asString)
+          val subset = json \ "hits" \ "hits" \ "_source"
+
+
+          val datePeriods = subset \ "datePeriods"
+          val outPeriods = datePeriods.extract[List[EndPeriod]]
+
+          /*match {
+            case JNothing => Nil
+            case o:JValue =>
+          }*/
+
+          val intraDayPeriods = subset \ "intraDayPeriods"
+          //TODO test exist or send empty
+          val inPeriods = intraDayPeriods.extract[List[IntraDayPeriod]]
+
+          //date or today
+          val now = Calendar.getInstance().getTime
+          val today = getCalendar(sdf.parse(sdf.format(now)))
+          var startCalendar = getCalendar(sdf.parse(req.date.getOrElse(sdf.format(now))))
+
+          if (startCalendar.compareTo(today) < 0) {
+            startCalendar = today
+          }
+
+          val endCalendar = getCalendar(startCalendar.getTime())
+          endCalendar.add(Calendar.MONTH,1)
+
+          //FIXME not very fonctional way
+          var dates : List[String] = List() //List[java.util.Date] = List()
+          val currentDate = getCalendar(startCalendar.getTime())
+          while (currentDate.before(endCalendar)) {
+            if (isDateIncluded(inPeriods, currentDate) && !isDateExcluded(outPeriods, currentDate)) {
+              //dates :+ currentDate.getTime
+              dates :+ sdf.format(currentDate.getTime)
+            }
+            currentDate.add(Calendar.DAY_OF_YEAR,1)
+          }
+
+
+          future(dates)
+        }else{
+          //TODO log l'erreur
+          future(parse(response.entity.asString))
+          //throw new ElasticSearchClientException(resp.status.reason)
+        }
+      }
+    }
+  }
+
+  private def getCalendar(d: java.util.Date) : Calendar = {
+    val cal = Calendar.getInstance();
+    cal.setTime(d);
+    cal;
+  }
+
+  private def isDateIncluded( periods: List[IntraDayPeriod], day:Calendar ):Boolean = {
+    !periods.find {
+      period => {
+        val included = day.get(Calendar.DAY_OF_WEEK) match {
+          case Calendar.MONDAY => period.weekday1
+          case Calendar.TUESDAY => period.weekday2
+          case Calendar.WEDNESDAY  => period.weekday3
+          case Calendar.THURSDAY => period.weekday4
+          case Calendar.FRIDAY => period.weekday5
+          case Calendar.SATURDAY => period.weekday6
+          case Calendar.SUNDAY => period.weekday7
+        }
+
+        included &&
+          day.getTime().compareTo(period.startDate) >= 0 &&
+          day.getTime().compareTo(period.endDate) <= 0
+
+      }
+    }.isEmpty
+  }
+
+  private def isDateExcluded(periods:List[EndPeriod] , day:Calendar ) : Boolean  = {
+    !periods.find {
+      period => {
+        day.getTime().compareTo(period.startDate) >= 0 && day.getTime().compareTo(period.endDate) <= 0
+      }
+    }.isEmpty
+  }
+
+
+  //TODO private def translate(json:JValue):JValue = { }
+
+
+
   def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
+
 
   def execute(){
 

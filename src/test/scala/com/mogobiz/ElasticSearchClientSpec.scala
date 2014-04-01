@@ -15,6 +15,7 @@ import scala.Some
  */
 class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
   val esClient = new ElasticSearchClient
+  val store = "mogobiz"
 
   "listAllLanguages list all languages" in {
     val langs = esClient.listAllLanguages()
@@ -32,10 +33,9 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
   }
 
   "query product" in {
-    val store = "mogobiz"
     val criteria = new ProductRequest("fr","EUR","FR")
 //    criteria.name=Some("pull")
-    val response = Await.result(esClient.queryProductsByCriteria(store,criteria), 1 second)
+    val response = Await.result(esClient.queryProductsByCriteria(store,criteria), 3 second)
 /*
     val json = parse(response.entity.asString)
     println(response.entity.asString)
@@ -43,9 +43,11 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
     println(subset)
 */
 
+    //println(pretty(render(response)))
+    //TODO do a real test
 
+    response must not be null
 
-    response.entity must not beEmpty
 
     /* onComplete {
       case Success(response) => {
@@ -56,5 +58,17 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
       }
       case Failure(error) => throw error
     }*/
+  }
+
+  "get dates for product" in {
+    //val id = 22
+    val id = 115
+    val req = new ProductDatesRequest(None,None,None)
+
+    val response = Await.result(esClient.queryProductDates(store,id,req), 3 second)
+    println("+++ queryProductDates Response +++")
+    println(pretty(render(response)))
+    response must not be null
+
   }
 }

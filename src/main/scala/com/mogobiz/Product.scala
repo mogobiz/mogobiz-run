@@ -72,6 +72,21 @@ case class ProductDetailsRequest(
                                   , countryCode: String
                                   , lang: String)
 
+case class ProductDatesRequest(date:Option[String],startDate: Option[String], endDate: Option[String])
+
+case class ProductTimesRequest(date: Option[String])
+
+class DatePeriod(val startDate:java.util.Date,val endDate:java.util.Date)
+case class EndPeriod(start:java.util.Date,end:java.util.Date) extends DatePeriod(start,end)
+case class IntraDayPeriod(start:java.util.Date,end:java.util.Date,
+                           val weekday1:Boolean,
+                           val weekday2:Boolean,
+                           val weekday3:Boolean,
+                           val weekday4:Boolean,
+                           val weekday5:Boolean,
+                           val weekday6:Boolean,
+                           val weekday7:Boolean
+                           ) extends DatePeriod(start,end)
 
 case class AddToVisitorHistoryRequest(
                                        productId: Int
@@ -89,18 +104,4 @@ case class VisitorHistoryRequest(
                                   , countryCode: String
                                   , lang: String)
 
-
-case class ProductDatesRequest(
-                                productId: Int
-                                , startDate: String
-                                , endDate: String
-                                , storeCode: String
-                                , lang: String)
-
-
-case class ProductTimesRequest(
-                                productId: Int
-                                , date: String
-                                , storeCode: String
-                                , lang: String)
 
