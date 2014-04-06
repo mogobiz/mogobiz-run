@@ -224,12 +224,10 @@ trait StoreService extends HttpService {
       get{
         parameters('date.?,'startDate.?, 'endDate.?).as(ProductDatesRequest) {
           pdr =>
-            complete {
               onSuccess(esClient.queryProductDates(storeCode,productId.toLong, pdr)){ response =>
                 complete(response)
                 //val dates = DateTime.fromIsoDateTimeString("2014-04-18T11:23:00Z") :: DateTime.fromIsoDateTimeString("2014-04-30T11:23:00Z") :: Nil
               }
-            }
         }
       }
     }
@@ -240,10 +238,10 @@ trait StoreService extends HttpService {
       get{
         parameters('date.?).as(ProductTimesRequest) {
           pdr =>
-            complete {
-              //TODO search with ES
-              val dates = DateTime.fromIsoDateTimeString("2014-04-18T11:00:00Z") :: DateTime.fromIsoDateTimeString("2014-04-18T23:00:00Z") :: Nil
-              dates
+            onSuccess(esClient.queryProductTimes(storeCode,productId.toLong, pdr)){ response =>
+              complete(response)
+              //DateTime.fromIsoDateTimeString("2014-04-18T11:00:00Z") :: DateTime.fromIsoDateTimeString("2014-04-18T23:00:00Z") :: Nil
+
             }
         }
       }
