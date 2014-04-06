@@ -630,7 +630,8 @@ class ElasticSearchClient /*extends Actor*/ {
 
     val query = s"""{"_source": {"include": ["datePeriods","intraDayPeriods"]},
       "query": {"filtered": {"filter": {"term": {"id": $id}}}}}"""
-    println(query)
+
+    //println(query)
     val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product/_search"), query))
     fresponse.flatMap {
       response => {
@@ -668,7 +669,7 @@ class ElasticSearchClient /*extends Actor*/ {
           endCalendar.add(Calendar.MONTH, 1)
 
           def checkDate(currentDate:Calendar,endCalendar: Calendar, acc: List[String]) : List[String] = {
-            println("checkDateAcc acc="+acc)
+            //println("checkDateAcc acc="+acc)
             if(!currentDate.before(endCalendar)) acc
             else{
               currentDate.add(Calendar.DAY_OF_YEAR, 1)
@@ -693,6 +694,97 @@ class ElasticSearchClient /*extends Actor*/ {
         }
       }
     }
+  }
+
+  def queryProductTimes(store:String , id:Long, req: ProductTimesRequest) : Future[JValue]={
+
+
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val query = s"""{"_source": {"include": ["datePeriods","intraDayPeriods"]},
+      "query": {"filtered": {"filter": {"term": {"id": $id}}}}}"""
+
+    //println(query)
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product/_search"), query))
+    fresponse.flatMap {
+      response => {
+        if (response.status.isSuccess) {
+
+          val json = parse(response.entity.asString)
+          val subset = json \ "hits" \ "hits" \ "_source"
+
+//          val datePeriods = subset \ "datePeriods"
+//          val outPeriods = datePeriods.extract[List[EndPeriod]]
+
+          val intraDayPeriods = subset \ "intraDayPeriods"
+          //TODO test exist or send empty
+          println(pretty(render(intraDayPeriods)))
+          val inPeriods = intraDayPeriods.extract[List[IntraDayPeriod]]
+
+          //date or today
+          val now = Calendar.getInstance().getTime
+          val today = getCalendar(sdf.parse(sdf.format(now)))
+          val d = sdf.parse(req.date.getOrElse(sdf.format(now)))
+          var selectedDate = getCalendar(d)
+
+          if (selectedDate.compareTo(today) >= 0) {
+
+            future(List())
+          }else{
+            //return empty list
+            future(List())
+          }
+        } else {
+          //TODO log l'erreur
+          future(parse(response.entity.asString))
+          //throw new ElasticSearchClientException(resp.status.reason)
+        }
+      }
+    }
+
+    /* code Groovy
+    calendarType: DATE_TIME
+    List<String> results = []
+
+    if(productId && date){
+
+      def today = IperUtil.today()
+
+      Calendar startCalendar = IperUtil.parseCalendar(date, IperConstant.DATE_FORMAT_WITHOUT_HOUR)
+
+      if (startCalendar.compareTo(today) >= 0) {
+        def query = [:]
+        def filters = []
+
+        def included = ['intraDayPeriods']
+
+        filters << [term:['id':productId]]
+        filters << [term:[calendarType:ProductCalendar.DATE_TIME.name()]]
+
+        query << [query:[filtered:[filter:[and:filters]]]]
+
+        def hits  = search(store, 'product', query, included)?.hits
+
+        results.addAll(hits.size() > 0 ? hits.get(0)['intraDayPeriods'].collect { intraDayPeriod ->
+          def period = new DayPeriod(
+            startDate: new SimpleDateFormat('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'').parse(intraDayPeriod['startDate'] as String),
+          endDate: new SimpleDateFormat('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'').parse(intraDayPeriod['endDate'] as String),
+          weekday1: intraDayPeriod['weekday1'] as boolean,
+          weekday2: intraDayPeriod['weekday2'] as boolean,
+          weekday3: intraDayPeriod['weekday3'] as boolean,
+          weekday4: intraDayPeriod['weekday4'] as boolean,
+          weekday5: intraDayPeriod['weekday5'] as boolean,
+          weekday6: intraDayPeriod['weekday6'] as boolean,
+          weekday7: intraDayPeriod['weekday7'] as boolean
+          )
+          def c = Calendar.getInstance()
+          c.setTime(period.startDate)
+          isDateIncluded([period], startCalendar) ? RenderUtil.asMapForJSON(c, IperConstant.TIME_FORMAT) : null
+        }.flatten() as List<String> : [])
+      }
+    }*/
+
   }
 
   private def getCalendar(d: Date): Calendar = {
