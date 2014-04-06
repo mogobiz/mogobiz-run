@@ -1,7 +1,7 @@
 package com.mogobiz
 
 import spray.http.DateTime
-
+import java.util.Date
 /**
  * Created by Christophe on 17/02/14.
  */
@@ -76,9 +76,9 @@ case class ProductDatesRequest(date:Option[String],startDate: Option[String], en
 
 case class ProductTimesRequest(date: Option[String])
 
-class DatePeriod(val startDate:java.util.Date,val endDate:java.util.Date)
-case class EndPeriod(start:java.util.Date,end:java.util.Date) extends DatePeriod(start,end)
-case class IntraDayPeriod(start:java.util.Date,end:java.util.Date,
+class DatePeriod(val startDate:Date,val endDate:Date)
+case class EndPeriod(start:Date,end:Date) extends DatePeriod(start,end)
+case class IntraDayPeriod(override val startDate:Date,override val endDate:Date,
                            val weekday1:Boolean,
                            val weekday2:Boolean,
                            val weekday3:Boolean,
@@ -86,7 +86,7 @@ case class IntraDayPeriod(start:java.util.Date,end:java.util.Date,
                            val weekday5:Boolean,
                            val weekday6:Boolean,
                            val weekday7:Boolean
-                           ) extends DatePeriod(start,end)
+                           ) extends DatePeriod(startDate,endDate)
 
 case class AddToVisitorHistoryRequest(
                                        productId: Int
