@@ -50,7 +50,7 @@ trait StoreService extends HttpService {
   def brandsRoutes(storeCode:String) = path("brands") {
     respondWithMediaType(`application/json`) {
       get {
-        parameters('hidden?false,'lang).as(BrandRequest) { brandRequest =>
+        parameters('hidden?false,'lang?"_all").as(BrandRequest) { brandRequest =>
 
           onSuccess(esClient.queryBrands(storeCode,brandRequest)){ response =>
 
@@ -74,7 +74,7 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       get{
         //TODO hidden and inactive ???
-        parameters('hidden?false,'inactive?false,'lang).as(TagRequest) { tagRequest =>
+        parameters('hidden?false,'inactive?false,'lang?"_all").as(TagRequest) { tagRequest =>
           onSuccess(esClient.queryTags(storeCode, tagRequest)){ response =>
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
@@ -107,7 +107,7 @@ trait StoreService extends HttpService {
   def countriesRoutes(storeCode: String) = path("countries") {
     respondWithMediaType(`application/json`) {
       get{
-        parameters('lang).as(CountryRequest) { countryReq =>
+        parameters('lang?"_all").as(CountryRequest) { countryReq =>
           onSuccess(esClient.queryCountries(storeCode, countryReq.lang)){ response =>
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
@@ -125,13 +125,13 @@ trait StoreService extends HttpService {
    */
   def currenciesRoutes(storeCode: String) = path("currencies") {
     respondWithMediaType(`application/json`) {
-      get{
-        parameters('lang).as(CurrencyRequest) { currencyReq =>
-          onSuccess(esClient.queryCurrencies(storeCode, currencyReq.lang)){ json =>
-            complete(json)
-          }
+    get{
+      parameters('lang?"_all").as(CurrencyRequest) { currencyReq =>
+        onSuccess(esClient.queryCurrencies(storeCode, currencyReq.lang)){ json =>
+          complete(json)
         }
       }
+    }
     }
   }
 
@@ -139,7 +139,7 @@ trait StoreService extends HttpService {
   def categoriesRoutes(storeCode: String) = path("categories") {
     respondWithMediaType(`application/json`) {
       get{
-        parameters('hidden ? false, 'parentId.?, 'lang).as(CategoryRequest) { categoryReq =>
+        parameters('hidden ? false, 'parentId.?, 'lang?"_all").as(CategoryRequest) { categoryReq =>
           onSuccess(esClient.queryCategories(storeCode,categoryReq)){ response =>
             val json = parse(response.entity.asString)
           //TODO renvoyer les fils directs si parentId renseigné
@@ -165,7 +165,7 @@ trait StoreService extends HttpService {
       respondWithMediaType(`application/json`) {
         //TODO gestion des erreurs si lang,country,currency présent mais null ou vide
         //FIXME currency=eur error
-        parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?,'featured.?, 'lang, 'currency, 'country).as(ProductRequest) {
+        parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?,'featured.?, 'lang?"_all", 'currency, 'country).as(ProductRequest) {
           productRequest =>
             onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ products =>
               complete(products)
@@ -183,7 +183,7 @@ trait StoreService extends HttpService {
    */
   def findRoute(storeCode:String) = path("find") {
     respondWithMediaType(`application/json`) {
-        parameters('lang,'currency,'country, 'query).as(FulltextSearchProductParameters) {
+        parameters('lang?"_all",'currency,'country, 'query).as(FulltextSearchProductParameters) {
           req =>
             onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
               complete(products)
@@ -207,7 +207,7 @@ trait StoreService extends HttpService {
           , 'visitorId.?
           , 'currency
           , 'country
-          , 'lang).as(ProductDetailsRequest) {
+          , 'lang?"_all").as(ProductDetailsRequest) {
           pdr =>
 
             onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
@@ -257,7 +257,7 @@ trait StoreService extends HttpService {
         , 'storeCode
         , 'currencyCode
         , 'countryCode
-        , 'lang).as(AddToVisitorHistoryRequest) {
+        , 'lang?"_all").as(AddToVisitorHistoryRequest) {
         avhr =>
           complete {
             //TODO search with ES
@@ -276,7 +276,7 @@ trait StoreService extends HttpService {
         , 'storeCode
         , 'currencyCode
         , 'countryCode
-        , 'lang).as(VisitorHistoryRequest) {
+        , 'lang?"_all").as(VisitorHistoryRequest) {
         avhr =>
           complete {
             //TODO search with ES
