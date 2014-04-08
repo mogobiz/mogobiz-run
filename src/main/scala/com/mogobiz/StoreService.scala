@@ -9,6 +9,7 @@ import spray.httpx.Json4sSupport
 import org.json4s._
 import scala.concurrent.ExecutionContext
 import org.json4s.native.JsonMethods._
+import com.mogobiz.session.SessionCookieDirectives._
 /**
  * Created by Christophe on 17/02/14.
  */
@@ -209,9 +210,12 @@ trait StoreService extends HttpService {
           , 'country
           , 'lang?"_all").as(ProductDetailsRequest) {
           pdr =>
-
-            onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
-              complete(response)
+            session {
+              sessionCookie =>
+                println("sessionCookie.id="+sessionCookie.id)
+                onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
+                  complete(response)
+                }
             }
         }
         }
