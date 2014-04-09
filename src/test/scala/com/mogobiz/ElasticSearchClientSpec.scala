@@ -63,7 +63,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
      case Failure(error) => throw error
    }*/
  }
- }*/
+ }
 
   "get dates for product" in {
     //val id = 22
@@ -81,6 +81,32 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
     response must not be null
 
   }
+
+  "add product to history" in {
+    val productId = 95
+    val sessionId = "47d8952b-6b26-453e-b755-d846a182f227"
+    val res = Await.result(esClient.addToHistory(store,productId,sessionId), 3 second)
+    res must beTrue
+  }
+
+  "get product history" in {
+    val sessionId = "47d8952b-6b26-453e-b755-d846a182f227"
+    val res = Await.result(esClient.getProductHistory(store,sessionId), 3 second)
+//    println(res)
+
+    res must not beEmpty
+  }
+*/
+  "get products from ids" in {
+    val req = ProductDetailsRequest(false,None,"EUR","FR","fr")
+    val res = Await.result(esClient.getProducts(store,List(1,2,3,94,95,47,61),req),3 second)
+//    println(res)
+    println(res.length)
+
+    res must not beEmpty
+  }
+
+
 
 
 }
