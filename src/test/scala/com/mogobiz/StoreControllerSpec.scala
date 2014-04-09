@@ -61,8 +61,27 @@ class StoreControllerSpec extends Specification with Specs2RouteTest with StoreS
   }
 
   "return categories " in {
-    Get("/store/"+store+"/categories?lang=fr&store=mogobiz") ~> storeRoutes ~> check {
+
+    Get("/store/"+store+"/categories?lang=fr") ~> storeRoutes ~> check {
       responseAs[String] must contain("Cinéma")
+    }
+    Get("/store/"+store+"/categories") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Televisions")
+    }
+    Get("/store/"+store+"/categories?hidden=true") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Cinéma")
+    }
+    Get("/store/"+store+"/categories?lang=fr&parentId=18") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Télévisions")
+    }
+    Get("/store/"+store+"/categories?parentId=18") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Televisions")
+    }
+    Get("/store/"+store+"/categories?parentId=18&hidden=true") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Televisions")
+    }
+    Get("/store/"+store+"/categories?parentId=18&hidden=true&lang=fr") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Télévisions")
     }
   }
 

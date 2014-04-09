@@ -277,14 +277,15 @@ class ElasticSearchClient /*extends Actor*/ {
       """.stripMargin
 
     val hiddenFilter = """{"term":{"hide":false}}"""
-    val parentFilter = (parent: String) => s"""{"regexp":{"path":"(?)*$parent*"}}"""
+    val parentFilter = (parent: String) => s"""{"term":{"parentId":$parent}}"""
 
     val filters = if (!qr.hidden && !qr.parent.isEmpty)
       queryWrapper(andFilter(hiddenFilter, parentFilter(qr.parent.get)))
     else if (!qr.hidden)
       queryWrapper(hiddenFilter)
-    else
+    else if (!qr.parent.isEmpty)
       queryWrapper(parentFilter(qr.parent.get))
+    else ""
 
     val plang = if (qr.lang == "_all") "*" else qr.lang
     val query = template(plang, filters)
@@ -298,7 +299,7 @@ class ElasticSearchClient /*extends Actor*/ {
     val fieldsToExclude = (getAllExcludedLanguagesExceptAsList(req.lang) ::: fieldsToRemoveForProductSearchRendering).mkString("\"", "\",\"", "\"")
     //TODO propose a way to request include / exclude fields         "include":["id","price","taxRate"],
 
-    //    val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)
+    //    val langsToExclude = getAllExcludedLanguagesExceptAsString(req.lang)bt
     val source = s"""
         |  "_source": {
         |    "exclude": [$fieldsToExclude]
