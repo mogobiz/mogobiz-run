@@ -98,8 +98,7 @@ case class AddToVisitorHistoryRequest(
 
 
 case class VisitorHistoryRequest(
-                                  visitorId: Int
-                                  , storeCode: String
+                                  sessionId: Option[String]
                                   , currencyCode: String
                                   , countryCode: String
                                   , lang: String)

@@ -1,5 +1,7 @@
 package com.mogobiz
 
+import com.mogobiz.session.SessionCookieDirectives._
+import com.mogobiz.session.Session
 import spray.http.DateTime
 import scala.util.{Success, Failure}
 import akka.actor.Actor
@@ -33,9 +35,7 @@ trait StoreService extends HttpService {
           currenciesRoutes(storeCode) ~
           categoriesRoutes(storeCode) ~
           productsRoutes(storeCode) ~
-          addToVisitorHistoryRoute ~
-          visitorHistoryRoute
-
+          visitedProductsRoute(storeCode)
       }
     }
   }
@@ -209,9 +209,22 @@ trait StoreService extends HttpService {
           , 'country
           , 'lang?"_all").as(ProductDetailsRequest) {
           pdr =>
-
-            onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
-              complete(response)
+            com.mogobiz.session.SessionCookieDirectives.session {
+              sessionCookie =>
+                println("sessionCookie.id="+sessionCookie.id)
+                if(pdr.historize){
+                  val f = esClient.addToHistory(storeCode,productId.toLong,sessionCookie.id)
+                  f onComplete {
+                    case Success(res) => if(res)println("addToHistory ok")else println("addToHistory failed")
+                    case Failure(t) => {
+                      println("addToHistory future failure")
+                      t.printStackTrace()
+                    }
+                  }
+                }
+                onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
+                  complete(response)
+                }
             }
         }
         }
@@ -248,7 +261,7 @@ trait StoreService extends HttpService {
     }
   }
 
-
+  /*
   val addToVisitorHistoryRoute = path("addToVisitorHistory") {
     respondWithMediaType(`application/json`) {
       parameters(
@@ -266,23 +279,36 @@ trait StoreService extends HttpService {
           }
       }
     }
-  }
+  }*/
 
 
-  val visitorHistoryRoute = path("visitorHistory") {
+  def visitedProductsRoute(storeCode:String) = path("history") {
     respondWithMediaType(`application/json`) {
-      parameters(
-        'visitorId
-        , 'storeCode
-        , 'currencyCode
-        , 'countryCode
-        , 'lang?"_all").as(VisitorHistoryRequest) {
-        avhr =>
-          complete {
-            //TODO search with ES
-            val products = Product("1", "Nike Air", "", 100L) :: Product("2", "Rebook 5230", "", 140L) :: Product("3", "New Balance 1080", "", 150L) :: Product("4", "Mizuno Wave Legend", "", 60L) :: Nil
-            products
-          }
+      get {
+        parameters(
+          'sessionId.?
+          , 'currencyCode
+          , 'countryCode
+          , 'lang ? "_all").as(VisitorHistoryRequest) {
+          req =>
+            com.mogobiz.session.SessionCookieDirectives.session {
+              sessionCookie =>
+                println("sessionCookie.id="+sessionCookie.id)
+              val sessionId = req.sessionId.getOrElse(sessionCookie.id)
+                onSuccess(esClient.getProductHistory(storeCode,sessionId)){ ids =>
+
+                  onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currencyCode,req.countryCode,req.lang))){ products =>
+                    println("visitedProductsRoute returned results",products)
+                    complete(products)
+                  }
+                }
+            }
+            /*
+            complete {
+              val products = Product("1", "Nike Air", "", 100L) :: Product("2", "Rebook 5230", "", 140L) :: Product("3", "New Balance 1080", "", 150L) :: Product("4", "Mizuno Wave Legend", "", 60L) :: Nil
+              products
+            }*/
+        }
       }
     }
   }

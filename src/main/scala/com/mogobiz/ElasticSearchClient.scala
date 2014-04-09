@@ -548,6 +548,13 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
+  /**
+   * get the product detail
+   * @param store
+   * @param id
+   * @param req
+   * @return
+   */
   def queryProductById(store: String, id: Long, req: ProductDetailsRequest): Future[JValue] = {
 
     if (req.historize) {
@@ -580,6 +587,12 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
+  /**
+   * Fulltext products search
+   * @param store
+   * @param params
+   * @return a list of products
+   */
   def queryProductsByFulltextCriteria(store: String, params: FulltextSearchProductParameters): Future[JValue] = {
 
     //"skus", "features", "resources", "datePeriods", "intraDayPeriods","imported",
@@ -625,7 +638,13 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-
+  /**
+   * Return all the valid date according the specified periods
+   * @param store
+   * @param id
+   * @param req
+   * @return
+   */
   def queryProductDates(store: String, id: Long, req: ProductDatesRequest): Future[JValue] = {
     implicit def json4sFormats: Formats = DefaultFormats
 
@@ -697,8 +716,14 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
+  /**
+   * Get all starting times for a date in the valid periods
+   * @param store
+   * @param id
+   * @param req
+   * @return
+   */
   def queryProductTimes(store:String , id:Long, req: ProductTimesRequest) : Future[JValue]={
-
 
     implicit def json4sFormats: Formats = DefaultFormats
 
@@ -825,6 +850,105 @@ class ElasticSearchClient /*extends Actor*/ {
 
   }
 
+  /**
+   * Add the product (id) to the list of the user visited products through its sessionId
+   * @param store
+   * @param productId
+   * @param sessionId
+   * @return
+   */
+  def addToHistory(store:String,productId:Long,sessionId:String) : Future[Boolean] = {
+    /*
+    //req de creation
+    val query = s"""{"productIds":[$productId]}"""
+    val fresponse: Future[HttpResponse] = pipeline(Put(route("/" + store + "/history/"+sessionId), query))
+    */
+
+    //TODO check and refuse if productId already exists
+    val query = s"""{"script":"ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/history/"+sessionId+"/_update"), query))
+
+    fresponse.flatMap {
+      response => {
+        if (response.status.isSuccess) {
+          future(true)
+        } else {
+          //TODO log l'erreur
+          println(response.entity.asString)
+          future(false)
+        }
+      }
+    }
+  }
+
+  /**
+   * Query for products in paralle according to a list of product ids
+   *
+   * @param store
+   * @param ids
+   * @param req
+   * @return
+   */
+  def getProducts(store:String, ids:List[Long],req:ProductDetailsRequest) : Future[List[JValue]] = {
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val fproducts:List[Future[JValue]] = for{
+      id <- ids
+    } yield queryProductById(store,id,req)
+
+    //TODO to replace by RxScala Iterable
+    val f = Future.sequence(fproducts.toList)
+
+    //TODO try with a for-compr
+    f.flatMap {
+      list => {
+        val validResponses = list.filter{
+          json => {
+            (json \ "found") match {
+              case JBool(res) => res
+              case _ => true
+            }
+          }
+        }
+        /*
+        val jproducts = validResponses.map{
+          json => (json \ "_source")
+        }
+        jproducts
+        */
+
+        future(validResponses)
+      }
+    }
+
+  }
+
+  /**
+   * Get the list of products visited by a user (sessionId)
+   * @param store
+   * @param sessionId
+   * @return
+   */
+  def getProductHistory(store:String, sessionId:String) : Future[List[Long]] = {
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val fresponse: Future[HttpResponse] = pipeline(Get(route("/" + store + "/history/"+sessionId)))
+    fresponse.flatMap {
+      response => {
+        if (response.status.isSuccess) {
+          val json = parse(response.entity.asString)
+          val subset = json \ "_source"
+          val productIds = subset \ "productIds"
+          future(productIds.extract[List[Long]])
+        } else {
+          //TODO log l'erreur
+          //future(parse(response.entity.asString))
+          throw new ElasticSearchClientException(response.entity.asString)
+        }
+      }
+    }
+  }
 
   private def isDateExcluded(periods:List[EndPeriod] , day:Calendar ) : Boolean  = {
     periods.find {

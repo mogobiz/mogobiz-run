@@ -1,3 +1,5 @@
+import spray.revolver.RevolverPlugin.Revolver
+
 organization  := "com.mogobiz"
 
 version       := "0.1"
