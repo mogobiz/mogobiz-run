@@ -1,3 +1,5 @@
+import spray.revolver.RevolverPlugin.Revolver
+
 organization  := "com.mogobiz"
 
 version       := "0.1"
@@ -25,7 +27,8 @@ libraryDependencies ++= {
     "org.json4s"          %%  "json4s-native" % json4sV, //"json4s-jackson"
     "com.typesafe.akka"   %%  "akka-actor"    % akkaV,
     "com.typesafe.akka"   %%  "akka-testkit"  % akkaV,
-    "org.specs2"          %%  "specs2"        % "2.2.3" % "test"
+    "org.specs2"          %%  "specs2"        % "2.2.3" % "test",
+    "org.scala-lang.modules" %% "scala-async" % "0.9.0-M6" % "test"
   )
 }
 

@@ -3,6 +3,6 @@ package com.mogobiz
 /**
  * Created by dach on 17/02/2014.
  */
-case class Currency(id: Int, code: String)
+case class Currency(currencyFractionDigits: Int, rate: Double, name:String, code: String)
 
-case class CurrencyRequest(store:String)
+case class CurrencyRequest(lang: String)

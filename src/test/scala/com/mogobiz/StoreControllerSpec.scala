@@ -19,14 +19,20 @@ class StoreControllerSpec extends Specification with Specs2RouteTest with StoreS
   }
 
   "return brands " in {
-    Get("/store/"+store+"/brands") ~> storeRoutes ~> check {
+    Get("/store/"+store+"/brands?lang=fr") ~> storeRoutes ~> check {
       responseAs[String] must contain("nike")
+    }
+    Get("/store/"+store+"/brands?lang=fr") ~> storeRoutes ~> check {
+      responseAs[String] must contain("http://www.samsung.com/fr")
+    }
+    Get("/store/"+store+"/brands?lang=en") ~> storeRoutes ~> check {
+      responseAs[String] must contain("http://www.samsung.com")
     }
   }
 
   "return tags " in {
-    Get("/store/"+store+"/tags?category=10&lang=fr") ~> storeRoutes ~> check {
-      responseAs[String] must contain("chaussure")
+    Get("/store/"+store+"/tags?lang=fr") ~> storeRoutes ~> check {
+      responseAs[String] must contain("CINEMA")
     }
   }
 
@@ -36,7 +42,7 @@ class StoreControllerSpec extends Specification with Specs2RouteTest with StoreS
     }
   }
 
-  "return products " in {
+  "return find products criteria" in {
     Get("/store/"+store+"/find?lang=fr&store=companycode-2&query=imprimante") ~> storeRoutes ~> check {
       responseAs[String] must contain("imprimante")
     }
@@ -55,8 +61,27 @@ class StoreControllerSpec extends Specification with Specs2RouteTest with StoreS
   }
 
   "return categories " in {
-    Get("/store/"+store+"/categories?lang=fr&store=mogobiz") ~> storeRoutes ~> check {
+
+    Get("/store/"+store+"/categories?lang=fr") ~> storeRoutes ~> check {
       responseAs[String] must contain("Cinéma")
+    }
+    Get("/store/"+store+"/categories") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Televisions")
+    }
+    Get("/store/"+store+"/categories?hidden=true") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Cinéma")
+    }
+    Get("/store/"+store+"/categories?lang=fr&parentId=18") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Télévisions")
+    }
+    Get("/store/"+store+"/categories?parentId=18") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Televisions")
+    }
+    Get("/store/"+store+"/categories?parentId=18&hidden=true") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Televisions")
+    }
+    Get("/store/"+store+"/categories?parentId=18&hidden=true&lang=fr") ~> storeRoutes ~> check {
+      responseAs[String] must contain("Télévisions")
     }
   }
 
