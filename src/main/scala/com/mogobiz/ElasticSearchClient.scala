@@ -420,7 +420,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
   def renderProduct(product: JsonAST.JValue, countryCode: String, currencyCode: String, lang: String, cur: Currency, fieldsToRemove: List[String]): JsonAST.JValue = {
     implicit def json4sFormats: Formats = DefaultFormats
-    println(product)
+//    println(product)
     val jprice = (product \ "price")
     /*
     println(jprice)
