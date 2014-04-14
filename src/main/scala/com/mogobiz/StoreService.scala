@@ -1,8 +1,9 @@
 package com.mogobiz
-
+/*
 import com.mogobiz.session.SessionCookieDirectives._
 import com.mogobiz.session.Session
-import spray.http.DateTime
+*/
+import spray.http.{HttpCookie, DateTime}
 import scala.util.{Success, Failure}
 import akka.actor.Actor
 import spray.routing.HttpService
@@ -11,6 +12,8 @@ import spray.httpx.Json4sSupport
 import org.json4s._
 import scala.concurrent.ExecutionContext
 import org.json4s.native.JsonMethods._
+import java.util.UUID
+
 /**
  * Created by Christophe on 17/02/14.
  */
@@ -19,7 +22,6 @@ trait StoreService extends HttpService {
 
   import Json4sProtocol._
   import ExecutionContext.Implicits.global
-
 
   val esClient = new ElasticSearchClient
 
@@ -36,6 +38,48 @@ trait StoreService extends HttpService {
           categoriesRoutes(storeCode) ~
           productsRoutes(storeCode) ~
           visitedProductsRoute(storeCode)
+          //testCookie(storeCode)
+      }
+    }
+  }
+
+  val storeRoutesWithCookie = {
+    optionalCookie("mogobiz_uuid") {
+      case Some(mogoCookie) => {
+        println(s"mogoCookie=${mogoCookie.content}")
+        storeRoutes
+      }
+      case None =>
+      {
+        val id = UUID.randomUUID.toString
+        println(s"new uuid=${id}")
+        setCookie(HttpCookie("mogobiz_uuid",content=id)) {
+          storeRoutes
+        }
+      }
+    }
+  }
+
+  def testCookie(storeCode:String) = path("cookie") {
+    get{
+      optionalCookie("mogobiz_uuid") {
+        case Some(mogoCookie) => complete(s"mogoCookie='${mogoCookie.content}")
+        case None => //complete("no cookie defined")
+         {
+           val id = UUID.randomUUID.toString
+           setCookie(HttpCookie("mogobiz_uuid",content=id)) {
+             complete(s"mogobiz_uuid cookie set to '${id}'")
+           }
+         }
+      }
+    }~put{
+      val id = UUID.randomUUID.toString
+      setCookie(HttpCookie("mogobiz_uuid",content=id)) {
+        complete(s"mogobiz_uuid cookie set to '${id}'")
+      }
+    }~delete{
+      deleteCookie("mogobiz_uuid"){
+        complete("mogobiz_uuid cookie deleted")
       }
     }
   }
@@ -56,15 +100,6 @@ trait StoreService extends HttpService {
 
             complete(response)
           }
-
-/*TODO
-            esClient.queryBrands(storeCode, brandRequest) onSuccess {
-              case response =>           complete{
-                val json = parse(response.entity.asString)
-                val subset = json \ "hits" \ "hits" \ "_source"
-
-            }
-          }*/
         }
       }
     }
@@ -80,13 +115,6 @@ trait StoreService extends HttpService {
             val subset = json \ "hits" \ "hits" \ "_source"
             complete(subset)
           }
-
-          /*
-          complete {
-            val tags = Tag(1, "basket", Nil)::Tag(2, "chaussure",Nil)::Tag(3,"vetement",Nil)::Nil
-            tags
-          }
-          */
         }
       }
     }
@@ -208,12 +236,16 @@ trait StoreService extends HttpService {
           , 'currency
           , 'country
           , 'lang?"_all").as(ProductDetailsRequest) {
-          pdr =>
+          pdr => cookie("mogobiz_uuid") { cookie =>
+            val uuid = cookie.content
+            /*
             com.mogobiz.session.SessionCookieDirectives.session {
               sessionCookie =>
                 println("sessionCookie.id="+sessionCookie.id)
+                val uuid = sessionCookie.id
+                */
                 if(pdr.historize){
-                  val f = esClient.addToHistory(storeCode,productId.toLong,sessionCookie.id)
+                  val f = esClient.addToHistory(storeCode,productId.toLong,uuid)
                   f onComplete {
                     case Success(res) => if(res)println("addToHistory ok")else println("addToHistory failed")
                     case Failure(t) => {
@@ -239,7 +271,6 @@ trait StoreService extends HttpService {
           pdr =>
               onSuccess(esClient.queryProductDates(storeCode,productId.toLong, pdr)){ response =>
                 complete(response)
-                //val dates = DateTime.fromIsoDateTimeString("2014-04-18T11:23:00Z") :: DateTime.fromIsoDateTimeString("2014-04-30T11:23:00Z") :: Nil
               }
         }
       }
@@ -261,41 +292,23 @@ trait StoreService extends HttpService {
     }
   }
 
-  /*
-  val addToVisitorHistoryRoute = path("addToVisitorHistory") {
-    respondWithMediaType(`application/json`) {
-      parameters(
-        'productId
-        , 'visitorId
-        , 'storeCode
-        , 'currencyCode
-        , 'countryCode
-        , 'lang?"_all").as(AddToVisitorHistoryRequest) {
-        avhr =>
-          complete {
-            //TODO search with ES
-            val products = Product("1", "Nike Air", "", 100L) :: Product("2", "Rebook 5230", "", 140L) :: Product("3", "New Balance 1080", "", 150L) :: Product("4", "Mizuno Wave Legend", "", 60L) :: Nil
-            products
-          }
-      }
-    }
-  }*/
-
-
   def visitedProductsRoute(storeCode:String) = path("history") {
     respondWithMediaType(`application/json`) {
       get {
         parameters(
-          'sessionId.?
-          , 'currencyCode
+          'currencyCode
           , 'countryCode
           , 'lang ? "_all").as(VisitorHistoryRequest) {
           req =>
+            cookie("mogobiz_uuid") { cookie =>
+              val uuid = cookie.content
+            println(s"visitedProductsRoute with mogobiz_uuid=${uuid}")
+            /*
             com.mogobiz.session.SessionCookieDirectives.session {
               sessionCookie =>
                 println("sessionCookie.id="+sessionCookie.id)
-              val sessionId = req.sessionId.getOrElse(sessionCookie.id)
-                onSuccess(esClient.getProductHistory(storeCode,sessionId)){ ids =>
+              val uuid = req.sessionId.getOrElse(sessionCookie.id)*/
+                onSuccess(esClient.getProductHistory(storeCode,uuid)){ ids =>
 
                   onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currencyCode,req.countryCode,req.lang))){ products =>
                     println("visitedProductsRoute returned results",products)
@@ -303,15 +316,9 @@ trait StoreService extends HttpService {
                   }
                 }
             }
-            /*
-            complete {
-              val products = Product("1", "Nike Air", "", 100L) :: Product("2", "Rebook 5230", "", 140L) :: Product("3", "New Balance 1080", "", 150L) :: Product("4", "Mizuno Wave Legend", "", 60L) :: Nil
-              products
-            }*/
         }
       }
     }
   }
-  //  def convertPrice (value:Double, rate:Double) : Double  = value * rate
 
  }

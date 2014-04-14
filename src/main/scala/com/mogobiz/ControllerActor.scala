@@ -11,7 +11,7 @@ class ControllerActor extends Actor with StoreService {
 
   def actorRefFactory = context
 
-  def receive = runRoute(storeRoutes)
+  def receive = runRoute(storeRoutesWithCookie)
 
 }
 
