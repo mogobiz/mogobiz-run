@@ -25,7 +25,7 @@ trait StoreService extends HttpService {
 
   val esClient = new ElasticSearchClient
 
-  val storeRoutes = {
+  def storeRoutes(uuid:String) = {
     pathPrefix("store" / Segment) {
       storeCode => {
         pathEnd {
@@ -36,8 +36,8 @@ trait StoreService extends HttpService {
           countriesRoutes(storeCode) ~
           currenciesRoutes(storeCode) ~
           categoriesRoutes(storeCode) ~
-          productsRoutes(storeCode) ~
-          visitedProductsRoute(storeCode)
+          productsRoutes(storeCode,uuid) ~
+          visitedProductsRoute(storeCode,uuid)
           //testCookie(storeCode)
       }
     }
@@ -47,14 +47,14 @@ trait StoreService extends HttpService {
     optionalCookie("mogobiz_uuid") {
       case Some(mogoCookie) => {
         println(s"mogoCookie=${mogoCookie.content}")
-        storeRoutes
+        storeRoutes(mogoCookie.content)
       }
       case None =>
       {
         val id = UUID.randomUUID.toString
         println(s"new uuid=${id}")
-        setCookie(HttpCookie("mogobiz_uuid",content=id)) {
-          storeRoutes
+        setCookie(HttpCookie("mogobiz_uuid",content=id,path=Some("/store/mogobiz"))) {
+          storeRoutes(id)
         }
       }
     }
@@ -188,7 +188,7 @@ trait StoreService extends HttpService {
    * @param storeCode
    * @return
    */
-  def productsRoutes(storeCode:String) = pathPrefix("products") {
+  def productsRoutes(storeCode:String,uuid:String) = pathPrefix("products") {
     pathEnd{
       respondWithMediaType(`application/json`) {
         //TODO gestion des erreurs si lang,country,currency présent mais null ou vide
@@ -201,7 +201,7 @@ trait StoreService extends HttpService {
         }
       }
     } ~ findRoute(storeCode) ~
-      productDetailsRoute(storeCode)
+      productDetailsRoute(storeCode,uuid)
   }
 
   /**
@@ -226,7 +226,7 @@ trait StoreService extends HttpService {
    * @param storeCode
    * @return
    */
-  def productDetailsRoute(storeCode:String) = pathPrefix(Segment) {
+  def productDetailsRoute(storeCode:String,uuid:String) = pathPrefix(Segment) {
     productId => pathEnd {
       respondWithMediaType(`application/json`) {
         get{
@@ -236,14 +236,8 @@ trait StoreService extends HttpService {
           , 'currency
           , 'country
           , 'lang?"_all").as(ProductDetailsRequest) {
-          pdr => cookie("mogobiz_uuid") { cookie =>
-            val uuid = cookie.content
-            /*
-            com.mogobiz.session.SessionCookieDirectives.session {
-              sessionCookie =>
-                println("sessionCookie.id="+sessionCookie.id)
-                val uuid = sessionCookie.id
-                */
+          pdr => /*cookie("mogobiz_uuid") { cookie =>
+            val uuid = cookie.content*/
                 if(pdr.historize){
                   val f = esClient.addToHistory(storeCode,productId.toLong,uuid)
                   f onComplete {
@@ -258,7 +252,7 @@ trait StoreService extends HttpService {
                   complete(response)
                 }
             }
-        }
+//        }
         }
       }
     } ~ productDatesRoute(storeCode,productId.toLong) ~ productTimesRoute(storeCode,productId.toLong)
@@ -292,7 +286,7 @@ trait StoreService extends HttpService {
     }
   }
 
-  def visitedProductsRoute(storeCode:String) = path("history") {
+  def visitedProductsRoute(storeCode:String,uuid:String) = path("history") {
     respondWithMediaType(`application/json`) {
       get {
         parameters(
@@ -300,14 +294,10 @@ trait StoreService extends HttpService {
           , 'countryCode
           , 'lang ? "_all").as(VisitorHistoryRequest) {
           req =>
-            cookie("mogobiz_uuid") { cookie =>
+            /*cookie("mogobiz_uuid") { cookie =>
               val uuid = cookie.content
+              */
             println(s"visitedProductsRoute with mogobiz_uuid=${uuid}")
-            /*
-            com.mogobiz.session.SessionCookieDirectives.session {
-              sessionCookie =>
-                println("sessionCookie.id="+sessionCookie.id)
-              val uuid = req.sessionId.getOrElse(sessionCookie.id)*/
                 onSuccess(esClient.getProductHistory(storeCode,uuid)){ ids =>
 
                   onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currencyCode,req.countryCode,req.lang))){ products =>
@@ -315,7 +305,7 @@ trait StoreService extends HttpService {
                     complete(products)
                   }
                 }
-            }
+//            }
         }
       }
     }
