@@ -557,11 +557,6 @@ class ElasticSearchClient /*extends Actor*/ {
    */
   def queryProductById(store: String, id: Long, req: ProductDetailsRequest): Future[JValue] = {
 
-    if (req.historize) {
-      //TODO call addToHistory
-    }
-
-
     val fresponse: Future[HttpResponse] = pipeline(Get(route("/" + store + "/product/" + id)))
     fresponse.flatMap {
       response => {
