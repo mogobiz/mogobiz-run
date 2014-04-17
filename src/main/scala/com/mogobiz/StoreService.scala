@@ -193,12 +193,33 @@ trait StoreService extends HttpService {
       respondWithMediaType(`application/json`) {
         //TODO gestion des erreurs si lang,country,currency présent mais null ou vide
         //FIXME currency=eur error
-        parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?,'featured.?, 'lang?"_all", 'currency, 'country).as(ProductRequest) {
+
+        parameters(
+          'maxItemPerPage.?,
+          'pageOffset.?,
+          'xtype.?,
+          'name.?,
+          'code.?,
+          'categoryId.?,
+          'brandId.?,
+          'path.?,
+          'tagName.?,
+          'priceMin.?,
+          'priceMax.?,
+          'orderBy.?,
+          'orderDirection.?,
+          'featured.?, 'lang?"_all", 'currency, 'country).as(ProductRequest) {
+
           productRequest =>
-            onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ products =>
-              complete(products)
+
+            val f = esClient.queryProductsByCriteria(storeCode, productRequest)
+
+            onComplete(f) {
+              case Success(products) => complete(products)
+              case Failure(t) => complete("error", "error") //TODO change that
             }
         }
+
       }
     } ~ findRoute(storeCode) ~
       productDetailsRoute(storeCode,uuid)
@@ -295,6 +316,7 @@ trait StoreService extends HttpService {
               val uuid = cookie.content
               */
             println(s"visitedProductsRoute with mogobiz_uuid=${uuid}")
+          //TODO onCOmplete + treat failure case
                 onSuccess(esClient.getProductHistory(storeCode,uuid)){ ids =>
 
                   onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>

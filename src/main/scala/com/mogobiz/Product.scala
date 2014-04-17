@@ -48,21 +48,21 @@ case class ProductRequest(
                            maxItemPerPage: Option[Int]
                            , pageOffset: Option[Int]
                            , xtype: Option[String]
-                           , var name: Option[String]
+                           , name: Option[String]
                            , code: Option[String]
                            , categoryId: Option[Int]
                            , brandId: Option[Int]
-                            , path:Option[String]
+                           , path:Option[String]
                            , tagName: Option[String]
                            , priceMin: Option[Long]
                            , priceMax: Option[Long]
                            , orderBy: Option[String]
                            , orderDirection: Option[String]
-                           , featured: Boolean = false
+                           , featured: Option[Boolean] // = false
                            , lang: String
                            , currencyCode: String
                            , countryCode: String){
-  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,None,false,lang,currencyCode,countryCode)
+  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,None,Some(false),lang,currencyCode,countryCode)
 }
 
 case class ProductDetailsRequest(

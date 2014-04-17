@@ -296,6 +296,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
 
   def queryProductsByCriteria(store: String, req: ProductRequest): Future[JValue] = {
+    //println("queryProductsByCriteria")
     val fieldsToExclude = (getAllExcludedLanguagesExceptAsList(req.lang) ::: fieldsToRemoveForProductSearchRendering).mkString("\"", "\",\"", "\"")
     //TODO propose a way to request include / exclude fields         "include":["id","price","taxRate"],
 
@@ -337,7 +338,7 @@ class ElasticSearchClient /*extends Actor*/ {
     val brandFilter = createTermFilterWithNum("brand.id", req.brandId)
     val tagsFilter = createTermFilterWithStr("tags.name", req.tagName)
     val priceFilter = createRangeFilter("price", req.priceMin, req.priceMax)
-    val featuredFilter = createFeaturedFilter(req.featured)
+    val featuredFilter = createFeaturedFilter(req.featured.getOrElse(false))
 
     val filters = (codeFilter :: categoryFilter :: xtypeFilter :: pathFilter :: brandFilter :: tagsFilter :: priceFilter :: featuredFilter :: Nil).filter {
       s => !s.isEmpty
@@ -396,14 +397,8 @@ class ElasticSearchClient /*extends Actor*/ {
             p => renderProduct(p, req.countryCode, req.currencyCode, req.lang, currency, fieldsToRemoveForProductSearchRendering)
           }
 
-          /* + tard
-          response onSuccess {
-            case response => {
-
-            }
-          }*/
-          //          println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-          //          println(pretty(render(products)))
+//          println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+//          println(pretty(render(products)))
           future(products)
         } else {
           //TODO log l'erreur
@@ -487,6 +482,7 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
   private val sdf = new SimpleDateFormat("yyyy-MM-dd") //THH:mm:ssZ
+  private val hours = new SimpleDateFormat("HH:mm")
 
   private def createFeaturedFilter(doFilter: Boolean): String = {
     if (!doFilter) ""
@@ -747,15 +743,43 @@ class ElasticSearchClient /*extends Actor*/ {
           val now = Calendar.getInstance().getTime
           val today = getCalendar(sdf.parse(sdf.format(now)))
           val d = sdf.parse(req.date.getOrElse(sdf.format(now)))
-          var selectedDate = getCalendar(d)
+          val dateToEval = getCalendar(d)
 
-          if (selectedDate.compareTo(today) >= 0) {
+          val day = dateToEval
+          //TODO refacto this part with the one is in isIncluded method
+          val startingHours = inPeriods.find {
+                //get the matching periods
+            period => {
+              val dow = day.get(Calendar.DAY_OF_WEEK)
+              //french definication of day of week where MONDAY is = 1
+              //val fr_dow = if (dow == 1) 7 else dow - 1
+              //TODO rework weekday definition !!!
+              //println("fr_dow=" + fr_dow)
+              val included = dow match {
+                case Calendar.MONDAY => period.weekday1
+                case Calendar.TUESDAY => period.weekday2
+                case Calendar.WEDNESDAY => period.weekday3
+                case Calendar.THURSDAY => period.weekday4
+                case Calendar.FRIDAY => period.weekday5
+                case Calendar.SATURDAY => period.weekday6
+                case Calendar.SUNDAY => period.weekday7
+              }
 
-            future(List())
-          }else{
-            //return empty list
-            future(List())
+              //println("included?=" + included)
+              val cond = (included &&
+                day.getTime().compareTo(period.startDate) >= 0 &&
+                day.getTime().compareTo(period.endDate) <= 0)
+              //println("cond=" + cond)
+              cond
+            }
+          }.map{
+                //get the start date hours value only
+            period => {
+              hours.format(period.startDate)
+            }
           }
+
+          future(startingHours)
         } else {
           //TODO log l'erreur
           future(parse(response.entity.asString))
