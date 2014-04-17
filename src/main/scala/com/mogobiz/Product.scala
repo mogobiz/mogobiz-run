@@ -72,7 +72,7 @@ case class ProductDetailsRequest(
                                   , countryCode: String
                                   , lang: String)
 
-case class ProductDatesRequest(date:Option[String],startDate: Option[String], endDate: Option[String])
+case class ProductDatesRequest(date:Option[String])
 
 case class ProductTimesRequest(date: Option[String])
 
@@ -88,19 +88,7 @@ case class IntraDayPeriod(override val startDate:Date,override val endDate:Date,
                            val weekday7:Boolean
                            ) extends DatePeriod(startDate,endDate)
 
-case class AddToVisitorHistoryRequest(
-                                       productId: Int
-                                       , visitorId: Int
-                                       , storeCode: String
-                                       , currencyCode: String
-                                       , countryCode: String
-                                       , lang: String)
 
-
-case class VisitorHistoryRequest(
-                                  //sessionId: Option[String],
-                                  currencyCode: String
-                                  , countryCode: String
-                                  , lang: String)
+case class VisitorHistoryRequest(currency: String, country: String, lang: String)
 
 

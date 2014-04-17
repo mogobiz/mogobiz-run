@@ -261,7 +261,7 @@ trait StoreService extends HttpService {
   def productDatesRoute(storeCode:String, productId: Long) = path("dates") {
     respondWithMediaType(`application/json`) {
       get{
-        parameters('date.?,'startDate.?, 'endDate.?).as(ProductDatesRequest) {
+        parameters('date.?).as(ProductDatesRequest) {
           pdr =>
               onSuccess(esClient.queryProductDates(storeCode,productId.toLong, pdr)){ response =>
                 complete(response)
@@ -289,10 +289,7 @@ trait StoreService extends HttpService {
   def visitedProductsRoute(storeCode:String,uuid:String) = path("history") {
     respondWithMediaType(`application/json`) {
       get {
-        parameters(
-          'currencyCode
-          , 'countryCode
-          , 'lang ? "_all").as(VisitorHistoryRequest) {
+        parameters('currency, 'country, 'lang ? "_all").as(VisitorHistoryRequest) {
           req =>
             /*cookie("mogobiz_uuid") { cookie =>
               val uuid = cookie.content
@@ -300,7 +297,7 @@ trait StoreService extends HttpService {
             println(s"visitedProductsRoute with mogobiz_uuid=${uuid}")
                 onSuccess(esClient.getProductHistory(storeCode,uuid)){ ids =>
 
-                  onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currencyCode,req.countryCode,req.lang))){ products =>
+                  onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
                     println("visitedProductsRoute returned results",products)
                     complete(products)
                   }
