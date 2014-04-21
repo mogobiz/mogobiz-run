@@ -11,6 +11,7 @@ import org.json4s.native.JsonMethods._
 import scala.Some
 import java.util.Calendar
 import java.text.SimpleDateFormat
+import org.json4s.{DefaultFormats, Formats}
 
 /**
  * Created by Christophe on 15/03/14.
@@ -19,6 +20,8 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
   val esClient = new ElasticSearchClient
   val store = "mogobiz"
   val sdf = new SimpleDateFormat("yyyy-MM-dd")
+
+  implicit def json4sFormats: Formats = DefaultFormats
 
   /*{
  "listAllLanguages list all languages" in {
@@ -96,7 +99,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
 
     res must not beEmpty
   }
-*/
+
   "get products from ids" in {
     val req = ProductDetailsRequest(false,None,"EUR","FR","fr")
     val res = Await.result(esClient.getProducts(store,List(1,2,3,94,95,47,61),req),3 second)
@@ -105,8 +108,18 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
 
     res must not beEmpty
   }
+  */
 
+  "get queryProductTimes " in {
+    val id = 122
+    val req = ProductTimesRequest(Some("2014-03-02"))
+    val res = Await.result(esClient.queryProductTimes(store,id,req), 3 second)
+    val extractedValues = res.extract[List[String]]
 
+    extractedValues.head mustEqual "15:00"
+    extractedValues.tail.head mustEqual "21:00"
+
+  }
 
 
 }

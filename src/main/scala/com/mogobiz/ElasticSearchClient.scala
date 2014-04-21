@@ -12,13 +12,30 @@ import spray.util._
 import org.json4s.native.JsonMethods._
 import org.json4s._
 import org.json4s.JsonDSL._
-import java.util.{Date, Calendar, Locale}
+import java.util._
 import java.text.{SimpleDateFormat, NumberFormat}
 import scala.util.Failure
 import scala.Some
 import spray.http.HttpResponse
 import scala.util.Success
 import spray.http.HttpRequest
+import com.mogobiz.ProductTimesRequest
+import scala.util.Failure
+import scala.Some
+import spray.http.HttpResponse
+import com.mogobiz.IntraDayPeriod
+import com.mogobiz.ProductDatesRequest
+import com.mogobiz.CategoryRequest
+import com.mogobiz.FulltextSearchProductParameters
+import com.mogobiz.BrandRequest
+import com.mogobiz.ProductRequest
+import scala.List
+import com.mogobiz.EndPeriod
+import scala.util.Success
+import com.mogobiz.ProductDetailsRequest
+import spray.http.HttpRequest
+import com.mogobiz.TagRequest
+import com.mogobiz.Currency
 
 /**
  * Created by Christophe on 18/02/14.
@@ -738,7 +755,7 @@ class ElasticSearchClient /*extends Actor*/ {
           //TODO test exist or send empty
           println(pretty(render(intraDayPeriods)))
           val inPeriods = intraDayPeriods.extract[List[IntraDayPeriod]]
-
+          println(inPeriods.length)
           //date or today
           val now = Calendar.getInstance().getTime
           val today = getCalendar(sdf.parse(sdf.format(now)))
@@ -747,10 +764,11 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val day = dateToEval
           //TODO refacto this part with the one is in isIncluded method
-          val startingHours = inPeriods.find {
+          val startingHours = inPeriods.filter {
                 //get the matching periods
             period => {
               val dow = day.get(Calendar.DAY_OF_WEEK)
+              //println("dow="+dow)
               //french definication of day of week where MONDAY is = 1
               //val fr_dow = if (dow == 1) 7 else dow - 1
               //TODO rework weekday definition !!!
@@ -775,7 +793,10 @@ class ElasticSearchClient /*extends Actor*/ {
           }.map{
                 //get the start date hours value only
             period => {
-              hours.format(period.startDate)
+              // the parsed date returned by ES is parsed according to the serveur Timezone and so it returns 16 (parsed value) instead of 15 (ES value)
+              // because the my current timezone is GMT+1
+              // but what it must return is the value from ES
+              hours.format(getFixedDate(period.startDate).getTime)
             }
           }
 
@@ -787,55 +808,34 @@ class ElasticSearchClient /*extends Actor*/ {
         }
       }
     }
-
-    /* code Groovy
-    calendarType: DATE_TIME
-    List<String> results = []
-
-    if(productId && date){
-
-      def today = IperUtil.today()
-
-      Calendar startCalendar = IperUtil.parseCalendar(date, IperConstant.DATE_FORMAT_WITHOUT_HOUR)
-
-      if (startCalendar.compareTo(today) >= 0) {
-        def query = [:]
-        def filters = []
-
-        def included = ['intraDayPeriods']
-
-        filters << [term:['id':productId]]
-        filters << [term:[calendarType:ProductCalendar.DATE_TIME.name()]]
-
-        query << [query:[filtered:[filter:[and:filters]]]]
-
-        def hits  = search(store, 'product', query, included)?.hits
-
-        results.addAll(hits.size() > 0 ? hits.get(0)['intraDayPeriods'].collect { intraDayPeriod ->
-          def period = new DayPeriod(
-            startDate: new SimpleDateFormat('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'').parse(intraDayPeriod['startDate'] as String),
-          endDate: new SimpleDateFormat('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'').parse(intraDayPeriod['endDate'] as String),
-          weekday1: intraDayPeriod['weekday1'] as boolean,
-          weekday2: intraDayPeriod['weekday2'] as boolean,
-          weekday3: intraDayPeriod['weekday3'] as boolean,
-          weekday4: intraDayPeriod['weekday4'] as boolean,
-          weekday5: intraDayPeriod['weekday5'] as boolean,
-          weekday6: intraDayPeriod['weekday6'] as boolean,
-          weekday7: intraDayPeriod['weekday7'] as boolean
-          )
-          def c = Calendar.getInstance()
-          c.setTime(period.startDate)
-          isDateIncluded([period], startCalendar) ? RenderUtil.asMapForJSON(c, IperConstant.TIME_FORMAT) : null
-        }.flatten() as List<String> : [])
-      }
-    }*/
-
   }
 
   private def getCalendar(d: Date): Calendar = {
     val cal = Calendar.getInstance();
     cal.setTime(d);
     cal;
+  }
+
+  /**
+   * Fix the date according to the timezone
+   * @param d
+   * @return
+   */
+  private def getFixedDate(d: Date):Calendar = {
+    val fixeddate = Calendar.getInstance();
+    fixeddate.setTime(new Date(d.getTime - fixeddate.getTimeZone.getRawOffset))
+    fixeddate
+  }
+
+  /**
+   * Fix the date according to the timezone
+   * @param cal
+   * @return
+   */
+  private def getFixedDate(cal: Calendar):Calendar = {
+    val fixeddate = Calendar.getInstance();
+    fixeddate.setTime(new Date(cal.getTime.getTime - fixeddate.getTimeZone.getRawOffset))
+    fixeddate
   }
 
   private def isDateIncluded(periods: List[IntraDayPeriod], day: Calendar): Boolean = {
