@@ -54,6 +54,17 @@ class ElasticSearchClient /*extends Actor*/ {
 
   private def route(url: String): String = ES_FULL_URL + url
 
+  private def historyIndex(store:String):String = {
+    return store+"_history"
+  }
+
+  private def cartIndex(store:String):String = {
+    return store+"_cart"
+  }
+
+  private def commentIndex(store:String):String = {
+    return store+"_comment"
+  }
 
   /**
    *
@@ -867,7 +878,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
     val query = s"""{"script":"ctx._source.productIds.contains(pid) ? (ctx.op = \\"none\\") : ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
 
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/history/"+sessionId+"/_update"), query))
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + historyIndex(store) + "/history/"+sessionId+"/_update"), query))
 
     fresponse.flatMap {
       response => {
@@ -933,7 +944,7 @@ class ElasticSearchClient /*extends Actor*/ {
   def getProductHistory(store:String, sessionId:String) : Future[List[Long]] = {
     implicit def json4sFormats: Formats = DefaultFormats
 
-    val fresponse: Future[HttpResponse] = pipeline(Get(route("/" + store + "/history/"+sessionId)))
+    val fresponse: Future[HttpResponse] = pipeline(Get(route("/" + historyIndex(store) + "/history/"+sessionId)))
     fresponse.flatMap {
       response => {
         if (response.status.isSuccess) {
