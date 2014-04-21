@@ -91,7 +91,7 @@ trait StoreService extends HttpService {
    * @param storeCode
    * @return
    */
-  def brandsRoutes(storeCode:String) = path("brands") {
+  def   brandsRoutes(storeCode:String) = path("brands") {
     respondWithMediaType(`application/json`) {
       get {
         parameters('hidden?false,'lang?"_all").as(BrandRequest) { brandRequest =>
@@ -147,7 +147,7 @@ trait StoreService extends HttpService {
   }
 
   /**
-   * http://localhost:8082/store/mogobiz/product/38?currencyCode=EUR&countryCode=FR&lang=FR
+   * http://localhost:8082/store/mogobiz/product/38?currency=EUR&country=FR&lang=FR
    * @param storeCode
    * @return
    */
@@ -195,20 +195,23 @@ trait StoreService extends HttpService {
         //FIXME currency=eur error
 
         parameters(
-          'maxItemPerPage.?,
-          'pageOffset.?,
-          'xtype.?,
-          'name.?,
-          'code.?,
-          'categoryId.?,
-          'brandId.?,
-          'path.?,
-          'tagName.?,
-          'priceMin.?,
-          'priceMax.?,
-          'orderBy.?,
-          'orderDirection.?,
-          'featured.?, 'lang?"_all", 'currency, 'country).as(ProductRequest) {
+          'maxItemPerPage.?
+          , 'pageOffset.?
+          , 'xtype.?
+          , 'name.?
+          , 'code.?
+          , 'categoryId.?
+          , 'brandId.?
+          , 'path.?
+          , 'tagName.?
+          , 'priceMin.?
+          , 'priceMax.?
+          , 'orderBy.?
+          , 'orderDirection.?
+          , 'featured.?
+          , 'lang?"_all"
+          , 'currency.?
+          , 'country.?).as(ProductRequest) {
 
           productRequest =>
 
@@ -232,7 +235,7 @@ trait StoreService extends HttpService {
    */
   def findRoute(storeCode:String) = path("find") {
     respondWithMediaType(`application/json`) {
-        parameters('lang?"_all",'currency,'country, 'query).as(FulltextSearchProductParameters) {
+        parameters('lang?"_all",'currency.?,'country.?, 'query).as(FulltextSearchProductParameters) {
           req =>
             onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
               complete(products)
@@ -254,8 +257,8 @@ trait StoreService extends HttpService {
         parameters(
           'historize ? false
           , 'visitorId.?
-          , 'currency
-          , 'country
+          , 'currency.?
+          , 'country.?
           , 'lang?"_all").as(ProductDetailsRequest) {
           pdr => /*cookie("mogobiz_uuid") { cookie =>
             val uuid = cookie.content*/
@@ -310,7 +313,7 @@ trait StoreService extends HttpService {
   def visitedProductsRoute(storeCode:String,uuid:String) = path("history") {
     respondWithMediaType(`application/json`) {
       get {
-        parameters('currency, 'country, 'lang ? "_all").as(VisitorHistoryRequest) {
+        parameters('currency.?, 'country.?, 'lang ? "_all").as(VisitorHistoryRequest) {
           req =>
             /*cookie("mogobiz_uuid") { cookie =>
               val uuid = cookie.content

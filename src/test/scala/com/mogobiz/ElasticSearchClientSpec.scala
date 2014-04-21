@@ -100,7 +100,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
   }
 
   "get products from ids" in {
-    val req = ProductDetailsRequest(false,None,"EUR","FR","fr")
+    val req = ProductDetailsRequest(false,None,Some("EUR"),Some("FR"),"fr")
     val res = Await.result(esClient.getProducts(store,List(1,2,3,94,95,47,61),req),3 second)
 //    println(res)
 //    println(res.length)

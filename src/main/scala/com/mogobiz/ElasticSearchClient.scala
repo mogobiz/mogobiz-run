@@ -425,56 +425,59 @@ class ElasticSearchClient /*extends Actor*/ {
 
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
 
-  def renderProduct(product: JsonAST.JValue, countryCode: String, currencyCode: String, lang: String, cur: Currency, fieldsToRemove: List[String]): JsonAST.JValue = {
-    implicit def json4sFormats: Formats = DefaultFormats
-//    println(product)
-    val jprice = (product \ "price")
-    /*
-    println(jprice)
-    val price = jprice match {
-      case JInt(v) =>  v.longValue()
-      case JLong(v) => v
-    }*/
-    val price = jprice.extract[Int].toLong //FIXME ???
+  def renderProduct(product: JsonAST.JValue, country: Option[String], currency: Option[String], lang: String, cur: Currency, fieldsToRemove: List[String]): JsonAST.JValue = {
+    if (country.isEmpty || currency.isEmpty) {
+      product
+    } else {
+      implicit def json4sFormats: Formats = DefaultFormats
+      //    println(product)
+      val jprice = (product \ "price")
+      /*
+      println(jprice)
+      val price = jprice match {
+        case JInt(v) =>  v.longValue()
+        case JLong(v) => v
+      }*/
+      val price = jprice.extract[Int].toLong //FIXME ???
 
-    val lrt = for {
-      localTaxRate@JObject(x) <- product \ "taxRate" \ "localTaxRates"
-      if (x contains JField("countryCode", JString(countryCode.toUpperCase()))) //WARNING toUpperCase ??
-      JField("rate", value) <- x} yield value
+      val lrt = for {
+        localTaxRate@JObject(x) <- product \ "taxRate" \ "localTaxRates"
+        if (x contains JField("country", JString(country.get.toUpperCase()))) //WARNING toUpperCase ??
+        JField("rate", value) <- x} yield value
 
-    val taxRate = lrt.headOption match {
-      case Some(JDouble(x)) => x
-      case Some(JInt(x)) => x.toDouble
-      //      case Some(JNothing) => 0.toDouble
-      case _ => 0.toDouble
+      val taxRate = lrt.headOption match {
+        case Some(JDouble(x)) => x
+        case Some(JInt(x)) => x.toDouble
+        //      case Some(JNothing) => 0.toDouble
+        case _ => 0.toDouble
+      }
+
+      val locale = new Locale(lang);
+      val endPrice = price + (price * taxRate / 100d)
+      val formatedPrice = format(price, currency.get, locale, cur.rate)
+      val formatedEndPrice = format(endPrice, currency.get, locale, cur.rate)
+      val additionalFields = (
+        ("localTaxRate" -> taxRate) ~
+          ("endPrice" -> endPrice) ~
+          ("formatedPrice" -> formatedPrice) ~
+          ("formatedEndPrice" -> formatedEndPrice)
+        )
+
+      val renderedProduct = product merge additionalFields
+      //removeFields(renderedProduct,fieldsToRemove)
+      renderedProduct
     }
-
-    val locale = new Locale(lang);
-    val endPrice = price + (price * taxRate / 100d)
-    val formatedPrice = format(price, currencyCode, locale, cur.rate)
-    val formatedEndPrice = format(endPrice, currencyCode, locale, cur.rate)
-    val additionalFields = (
-      ("localTaxRate" -> taxRate) ~
-        ("endPrice" -> endPrice) ~
-        ("formatedPrice" -> formatedPrice) ~
-        ("formatedEndPrice" -> formatedEndPrice)
-      )
-
-    val renderedProduct = product merge additionalFields
-    //removeFields(renderedProduct,fieldsToRemove)
-    renderedProduct
-
     /* calcul prix Groovy
     def localTaxRates = product['taxRate'] ? product['taxRate']['localTaxRates'] as List<Map> : []
     def localTaxRate = localTaxRates?.find { ltr ->
-      ltr['countryCode'] == country && (!state || ltr['stateCode'] == state)
+      ltr['country'] == country && (!state || ltr['stateCode'] == state)
     }
     def taxRate = localTaxRate ? localTaxRate['rate'] : 0f
     def price = product['price'] ?: 0l
     def endPrice = (price as long) + ((price * taxRate / 100f) as long)
     product << ['localTaxRate': taxRate,
-    formatedPrice: format(price as long, currencyCode, locale, rate as double),
-    formatedEndPrice: format(endPrice, currencyCode, locale, rate as double)
+    formatedPrice: format(price as long, currency, locale, rate as double),
+    formatedEndPrice: format(endPrice, currency, locale, rate as double)
     */
   }
 
@@ -575,10 +578,10 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val currencies = Await.result(getCurrencies(store, req.lang), 1 second)
           val currency = currencies.filter {
-            cur => cur.code == req.currencyCode
+            cur => cur.code == req.currency
           }.headOption getOrElse (new Currency(2, 1, "EUR", "euro"))
 
-          val product = renderProduct(subset, req.countryCode, req.currencyCode, req.lang, currency, List())
+          val product = renderProduct(subset, req.country, req.currency, req.lang, currency, List())
 
           future(product)
         } else {
@@ -624,11 +627,11 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val currencies = Await.result(getCurrencies(store, params.lang), 1 second)
           val currency = currencies.filter {
-            cur => cur.code == params.currencyCode
+            cur => cur.code == params.currency
           }.headOption getOrElse (defaultCurrency)
 
           val products = subset.children.map {
-            p => renderProduct(p, params.countryCode, params.currencyCode, params.lang, currency, fieldsToRemoveForProductSearchRendering)
+            p => renderProduct(p, params.country, params.currency, params.lang, currency, fieldsToRemoveForProductSearchRendering)
           }
 
           future(products)
