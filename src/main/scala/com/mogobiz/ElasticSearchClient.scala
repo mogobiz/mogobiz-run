@@ -17,25 +17,9 @@ import java.text.{SimpleDateFormat, NumberFormat}
 import scala.util.Failure
 import scala.Some
 import spray.http.HttpResponse
-import scala.util.Success
-import spray.http.HttpRequest
-import com.mogobiz.ProductTimesRequest
-import scala.util.Failure
-import scala.Some
-import spray.http.HttpResponse
-import com.mogobiz.IntraDayPeriod
-import com.mogobiz.ProductDatesRequest
-import com.mogobiz.CategoryRequest
-import com.mogobiz.FulltextSearchProductParameters
-import com.mogobiz.BrandRequest
-import com.mogobiz.ProductRequest
 import scala.List
-import com.mogobiz.EndPeriod
 import scala.util.Success
-import com.mogobiz.ProductDetailsRequest
 import spray.http.HttpRequest
-import com.mogobiz.TagRequest
-import com.mogobiz.Currency
 
 /**
  * Created by Christophe on 18/02/14.
@@ -753,9 +737,8 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val intraDayPeriods = subset \ "intraDayPeriods"
           //TODO test exist or send empty
-          println(pretty(render(intraDayPeriods)))
+          //println(pretty(render(intraDayPeriods)))
           val inPeriods = intraDayPeriods.extract[List[IntraDayPeriod]]
-          println(inPeriods.length)
           //date or today
           val now = Calendar.getInstance().getTime
           val today = getCalendar(sdf.parse(sdf.format(now)))
@@ -827,6 +810,10 @@ class ElasticSearchClient /*extends Actor*/ {
     fixeddate
   }
 
+  /*http://tutorials.jenkov.com/java-date-time/java-util-timezone.html
+  *http://stackoverflow.com/questions/19330564/scala-how-to-customize-date-format-using-simpledateformat-using-json4s
+  *
+  */
   /**
    * Fix the date according to the timezone
    * @param cal
@@ -877,14 +864,8 @@ class ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   def addToHistory(store:String,productId:Long,sessionId:String) : Future[Boolean] = {
-    /*
-    //req de creation
-    val query = s"""{"productIds":[$productId]}"""
-    val fresponse: Future[HttpResponse] = pipeline(Put(route("/" + store + "/history/"+sessionId), query))
-    */
 
-    //TODO check and refuse if productId already exists
-    val query = s"""{"script":"ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
+    val query = s"""{"script":"ctx._source.productIds.contains(pid) ? (ctx.op = \\"none\\") : ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
 
     val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/history/"+sessionId+"/_update"), query))
 
@@ -961,9 +942,8 @@ class ElasticSearchClient /*extends Actor*/ {
           val productIds = subset \ "productIds"
           future(productIds.extract[List[Long]])
         } else {
-          //TODO log l'erreur
-          //future(parse(response.entity.asString))
-          throw new ElasticSearchClientException(response.entity.asString)
+          //no sessionId available, EmptyList products returned
+          future(List())
         }
       }
     }

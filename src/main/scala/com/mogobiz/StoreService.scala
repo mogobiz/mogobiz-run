@@ -316,13 +316,19 @@ trait StoreService extends HttpService {
               val uuid = cookie.content
               */
             println(s"visitedProductsRoute with mogobiz_uuid=${uuid}")
-          //TODO onCOmplete + treat failure case
-                onSuccess(esClient.getProductHistory(storeCode,uuid)){ ids =>
+                onComplete(esClient.getProductHistory(storeCode,uuid)){
+                  case Success(ids) => {
+                    if(ids.isEmpty){
+                      complete(List()) //return empty list
+                    }else{
+                      onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
+                        println("visitedProductsRoute returned results",products.length)
+                        complete(products)
+                      }
 
-                  onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
-                    println("visitedProductsRoute returned results",products)
-                    complete(products)
+                    }
                   }
+                  case Failure(t) => complete(t)
                 }
 //            }
         }
