@@ -975,6 +975,71 @@ class ElasticSearchClient /*extends Actor*/ {
   //TODO private def translate(json:JValue):JValue = { }
 
 
+  def createComment(store:String,productId:Long,c:CommentRequest): Future[Comment] = {
+    import org.json4s.native.Serialization
+    import org.json4s.native.Serialization.{read, write}
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Comment]()
+
+    val comment = new Comment(None,c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)
+    val jsoncomment = write(comment)
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment"),jsoncomment))
+
+    fresponse.flatMap {
+      response => {
+        println(response.entity.asString)
+        if (response.status.isSuccess) {
+          //TODO supply returned id from response to comment
+          future(comment)
+        } else {
+          //TODO log l'erreur
+          Future.failed(new ElasticSearchClientException("createComment error"))
+        }
+      }
+    }
+  }
+
+  def updateComment(store:String, productId:Long,useful : Boolean) : Future[Boolean] = {
+
+    val query = s"""{"script":"useful ? ctx._source.useful +=1 : ctx._source.notuseful +=1","params":{"useful":$useful}}"""
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/"+productId+"/_update"),query))
+
+    fresponse.flatMap {
+      response => {
+        println(response.entity.asString)
+        if (response.status.isSuccess) {
+          future(useful)
+        } else {
+          //TODO log l'erreur
+          Future.failed(new ElasticSearchClientException("updateComment error"))
+        }
+      }
+    }
+  }
+
+  def getComments(store:String) : Future[JValue] = {
+
+    //,"from": 0,"size": 10
+    val query = s"""{
+      "sort": {"created": "desc"}
+    }"""
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/_search"),query))
+    fresponse.flatMap {
+      response => {
+        println(response.entity.asString)
+        if (response.status.isSuccess) {
+          val json = parse(response.entity.asString)
+          val subset = json \ "hits" \ "hits" \ "_source"
+          future(subset)
+        } else {
+          //TODO log l'erreur
+          Future.failed(new ElasticSearchClientException("getComments error"))
+        }
+      }
+    }
+
+  }
 
   def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
 

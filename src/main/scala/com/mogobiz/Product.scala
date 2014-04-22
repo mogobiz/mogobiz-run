@@ -91,4 +91,6 @@ case class IntraDayPeriod(override val startDate:Date,override val endDate:Date,
 
 case class VisitorHistoryRequest(currency: Option[String], country: Option[String], lang: String)
 
+case class Comment(val id:Option[Long], val userId:String,val surname:String,val notation:Int,val subject:String,val comment:String, val created:Date, val productId:Long,val useful:Int=0,val notuseful:Int=0)
+case class CommentRequest(val userId:String, val surname: String,val notation:Int, val subject:String,val comment:String, val created:Date = new Date)
 
