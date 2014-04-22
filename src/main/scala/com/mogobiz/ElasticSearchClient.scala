@@ -20,6 +20,7 @@ import spray.http.HttpResponse
 import scala.List
 import scala.util.Success
 import spray.http.HttpRequest
+import com.mogobiz.vo.{CommentRequest, Comment, CommentGetRequest, Paging}
 
 /**
  * Created by Christophe on 18/02/14.
@@ -975,6 +976,84 @@ class ElasticSearchClient /*extends Actor*/ {
   //TODO private def translate(json:JValue):JValue = { }
 
 
+  def createComment(store:String,productId:Long,c:CommentRequest): Future[Comment] = {
+    import org.json4s.native.Serialization
+    import org.json4s.native.Serialization.{read, write}
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Comment]()
+
+    /* TODO throw Custom Exception instead
+    require(c.notation>=0 && c.notation<=5, "Illegal notation value")
+    require((c.subject.size + c.comment.size) >= 130, "Comment text not long enough")
+    */
+    val comment = Comment(None,c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)
+    val jsoncomment = write(comment)
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment"),jsoncomment))
+
+    fresponse.flatMap {
+      response => {
+        println(response.entity.asString)
+        if (response.status.isSuccess) {
+          val json = parse(response.entity.asString)
+          val id = (json \"_id").extract[String]
+
+          future(Comment(Some(id),c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId))
+        } else {
+          //TODO log l'erreur
+          Future.failed(new ElasticSearchClientException("createComment error"))
+        }
+      }
+    }
+  }
+
+  def updateComment(store:String, productId:Long,commentId:String,useful : Boolean) : Future[Boolean] = {
+
+    //TODO optimistic concurrency
+    val query = s"""{"script":"if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}","params":{"useful":$useful}}"""
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/"+commentId+"/_update"),query))
+
+    fresponse.flatMap {
+      response => {
+        println(response.entity.asString)
+        if (response.status.isSuccess) {
+          future(useful)
+        } else {
+          //TODO log l'erreur
+          Future.failed(new ElasticSearchClientException("updateComment error"))
+        }
+      }
+    }
+  }
+
+  def getComments(store:String, req:CommentGetRequest) : Future[Paging[Comment]] = {
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val size = req.maxItemPerPage.getOrElse(100)
+    val from = req.pageOffset.getOrElse(0) * size
+
+    val query = s"""{
+      "sort": {"created": "desc"},"from": $from,"size": $size
+    }"""
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/_search"),query))
+    fresponse.flatMap {
+      response => {
+        println(response.entity.asString)
+        if (response.status.isSuccess) {
+          val json = parse(response.entity.asString)
+          //TODO copy _id in  _source block
+          val results = (json \"hits" \ "hits" \ "_source").extract[List[Comment]]
+          val pagedResults = Utils.addPaging[Comment](json,results,req)
+          //val pagedResults = Utils.addPaging[Comment](json,req)
+          future(pagedResults)
+        } else {
+          //TODO log l'erreur
+          Future.failed(new ElasticSearchClientException("getComments error"))
+        }
+      }
+    }
+
+  }
 
   def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
 

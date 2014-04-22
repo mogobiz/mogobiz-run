@@ -12,6 +12,7 @@ import scala.Some
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import org.json4s.{DefaultFormats, Formats}
+import com.mogobiz.vo.CommentGetRequest
 
 /**
  * Created by Christophe on 15/03/14.
@@ -84,7 +85,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
     response must not be null
 
   }
-*/
+
   "add product to history" in {
     val productId = 95
     val sessionId = "47d8952b-6b26-453e-b755-d846a182f227"
@@ -120,5 +121,40 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
 
   }
 
+  "create a comment " in {
+    val userId = ""
+    val pid = 94
+    //TODO create a mock for mogopay query
+    val req = new CommentRequest(userId,"toto",1,"bad product","it failed after 1 week")
+    val res = Await.result(esClient.createComment(store,pid,req), 3 second)
+    println(res)
+    /*
+    {"_index":"mogobiz_comment","_type":"comment","_id":"keyp-SeGSvCNB_6S7lvkAQ","_version":1,"created":true}
+     */
+    true must beTrue
+  }
 
+  "create several comments and get them " in {
+    val userId = ""
+    val pid = 95
+    //TODO create a mock for mogopay query
+    var i = 0
+    for(i <- 1 to 5){
+      val req = new CommentRequest("userId_"+i,"username_"+i,i,"comment ___ "+i,"it failed after "+i+" week")
+      val res = Await.result(esClient.createComment(store,pid,req), 3 second)
+      println(res)
+    }
+    /*
+    {"_index":"mogobiz_comment","_type":"comment","_id":"keyp-SeGSvCNB_6S7lvkAQ","_version":1,"created":true}
+     */
+    true must beTrue
+  }
+*/
+
+  "get comments sorted by date desc" in {
+    val req = new CommentGetRequest(Some(2),Some(0))
+    val res = Await.result(esClient.getComments(store,req), 3 second)
+    println(res)
+    true must beTrue
+  }
 }

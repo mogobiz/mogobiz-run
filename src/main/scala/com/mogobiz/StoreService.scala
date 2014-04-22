@@ -3,6 +3,7 @@ package com.mogobiz
 import com.mogobiz.session.SessionCookieDirectives._
 import com.mogobiz.session.Session
 */
+import com.mogobiz.vo._
 import spray.http.{HttpCookie, DateTime}
 import scala.util.{Success, Failure}
 import akka.actor.Actor
@@ -279,7 +280,7 @@ trait StoreService extends HttpService {
 //        }
         }
       }
-    } ~ productDatesRoute(storeCode,productId.toLong) ~ productTimesRoute(storeCode,productId.toLong)
+    } ~ productDatesRoute(storeCode,productId.toLong) ~ productTimesRoute(storeCode,productId.toLong) ~ commentsRoute(storeCode,productId.toLong)
   }
 
   def productDatesRoute(storeCode:String, productId: Long) = path("dates") {
@@ -339,4 +340,35 @@ trait StoreService extends HttpService {
     }
   }
 
+  def commentsRoute(storeCode:String, productId:Long) = pathPrefix("comments"){
+    respondWithMediaType(`application/json`) {
+      pathEnd{
+        post{
+          entity(as[CommentRequest]){ req =>
+          //TODO check userId in mogopay before inserting
+            onSuccess(esClient.createComment(storeCode, productId,req)){ resp =>
+              complete(resp)
+            }
+          }
+        } ~ get{
+          parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest){ req =>
+            onSuccess(esClient.getComments(storeCode,req)){ comments =>
+              complete(comments)
+            }
+          }
+        }
+      } ~ path(Segment) {
+        id => {
+          put {
+            entity(as[CommentPutRequest]) {
+              req =>
+                onSuccess(esClient.updateComment(storeCode, productId, id, req.note == 1)) { res =>
+                    complete("")
+                }
+            }
+          }
+        }
+      }
+    }
+  }
  }
