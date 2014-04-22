@@ -38,41 +38,41 @@ case class Product(
 
 //class LangParam(lang:String)
 
-class CommonProductParameters(val lang:String,val currencyCode:String,val countryCode:String)
-//,lang:String,currencyCode:String,countryCode:String
+class CommonProductParameters(val lang:String,val currency:Option[String],val country:Option[String])
+//,lang:String,currency:String,country:String
 case class FulltextSearchProductParameters(
-                                            _lang:String,_currencyCode:String,_countryCode:String,
-                                            val query:String) extends CommonProductParameters(_lang,_currencyCode,_countryCode)
+                                            _lang:String,_currency:Option[String],_country:Option[String],
+                                            val query:String) extends CommonProductParameters(_lang,_currency,_country)
 
 case class ProductRequest(
                            maxItemPerPage: Option[Int]
                            , pageOffset: Option[Int]
                            , xtype: Option[String]
-                           , var name: Option[String]
+                           , name: Option[String]
                            , code: Option[String]
                            , categoryId: Option[Int]
                            , brandId: Option[Int]
-                            , path:Option[String]
+                           , path:Option[String]
                            , tagName: Option[String]
                            , priceMin: Option[Long]
                            , priceMax: Option[Long]
                            , orderBy: Option[String]
                            , orderDirection: Option[String]
-                           , featured: Boolean = false
+                           , featured: Option[Boolean] // = false
                            , lang: String
-                           , currencyCode: String
-                           , countryCode: String){
-  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,None,false,lang,currencyCode,countryCode)
+                           , currencyCode: Option[String]
+                           , countryCode: Option[String]){
+  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,None,Some(false),lang,None,None)
 }
 
 case class ProductDetailsRequest(
                                   historize: Boolean// = false
                                   , visitorId: Option[Long]
-                                  , currencyCode: String
-                                  , countryCode: String
+                                  , currency: Option[String]
+                                  , country: Option[String]
                                   , lang: String)
 
-case class ProductDatesRequest(date:Option[String],startDate: Option[String], endDate: Option[String])
+case class ProductDatesRequest(date:Option[String])
 
 case class ProductTimesRequest(date: Option[String])
 
@@ -88,19 +88,7 @@ case class IntraDayPeriod(override val startDate:Date,override val endDate:Date,
                            val weekday7:Boolean
                            ) extends DatePeriod(startDate,endDate)
 
-case class AddToVisitorHistoryRequest(
-                                       productId: Int
-                                       , visitorId: Int
-                                       , storeCode: String
-                                       , currencyCode: String
-                                       , countryCode: String
-                                       , lang: String)
 
-
-case class VisitorHistoryRequest(
-                                  //sessionId: Option[String],
-                                  currencyCode: String
-                                  , countryCode: String
-                                  , lang: String)
+case class VisitorHistoryRequest(currency: Option[String], country: Option[String], lang: String)
 
 

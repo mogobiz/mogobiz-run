@@ -91,7 +91,7 @@ trait StoreService extends HttpService {
    * @param storeCode
    * @return
    */
-  def brandsRoutes(storeCode:String) = path("brands") {
+  def   brandsRoutes(storeCode:String) = path("brands") {
     respondWithMediaType(`application/json`) {
       get {
         parameters('hidden?false,'lang?"_all").as(BrandRequest) { brandRequest =>
@@ -147,7 +147,7 @@ trait StoreService extends HttpService {
   }
 
   /**
-   * http://localhost:8082/store/mogobiz/product/38?currencyCode=EUR&countryCode=FR&lang=FR
+   * http://localhost:8082/store/mogobiz/product/38?currency=EUR&country=FR&lang=FR
    * @param storeCode
    * @return
    */
@@ -193,12 +193,36 @@ trait StoreService extends HttpService {
       respondWithMediaType(`application/json`) {
         //TODO gestion des erreurs si lang,country,currency présent mais null ou vide
         //FIXME currency=eur error
-        parameters('maxItemPerPage.?, 'pageOffset.?, 'xtype.?, 'name.?, 'code.?, 'categoryId.?, 'brandId.?,'path.?, 'tagName.?, 'priceMin.?, 'priceMax.?, 'orderBy.?, 'orderDirection.?,'featured.?, 'lang?"_all", 'currency, 'country).as(ProductRequest) {
+
+        parameters(
+          'maxItemPerPage.?
+          , 'pageOffset.?
+          , 'xtype.?
+          , 'name.?
+          , 'code.?
+          , 'categoryId.?
+          , 'brandId.?
+          , 'path.?
+          , 'tagName.?
+          , 'priceMin.?
+          , 'priceMax.?
+          , 'orderBy.?
+          , 'orderDirection.?
+          , 'featured.?
+          , 'lang?"_all"
+          , 'currency.?
+          , 'country.?).as(ProductRequest) {
+
           productRequest =>
-            onSuccess(esClient.queryProductsByCriteria(storeCode,productRequest)){ products =>
-              complete(products)
+
+            val f = esClient.queryProductsByCriteria(storeCode, productRequest)
+
+            onComplete(f) {
+              case Success(products) => complete(products)
+              case Failure(t) => complete("error", "error") //TODO change that
             }
         }
+
       }
     } ~ findRoute(storeCode) ~
       productDetailsRoute(storeCode,uuid)
@@ -211,7 +235,7 @@ trait StoreService extends HttpService {
    */
   def findRoute(storeCode:String) = path("find") {
     respondWithMediaType(`application/json`) {
-        parameters('lang?"_all",'currency,'country, 'query).as(FulltextSearchProductParameters) {
+        parameters('lang?"_all",'currency.?,'country.?, 'query).as(FulltextSearchProductParameters) {
           req =>
             onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
               complete(products)
@@ -233,8 +257,8 @@ trait StoreService extends HttpService {
         parameters(
           'historize ? false
           , 'visitorId.?
-          , 'currency
-          , 'country
+          , 'currency.?
+          , 'country.?
           , 'lang?"_all").as(ProductDetailsRequest) {
           pdr => /*cookie("mogobiz_uuid") { cookie =>
             val uuid = cookie.content*/
@@ -261,7 +285,7 @@ trait StoreService extends HttpService {
   def productDatesRoute(storeCode:String, productId: Long) = path("dates") {
     respondWithMediaType(`application/json`) {
       get{
-        parameters('date.?,'startDate.?, 'endDate.?).as(ProductDatesRequest) {
+        parameters('date.?).as(ProductDatesRequest) {
           pdr =>
               onSuccess(esClient.queryProductDates(storeCode,productId.toLong, pdr)){ response =>
                 complete(response)
@@ -289,21 +313,25 @@ trait StoreService extends HttpService {
   def visitedProductsRoute(storeCode:String,uuid:String) = path("history") {
     respondWithMediaType(`application/json`) {
       get {
-        parameters(
-          'currencyCode
-          , 'countryCode
-          , 'lang ? "_all").as(VisitorHistoryRequest) {
+        parameters('currency.?, 'country.?, 'lang ? "_all").as(VisitorHistoryRequest) {
           req =>
             /*cookie("mogobiz_uuid") { cookie =>
               val uuid = cookie.content
               */
             println(s"visitedProductsRoute with mogobiz_uuid=${uuid}")
-                onSuccess(esClient.getProductHistory(storeCode,uuid)){ ids =>
+                onComplete(esClient.getProductHistory(storeCode,uuid)){
+                  case Success(ids) => {
+                    if(ids.isEmpty){
+                      complete(List()) //return empty list
+                    }else{
+                      onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
+                        println("visitedProductsRoute returned results",products.length)
+                        complete(products)
+                      }
 
-                  onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currencyCode,req.countryCode,req.lang))){ products =>
-                    println("visitedProductsRoute returned results",products)
-                    complete(products)
+                    }
                   }
+                  case Failure(t) => complete(t)
                 }
 //            }
         }

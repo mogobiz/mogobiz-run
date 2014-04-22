@@ -12,11 +12,12 @@ import spray.util._
 import org.json4s.native.JsonMethods._
 import org.json4s._
 import org.json4s.JsonDSL._
-import java.util.{Date, Calendar, Locale}
+import java.util._
 import java.text.{SimpleDateFormat, NumberFormat}
 import scala.util.Failure
 import scala.Some
 import spray.http.HttpResponse
+import scala.List
 import scala.util.Success
 import spray.http.HttpRequest
 
@@ -53,6 +54,17 @@ class ElasticSearchClient /*extends Actor*/ {
 
   private def route(url: String): String = ES_FULL_URL + url
 
+  private def historyIndex(store:String):String = {
+    return store+"_history"
+  }
+
+  private def cartIndex(store:String):String = {
+    return store+"_cart"
+  }
+
+  private def commentIndex(store:String):String = {
+    return store+"_comment"
+  }
 
   /**
    *
@@ -146,8 +158,7 @@ class ElasticSearchClient /*extends Actor*/ {
         | {
         | "_source": {
         |    "exclude": [
-        |       "imported",
-        |      "hide"
+        |       "imported"
         |      $lang
         |    ]
         |  }$hiddenFilter
@@ -296,6 +307,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
 
   def queryProductsByCriteria(store: String, req: ProductRequest): Future[JValue] = {
+    //println("queryProductsByCriteria")
     val fieldsToExclude = (getAllExcludedLanguagesExceptAsList(req.lang) ::: fieldsToRemoveForProductSearchRendering).mkString("\"", "\",\"", "\"")
     //TODO propose a way to request include / exclude fields         "include":["id","price","taxRate"],
 
@@ -337,7 +349,7 @@ class ElasticSearchClient /*extends Actor*/ {
     val brandFilter = createTermFilterWithNum("brand.id", req.brandId)
     val tagsFilter = createTermFilterWithStr("tags.name", req.tagName)
     val priceFilter = createRangeFilter("price", req.priceMin, req.priceMax)
-    val featuredFilter = createFeaturedFilter(req.featured)
+    val featuredFilter = createFeaturedFilter(req.featured.getOrElse(false))
 
     val filters = (codeFilter :: categoryFilter :: xtypeFilter :: pathFilter :: brandFilter :: tagsFilter :: priceFilter :: featuredFilter :: Nil).filter {
       s => !s.isEmpty
@@ -396,14 +408,8 @@ class ElasticSearchClient /*extends Actor*/ {
             p => renderProduct(p, req.countryCode, req.currencyCode, req.lang, currency, fieldsToRemoveForProductSearchRendering)
           }
 
-          /* + tard
-          response onSuccess {
-            case response => {
-
-            }
-          }*/
-          //          println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-          //          println(pretty(render(products)))
+//          println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+//          println(pretty(render(products)))
           future(products)
         } else {
           //TODO log l'erreur
@@ -418,56 +424,59 @@ class ElasticSearchClient /*extends Actor*/ {
 
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
 
-  def renderProduct(product: JsonAST.JValue, countryCode: String, currencyCode: String, lang: String, cur: Currency, fieldsToRemove: List[String]): JsonAST.JValue = {
-    implicit def json4sFormats: Formats = DefaultFormats
-//    println(product)
-    val jprice = (product \ "price")
-    /*
-    println(jprice)
-    val price = jprice match {
-      case JInt(v) =>  v.longValue()
-      case JLong(v) => v
-    }*/
-    val price = jprice.extract[Int].toLong //FIXME ???
+  def renderProduct(product: JsonAST.JValue, country: Option[String], currency: Option[String], lang: String, cur: Currency, fieldsToRemove: List[String]): JsonAST.JValue = {
+    if (country.isEmpty || currency.isEmpty) {
+      product
+    } else {
+      implicit def json4sFormats: Formats = DefaultFormats
+      //    println(product)
+      val jprice = (product \ "price")
+      /*
+      println(jprice)
+      val price = jprice match {
+        case JInt(v) =>  v.longValue()
+        case JLong(v) => v
+      }*/
+      val price = jprice.extract[Int].toLong //FIXME ???
 
-    val lrt = for {
-      localTaxRate@JObject(x) <- product \ "taxRate" \ "localTaxRates"
-      if (x contains JField("countryCode", JString(countryCode.toUpperCase()))) //WARNING toUpperCase ??
-      JField("rate", value) <- x} yield value
+      val lrt = for {
+        localTaxRate@JObject(x) <- product \ "taxRate" \ "localTaxRates"
+        if (x contains JField("country", JString(country.get.toUpperCase()))) //WARNING toUpperCase ??
+        JField("rate", value) <- x} yield value
 
-    val taxRate = lrt.headOption match {
-      case Some(JDouble(x)) => x
-      case Some(JInt(x)) => x.toDouble
-      //      case Some(JNothing) => 0.toDouble
-      case _ => 0.toDouble
+      val taxRate = lrt.headOption match {
+        case Some(JDouble(x)) => x
+        case Some(JInt(x)) => x.toDouble
+        //      case Some(JNothing) => 0.toDouble
+        case _ => 0.toDouble
+      }
+
+      val locale = new Locale(lang);
+      val endPrice = price + (price * taxRate / 100d)
+      val formatedPrice = format(price, currency.get, locale, cur.rate)
+      val formatedEndPrice = format(endPrice, currency.get, locale, cur.rate)
+      val additionalFields = (
+        ("localTaxRate" -> taxRate) ~
+          ("endPrice" -> endPrice) ~
+          ("formatedPrice" -> formatedPrice) ~
+          ("formatedEndPrice" -> formatedEndPrice)
+        )
+
+      val renderedProduct = product merge additionalFields
+      //removeFields(renderedProduct,fieldsToRemove)
+      renderedProduct
     }
-
-    val locale = new Locale(lang);
-    val endPrice = price + (price * taxRate / 100d)
-    val formatedPrice = format(price, currencyCode, locale, cur.rate)
-    val formatedEndPrice = format(endPrice, currencyCode, locale, cur.rate)
-    val additionalFields = (
-      ("localTaxRate" -> taxRate) ~
-        ("endPrice" -> endPrice) ~
-        ("formatedPrice" -> formatedPrice) ~
-        ("formatedEndPrice" -> formatedEndPrice)
-      )
-
-    val renderedProduct = product merge additionalFields
-    //removeFields(renderedProduct,fieldsToRemove)
-    renderedProduct
-
     /* calcul prix Groovy
     def localTaxRates = product['taxRate'] ? product['taxRate']['localTaxRates'] as List<Map> : []
     def localTaxRate = localTaxRates?.find { ltr ->
-      ltr['countryCode'] == country && (!state || ltr['stateCode'] == state)
+      ltr['country'] == country && (!state || ltr['stateCode'] == state)
     }
     def taxRate = localTaxRate ? localTaxRate['rate'] : 0f
     def price = product['price'] ?: 0l
     def endPrice = (price as long) + ((price * taxRate / 100f) as long)
     product << ['localTaxRate': taxRate,
-    formatedPrice: format(price as long, currencyCode, locale, rate as double),
-    formatedEndPrice: format(endPrice, currencyCode, locale, rate as double)
+    formatedPrice: format(price as long, currency, locale, rate as double),
+    formatedEndPrice: format(endPrice, currency, locale, rate as double)
     */
   }
 
@@ -487,6 +496,7 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
   private val sdf = new SimpleDateFormat("yyyy-MM-dd") //THH:mm:ssZ
+  private val hours = new SimpleDateFormat("HH:mm")
 
   private def createFeaturedFilter(doFilter: Boolean): String = {
     if (!doFilter) ""
@@ -557,11 +567,6 @@ class ElasticSearchClient /*extends Actor*/ {
    */
   def queryProductById(store: String, id: Long, req: ProductDetailsRequest): Future[JValue] = {
 
-    if (req.historize) {
-      //TODO call addToHistory
-    }
-
-
     val fresponse: Future[HttpResponse] = pipeline(Get(route("/" + store + "/product/" + id)))
     fresponse.flatMap {
       response => {
@@ -572,10 +577,10 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val currencies = Await.result(getCurrencies(store, req.lang), 1 second)
           val currency = currencies.filter {
-            cur => cur.code == req.currencyCode
+            cur => cur.code == req.currency
           }.headOption getOrElse (new Currency(2, 1, "EUR", "euro"))
 
-          val product = renderProduct(subset, req.countryCode, req.currencyCode, req.lang, currency, List())
+          val product = renderProduct(subset, req.country, req.currency, req.lang, currency, List())
 
           future(product)
         } else {
@@ -621,11 +626,11 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val currencies = Await.result(getCurrencies(store, params.lang), 1 second)
           val currency = currencies.filter {
-            cur => cur.code == params.currencyCode
+            cur => cur.code == params.currency
           }.headOption getOrElse (defaultCurrency)
 
           val products = subset.children.map {
-            p => renderProduct(p, params.countryCode, params.currencyCode, params.lang, currency, fieldsToRemoveForProductSearchRendering)
+            p => renderProduct(p, params.country, params.currency, params.lang, currency, fieldsToRemoveForProductSearchRendering)
           }
 
           future(products)
@@ -745,22 +750,53 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val intraDayPeriods = subset \ "intraDayPeriods"
           //TODO test exist or send empty
-          println(pretty(render(intraDayPeriods)))
+          //println(pretty(render(intraDayPeriods)))
           val inPeriods = intraDayPeriods.extract[List[IntraDayPeriod]]
-
           //date or today
           val now = Calendar.getInstance().getTime
           val today = getCalendar(sdf.parse(sdf.format(now)))
           val d = sdf.parse(req.date.getOrElse(sdf.format(now)))
-          var selectedDate = getCalendar(d)
+          val dateToEval = getCalendar(d)
 
-          if (selectedDate.compareTo(today) >= 0) {
+          val day = dateToEval
+          //TODO refacto this part with the one is in isIncluded method
+          val startingHours = inPeriods.filter {
+                //get the matching periods
+            period => {
+              val dow = day.get(Calendar.DAY_OF_WEEK)
+              //println("dow="+dow)
+              //french definication of day of week where MONDAY is = 1
+              //val fr_dow = if (dow == 1) 7 else dow - 1
+              //TODO rework weekday definition !!!
+              //println("fr_dow=" + fr_dow)
+              val included = dow match {
+                case Calendar.MONDAY => period.weekday1
+                case Calendar.TUESDAY => period.weekday2
+                case Calendar.WEDNESDAY => period.weekday3
+                case Calendar.THURSDAY => period.weekday4
+                case Calendar.FRIDAY => period.weekday5
+                case Calendar.SATURDAY => period.weekday6
+                case Calendar.SUNDAY => period.weekday7
+              }
 
-            future(List())
-          }else{
-            //return empty list
-            future(List())
+              //println("included?=" + included)
+              val cond = (included &&
+                day.getTime().compareTo(period.startDate) >= 0 &&
+                day.getTime().compareTo(period.endDate) <= 0)
+              //println("cond=" + cond)
+              cond
+            }
+          }.map{
+                //get the start date hours value only
+            period => {
+              // the parsed date returned by ES is parsed according to the serveur Timezone and so it returns 16 (parsed value) instead of 15 (ES value)
+              // because the my current timezone is GMT+1
+              // but what it must return is the value from ES
+              hours.format(getFixedDate(period.startDate).getTime)
+            }
           }
+
+          future(startingHours)
         } else {
           //TODO log l'erreur
           future(parse(response.entity.asString))
@@ -768,55 +804,38 @@ class ElasticSearchClient /*extends Actor*/ {
         }
       }
     }
-
-    /* code Groovy
-    calendarType: DATE_TIME
-    List<String> results = []
-
-    if(productId && date){
-
-      def today = IperUtil.today()
-
-      Calendar startCalendar = IperUtil.parseCalendar(date, IperConstant.DATE_FORMAT_WITHOUT_HOUR)
-
-      if (startCalendar.compareTo(today) >= 0) {
-        def query = [:]
-        def filters = []
-
-        def included = ['intraDayPeriods']
-
-        filters << [term:['id':productId]]
-        filters << [term:[calendarType:ProductCalendar.DATE_TIME.name()]]
-
-        query << [query:[filtered:[filter:[and:filters]]]]
-
-        def hits  = search(store, 'product', query, included)?.hits
-
-        results.addAll(hits.size() > 0 ? hits.get(0)['intraDayPeriods'].collect { intraDayPeriod ->
-          def period = new DayPeriod(
-            startDate: new SimpleDateFormat('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'').parse(intraDayPeriod['startDate'] as String),
-          endDate: new SimpleDateFormat('yyyy-MM-dd\'T\'HH:mm:ss\'Z\'').parse(intraDayPeriod['endDate'] as String),
-          weekday1: intraDayPeriod['weekday1'] as boolean,
-          weekday2: intraDayPeriod['weekday2'] as boolean,
-          weekday3: intraDayPeriod['weekday3'] as boolean,
-          weekday4: intraDayPeriod['weekday4'] as boolean,
-          weekday5: intraDayPeriod['weekday5'] as boolean,
-          weekday6: intraDayPeriod['weekday6'] as boolean,
-          weekday7: intraDayPeriod['weekday7'] as boolean
-          )
-          def c = Calendar.getInstance()
-          c.setTime(period.startDate)
-          isDateIncluded([period], startCalendar) ? RenderUtil.asMapForJSON(c, IperConstant.TIME_FORMAT) : null
-        }.flatten() as List<String> : [])
-      }
-    }*/
-
   }
 
   private def getCalendar(d: Date): Calendar = {
     val cal = Calendar.getInstance();
     cal.setTime(d);
     cal;
+  }
+
+  /**
+   * Fix the date according to the timezone
+   * @param d
+   * @return
+   */
+  private def getFixedDate(d: Date):Calendar = {
+    val fixeddate = Calendar.getInstance();
+    fixeddate.setTime(new Date(d.getTime - fixeddate.getTimeZone.getRawOffset))
+    fixeddate
+  }
+
+  /*http://tutorials.jenkov.com/java-date-time/java-util-timezone.html
+  *http://stackoverflow.com/questions/19330564/scala-how-to-customize-date-format-using-simpledateformat-using-json4s
+  *
+  */
+  /**
+   * Fix the date according to the timezone
+   * @param cal
+   * @return
+   */
+  private def getFixedDate(cal: Calendar):Calendar = {
+    val fixeddate = Calendar.getInstance();
+    fixeddate.setTime(new Date(cal.getTime.getTime - fixeddate.getTimeZone.getRawOffset))
+    fixeddate
   }
 
   private def isDateIncluded(periods: List[IntraDayPeriod], day: Calendar): Boolean = {
@@ -858,16 +877,10 @@ class ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   def addToHistory(store:String,productId:Long,sessionId:String) : Future[Boolean] = {
-    /*
-    //req de creation
-    val query = s"""{"productIds":[$productId]}"""
-    val fresponse: Future[HttpResponse] = pipeline(Put(route("/" + store + "/history/"+sessionId), query))
-    */
 
-    //TODO check and refuse if productId already exists
-    val query = s"""{"script":"ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
+    val query = s"""{"script":"ctx._source.productIds.contains(pid) ? (ctx.op = \\"none\\") : ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
 
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/history/"+sessionId+"/_update"), query))
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + historyIndex(store) + "/history/"+sessionId+"/_update"), query))
 
     fresponse.flatMap {
       response => {
@@ -933,7 +946,7 @@ class ElasticSearchClient /*extends Actor*/ {
   def getProductHistory(store:String, sessionId:String) : Future[List[Long]] = {
     implicit def json4sFormats: Formats = DefaultFormats
 
-    val fresponse: Future[HttpResponse] = pipeline(Get(route("/" + store + "/history/"+sessionId)))
+    val fresponse: Future[HttpResponse] = pipeline(Get(route("/" + historyIndex(store) + "/history/"+sessionId)))
     fresponse.flatMap {
       response => {
         if (response.status.isSuccess) {
@@ -942,9 +955,8 @@ class ElasticSearchClient /*extends Actor*/ {
           val productIds = subset \ "productIds"
           future(productIds.extract[List[Long]])
         } else {
-          //TODO log l'erreur
-          //future(parse(response.entity.asString))
-          throw new ElasticSearchClientException(response.entity.asString)
+          //no sessionId available, EmptyList products returned
+          future(List())
         }
       }
     }
