@@ -37,7 +37,8 @@ trait StoreService extends HttpService {
           currenciesRoutes(storeCode) ~
           categoriesRoutes(storeCode) ~
           productsRoutes(storeCode,uuid) ~
-          visitedProductsRoute(storeCode,uuid)
+          visitedProductsRoute(storeCode,uuid) ~
+          preferencesRoute(storeCode, uuid)
           //testCookie(storeCode)
       }
     }
@@ -334,6 +335,30 @@ trait StoreService extends HttpService {
                   case Failure(t) => complete(t)
                 }
 //            }
+        }
+      }
+    }
+  }
+
+  /**
+   * Path store/(store code)/prefs
+   * @param store
+   * @param uuid
+   * @return
+   */
+  def preferencesRoute(store:String,uuid:String) = path("prefs") {
+    respondWithMediaType(`application/json`) {
+      post {
+        parameters('productsNumber ? 10).as(Prefs) { prefs =>
+          onComplete(esClient.savePreferences(store, uuid, prefs)) {
+            case Success(result) => complete(Map("code" -> true))
+            case Failure(result) => complete(Map("code" -> false))
+          }
+        }
+      } ~
+      get {
+        onComplete(esClient.getPreferences(store, uuid)) { prefs =>
+          complete(prefs)
         }
       }
     }

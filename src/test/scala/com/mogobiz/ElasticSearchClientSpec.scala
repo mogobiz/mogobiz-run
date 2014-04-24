@@ -23,6 +23,19 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
 
   implicit def json4sFormats: Formats = DefaultFormats
 
+  "save preferences" in {
+    var prefs = Prefs(5)
+    val res = Await.result(esClient.savePreferences(store, "UUID_TEST", prefs), 3 second)
+    res must beTrue
+  }
+
+  "get preferences" in {
+    var prefs = Prefs(5)
+    Await.result(esClient.savePreferences(store, "UUID_TEST", prefs), 3 second)
+    val actuelPrefs = Await.result(esClient.getPreferences(store, "UUID_TEST"), 3 second)
+    actuelPrefs must not beNull
+  }
+
   /*{
  "listAllLanguages list all languages" in {
    val langs = esClient.listAllLanguages()
@@ -119,6 +132,4 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
     extractedValues.tail.head mustEqual "21:00"
 
   }
-
-
 }

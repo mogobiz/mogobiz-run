@@ -16,10 +16,9 @@ import java.util._
 import java.text.{SimpleDateFormat, NumberFormat}
 import scala.util.Failure
 import scala.Some
-import spray.http.HttpResponse
+import spray.http.{HttpResponse, HttpRequest}
 import scala.List
 import scala.util.Success
-import spray.http.HttpRequest
 
 /**
  * Created by Christophe on 18/02/14.
@@ -58,12 +57,63 @@ class ElasticSearchClient /*extends Actor*/ {
     return store+"_history"
   }
 
+  /**
+   * Returns the ES index for store preferences user
+   * @param store
+   * @return
+   */
+  private def prefsIndex(store:String):String = {
+    return store+"_prefs"
+  }
+
   private def cartIndex(store:String):String = {
     return store+"_cart"
   }
 
   private def commentIndex(store:String):String = {
     return store+"_comment"
+  }
+
+  /**
+   * Saves the preferences user
+   * @param store : store to use
+   * @param uuid : uuid of the user
+   * @param prefs : preferences of the user
+   * @return
+   */
+  def savePreferences(store: String, uuid: String, prefs: Prefs): Future[Boolean] = {
+    val query = s"""
+            | {
+            |   "productsNumber": ${prefs.productsNumber}
+            | }
+            """.stripMargin
+
+    val response: Future[HttpResponse] = pipeline(Put(route("/" + prefsIndex(store) + "/prefs/" + uuid), query))
+    response.flatMap { response => {
+        future(response.status.isSuccess)
+      }
+    }
+  }
+
+  def getPreferences(store: String, uuid: String): Future[Prefs] = {
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val response : Future[HttpResponse] = pipeline(Get(route("/" + prefsIndex(store) + "/prefs/" + uuid)))
+    response.flatMap {
+      response => {
+        if (response.status.isSuccess) {
+          val json = parse(response.entity.asString)
+          val subset = json \ "_source"
+          val prefs : Future[JValue] = future(subset)
+          prefs.flatMap { p =>
+            future(p.extract[Prefs])
+          }
+        }
+        else {
+          future(Prefs(10))
+        }
+      }
+    }
   }
 
   /**
