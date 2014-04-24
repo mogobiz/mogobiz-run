@@ -20,7 +20,7 @@ import spray.http.HttpResponse
 import scala.List
 import scala.util.Success
 import spray.http.HttpRequest
-import com.mogobiz.vo.{CommentRequest, Comment, CommentGetRequest, Paging}
+import com.mogobiz.vo.{CommentGetRequest, Paging}
 
 /**
  * Created by Christophe on 18/02/14.
