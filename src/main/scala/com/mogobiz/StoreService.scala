@@ -352,6 +352,32 @@ trait StoreService extends HttpService {
           }
         } ~ get{
           parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest){ req =>
+            //TODO à finir
+            onSuccess(esClient.getComments(storeCode)){ comments =>
+              complete(comments)
+            }
+          }
+        }
+      } ~ path(Segment){ id => {put{complete("")}}
+
+      }
+    }
+  }
+
+  case class CommentGetRequest(override val maxItemPerPage:Option[Int],override val pageOffset:Option[Int] ) extends PagingParams(maxItemPerPage,pageOffset)
+
+  def commentsRoute(storeCode:String, productId:Long) = pathPrefix("comments"){
+    respondWithMediaType(`application/json`) {
+      pathEnd{
+        post{
+          entity(as[CommentRequest]){ req =>
+          //TODO check userId in mogopay before inserting
+            onSuccess(esClient.createComment(storeCode, productId,req)){ resp =>
+              complete(resp)
+            }
+          }
+        } ~ get{
+          parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest){ req =>
             onSuccess(esClient.getComments(storeCode,req)){ comments =>
               complete(comments)
             }
