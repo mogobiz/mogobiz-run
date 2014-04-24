@@ -4,12 +4,12 @@ import org.json4s.JsonDSL._
 
 val tva="TVA"
 val product = (
-    ("id" ->1 ) ~
+      ("id" ->1 ) ~
       ("price" -> 1000000) ~
       ("taxRate"-> (
         ("id"->1)~("name"->tva)~("localTaxRates"-> (List(
           ("id"->10)~("rate"->19.6)~("country"->"FR")~("stateCode"->null),
-          ("id"->11)~("rate"->17)~("country"->"EN")~("stateCode"->null),
+          ("id"->11)~("rate"->17)~("country"->"FR")~("stateCode"->null),
           ("id"->12)~("rate"->(None:Option[Double]))~("country"->"ES")~("stateCode"->null)
         )))
         ))
@@ -43,3 +43,60 @@ val rate = lrt.headOption match {
 }
 //ips.headOption
 //rate <- localTaxRate \ "rate"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
