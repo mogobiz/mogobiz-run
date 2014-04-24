@@ -159,7 +159,6 @@ class ElasticSearchClient /*extends Actor*/ {
         | "_source": {
         |    "exclude": [
         |      "imported",
-        |      "hide"
         |      $lang
         |    ]
         |  }$hiddenFilter
