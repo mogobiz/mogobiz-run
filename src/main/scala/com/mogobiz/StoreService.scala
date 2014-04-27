@@ -4,7 +4,7 @@ import com.mogobiz.session.SessionCookieDirectives._
 import com.mogobiz.session.Session
 */
 import com.mogobiz.vo._
-import spray.http.{HttpCookie, DateTime}
+import spray.http.{StatusCodes, HttpCookie, DateTime}
 import scala.util.{Success, Failure}
 import akka.actor.Actor
 import spray.routing.HttpService
@@ -346,8 +346,12 @@ trait StoreService extends HttpService {
         post{
           entity(as[CommentRequest]){ req =>
           //TODO check userId in mogopay before inserting
-            onSuccess(esClient.createComment(storeCode, productId,req)){ resp =>
-              complete(resp)
+            onComplete(esClient.createComment(storeCode, productId,req)){ //resp =>
+              case Success(resp) => complete(resp)
+              case Failure(t) => t match {
+                case CommentException(code,message) => complete(StatusCodes.BadRequest,(MogoError(code,message)))
+                case _ => complete(StatusCodes.InternalServerError,t.getMessage)
+              }
             }
           }
         } ~ get{
