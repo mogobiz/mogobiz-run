@@ -271,6 +271,15 @@ class ElasticSearchClient /*extends Actor*/ {
     langsTokens.mkString("\"", "\",\"", "\"")
   }
 
+  def getHighlightedFields(field: String): String = {
+    val langs = listAllLanguages()
+    val langsTokens = langs.flatMap {
+      l => l + "." + field :: Nil
+    }
+
+    langsTokens.mkString("\"", "\": {}, \"", "\": {}")
+  }
+
   def queryCategories(store: String, qr: CategoryRequest): Future[HttpResponse] = {
 
     //"name","description","keywords",
@@ -610,68 +619,102 @@ class ElasticSearchClient /*extends Actor*/ {
    */
   def queryProductsByFulltextCriteria(store: String, params: FulltextSearchProductParameters): Future[JValue] = {
 
-    //"skus", "features", "resources", "datePeriods", "intraDayPeriods","imported",
-    var tplquery = (includedFields: String, text: String) => s"""
-      {
-        "_source": {
-          "include": [
-           "id",
-           "name",
-           "path",
-           $includedFields
-          ]
-        },
-        "query": {
-          "query_string": {
-            "query": "$text"
-          }
-        }
-      }""".stripMargin
-
-
-    val lang = if ("_all".equals(params.lang)) getIncludedFields("name") else "\"" + params.lang + ".name\""
-    val query = tplquery(lang, params.query)
-    //println(query)
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product,category,brand/_search"), query))
-    fresponse.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-
-          val json = parse(response.entity.asString)
-          val subset = json \ "hits" \ "hits"
-
-          val rawResult = for {
-                             JObject(result) <- subset.children.children
-                             JField("_type", JString(_type)) <- result
-                             JField("_source", JObject(_source)) <- result
-          } yield (_type -> _source)
-
-          // si on en aura besoin
-          /*
-          val currencies = Await.result(getCurrencies(store, params.lang), 1 second)
-          val currency = currencies.filter {
-            cur => cur.code == params.currency
-          }.headOption getOrElse (defaultCurrency)
-                    rawResult.toMap.map {
-                      case (_cat, v) => {
-                        if (_cat == "product") (_cat -> renderProduct(v, params.country, params.currency, params.lang, currency, fieldsToRemoveForProductSearchRendering))
-                        else (_cat -> v)
-                      }
-                    }*/
-
-          val result = rawResult.groupBy(_._1).map {
-            case (_cat, v) => (_cat, v.map(_._2))
-          }
-          //println(compact(render(result)))
-          future(result)
-
+    val includedFields = if (params.highlight) {
+      ""
+    }
+    else {
+      ", \"name\", " + {
+        if ("_all".equals(params.lang)) {
+          getIncludedFields("name")
         } else {
-          //TODO log l'erreur
-          future(parse(response.entity.asString))
-          //throw new ElasticSearchClientException(resp.status.reason)
+          "\"" + params.lang + ".name\""
         }
       }
     }
+
+    val source = s"""
+        "_source": {
+          "include": [
+           "id"$includedFields
+          ]
+        }
+      """.stripMargin
+
+    val textQuery = {
+      val text = params.query
+      val included = getIncludedFields("name")
+      s"""
+       "query": {
+          "query_string": {
+            "fields": [
+              "name",
+              $included
+            ],
+            "query": "$text"
+          }
+       }
+      """.stripMargin
+    }
+
+    val highlightedFields = if (params.highlight) if ("_all".equals(params.lang)) {
+      getHighlightedFields("name")
+    } else {
+      "\"" + params.lang + ".name\" : {}"
+    }
+
+    val highlightConf = if (params.highlight) {
+      s"""
+        "highlight": {
+          "fields": {
+            "name": {},
+            $highlightedFields
+          }
+        }
+      """.stripMargin
+    } else ""
+
+    val query = List(source, textQuery, highlightConf).filter {
+      str => !str.isEmpty
+    }.mkString("{", ",", "}")
+
+    def httpResponseToFuture(response: HttpResponse, withHightLight: Boolean): Future[JValue] = {
+      if (response.status.isSuccess) {
+
+        val json = parse(response.entity.asString)
+        val subset = json \ "hits" \ "hits"
+
+        val rawResult = if (withHightLight) {
+          for {
+            JObject(result) <- subset.children.children
+            JField("_type", JString(_type)) <- result
+            JField("_source", JObject(_source)) <- result
+            JField("highlight", JObject(highlight)) <- result
+          } yield (_type -> (_source ::: highlight))
+        } else {
+          for {
+            JObject(result) <- subset.children.children
+            JField("_type", JString(_type)) <- result
+            JField("_source", JObject(_source)) <- result
+          } yield (_type -> _source)
+        }
+
+        val result = rawResult.groupBy(_._1).map {
+          case (_cat, v) => (_cat, v.map(_._2))
+        }
+        println(compact(render(result)))
+        future(result)
+
+      } else {
+        //TODO log l'erreur
+        future(parse(response.entity.asString))
+        //throw new ElasticSearchClientException(resp.status.reason)
+      }
+    }
+
+    println(query)
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product,category,brand/_search"), query))
+    fresponse.flatMap (response => httpResponseToFuture(response,params.highlight))
+
   }
 
   /**
