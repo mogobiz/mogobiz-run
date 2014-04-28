@@ -1,6 +1,6 @@
 package com.mogobiz
 
-import org.specs2.mutable.Specification
+import org.specs2.mutable._
 import spray.testkit.Specs2RouteTest
 
 /**
@@ -11,6 +11,18 @@ class StoreControllerSpec extends Specification with Specs2RouteTest with StoreS
   def actorRefFactory = system
 
   val store = "mogobiz"
+
+  "save preferences" in {
+    Post("/store/" + store + "/prefs?productsNumber=10") ~> storeRoutesWithCookie ~> check {
+      responseAs[String] must contain("{\"code\":true}")
+    }
+  }
+
+  "get preferences" in {
+    Get("/store/" + store + "/prefs") ~> storeRoutesWithCookie ~> check {
+      responseAs[String] must contain("productsNumber")
+    }
+  }
 
 /*
   "return list of lang codes" in {

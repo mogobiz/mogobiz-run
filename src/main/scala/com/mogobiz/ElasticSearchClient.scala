@@ -16,10 +16,11 @@ import java.util._
 import java.text.{SimpleDateFormat, NumberFormat}
 import scala.util.Failure
 import scala.Some
-import spray.http.HttpResponse
+import spray.http.{HttpResponse, HttpRequest}
 import scala.List
 import scala.util.Success
 import spray.http.HttpRequest
+import com.mogobiz.vo.{Comment,CommentRequest,CommentGetRequest, Paging}
 
 /**
  * Created by Christophe on 18/02/14.
@@ -58,12 +59,63 @@ class ElasticSearchClient /*extends Actor*/ {
     return store+"_history"
   }
 
+  /**
+   * Returns the ES index for store preferences user
+   * @param store
+   * @return
+   */
+  private def prefsIndex(store:String):String = {
+    return store+"_prefs"
+  }
+
   private def cartIndex(store:String):String = {
     return store+"_cart"
   }
 
   private def commentIndex(store:String):String = {
     return store+"_comment"
+  }
+
+  /**
+   * Saves the preferences user
+   * @param store : store to use
+   * @param uuid : uuid of the user
+   * @param prefs : preferences of the user
+   * @return
+   */
+  def savePreferences(store: String, uuid: String, prefs: Prefs): Future[Boolean] = {
+    val query = s"""
+            | {
+            |   "productsNumber": ${prefs.productsNumber}
+            | }
+            """.stripMargin
+
+    val response: Future[HttpResponse] = pipeline(Put(route("/" + prefsIndex(store) + "/prefs/" + uuid), query))
+    response.flatMap { response => {
+        future(response.status.isSuccess)
+      }
+    }
+  }
+
+  def getPreferences(store: String, uuid: String): Future[Prefs] = {
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val response : Future[HttpResponse] = pipeline(Get(route("/" + prefsIndex(store) + "/prefs/" + uuid)))
+    response.flatMap {
+      response => {
+        if (response.status.isSuccess) {
+          val json = parse(response.entity.asString)
+          val subset = json \ "_source"
+          val prefs : Future[JValue] = future(subset)
+          prefs.flatMap { p =>
+            future(p.extract[Prefs])
+          }
+        }
+        else {
+          future(Prefs(10))
+        }
+      }
+    }
   }
 
   /**
@@ -124,7 +176,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
     val plang = if (lang == "_all") "*" else lang
     val query = template(plang)
-    println(query)
+    //println(query)
     val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/rate/_search"), query))
     response.flatMap {
       response => {
@@ -158,7 +210,7 @@ class ElasticSearchClient /*extends Actor*/ {
         | {
         | "_source": {
         |    "exclude": [
-        |       "imported"
+        |      "imported",
         |      $lang
         |    ]
         |  }$hiddenFilter
@@ -238,7 +290,8 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
   def getAllExcludedLanguagesExcept(langRequested: String): List[String] = {
-    listAllLanguages().filter {
+    if (langRequested.isEmpty) listAllLanguages()
+    else listAllLanguages().filter {
       lang => lang != langRequested
     }
   }
@@ -256,6 +309,15 @@ class ElasticSearchClient /*extends Actor*/ {
     val langs = getAllExcludedLanguagesExcept(lang)
     val langsTokens = langs.flatMap {
       l => l :: "*." + l :: Nil
+    } //map{ l => "*."+l}
+
+    langsTokens.mkString("\"", "\",\"", "\"")
+  }
+
+  def getIncludedFields(field: String): String = {
+    val langs = listAllLanguages()
+    val langsTokens = langs.flatMap {
+      l => l + "." + field :: Nil
     } //map{ l => "*."+l}
 
     langsTokens.mkString("\"", "\",\"", "\"")
@@ -601,10 +663,15 @@ class ElasticSearchClient /*extends Actor*/ {
   def queryProductsByFulltextCriteria(store: String, params: FulltextSearchProductParameters): Future[JValue] = {
 
     //"skus", "features", "resources", "datePeriods", "intraDayPeriods","imported",
-    var tplquery = (excludedFields: String, text: String) => s"""
+    var tplquery = (includedFields: String, text: String) => s"""
       {
         "_source": {
-          "exclude": [$excludedFields]
+          "include": [
+           "id",
+           "name",
+           "path",
+           $includedFields
+          ]
         },
         "query": {
           "query_string": {
@@ -614,26 +681,42 @@ class ElasticSearchClient /*extends Actor*/ {
       }""".stripMargin
 
 
-    val fields = (getAllExcludedLanguagesExceptAsList(params.lang) ::: fieldsToRemoveForProductSearchRendering).mkString("\"", "\",\"", "\"")
-    val query = tplquery(fields, params.query)
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product/_search"), query))
+    val lang = if ("_all".equals(params.lang)) getIncludedFields("name") else "\"" + params.lang + ".name\""
+    val query = tplquery(lang, params.query)
+    //println(query)
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product,category,brand/_search"), query))
     fresponse.flatMap {
       response => {
         if (response.status.isSuccess) {
 
           val json = parse(response.entity.asString)
-          val subset = json \ "hits" \ "hits" \ "_source"
+          val subset = json \ "hits" \ "hits"
 
+          val rawResult = for {
+                             JObject(result) <- subset.children.children
+                             JField("_type", JString(_type)) <- result
+                             JField("_source", JObject(_source)) <- result
+          } yield (_type -> _source)
+
+          // si on en aura besoin
+          /*
           val currencies = Await.result(getCurrencies(store, params.lang), 1 second)
           val currency = currencies.filter {
             cur => cur.code == params.currency
           }.headOption getOrElse (defaultCurrency)
+                    rawResult.toMap.map {
+                      case (_cat, v) => {
+                        if (_cat == "product") (_cat -> renderProduct(v, params.country, params.currency, params.lang, currency, fieldsToRemoveForProductSearchRendering))
+                        else (_cat -> v)
+                      }
+                    }*/
 
-          val products = subset.children.map {
-            p => renderProduct(p, params.country, params.currency, params.lang, currency, fieldsToRemoveForProductSearchRendering)
+          val result = rawResult.groupBy(_._1).map {
+            case (_cat, v) => (_cat, v.map(_._2))
           }
+          //println(compact(render(result)))
+          future(result)
 
-          future(products)
         } else {
           //TODO log l'erreur
           future(parse(response.entity.asString))
@@ -903,12 +986,14 @@ class ElasticSearchClient /*extends Actor*/ {
    * @param req
    * @return
    */
-  def getProducts(store:String, ids:List[Long],req:ProductDetailsRequest) : Future[List[JValue]] = {
+  def getProducts(store: String, ids: List[Long], req: ProductDetailsRequest): Future[List[JValue]] = {
     implicit def json4sFormats: Formats = DefaultFormats
+
+    //TODO replace with _mget op http://www.elasticsearch.org/guide/en/elasticsearch/guide/current/_retrieving_multiple_documents.html
 
     val fproducts:List[Future[JValue]] = for{
       id <- ids
-    } yield queryProductById(store,id,req)
+    } yield queryProductById(store, id, req)
 
     //TODO to replace by RxScala Iterable
     val f = Future.sequence(fproducts.toList)
@@ -916,7 +1001,7 @@ class ElasticSearchClient /*extends Actor*/ {
     //TODO try with a for-compr
     f.flatMap {
       list => {
-        val validResponses = list.filter{
+        val validResponses = list.filter {
           json => {
             (json \ "found") match {
               case JBool(res) => res
@@ -974,6 +1059,102 @@ class ElasticSearchClient /*extends Actor*/ {
   //TODO private def translate(json:JValue):JValue = { }
 
 
+  def createComment(store:String,productId:Long,c:CommentRequest): Future[Comment] = {
+    require(!store.isEmpty)
+    require(productId>0)
+
+    //TODO no better solution than this (try/catch) ????
+    try{
+      c.validate()
+
+      import org.json4s.native.Serialization
+      import org.json4s.native.Serialization.{read, write}
+      implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Comment]()
+
+      val comment = Comment(None,c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)
+      val jsoncomment = write(comment)
+      val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment"),jsoncomment))
+
+      fresponse onFailure { // TODO a revoir, car la route Spray ne recoit pas cette failure
+        case e => {println("fresponse failed:"+e.getMessage);Future.failed(new CommentException(CommentException.UNEXPECTED_ERROR,e.getMessage))}
+      }
+      fresponse.flatMap {
+        response => {
+          //println(response.entity.asString)
+          if (response.status.isSuccess) {
+            val json = parse(response.entity.asString)
+            val id = (json \"_id").extract[String]
+
+            future(Comment(Some(id),c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId))
+          } else {
+            //TODO log l'erreur
+            println("new ElasticSearchClientException createComment error")
+            Future.failed(new ElasticSearchClientException("createComment error"))
+          }
+        }
+      }
+    } catch {
+      case e:Throwable => Future.failed(e)
+    }
+  }
+
+  def updateComment(store:String, productId:Long,commentId:String,useful : Boolean) : Future[Boolean] = {
+
+    val query = s"""{"script":"if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}","params":{"useful":$useful}}"""
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/"+commentId+"/_update?retry_on_conflict=5"),query))
+
+    fresponse.flatMap {
+      response => {
+        println(response.entity.asString)
+        if (response.status.isSuccess) {
+          future(useful)
+        } else {
+          Future.failed(CommentException(CommentException.UPDATE_ERROR))
+        }
+      }
+    }
+  }
+
+  def getComments(store:String, req:CommentGetRequest) : Future[Paging[Comment]] = {
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val size = req.maxItemPerPage.getOrElse(100)
+    val from = req.pageOffset.getOrElse(0) * size
+
+    val query = s"""{
+      "sort": {"created": "desc"},"from": $from,"size": $size
+    }"""
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/_search"),query))
+    fresponse.flatMap {
+      response => {
+        println(response.entity.asString)
+        if (response.status.isSuccess) {
+          val json = parse(response.entity.asString)
+          val hits = (json \"hits" \ "hits")
+
+          val transformedJson = for {
+            JObject(hit) <- hits.children
+            JField("_id",JString(id)) <- hit
+            JField("_source",source) <- hit
+          } yield {
+            val idField = parse(s"""{"id":"$id"}""")
+            val merged = source merge idField
+            merged
+          }
+
+          val results = JArray(transformedJson).extract[List[Comment]]
+          val pagedResults = Utils.addPaging[Comment](json,results,req)
+          //val pagedResults = Utils.addPaging[Comment](json,req)
+          future(pagedResults)
+        } else {
+          Future.failed(new ElasticSearchClientException("getComments error"))
+        }
+      }
+    }
+
+  }
 
   def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
 
