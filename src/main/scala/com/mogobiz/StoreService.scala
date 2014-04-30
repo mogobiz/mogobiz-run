@@ -237,7 +237,7 @@ trait StoreService extends HttpService {
    */
   def findRoute(storeCode:String) = path("find") {
     respondWithMediaType(`application/json`) {
-        parameters('lang?"_all",'currency.?,'country.?, 'query).as(FulltextSearchProductParameters) {
+        parameters('lang?"_all",'currency.?,'country.?, 'query, 'highlight ? false).as(FulltextSearchProductParameters) {
           req =>
             onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
               complete(products)
