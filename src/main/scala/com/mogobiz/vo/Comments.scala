@@ -24,6 +24,6 @@ case class CommentRequest(val userId:String, val surname: String,val notation:In
   }
 }
 
-case class CommentGetRequest(override val maxItemPerPage:Option[Int],override val pageOffset:Option[Int] ) extends PagingParams(maxItemPerPage,pageOffset)
+case class CommentGetRequest(override val maxItemPerPage:Option[Int],override val pageOffset:Option[Int] ) extends PagingParams //(maxItemPerPage,pageOffset)
 
 case class CommentPutRequest(val note:Int)

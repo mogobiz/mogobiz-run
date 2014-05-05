@@ -2,6 +2,8 @@ package com.mogobiz
 
 import spray.http.DateTime
 import java.util.Date
+import com.mogobiz.vo.PagingParams
+
 /**
  * Created by Christophe on 17/02/14.
  */
@@ -48,8 +50,8 @@ case class FulltextSearchProductParameters(
                                             , val highlight:Boolean) extends CommonProductParameters(_lang,_currency,_country)
 
 case class ProductRequest(
-                           maxItemPerPage: Option[Int]
-                           , pageOffset: Option[Int]
+                           override val maxItemPerPage: Option[Int]
+                           ,override val  pageOffset: Option[Int]
                            , xtype: Option[String]
                            , name: Option[String]
                            , code: Option[String]
@@ -64,7 +66,7 @@ case class ProductRequest(
                            , featured: Option[Boolean] // = false
                            , lang: String
                            , currencyCode: Option[String]
-                           , countryCode: Option[String]){
+                           , countryCode: Option[String]) extends PagingParams {
   def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,None,Some(false),lang,None,None)
 }
 
