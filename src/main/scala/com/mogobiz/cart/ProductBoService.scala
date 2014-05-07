@@ -1,0 +1,225 @@
+package com.mogobiz.cart
+
+import java.util.Calendar
+import com.mogobiz.cart.ProductType.ProductType
+import com.mogobiz.cart.ProductCalendar.ProductCalendar
+import scalikejdbc._, SQLInterpolation._
+import org.joda.time.DateTime
+
+/**
+ * Created by Christophe on 06/05/2014.
+ */
+object ProductBoService extends BoService {
+
+  /**
+   * Increment the stock of the ticketType of the ticket for the given date and decrement the number of sale
+   */
+  def increment(ticketType:TicketType , quantity:Long, date:Option[DateTime]):Unit = {
+    val product = ticketType.product.get
+    ticketType.stock match {
+      case Some(stock) => {
+        // Search the corresponding StockCalendar
+        val stockCalendar = retrieveStockCalendar(product, ticketType, date, stock)
+
+        // sale decrement
+        val now = new DateTime()
+        DB localTx { implicit session =>
+            updateProductSales(product.id, -quantity, now)
+            updateTicketTypeSales(ticketType.id, -quantity, now)
+            updateStockCalendarSales(stockCalendar.id, -quantity, now)
+        }
+        //TODO ES upsertProduct(product)
+      }
+    }
+  }
+/*
+  private def updateSales(quantity:Long,now:DateTime,ids:Tuple3[Long]) = {
+    DB localTx {
+      implicit session =>
+        val nbSales1 = sql"select nb_sales from product where id=${ids._1}".map(rs => rs.long("nb_sales")).single().apply().get
+        sql"update product set nb_sales = ${nbSales1+quantity},lastUpdated = ${now} where id=${ids._1}".update().apply()
+
+        val nbSales2 = sql"select nb_sales from ticket_type where id=${ids._2}".map(rs => rs.long("nb_sales")).single().apply().get
+        sql"update ticket_type set nb_sales = ${nbSales2+quantity},lastUpdated = ${now}  where id=${ids._2}".update().apply()
+
+        val sold = sql"select sold from stock_calendar where id=${ids._3}".map(rs => rs.long("sold")).single().apply().get
+        sql"update stock_calendar  set sold = ${sold+quantity},lastUpdated = ${now}  where id=${ids._3}".update().apply()
+
+    }
+  }
+  */
+
+  private def updateProductSales(id:Long,quantity:Long,now:DateTime)(implicit session:DBSession) = {
+        val nbSales = sql"select nb_sales from product where id=${id}".map(rs => rs.long("nb_sales")).single().apply().get
+        sql"update product set nb_sales = ${nbSales+quantity},last_updated = ${now} where id=${id}".update().apply()
+  }
+
+  private def updateTicketTypeSales(id:Long,quantity:Long,now:DateTime)(implicit session:DBSession) = {
+      val nbSales = sql"select nb_sales from ticket_type where id=${id}".map(rs => rs.long("nb_sales")).single().apply().get
+      sql"update ticket_type set nb_sales = ${nbSales+quantity},last_updated = ${now}  where id=${id}".update().apply()
+  }
+
+
+  private def updateStockCalendarSales(id:Long,quantity:Long,now:DateTime)(implicit session:DBSession) = {
+      val sold = sql"select sold from stock_calendar where id=${id}".map(rs => rs.long("sold")).single().apply().get
+      sql"update stock_calendar  set sold = ${sold+quantity},last_updated = ${now}  where id=${id}".update().apply()
+  }
+
+
+    /**
+   * Decrement the stock of the ticketType of the ticket for the given date and increment the number of sale
+   * If stock is insufficient, Exception is thrown
+   * @param ticketType
+   * @param quantity
+   * @param date
+   * @throws InsufficientStockException
+   */
+  def decrement(ticketType: TicketType, quantity: Long , date:Option[DateTime] ):Unit = {
+    val product = ticketType.product.get
+    ticketType.stock match {
+      case Some(stock) => {
+        // Search the corresponding StockCalendar
+        val stockCalendar = retrieveStockCalendar(product, ticketType, date, stock)
+
+        // stock vérification
+        if (!stock.stockUnlimited && !stock.stockOutSelling && stockCalendar.stock < (quantity + stockCalendar.sold)) {
+          throw new InsufficientStockException("The available stock is insufficient for the quantity required")
+        }
+
+        // sale increment
+        val now = new DateTime()
+        DB localTx {
+          implicit session =>
+            updateProductSales(product.id, quantity, now)
+            updateTicketTypeSales(ticketType.id, quantity, now)
+            updateStockCalendarSales(stockCalendar.id, quantity, now)
+        }
+
+      //TODO update ES
+      //upsertProduct(product)
+    }
+  }
+ }
+
+  def conv(dt: DateTime):Calendar = {
+    val cal = Calendar.getInstance()
+    cal.setTime(dt.toDate)
+    cal
+  }
+
+
+  /**
+   * retrieve the StockCalendar of the TicketType for the given date.
+   * If the StockCalendar does not exist, it is be created
+   * @param product
+   * @param ticketType
+   * @param date
+   * @return
+   */
+  //private
+  def retrieveStockCalendar(product:Product , ticketType:TicketType , date:Option[DateTime] , stock:Stock ) : StockCalendar ={
+
+    val stockCal = DB readOnly {
+      implicit session =>
+        val str = product.calendarType match {
+          case ProductCalendar.NO_DATE => sql"select * from stock_calendar where ticket_type_fk=${ticketType.id}"
+          case _ =>{
+            sql"select * from stock_calendar where ticket_type_fk=${ticketType.id} and start_date=${date}"
+          }
+        }
+
+        val cal:Calendar = Calendar.getInstance()
+        str.map(rs => new StockCalendar(rs.long("id"), rs.long("stock"), rs.long("sold"), rs.dateTimeOpt("start_date"), product,ticketType, conv(rs.dateTime("date_created")),conv(rs.dateTime("last_updated")))).single().apply()
+    }
+
+
+    stockCal.getOrElse{
+      val now = new DateTime()
+      val calNow=Calendar.getInstance()
+      calNow.setTime(now.toDate)
+
+      DB localTx { implicit session =>
+        val newid = newId()
+        val defaultStockCal = new StockCalendar(newid, stock.stock, 0, date, product, ticketType, calNow, calNow)
+
+        sql"""insert into stock_calendar(id, date_created, last_updated, product_fk, sold, start_date, stock, ticket_type_fk)
+           values (${newid},${now},${now},${defaultStockCal.product.id},${defaultStockCal.sold},${date},${defaultStockCal.stock},${defaultStockCal.ticketType.id})""".
+          update().apply()
+        defaultStockCal
+      }
+    }
+  }
+
+}
+
+class InsufficientStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
+
+case class Stock(stock:Long=0,stockUnlimited:Boolean = true,stockOutSelling:Boolean = false)
+object Stock  extends SQLSyntaxSupport[Stock]{
+  def apply(rs: WrappedResultSet):Stock = new Stock(rs.long("stock_stock"),rs.boolean("stock_stock_unlimited"),rs.boolean("stock_stock_out_selling"))
+//  def apply(rs: WrappedResultSet):Stock = new Stock(rs.long("ss_on_t"),rs.boolean("ssu_on_t"),rs.boolean("ssos_on_t"))
+  // t.stock_stock as ss_on_t, t.stock_stock_out_selling as ssos_on_t, t.stock_stock_unlimited as ssu_on_t,
+
+  //def apply(rn: ResultName[TicketType])(rs:WrappedResultSet): Stock = new Stock(stock=rs.get(rn.stock),stockUnlimited=rs.get(rn.stockUnlimited),stockOutSelling=rs.get(rn.stockOutSelling))
+}
+
+case class StockCalendar(id:Long,stock:Long,sold:Long,startDate:Option[DateTime],product:Product,ticketType:TicketType,dateCreated:Calendar,lastUpdate:Calendar) extends DateAware
+
+case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRate:Option[TaxRate],shipping:Option[ShippingVO],startDate:Option[DateTime],stopDate:Option[DateTime] )
+
+object Product extends SQLSyntaxSupport[Product]{
+  //def apply(rn: ResultName[Product])(rs:WrappedResultSet): Product = new Product(rs.get(rn.id),rs.get(rn.name),rs.get(rn.xtype),rs.get(rn.calendarType),rs.get(rn.taxRate),None)
+
+  def apply(rs:WrappedResultSet): Product = new Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRate = Some(TaxRate(rs)),shipping= None,startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+}
+
+import scalikejdbc._, SQLInterpolation._
+case class TaxRate(id:Long,name:String,company_fk:Long)
+object TaxRate extends SQLSyntaxSupport[TaxRate] {
+  def apply(tr: ResultName[TaxRate])(rs:WrappedResultSet) : TaxRate = new TaxRate(id=rs.get(tr.id),name=rs.get(tr.name),company_fk = rs.get(tr.company_fk))
+  def apply(rs:WrappedResultSet) : TaxRate = new TaxRate(id=rs.long("tax_rate_fk"),name=rs.string("name"),company_fk = rs.long("company_fk"))
+}
+
+case class TicketType(id:Long,name:String,price:Long,minOrder:Long=0,maxOrder:Long=0,stock:Option[Stock]=None,product:Option[Product]=None,startDate:Option[DateTime]=None,stopDate:Option[DateTime]=None){
+
+}
+object TicketType extends SQLSyntaxSupport[TicketType] {
+
+  def apply(rs:WrappedResultSet):TicketType = new TicketType(id=rs.long("id"),name=rs.string("name"),price=rs.long("price"),stock=Some(Stock(rs)),product = Some(Product(rs)))
+
+  def apply(rn: ResultName[TicketType])(rs:WrappedResultSet): TicketType = new TicketType(id=rs.get(rn.id),name=rs.get(rn.name),price=rs.get(rn.price),stock=Some(Stock(rs)),product=Some(Product(rs)))
+
+  def get(id:Long):TicketType = {
+
+    val res = DB readOnly {
+      implicit session =>
+        sql"select tt.*,p.* from ticket_type tt inner join product p on tt.product_fk=p.id where tt.id=${id}".map( rs => TicketType(rs)).single().apply()
+    }
+
+    /* standalone with product missing
+    val t = TicketType.syntax("t")
+    val res = DB readOnly {
+      implicit session =>
+        withSQL {
+          select.from(TicketType as t).where.eq(t.id, id)
+        }.map(TicketType(t.resultName)).single().apply()
+    }*/
+      /* try oneToOne
+    val (t,p) = (TicketType.syntax,Product.syntax)
+    val res = DB readOnly { implicit session =>
+
+      withSQL{
+        select.from(TicketType as t).innerJoin(Product as p).on(t.productId,p.id)
+          .where.eq(t.id,id)
+      }.one(TicketType(t.resultName)).toOne(Product(p.resultName))
+        .map{
+        (ticketType,product) => product.copy(product = Some(product))
+      }.single().apply()
+    }*/
+    res.get
+  }
+}
+trait DateAware {
+  val dateCreated:Calendar
+  val lastUpdate:Calendar
+}

@@ -16,7 +16,15 @@ libraryDependencies ++= {
   val akkaV = "2.2.3"
   val sprayV = "1.2.0"
   val json4sV = "3.2.6"
+  val scalikeV = "1.7.7"
   Seq(
+    "postgresql"          %   "postgresql"  %"9.1-901.jdbc4",
+    "com.h2database"  %  "h2"                        % "1.4.177" % "test",
+    "org.scalikejdbc" %% "scalikejdbc"               % scalikeV,
+    "org.scalikejdbc" %% "scalikejdbc-config"        % scalikeV,
+    "org.scalikejdbc" %% "scalikejdbc-interpolation" % scalikeV,
+    "org.scalikejdbc" %% "scalikejdbc-test"          % scalikeV   % "test",
+    "ch.qos.logback"  %  "logback-classic"           % "1.1.2",
     "io.spray"            %   "spray-can"     % sprayV,
     "io.spray"            %   "spray-client"     % sprayV,
     "io.spray"            %   "spray-routing" % sprayV,

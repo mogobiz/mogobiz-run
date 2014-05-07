@@ -3,17 +3,22 @@ package com.mogobiz
 import com.mogobiz.session.SessionCookieDirectives._
 import com.mogobiz.session.Session
 */
-import com.mogobiz.vo._
 import spray.http.{StatusCodes, HttpCookie, DateTime}
-import scala.util.{Success, Failure}
-import akka.actor.Actor
 import spray.routing.HttpService
 import spray.http.MediaTypes._
-import spray.httpx.Json4sSupport
 import org.json4s._
 import scala.concurrent.ExecutionContext
 import org.json4s.native.JsonMethods._
-import java.util.UUID
+import java.util.{Locale, UUID}
+import com.mogobiz.cart._
+import scala.util.Failure
+import scala.Some
+import com.mogobiz.vo.CommentPutRequest
+import com.mogobiz.vo.MogoError
+import scala.util.Success
+import com.mogobiz.cart.AddToCartCommand
+import com.mogobiz.vo.CommentRequest
+import com.mogobiz.vo.CommentGetRequest
 
 /**
  * Created by Christophe on 17/02/14.
@@ -39,7 +44,8 @@ trait StoreService extends HttpService {
           categoriesRoutes(storeCode) ~
           productsRoutes(storeCode,uuid) ~
           visitedProductsRoute(storeCode,uuid) ~
-          preferencesRoute(storeCode, uuid)
+          preferencesRoute(storeCode, uuid) ~
+          cartRoute(storeCode,uuid)
           //testCookie(storeCode)
       }
     }
@@ -395,6 +401,88 @@ trait StoreService extends HttpService {
                     complete("")
                 }
             }
+          }
+        }
+      }
+    }
+  }
+
+  val cartService = CartBoService
+  val cartRenderService = CartRenderService
+
+  //CART ROUTES
+  def cartRoute(storeCode:String,uuid:String) = pathPrefix("cart"){
+    respondWithMediaType(`application/json`) {
+      pathEnd{
+        get{
+
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            //TODO get from ES first and if none init from BO
+            val cart = cartService.initCart(uuid)
+
+            val currency:String = params.currency.getOrElse("EUR") //FIX ??
+            val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX ??
+            val locale = Locale.forLanguageTag(lang)
+            complete(cartRenderService.render(cart, currency,locale))
+          }
+        }~delete{
+          complete("clearCart")
+        }
+      }~path("item"){
+        post{
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            entity(as[AddToCartCommand]){
+              cmd => {
+                val cart = cartService.initCart(uuid)
+                val currency:String = params.currency.getOrElse("EUR") //FIX ??
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX ??
+                val locale = Locale.forLanguageTag(lang)
+
+                try{
+                  val updatedCart = cartService.addItem(locale, currency, cart, cmd.ticketType,cmd.quantity,cmd.dateTime,cmd.registeredCartItems )
+
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->updatedCart),
+                    ("errors"->List())
+                  )
+
+                  complete(response)
+
+                }catch{
+                  case e:AddCartItemException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+                //complete("addItem")
+
+              }
+            }
+        }
+        }~put{
+          complete("updateItem")
+        }~delete{
+          complete("removeItem")
+        }
+      }~path("coupon"){
+        post{
+          complete("add coupon")
+        }~delete{
+          complete("remove coupon")
+        }
+      }~pathPrefix("payment"){
+        post{
+          path("prepare"){
+            complete("prepare")
+          }~path("commit"){
+            complete("commit")
+          }~path("cancel"){
+            complete("cancel")
           }
         }
       }
