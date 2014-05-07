@@ -40,7 +40,9 @@ class ElasticSearchClient /*extends Actor*/ {
   private val ES_URL = "http://localhost"
   private val ES_HTTP_PORT = 9200
 
+  val rateService = RateBoService
 
+  val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
   /*
   val pipeline: Future[SendReceive] =
     for (
@@ -48,8 +50,6 @@ class ElasticSearchClient /*extends Actor*/ {
       IO(Http) ? Http.HostConnectorSetup(ES_URL, port = ES_HTTP_PORT)
     ) yield sendReceive(connector)
 */
-
-  val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
 
   private val ES_FULL_URL = ES_URL + ":" + ES_HTTP_PORT
 
@@ -180,9 +180,14 @@ class ElasticSearchClient /*extends Actor*/ {
     val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/rate/_search"), query))
     response.flatMap {
       response => {
-        val json = parse(response.entity.asString)
-        val subset = json \ "hits" \ "hits" \ "_source"
-        future(subset)
+        if (response.status.isSuccess) {
+          val json = parse(response.entity.asString)
+          val subset = json \ "hits" \ "hits" \ "_source"
+          future(subset)
+        }else{
+          println("WARNING: rates not found => returning empty list")
+          future(List())
+        }
       }
     }
   }
@@ -519,8 +524,8 @@ class ElasticSearchClient /*extends Actor*/ {
 
       val locale = new Locale(lang);
       val endPrice = price + (price * taxRate / 100d)
-      val formatedPrice = format(price, currency.get, locale, cur.rate)
-      val formatedEndPrice = format(endPrice, currency.get, locale, cur.rate)
+      val formatedPrice = rateService.format(price, currency.get, locale, cur.rate)
+      val formatedEndPrice = rateService.format(endPrice, currency.get, locale, cur.rate)
       val additionalFields = (
         ("localTaxRate" -> taxRate) ~
           ("endPrice" -> endPrice) ~
@@ -555,11 +560,7 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  private def format(amount: Double, currencyCode: String, locale: Locale = Locale.getDefault, rate: Double = 0): String = {
-    val numberFormat = NumberFormat.getCurrencyInstance(locale);
-    numberFormat.setCurrency(java.util.Currency.getInstance(currencyCode));
-    return numberFormat.format(amount * rate);
-  }
+
 
   private val sdf = new SimpleDateFormat("yyyy-MM-dd") //THH:mm:ssZ
   private val hours = new SimpleDateFormat("HH:mm")
@@ -641,11 +642,7 @@ class ElasticSearchClient /*extends Actor*/ {
           val json = parse(response.entity.asString)
           val subset = json \ "_source"
 
-          val currencies = Await.result(getCurrencies(store, req.lang), 1 second)
-          val currency = currencies.filter {
-            cur => cur.code == req.currency
-          }.headOption getOrElse (new Currency(2, 1, "EUR", "euro"))
-
+          val currency = getCurrency(store,req.currency,req.lang)
           val product = renderProduct(subset, req.country, req.currency, req.lang, currency, List())
 
           future(product)
@@ -653,6 +650,27 @@ class ElasticSearchClient /*extends Actor*/ {
           //TODO log l'erreur
           future(parse(response.entity.asString))
           //throw new ElasticSearchClientException(resp.status.reason)
+        }
+      }
+    }
+  }
+
+  def getCurrency(store:String,currencyCode:Option[String],lang:String):Currency = {
+    val defaultCurrency = new Currency(2, 1, code="EUR", name="euro") //TODO
+    if(currencyCode.isEmpty)
+      defaultCurrency
+    else{
+      try{
+        val currencies = Await.result(getCurrencies(store, lang), 1 second)
+        val currency = currencies.filter {
+          cur => cur.code == currencyCode.get
+        }.headOption getOrElse (defaultCurrency)
+        currency
+      }catch{
+        case e:Throwable => {
+          //TODO logging
+          e.printStackTrace()
+          defaultCurrency
         }
       }
     }
