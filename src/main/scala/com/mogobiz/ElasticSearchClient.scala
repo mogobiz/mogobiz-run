@@ -456,16 +456,8 @@ class ElasticSearchClient /*extends Actor*/ {
       response => {
         if (response.status.isSuccess) {
 
-          //code temporaire pour ne avoir à gérer l'asyncro tout de suite
-          //val json = parse(Await.result(response, 1 second).entity.asString)
           val json = parse(response.entity.asString)
           val subset = json \ "hits" \ "hits" \ "_source"
-          /*
-          println("----------------------------")
-          println(subset.getClass.getName)
-          println(subset)
-          println("----------------------------")
-          */
           val currencies = Await.result(getCurrencies(store, req.lang), 1 second) //TODO parrallele for loop
           val currency = currencies.filter {
               cur => cur.code == req.currencyCode
@@ -481,7 +473,10 @@ class ElasticSearchClient /*extends Actor*/ {
 
 //          println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 //          println(pretty(render(products)))
-          future(products)
+
+          val res = Paging.wrap(json,products,req)
+
+          future(res)
         } else {
           //TODO log l'erreur
           future(parse(response.entity.asString))
@@ -1188,7 +1183,7 @@ class ElasticSearchClient /*extends Actor*/ {
           }
 
           val results = JArray(transformedJson).extract[List[Comment]]
-          val pagedResults = Utils.addPaging[Comment](json,results,req)
+          val pagedResults = Paging.add[Comment](json,results,req)
           //val pagedResults = Utils.addPaging[Comment](json,req)
           future(pagedResults)
         } else {
