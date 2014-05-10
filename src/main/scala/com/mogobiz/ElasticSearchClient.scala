@@ -675,7 +675,7 @@ class ElasticSearchClient /*extends Actor*/ {
   /**
    * Get multiple products features
    * @param store
-   * @param ids
+   * @param params
    * @return a list of products
    */
   def getProductsFeatures(store: String, params: CompareProductParameters): Future[JValue] = {
@@ -693,9 +693,6 @@ class ElasticSearchClient /*extends Actor*/ {
           "_source": {
             "include": [
               "id",
-              "name",
-              "features.name",
-              "features.value",
               $nameFields,
               $featuresNameField,
               $featuresValueField,
@@ -717,8 +714,37 @@ class ElasticSearchClient /*extends Actor*/ {
         "docs": $fetchConfigs
       }
       """.stripMargin
+
     println(multipleGetQueryTemplate)
-    future(None)
+
+    def httpResponseToFuture(response: HttpResponse, withHightLight: Boolean): Future[JValue] = {
+      if (response.status.isSuccess) {
+
+        val json = parse(response.entity.asString)
+        val docsArray = (json \ "docs")
+
+        val rawResult = for {
+          JObject(result) <- docsArray
+          JField("value",JString(value)) <- result
+          JField("name",JString(name)) <- result
+        } yield (name -> value)
+
+
+        val result = rawResult.groupBy(_._1).map {
+          case (_cat, v) => (_cat, v.map(_._2))
+        }
+        println(compact(render(result)))
+        future(result)
+
+      } else {
+        //TODO log l'erreur
+        future(parse(response.entity.asString))
+        //throw new ElasticSearchClientException(resp.status.reason)
+      }
+    }
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/_mget"), multipleGetQueryTemplate))
+    fresponse.flatMap (response => httpResponseToFuture(response,false))
 
   }
    
