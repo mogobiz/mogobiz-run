@@ -723,7 +723,7 @@ class ElasticSearchClient /*extends Actor*/ {
         val json = parse(response.entity.asString)
         val docsArray = (json \ "docs")
 
-        val rawResult = for {
+        val rawResult : List[(String, String)] = for {
           JObject(result) <- docsArray
           JField("value",JString(value)) <- result
           JField("name",JString(name)) <- result
@@ -731,8 +731,13 @@ class ElasticSearchClient /*extends Actor*/ {
 
 
         val result = rawResult.groupBy(_._1).map {
-          case (_cat, v) => (_cat, v.map(_._2))
+          case (_feature, v) => {
+            val valueList : List[String] = v.map(_._2)
+            val diff : String = if (valueList.toSet.size == 1) "0" else "1"
+            (_feature, valueList.::(diff))
+          }
         }
+
         println(compact(render(result)))
         future(result)
 

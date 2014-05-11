@@ -200,7 +200,7 @@ val json = parse(response)
 val docsArray = (json \ "docs")
 val formated = compact(render(docsArray.children.children))
 docsArray.children
-val result = for {
+val result :  List[(String, String)] = for {
   JObject(result) <- docsArray
   JField("value",JString(value)) <- result
   JField("name",JString(name)) <- result
@@ -210,7 +210,11 @@ val result = for {
 //result.toMap
 //compact(render(result))
 val res = result.groupBy(_._1).map {
-  case (_cat,v) => (_cat, v.map(_._2))
+  case (_feature,v) => {
+    val valueList = v.map(_._2)
+    val diff = if(valueList.toSet.size == 1) "0" else "1"
+    (_feature, valueList, diff)
+  }
 }
 //val formated_result = compact(render(res))
 //parse(formated_result)
