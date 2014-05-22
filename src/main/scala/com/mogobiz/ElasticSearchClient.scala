@@ -1,9 +1,8 @@
 package com.mogobiz
 
-import akka.actor.{Actor, ActorSystem}
+import akka.actor.ActorSystem
 import akka.io.IO
 import akka.pattern.ask
-import scala.util.{Success, Failure}
 import scala.concurrent._
 import scala.concurrent.duration._
 import spray.can.Http
@@ -12,15 +11,16 @@ import spray.util._
 import org.json4s.native.JsonMethods._
 import org.json4s._
 import org.json4s.JsonDSL._
-import java.util._
+import java.util.{Date, Calendar, Locale}
 import java.text.{SimpleDateFormat, NumberFormat}
 import scala.util.Failure
 import scala.Some
-import spray.http.{HttpResponse, HttpRequest}
+import spray.http.HttpResponse
 import scala.List
 import scala.util.Success
 import spray.http.HttpRequest
 import com.mogobiz.vo.{Comment,CommentRequest,CommentGetRequest, Paging}
+import scala.collection.immutable
 
 /**
  * Created by Christophe on 18/02/14.
@@ -695,8 +695,7 @@ class ElasticSearchClient /*extends Actor*/ {
               "id",
               $nameFields,
               $featuresNameField,
-              $featuresValueField,
-              "category.path"
+              $featuresValueField
             ]
           }
         }
@@ -717,29 +716,55 @@ class ElasticSearchClient /*extends Actor*/ {
 
     println(multipleGetQueryTemplate)
 
+    def zipper(map1: immutable.Map[String, String], map2: immutable.Map[String, String]) = {
+      for (key <- map1.keys ++ map2.keys)
+      yield (key -> (map1.getOrElse(key, "-") + "," + map2.getOrElse(key, "-")))
+    }
+
     def httpResponseToFuture(response: HttpResponse, withHightLight: Boolean): Future[JValue] = {
       if (response.status.isSuccess) {
 
         val json = parse(response.entity.asString)
         val docsArray = (json \ "docs")
 
-        val rawResult : List[(String, String)] = for {
-          JObject(result) <- docsArray
-          JField("value",JString(value)) <- result
-          JField("name",JString(name)) <- result
-        } yield (name -> value)
+        val rawIds: List[BigInt] = for {
+          JObject(result) <- (docsArray \ "_source")
+          JField("id", JInt(id)) <- result
+        } yield (id)
 
-
-        val result = rawResult.groupBy(_._1).map {
-          case (_feature, v) => {
-            val valueList : List[String] = v.map(_._2)
-            val diff : String = if (valueList.toSet.size == 1) "0" else "1"
-            (_feature, valueList.::(diff))
-          }
+        val rawFeatures: List[(BigInt, List[JValue])] = {
+          for {
+            JObject(result) <- (docsArray \ "_source")
+            JField("id", JInt(id)) <- result
+            JField("features", JArray(features)) <- result
+          } yield (id -> features)
         }
 
-        println(compact(render(result)))
-        future(result)
+        var result = immutable.Map.empty[String, String]
+
+        for (id <- rawIds) {
+
+          val _featuresForId = rawFeatures.toMap.getOrElse(id, List.empty)
+
+          val _resultForId = for {
+            JObject(result) <- _featuresForId
+            (lang, JObject(f)) <- result
+            ("name", JString(name)) <- f
+            ("value", JString(value)) <- f
+          } yield (name, value)
+
+          result = zipper(result, _resultForId.toMap).toMap
+        }
+
+        val resultWithDiff = result.map {
+          case (k, v) => {
+            val list = v.split(",").toList.tail
+            val diff = if (list.toSet.size == 1) "0" else "1"
+            (k, (list.::(diff)).reverse)
+          }
+        }
+        println(compact(render(resultWithDiff)))
+        future(resultWithDiff)
 
       } else {
         //TODO log l'erreur
@@ -1196,8 +1221,7 @@ class ElasticSearchClient /*extends Actor*/ {
     try{
       c.validate()
 
-      import org.json4s.native.Serialization
-      import org.json4s.native.Serialization.{read, write}
+      import org.json4s.native.Serialization.write
       implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Comment]()
 
       val comment = Comment(None,c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)
