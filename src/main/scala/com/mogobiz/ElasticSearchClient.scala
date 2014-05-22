@@ -758,9 +758,10 @@ class ElasticSearchClient /*extends Actor*/ {
 
         val resultWithDiff = result.map {
           case (k, v) => {
-            val list = v.split(",").toList.tail
+            val _list = v.split(",").toList
+            val list = if(_list.size > rawIds.size ) _list.tail else _list
             val diff = if (list.toSet.size == 1) "0" else "1"
-            (k, (list.::(diff)).reverse)
+            (k, (list.::(diff)))
           }
         }
         println(compact(render(resultWithDiff)))
