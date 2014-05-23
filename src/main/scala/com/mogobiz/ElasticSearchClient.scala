@@ -21,6 +21,7 @@ import scala.util.Success
 import spray.http.HttpRequest
 import com.mogobiz.vo.{Comment,CommentRequest,CommentGetRequest, Paging}
 import scala.collection.immutable
+import org.json4s.native.Serialization
 
 /**
  * Created by Christophe on 18/02/14.
@@ -756,7 +757,7 @@ class ElasticSearchClient /*extends Actor*/ {
           result = zipper(result, _resultForId.toMap).toMap
         }
 
-        val resultWithDiff = result.map {
+        val resultWithDiff : Map[String, List[String]]= result.map {
           case (k, v) => {
             val _list = v.split(",").toList
             val list = if(_list.size > rawIds.size ) _list.tail else _list
@@ -764,8 +765,15 @@ class ElasticSearchClient /*extends Actor*/ {
             (k, (list.::(diff)))
           }
         }
-        println(compact(render(resultWithDiff)))
-        future(Map("ids"-> rawIds.map(id => String.valueOf(id))) ++ resultWithDiff)
+        case class MyResult (ids: Map[String, List[String]], result: Map[String,Map[String, List[String]]])
+
+        //val resultWithDiffAndIds = Map("ids"-> rawIds.map(id => String.valueOf(id))) ++ Map("result" -> resultWithDiff)
+        val resultWithDiffAndIds = ("ids"-> rawIds.map(id => String.valueOf(id))) ~ ("result" -> resultWithDiff)
+        //println(compact(render(resultWithDiff)))
+        println(compact(render(resultWithDiffAndIds)))
+
+
+        future(resultWithDiffAndIds)
 
       } else {
         //TODO log l'erreur
