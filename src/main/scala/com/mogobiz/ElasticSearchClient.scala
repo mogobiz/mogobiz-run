@@ -765,7 +765,7 @@ class ElasticSearchClient /*extends Actor*/ {
           }
         }
         println(compact(render(resultWithDiff)))
-        future(resultWithDiff)
+        future(Map("ids"-> rawIds.map(id => String.valueOf(id))) ++ resultWithDiff)
 
       } else {
         //TODO log l'erreur
