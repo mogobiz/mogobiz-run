@@ -757,23 +757,30 @@ class ElasticSearchClient /*extends Actor*/ {
           result = zipper(result, _resultForId.toMap).toMap
         }
 
-        val resultWithDiff : Map[String, List[String]]= result.map {
-          case (k, v) => {
-            val _list = v.split(",").toList
-            val list = if(_list.size > rawIds.size ) _list.tail else _list
-            val diff = if (list.toSet.size == 1) "0" else "1"
-            (k, (list.::(diff)))
+        implicit val formats = DefaultFormats
+
+        val resultWithDiff : List[Feature]= {
+          result.map {
+            case (k, v) => {
+              val _list = v.split(",").toList
+              val list = if(_list.size > rawIds.size ) _list.tail else _list
+              val diff = if (list.toSet.size == 1) "0" else "1"
+              //Map("indicator" -> diff, "label" -> k, "values" -> (list.map(v => Map("value" -> v))))
+              Feature(diff,k,list.map(v => FeatureValue(v)))
+            }
           }
-        }
-        case class MyResult (ids: Map[String, List[String]], result: Map[String,Map[String, List[String]]])
+        }.toList
+        //case class MyResult (ids: Map[String, List[String]], result: Map[String,Map[String, List[String]]])
 
+        val resultWithDiffAndIds = ComparisonResult(rawIds.map(id => String.valueOf(id)),resultWithDiff)
         //val resultWithDiffAndIds = Map("ids"-> rawIds.map(id => String.valueOf(id))) ++ Map("result" -> resultWithDiff)
-        val resultWithDiffAndIds = ("ids"-> rawIds.map(id => String.valueOf(id))) ~ ("result" -> resultWithDiff)
+        //val resultWithDiffAndIds = ("ids"-> rawIds.map(id => String.valueOf(id))) ~ ("result" -> resultWithDiff)
         //println(compact(render(resultWithDiff)))
-        println(compact(render(resultWithDiffAndIds)))
+        //println(compact(render(resultWithDiffAndIds)))
+        println(compact(render(Extraction.decompose(resultWithDiffAndIds))))
 
 
-        future(resultWithDiffAndIds)
+        future(Extraction.decompose(resultWithDiffAndIds))
 
       } else {
         //TODO log l'erreur
