@@ -30,6 +30,7 @@ object ProductBoService extends BoService {
         }
         //TODO ES upsertProduct(product)
       }
+      case None => throw new UnavailableStockException("increment stock error : stock does not exist")
     }
   }
 /*
@@ -98,6 +99,7 @@ object ProductBoService extends BoService {
       //TODO update ES
       //upsertProduct(product)
     }
+      case None => throw new UnavailableStockException("decrement stock error : stock does not exist")
   }
  }
 
@@ -129,18 +131,16 @@ object ProductBoService extends BoService {
         }
 
         val cal:Calendar = Calendar.getInstance()
-        str.map(rs => new StockCalendar(rs.long("id"), rs.long("stock"), rs.long("sold"), rs.dateTimeOpt("start_date"), product,ticketType, conv(rs.dateTime("date_created")),conv(rs.dateTime("last_updated")))).single().apply()
+        str.map(rs => new StockCalendar(rs.long("id"), rs.long("stock"), rs.long("sold"), rs.dateTimeOpt("start_date"), product,ticketType, rs.dateTime("date_created"),rs.dateTime("last_updated"))).single().apply()
     }
 
 
     stockCal.getOrElse{
       val now = new DateTime()
-      val calNow=Calendar.getInstance()
-      calNow.setTime(now.toDate)
 
       DB localTx { implicit session =>
         val newid = newId()
-        val defaultStockCal = new StockCalendar(newid, stock.stock, 0, date, product, ticketType, calNow, calNow)
+        val defaultStockCal = new StockCalendar(newid, stock.stock, 0, date, product, ticketType, now, now)
 
         sql"""insert into stock_calendar(id, date_created, last_updated, product_fk, sold, start_date, stock, ticket_type_fk)
            values (${newid},${now},${now},${defaultStockCal.product.id},${defaultStockCal.sold},${date},${defaultStockCal.stock},${defaultStockCal.ticketType.id})""".
@@ -153,6 +153,7 @@ object ProductBoService extends BoService {
 }
 
 class InsufficientStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
+class UnavailableStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
 
 case class Stock(stock:Long=0,stockUnlimited:Boolean = true,stockOutSelling:Boolean = false)
 object Stock  extends SQLSyntaxSupport[Stock]{
@@ -163,14 +164,37 @@ object Stock  extends SQLSyntaxSupport[Stock]{
   //def apply(rn: ResultName[TicketType])(rs:WrappedResultSet): Stock = new Stock(stock=rs.get(rn.stock),stockUnlimited=rs.get(rn.stockUnlimited),stockOutSelling=rs.get(rn.stockOutSelling))
 }
 
-case class StockCalendar(id:Long,stock:Long,sold:Long,startDate:Option[DateTime],product:Product,ticketType:TicketType,dateCreated:Calendar,lastUpdate:Calendar) extends DateAware
+case class StockCalendar(
+                          id:Long,stock:Long,sold:Long,startDate:Option[DateTime],product:Product,ticketType:TicketType,
+                          dateCreated:DateTime,lastUpdate:DateTime) extends DateAware
 
-case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRate:Option[TaxRate],shipping:Option[ShippingVO],startDate:Option[DateTime],stopDate:Option[DateTime] )
+case class Poi(road1:Option[String],road2:Option[String],city:Option[String],postalCode:Option[String],state:Option[String],countryCode:Option[String])
+
+case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRate:Option[TaxRate],shipping:Option[ShippingVO],
+                   startDate:Option[DateTime],stopDate:Option[DateTime] )
 
 object Product extends SQLSyntaxSupport[Product]{
-  //def apply(rn: ResultName[Product])(rs:WrappedResultSet): Product = new Product(rs.get(rn.id),rs.get(rn.name),rs.get(rn.xtype),rs.get(rn.calendarType),rs.get(rn.taxRate),None)
+  def apply(rn: ResultName[Product])(rs:WrappedResultSet): Product = Product(
+    rs.get(rn.id),
+    rs.get(rn.name),
+    ProductType.valueOf(rs.string("xtype")),//rs.get(rn.xtype),
+    ProductCalendar.valueOf(rs.string("calendar_type")), //rs.get(rn.calendarType),
+    Some(TaxRate(rs)), //rs.get(rn.taxRate),
+    None,
+    rs.get(rn.startDate),
+    rs.get(rn.stopDate))
+  def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRate = Some(TaxRate(rs)),shipping= None,startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+  def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRate = Some(TaxRate(rs)),shipping= None,startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
 
-  def apply(rs:WrappedResultSet): Product = new Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRate = Some(TaxRate(rs)),shipping= None,startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+  def get(id:Long):Option[Product] = {
+    val p = Product.syntax("p")
+    val res = DB readOnly { implicit session =>
+      withSQL {
+        select.from(Product as p).where.eq(p.id, id)
+      }.map(Product(p.resultName)).single().apply()
+    }
+    res
+  }
 }
 
 import scalikejdbc._, SQLInterpolation._
@@ -185,9 +209,17 @@ case class TicketType(id:Long,name:String,price:Long,minOrder:Long=0,maxOrder:Lo
 }
 object TicketType extends SQLSyntaxSupport[TicketType] {
 
-  def apply(rs:WrappedResultSet):TicketType = new TicketType(id=rs.long("id"),name=rs.string("name"),price=rs.long("price"),stock=Some(Stock(rs)),product = Some(Product(rs)))
+  def apply(rs:WrappedResultSet):TicketType = new TicketType(
+    id=rs.long("id"),
+    name=rs.string("name"),
+    price=rs.long("price"),minOrder=rs.long("min_order"),maxOrder=rs.long("max_order"),
+    stock=Some(Stock(rs)),
+    product = Some(Product.applyFk(rs)))
 
-  def apply(rn: ResultName[TicketType])(rs:WrappedResultSet): TicketType = new TicketType(id=rs.get(rn.id),name=rs.get(rn.name),price=rs.get(rn.price),stock=Some(Stock(rs)),product=Some(Product(rs)))
+  def apply(rn: ResultName[TicketType])(rs:WrappedResultSet): TicketType = new TicketType(
+    id=rs.get(rn.id),name=rs.get(rn.name),price=rs.get(rn.price),
+    minOrder=rs.get(rn.minOrder),maxOrder=rs.get(rn.maxOrder),
+    stock=Some(Stock(rs)),product=Some(Product.applyFk(rs)))
 
   def get(id:Long):TicketType = {
 
@@ -220,6 +252,6 @@ object TicketType extends SQLSyntaxSupport[TicketType] {
   }
 }
 trait DateAware {
-  val dateCreated:Calendar
-  val lastUpdate:Calendar
+  val dateCreated:DateTime
+  val lastUpdate:DateTime
 }

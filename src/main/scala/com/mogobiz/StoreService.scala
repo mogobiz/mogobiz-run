@@ -415,7 +415,6 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       pathEnd{
         get{
-
           parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
             //TODO get from ES first and if none init from BO
             val cart = cartService.initCart(uuid)
@@ -426,9 +425,17 @@ trait StoreService extends HttpService {
             complete(cartRenderService.render(cart, currency,locale))
           }
         }~delete{
-          complete("clearCart")
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            val cart = cartService.initCart(uuid)
+
+            val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+            val locale = Locale.forLanguageTag(lang)
+            val currency = esClient.getCurrency(storeCode,params.currency,lang)
+            val updatedCart = cartService.clear(locale,currency.code,cart)
+            complete(cartRenderService.render(updatedCart, currency,locale))
+          }
         }
-      }~path("item"){
+      }~path("items"){
         post{
           parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
             entity(as[AddToCartCommand]){
@@ -459,22 +466,91 @@ trait StoreService extends HttpService {
                     complete(response)
                   }
                 }
-                //complete("addItem")
-
               }
             }
         }
         }~put{
-          complete("updateItem")
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            entity(as[UpdateCartItemCommand]){
+              cmd => {
+                val cart = cartService.initCart(uuid)
+
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                try{
+                  val updatedCart = cartService.updateItem(locale, currency.code, cart, cmd.cartItemId, cmd.quantity)
+                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+
+                  complete(response)
+                }catch{
+                  case e:UpdateCartItemException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+              }
+            }
+          }
         }~delete{
-          complete("removeItem")
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            entity(as[RemoveCartItemCommand]){
+              cmd => {
+                val cart = cartService.initCart(uuid)
+
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                try {
+                  val updatedCart = cartService.removeItem(locale, currency.code, cart, cmd.cartItemId)
+                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+                  complete(response)
+                }catch{
+                  case e: RemoveCartItemException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+              }
+            }
+          }
         }
-      }~path("coupon"){
-        post{
-          complete("add coupon")
-        }~delete{
-          complete("remove coupon")
-        }
+      }~path("coupons" / Segment){
+          couponCode => pathEnd {
+            parameters('companyId,'currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) { params =>
+              println("evaluate coupon parameters")
+              val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+              val locale = Locale.forLanguageTag(lang)
+              val currency = esClient.getCurrency(storeCode,params.currency,lang)
+
+              post {
+                val cart = cartService.initCart(uuid)
+
+                //val updatedCart = cartService.addCoupon(params.companyId,couponCode,cart,locale,currency.code)
+                complete("add coupon")
+              } ~ delete {
+                complete("remove coupon")
+              }
+            }
+          }
       }~pathPrefix("payment"){
         post{
           path("prepare"){
