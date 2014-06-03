@@ -722,14 +722,34 @@ class ElasticSearchClient /*extends Actor*/ {
 
     println(multipleGetQueryTemplate)
 
+    /**
+     * This function zip tow map with default value
+     * @param map1
+     * @param map2
+     * @return map with zipped value
+     */
     def zipper(map1: immutable.Map[String, String], map2: immutable.Map[String, String]) = {
-      for (key <- map1.keys ++ map2.keys)
-      yield (key -> (map1.getOrElse(key, "-") + "," + map2.getOrElse(key, "-")))
+
+      val elementsNumberSet: Set[Int] = map1.values.map(v => v.split(",").size).toSet
+      val elementsNumber = if (elementsNumberSet.isEmpty) 0 else elementsNumberSet.max
+
+      for (key <- map1.keys ++ map2.keys) yield key -> {
+        val map1Size: Int = map1.getOrElse(key, "-").split(",").size
+        val map1Value = if (map1Size < elementsNumber) {
+          {
+            for (i <- 1 to elementsNumber - map1Size)
+            yield map1.getOrElse(key, "-")
+          }.mkString(",")
+        } else {
+          map1.getOrElse(key, "-")
+        }
+        (map1Value + "," + map2.getOrElse(key, "-"))
+      }
     }
 
-    // TODO A VALIDER !
+      // TODO A VALIDER !
     /**
-     * This method translates properties returned by the store to the specified language
+     * This function translates properties returned by the store to the specified language
      * @param lang - the lang to use for translation
      * @param jv - the JValue object to be translated
      * @return the properties translated
@@ -778,6 +798,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
         var result = immutable.Map.empty[String, String]
 
+
         for (id <- rawIds) {
 
           val _featuresForId = rawFeatures.toMap.getOrElse(id, List.empty)
@@ -791,6 +812,7 @@ class ElasticSearchClient /*extends Actor*/ {
           } yield (name, value)
 
           result = zipper(result, _resultForId.toMap).toMap
+
         }
 
         implicit val formats = DefaultFormats
