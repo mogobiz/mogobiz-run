@@ -544,21 +544,69 @@ trait StoreService extends HttpService {
               post {
                 val cart = cartService.initCart(uuid)
 
-                //val updatedCart = cartService.addCoupon(params.companyId,couponCode,cart,locale,currency.code)
-                complete("add coupon")
+                try{
+                  val updatedCart = cartService.addCoupon(params.companyId,couponCode,cart,locale,currency.code)
+                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+                  complete(response)
+                }catch{
+                  case e: AddCouponToCartException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+
+                //complete("add coupon")
               } ~ delete {
-                complete("remove coupon")
+                val cart = cartService.initCart(uuid)
+
+                try{
+                  val updatedCart = cartService.removeCoupon(params.companyId,couponCode,cart,locale,currency.code)
+                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+                  complete(response)
+                }catch{
+                  case e: RemoveCouponFromCartException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+                //complete("remove coupon")
               }
             }
           }
       }~pathPrefix("payment"){
         post{
-          path("prepare"){
-            complete("prepare")
-          }~path("commit"){
-            complete("commit")
-          }~path("cancel"){
-            complete("cancel")
+          parameters('companyId,'currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) { params =>
+            println("evaluate payment parameters")
+            val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+          val locale = Locale.forLanguageTag(lang)
+            val currency = esClient.getCurrency(storeCode,params.currency,lang)
+            path("prepare") {
+
+              //TODO cartService.prepareBeforePayment()
+              complete("prepare")
+            } ~ path("commit") {
+              complete("commit")
+            } ~ path("cancel") {
+              complete("cancel")
+            }
           }
         }
       }

@@ -21,6 +21,8 @@ import scalikejdbc.{DBSession, DB, WrappedResultSet}
  */
 object CartBoService extends BoService {
 
+  type CouponVO = Coupon
+
   DBs.setupAll()
 
   val uuidService = UuidBoService
@@ -315,17 +317,18 @@ object CartBoService extends BoService {
     new CartVO(uuid=cartVO.uuid)
   }
 
+  @throws[AddCouponToCartException]
   def addCoupon(companyId:Long, couponCode:String, cartVO:CartVO, locale:Locale, currencyCode:String) : CartVO = {
     val errors:Map[String,String] = Map()
 
-    val optCoupon = CouponVO.findByCode(companyId, couponCode)
+    val optCoupon = Coupon.findByCode(companyId, couponCode)
 
     val updatedCart = optCoupon match {
       case Some(coupon) => {
         if(cartVO.coupons.exists{ c => couponCode == c.code }){
           addError(errors, "coupon", "already.exist", null, locale)
           throw new AddCouponToCartException(errors)
-        }else if (!CouponVO.consumeCoupon(coupon)) {
+        }else if (!CouponService.consumeCoupon(coupon)) {
           addError(errors, "coupon", "stock.error", null, locale)
           throw new AddCouponToCartException(errors)
         }
@@ -356,10 +359,11 @@ object CartBoService extends BoService {
    * @param couponCode
    * @return
    */
+  @throws[RemoveCouponFromCartException]
   def removeCoupon(companyId:Long, couponCode:String, cartVO:CartVO,locale:Locale, currencyCode: String ):CartVO = {
     val errors:Map[String,String] = Map()
 
-    val optCoupon = CouponVO.findByCode(companyId, couponCode)
+    val optCoupon = Coupon.findByCode(companyId, couponCode)
     val updatedCart = optCoupon match {
       case None => {
         addError(errors, "coupon", "unknown.error", null, locale)
@@ -370,7 +374,7 @@ object CartBoService extends BoService {
           addError(errors, "coupon", "unknown.error", null, locale)
           throw new RemoveCouponFromCartException(errors)
         }else {
-          CouponVO.releaseCoupon(coupon)
+          CouponService.releaseCoupon(coupon)
 
           // reprise des items existants sauf celui à supprimer
           val coupons = cartVO.coupons.filter{ c => couponCode == c.code }
@@ -470,7 +474,7 @@ object CartBoService extends BoService {
           val newid = newId()
           boProductId = newid
           //acquittement:Boolean=false,price:Long=0,principal:Boolean=false,productFk:Long,dateCreated:DateTime = DateTime.now,lastUpdate:DateTime = DateTime.now
-          insert.into(BOProduct).values(newid, boProduct.acquittement, boProduct.price, boProduct.principal, boProduct.productFk, boProduct.dateCreated, boProduct.lastUpdate)
+          insert.into(BOProduct).values(newid, boProduct.acquittement, boProduct.price, boProduct.principal, boProduct.productFk, boProduct.dateCreated, boProduct.lastUpdated)
         }.update.apply()
 
 
@@ -484,7 +488,7 @@ object CartBoService extends BoService {
               lastname = registeredCartItem.lastname, email = registeredCartItem.email,
               phone = registeredCartItem.phone,
               birthdate = registeredCartItem.birthdate, startDate = cartItem.startDate, endDate = cartItem.endDate,
-              dateCreated = DateTime.now, lastUpdate = DateTime.now,
+              dateCreated = DateTime.now, lastUpdated = DateTime.now,
               //bOProduct = boProduct
               bOProductFk = boProductId
             )
@@ -499,7 +503,7 @@ object CartBoService extends BoService {
                 b.lastname -> registeredCartItem.lastname, b.email -> registeredCartItem.email,
                 b.phone -> registeredCartItem.phone,
                 b.birthdate -> registeredCartItem.birthdate, b.startDate -> cartItem.startDate, b.endDate -> cartItem.endDate,
-                b.dateCreated -> DateTime.now, b.lastUpdate -> DateTime.now,
+                b.dateCreated -> DateTime.now, b.lastUpdated -> DateTime.now,
                 b.bOProductFk -> boProductId
               )
             }.update.apply()
@@ -561,7 +565,7 @@ object CartBoService extends BoService {
             b.startDate -> ticketType.startDate, //product.startDate
             b.endDate -> ticketType.stopDate, //product.stopDate
             b.bOCartFk -> boCart.id,
-            b.dateCreated -> DateTime.now, b.lastUpdate -> DateTime.now
+            b.dateCreated -> DateTime.now, b.lastUpdated -> DateTime.now
           )
         }.update.apply()
 
@@ -698,7 +702,7 @@ object CartBoService extends BoService {
             update(BOCart).set(
               BOCart.column.transactionUuid -> transactionUuid,
               BOCart.column.status -> TransactionStatus.COMPLETE,
-              BOCart.column.lastUpdate -> DateTime.now
+              BOCart.column.lastUpdated -> DateTime.now
             ).where.eq(BOCart.column.id, boCart.id)
           }.update.apply()
 
@@ -732,7 +736,7 @@ object CartBoService extends BoService {
           withSQL {
             update(BOCart).set(
               BOCart.column.status -> TransactionStatus.FAILED,
-              BOCart.column.lastUpdate -> DateTime.now
+              BOCart.column.lastUpdated -> DateTime.now
             ).where.eq(BOCart.column.id, boCart.id)
           }.update.apply()
         }
@@ -773,7 +777,7 @@ case class AddCouponToCartException (val errors:Map[String,String]) extends Exce
 case class RemoveCouponFromCartException (val errors:Map[String,String]) extends Exception
 
 case class CartVO(price: Long = 0, endPrice: Long = 0, reduction: Long = 0, finalPrice: Long = 0, count: Int = 0, uuid: String,
-                  cartItemVOs: Array[CartItemVO]=Array(), coupons: Array[CouponVO]=Array(), inTransaction:Boolean = false)
+                  cartItemVOs: Array[CartItemVO]=Array(), coupons: Array[Coupon]=Array(), inTransaction:Boolean = false)
 
 object ProductType extends Enumeration {
   type ProductType = Value
@@ -832,15 +836,52 @@ case class ShippingVO
 (weight: Long, weightUnit: WeightUnit, width: Long, height: Long, depth: Long, linearUnit: LinearUnit, amount: Long, free: Boolean)
 
 
+case class ReductionSold(id:Long,sold:Long=0,dateCreated:DateTime = DateTime.now, lastUpdated:DateTime = DateTime.now) extends DateAware
 
-case class CouponVO
-(id: Long, name: String, code: String, active: Boolean, startDate: Calendar, endDate: Calendar, price: Long)
+object ReductionSold extends SQLSyntaxSupport[ReductionSold] {
 
-object CouponVO {
-  def findByCode(companyId:Long, couponCode:String):Option[CouponVO]={
-    //TODO
-    None
+  def apply(rn: ResultName[ReductionSold])(rs:WrappedResultSet): ReductionSold = ReductionSold(
+    id=rs.get(rn.id),sold=rs.get(rn.sold), dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
+
+  def get(id:Long)(implicit session: DBSession):Option[ReductionSold]={
+    val c = ReductionSold.syntax("c")
+    //DB readOnly { implicit session =>
+        withSQL {
+          select.from(ReductionSold as c).where.eq(c.id, id)
+        }.map(ReductionSold(c.resultName)).single().apply()
+    //}
   }
+  /*
+  def create = {
+    withSQL {
+    val newid = newId()
+      val d = ReductionSold(newid)
+      insert.into(ReductionSold).values(d.id,d.sold,d.dateCreated,d.lastUpdated )
+    }.update.apply()
+  }*/
+
+}
+
+
+case class Coupon
+(id: Long, name: String, code: String, companyFk: Long,startDate: Option[DateTime]=None, endDate: Option[DateTime]=None, //price: Long,
+  numberOfUses:Option[Long]=None, reductionSoldFk:Option[Long]=None,active: Boolean = true,catalogWise:Boolean = false,
+  dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware
+
+object CouponService extends BoService {
+
+  /*
+  private def getOrCreate(coupon:Coupon) : ReductionSold = {
+    def get(id:Long):Option[ReductionSold]={
+      val c = Coupon.syntax("c")
+      DB readOnly {
+        implicit session =>
+          withSQL {
+            select.from(Coupon as c).where.eq(c.code, couponCode).and.eq(c.companyFk,companyId)
+          }.map(Coupon(c.resultName)).single().apply()
+      }
+    }
+  }*/
 
   /**
    * Verify if the coupon is available (from the point of view of the number of uses)
@@ -848,34 +889,78 @@ object CouponVO {
    * @param coupon
    * @return
    */
-  def consumeCoupon(coupon:CouponVO) : Boolean = {
-    /* TODO
-    if (coupon.reductionSold == null) {
-      coupon.reductionSold = new ReductionSold();
-      coupon.reductionSold.sold = 0
-      coupon.reductionSold.save()
-      coupon.save()
-    }
+  def consumeCoupon(coupon:Coupon) : Boolean = {
+    DB localTx { implicit s =>
 
-    if (coupon.numberOfUses != null && coupon.reductionSold.sold >= coupon.numberOfUses) {
-      return false;
-    }
-    else {
-      coupon.reductionSold.sold = coupon.reductionSold.sold + 1
-      coupon.reductionSold.save()
-      return true;
-    }*/
+      val reducId = if (coupon.reductionSoldFk.isEmpty) {
+        var id = 0
+        withSQL {
+          id = newId()
+          val d = ReductionSold(id)
+          val col = ReductionSold.column
+          insert.into(ReductionSold).namedValues(col.id->d.id, col.sold -> d.sold, col.dateCreated -> d.dateCreated, col.lastUpdated -> d.lastUpdated)
+        }.update.apply()
 
-    false
+        val c = Coupon.column
+        withSQL {
+          update(Coupon).set(c.reductionSoldFk -> id,c.lastUpdated -> DateTime.now).where.eq(c.id, coupon.id)
+        }.update.apply()
+        id
+      }else{
+        coupon.reductionSoldFk.get
+      }
+      val reduc = ReductionSold.get(reducId).get
+      val canConsume = coupon.numberOfUses match {
+        case Some(nb) => {
+          nb>reduc.sold
+        }
+        case _ => true
+      }
+
+      if(canConsume){
+        val c = ReductionSold.column
+        withSQL {
+          update(ReductionSold).set(c.sold -> (reduc.sold+1),c.lastUpdated -> DateTime.now).where.eq(c.id, reducId)
+        }.update.apply()
+      }
+      canConsume
+    }
   }
 
-  def releaseCoupon(coupon:CouponVO):Unit= {
-    /* TODO ???
-    if (coupon.reductionSold) {
-      coupon.reductionSold.sold = Math.max(0, coupon.reductionSold.sold - 1)
-      coupon.reductionSold.save()
-    }*/
+  def releaseCoupon(coupon:Coupon):Unit= {
+    DB localTx { implicit s =>
+      coupon.reductionSoldFk.foreach {
+        reducId => {
+          ReductionSold.get(reducId).foreach { reduc =>
+            if (reduc.sold > 0) {
+              val c = ReductionSold.column
+              withSQL {
+                update(ReductionSold).set(c.sold -> (reduc.sold - 1), c.lastUpdated -> DateTime.now).where.eq(c.id, reducId)
+              }.update.apply()
+            }
+          }
+        }
+      }
+    }
   }
+}
+object Coupon extends SQLSyntaxSupport[Coupon]{
+  def apply(rn: ResultName[Coupon])(rs:WrappedResultSet): Coupon = Coupon(
+    id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code), startDate=rs.get(rn.startDate),endDate=rs.get(rn.endDate),
+    numberOfUses = rs.get(rn.numberOfUses),companyFk = rs.get(rn.companyFk),reductionSoldFk=rs.get(rn.reductionSoldFk),
+    dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
+
+  def findByCode(companyId:Long, couponCode:String):Option[Coupon]={
+    val c = Coupon.syntax("c")
+    DB readOnly {
+      implicit session =>
+        withSQL {
+          select.from(Coupon as c).where.eq(c.code, couponCode).and.eq(c.companyFk,companyId)
+        }.map(Coupon(c.resultName)).single().apply()
+    }
+  }
+
+
 
 }
 
@@ -895,7 +980,7 @@ object TransactionStatus extends Enumeration {
 }
 
 case class BOProduct(id:Long,acquittement:Boolean=false,price:Long=0,principal:Boolean=false,productFk:Long,
-                     dateCreated:DateTime = DateTime.now,lastUpdate:DateTime = DateTime.now) extends DateAware {
+                     dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
 
   def product : Product = {
     Product.get(this.productFk).get
@@ -905,7 +990,7 @@ case class BOProduct(id:Long,acquittement:Boolean=false,price:Long=0,principal:B
   }
 }
 object BOProduct extends SQLSyntaxSupport[BOProduct]{
-  def apply(rn: ResultName[BOProduct])(rs:WrappedResultSet): BOProduct = new BOProduct(id=rs.get(rn.id),acquittement=rs.get(rn.acquittement),price=rs.get(rn.price),principal=rs.get(rn.principal),productFk=rs.get(rn.productFk),dateCreated = rs.get(rn.dateCreated),lastUpdate = rs.get(rn.lastUpdate))
+  def apply(rn: ResultName[BOProduct])(rs:WrappedResultSet): BOProduct = new BOProduct(id=rs.get(rn.id),acquittement=rs.get(rn.acquittement),price=rs.get(rn.price),principal=rs.get(rn.principal),productFk=rs.get(rn.productFk),dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
 
 
   def delete(id:Long)(implicit session: DBSession) {
@@ -920,7 +1005,7 @@ case class BOTicketType(id:Long,quantity : Int = 1, price:Long,shortCode:Option[
                         birthdate : Option[DateTime],startDate : Option[DateTime],endDate : Option[DateTime],
                         //bOProduct : BOProduct,
                         bOProductFk : Long,
-                        dateCreated:DateTime,lastUpdate:DateTime) extends DateAware {
+                        dateCreated:DateTime,lastUpdated:DateTime) extends DateAware {
 
   /*
   def delete()(implicit session: DBSession) {
@@ -938,7 +1023,7 @@ object BOTicketType extends SQLSyntaxSupport[BOTicketType]{
   def apply(rn: ResultName[BOTicketType])(rs:WrappedResultSet): BOTicketType = new BOTicketType(id=rs.get(rn.id),quantity=rs.get(rn.quantity),price=rs.get(rn.price),
     shortCode = rs.get(rn.shortCode),ticketType=rs.get(rn.ticketType),firstname=rs.get(rn.firstname),lastname=rs.get(rn.lastname),email=rs.get(rn.email),phone=rs.get(rn.phone),
     birthdate=rs.get(rn.birthdate),startDate=rs.get(rn.endDate),endDate=rs.get(rn.endDate),bOProductFk=rs.get(rn.bOProductFk),
-    dateCreated = rs.get(rn.dateCreated),lastUpdate = rs.get(rn.lastUpdate))
+    dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
 
   def findByBOProduct(boProductId:Long):List[BOTicketType]={
     val t = BOTicketType.syntax("t")
@@ -960,7 +1045,7 @@ object BOTicketType extends SQLSyntaxSupport[BOTicketType]{
 }
 
 case class BOCart(id:Long, transactionUuid:String,date:DateTime, price:Long,status : TransactionStatus, currencyCode:String,currencyRate:Double,companyFk:Long,
-                  dateCreated:DateTime = DateTime.now,lastUpdate:DateTime = DateTime.now) extends DateAware {
+                  dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
 
   def delete()(implicit session: DBSession){
     BOCart.delete(this.id)
@@ -971,7 +1056,7 @@ object BOCart extends SQLSyntaxSupport[BOCart]{
 
   def apply(rn: ResultName[BOCart])(rs:WrappedResultSet): BOCart = new BOCart(id=rs.get(rn.id),transactionUuid=rs.get(rn.transactionUuid),price=rs.get(rn.price),
     date=rs.get(rn.date),status=TransactionStatus.valueOf(rs.string("status")),currencyCode = rs.get(rn.currencyCode),currencyRate = rs.get(rn.currencyRate),
-    companyFk=rs.get(rn.companyFk),dateCreated=rs.get(rn.dateCreated),lastUpdate=rs.get(rn.lastUpdate))
+    companyFk=rs.get(rn.companyFk),dateCreated=rs.get(rn.dateCreated),lastUpdated=rs.get(rn.lastUpdated))
 
   def findByTransactionUuidAndStatus(uuid:String, status:TransactionStatus):Option[BOCart] = {
 
@@ -1018,7 +1103,7 @@ case class BOCartItem(id:Long,code : String,
                       endDate : Option[DateTime],
                       //bOCart : BOCart,
                       bOCartFk : Long,
-                      dateCreated:DateTime = DateTime.now,lastUpdate:DateTime = DateTime.now) extends DateAware {
+                      dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
 
   def delete()(implicit session: DBSession){
     BOCartItem.delete(this.id)
@@ -1029,7 +1114,7 @@ object BOCartItem extends SQLSyntaxSupport[BOCartItem]{
 
   def apply(rn: ResultName[BOCartItem])(rs:WrappedResultSet): BOCartItem = new BOCartItem(id=rs.get(rn.id),code=rs.get(rn.code),price=rs.get(rn.price),tax=rs.get(rn.tax),
     endPrice=rs.get(rn.endPrice),totalPrice=rs.get(rn.totalPrice),totalEndPrice=rs.get(rn.totalEndPrice),quantity=rs.get(rn.quantity),hidden=rs.get(rn.hidden),
-    startDate = rs.get(rn.startDate),endDate = rs.get(rn.endDate),dateCreated = rs.get(rn.dateCreated),lastUpdate = rs.get(rn.lastUpdate),bOCartFk=rs.get(rn.bOCartFk))
+    startDate = rs.get(rn.startDate),endDate = rs.get(rn.endDate),dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated),bOCartFk=rs.get(rn.bOCartFk))
 
   def findByBOCart(boCart:BOCart):List[BOCartItem] = {
 
@@ -1048,7 +1133,7 @@ object BOCartItem extends SQLSyntaxSupport[BOCartItem]{
     DB readOnly {
       implicit session =>
         sql"select p.* from b_o_cart_item_b_o_product ass inner join b_o_product p on ass.boproduct_id=p.id where b_o_products_fk=${boCart.id}"
-          .map(rs => new BOProduct(id=rs.long("id"),acquittement=rs.boolean("acquittement"),price=rs.long("price"),principal=rs.boolean("principal"),productFk=rs.long("productFk"),dateCreated = rs.dateTime("dateCreated"),lastUpdate = rs.dateTime("lastUpdate"))).list().apply()
+          .map(rs => new BOProduct(id=rs.long("id"),acquittement=rs.boolean("acquittement"),price=rs.long("price"),principal=rs.boolean("principal"),productFk=rs.long("productFk"),dateCreated = rs.dateTime("dateCreated"),lastUpdated = rs.dateTime("lastUpdated"))).list().apply()
     }
   }
 

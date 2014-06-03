@@ -166,7 +166,7 @@ object Stock  extends SQLSyntaxSupport[Stock]{
 
 case class StockCalendar(
                           id:Long,stock:Long,sold:Long,startDate:Option[DateTime],product:Product,ticketType:TicketType,
-                          dateCreated:DateTime,lastUpdate:DateTime) extends DateAware
+                          dateCreated:DateTime,lastUpdated:DateTime) extends DateAware
 
 case class Poi(road1:Option[String],road2:Option[String],city:Option[String],postalCode:Option[String],state:Option[String],countryCode:Option[String])
 
@@ -253,5 +253,5 @@ object TicketType extends SQLSyntaxSupport[TicketType] {
 }
 trait DateAware {
   val dateCreated:DateTime
-  val lastUpdate:DateTime
+  val lastUpdated:DateTime
 }
