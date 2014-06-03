@@ -1,8 +1,26 @@
 import org.json4s._
-import org.json4s.JsonAST.{JObject, JString, JField}
+
+
+
+
+
+
+
+
+
+
+import org.json4s.JArray
+import org.json4s.JInt
+import org.json4s.JsonAST._
+import org.json4s.JsonAST.JField
+import org.json4s.JsonAST.JNothing
+import org.json4s.JsonAST.JObject
+import org.json4s.JsonAST.JString
+import org.json4s.JValue
 import org.json4s.native.JsonMethods._
 import org.json4s.JsonDSL._
 import scala.collection.immutable
+import scala.collection.JavaConverters._
 
 
 //val ids = "49,56,63"
@@ -25,7 +43,7 @@ import scala.collection.immutable
 //}
 //def getIncludedFieldWithPrefix(preField: String, field: String, lang: String): String = {
 //  {
-//    if ("_all".equals(lang)) {
+//    if ("_all".equals(lang)) {JField("id",JInt(id))
 //      getLangFieldsWithPrefix(preField, field)
 //    } else {
 //      "\"" + preField + lang + "." + field + "\""
@@ -147,22 +165,31 @@ val response = s"""
          "_source": {
             "id": 49,
             "name": "TV 100 Full HD",
+            "fr" : {
+               "name": "TV 100 FRANCAIS"
+            }
             "features": [
                 {
+                                     "name": "Made in",
+                     "value": "China",
                    "fr": {
-                     "name": "Made in",
-                     "value": "China"
+                     "name": "Fabriqué en ",
+                     "value": "Chine"
                   }
                },
                {
+                                    "name": "Size",
+                     "value": "100",
                   "fr": {
-                     "name": "Size",
+                     "name": "taille",
                      "value": "100"
                   }
                },
                {
+                                    "name": "Resolution",
+                     "value": "HD Ready",
                   "fr": {
-                     "name": "Resolution",
+                     "name": "Résolution",
                      "value": "HD Ready"
                   }
                }
@@ -177,16 +204,24 @@ val response = s"""
          "found": true,
          "_source": {
             "id": 56,
+            "name": "TV 100 HD Ready",
+            "fr" : {
+               "name": "TV 100 HD FRANCAIS"
+            }
             "features": [
                 {
+                                     "name": "Made in",
+                     "value": "France",
                   "fr": {
-                     "name": "Made in",
+                     "name": "Fabriqué en ",
                      "value": "France"
                   }
                },
                {
+                                    "name": "Resolution",
+                     "value": "HD Ready",
                   "fr": {
-                     "name": "Resolution",
+                     "name": "Résolution",
                      "value": "HD Ready"
                   }
                }
@@ -201,17 +236,26 @@ val response = s"""
          "found": true,
          "_source": {
             "id": 75,
+            "name": "TV 100 HD Ready",
+            "fr" : {
+               "name": "TV 100 HD FRANCAIS"
+            }
             "features": [
                 {
+                                     "name": "Made in",
+                     "value": "France",
                   "fr": {
-                     "name": "Made in",
+                     "name": "Fabriqué en ",
                      "value": "France"
                   }
                },
                {
+                                    "name": "Resolution",
+                     "value": "HD Ready",
                   "fr": {
-                     "name": "Resolution",
-                     "value": "HD Ready"
+                     "name": "Résolution",
+                     "value": "HD Ready",
+
                   }
                }
             ]
@@ -219,115 +263,79 @@ val response = s"""
       }
    ]
 } """.stripMargin
+implicit val formats = DefaultFormats
 val json = parse(response)
-val docsArray = (json \ "docs" \ "_source" \ "features")
-
-val formated = compact(render(docsArray.children.children))
-docsArray.children
-val features :  List[(String)] = for {
-  //, String)] = for {
-  JObject(result) <- (json \ "docs" \ "_source" \ "features" \ "fr" )
-  //JField("value",JString(value)) <- result
-  JField("name",JString(name)) <- result
-} yield (name)//-> value)
-val list : List[String] = features.toSet.toList
-//  val result :  List[(String, List[JValue])] = for {
-//    JObject(result) <- (json \\ "docs" \\ "_source")
-//    JString(id) <- result \ "id"
-//    JArray(features) <- (json \\ "docs" \\ "_source" \\ "features" )
-//
-//  } yield (id -> features)
-//val result : List[(BigInt,String)] = for {
-//  JObject(result) <- docsArray
-//  JField("id",JInt(id)) <- result
-//  JField("name",JString(name)) <- result
-//} yield (id -> name)
-  //
-  //compact(render(result))
-  //result.toMap
-  //compact(render(result))
-//  val res = result.groupBy(_._1).map {
-//    case (_feature,v) => {
-//      val valueList = v.map(_._2)
-//      val diff = if(valueList.toSet.size == 1) "0" else "1"
-//
-//      (_feature, valueList.::(diff))
-//    }
-//  }
-//}
-
-json.values
-val rawIds : List[(BigInt)] = for {
-  JObject(result) <- (json \ "docs" \  "_source")
-    JField("id",JInt(id)) <- result
-} yield {
-  (id)
+val docsArray = (json \ "docs")
+val _source = (json \ "docs" \ "_source")
+/*
+ */
+val lang = "fr"
+val rawIds: List[BigInt] = for {
+  JObject(result) <- (docsArray \ "_source")
+  JField("id", JInt(id)) <- result
+} yield (id)
+val rawFeatures: List[(BigInt, List[JValue])] = {
+  for {
+    JObject(result) <- (docsArray \ "_source")
+    JField("id", JInt(id)) <- result
+    JField("features", JArray(features)) <- result
+  } yield (id -> features)
 }
-val rawFeatures : List[(BigInt,List[JValue])] = for {
-  JObject(result) <- (json \ "docs" \ "_source")
-  JField("id",JInt(id)) <- result
-  JField("features",JArray(features)) <- result
-} yield (id -> features)
-//type mismatch;
-//found   : List[List[(String, org.json4s.JsonAST.JValue)]]
-//required: List[(String, String)]
-//JObject(result) <- v
+var result = immutable.Map.empty[String, String]
 
-val listofF1 = rawFeatures.toMap.get(49).get
-val listofF2 = rawFeatures.toMap.get(56).get
-//class StringTupleSerializer extends CustomSerializer[(String, String)](format => ( {
-//  case JObject(List(JField(k, JString(v)))) => (k, v)
-//}, {
-//  case (s: String, t: String) => (s -> t)
-//}))
-//
-//implicit val formats = DefaultFormats + new StringTupleSerializer
-//case class FooMap(foo: String, baz: List[Map[String, String]]);
-//val f = (json \ "docs" \ "_source" \ "features");
-//  f.extract[FooMap]
-val rawResult1 = for {
-  //JObject(result) <- (json \ "docs" \ "_source"\"features")
-  JObject(result) <- listofF1
-  (lang,JObject(f)) <- result
-  ("name",JString(name)) <- f
-  ("value",JString(value)) <- f
-} yield (name,value)
-val rawResult2 = for {
-//JObject(result) <- (json \ "docs" \ "_source"\"features")
-  JObject(result) <- listofF2
-  (lang,JObject(f)) <- result
-  ("name",JString(name)) <- f
-  ("value",JString(value)) <- f
-} yield (name,value)
-val r1 = rawResult1.toMap
-val r2 = rawResult2.toMap
-def zipper(map1: Map[String, String], map2: Map[String, String]) = {
-  for(key <- map1.keys ++ map2.keys)
-  yield (key -> (map1.getOrElse(key, "-")+","+map2.getOrElse(key, "-")))
+def zipper(map1: immutable.Map[String, String], map2: immutable.Map[String, String])= {
+  for (key <- map1.keys ++ map2.keys)
+  yield (key -> (map1.getOrElse(key, "-") + "," + map2.getOrElse(key, "-")))
 }
-
-val r3 = zipper(r1,r2).toMap
-zipper(r3,r2).toMap
-var result =  immutable.Map.empty[String, String]
+def translate(lang: String, jv :JValue): JValue = {
+  implicit val formats = DefaultFormats
+  val map = collection.mutable.Map(jv.extract[Map[String, JValue]].toSeq: _*)
+  println(map)
+  if (!lang.equals("_all")) {
+    val _jvLang: JValue  = map.getOrElse(lang,JNothing)
+    if (_jvLang != JNothing){
+        val _langMap = _jvLang.extract[Map[String, JValue]]
+        _langMap foreach {
+          case (k, v) => map(k) = v
+        }
+        map.remove(lang)
+    }
+    map foreach {
+      case (k: String, v: JObject) => map(k) = translate(lang, v)
+      case (k: String, v: JArray) => map(k) = v.children.toList map {
+        jv => translate(lang,jv)
+      }
+      case (k: String, _) =>
+    }
+  }
+  print("RESULTAT "+ map)
+  JsonDSL.map2jvalue(map.toMap)
+}
 for (id <- rawIds) {
-  val listofF = rawFeatures.toMap.get(id).get
-  val rawResult = for {
-    JObject(result) <- listofF
-    (lang,JObject(f)) <- result
-    ("name",JString(name)) <- f
-    ("value",JString(value)) <- f
-  } yield (name,value)
-  val mapResult = rawResult.toMap
-  result = zipper(result,mapResult).toMap
+  val _featuresForId = rawFeatures.toMap.getOrElse(id, List.empty)
+  val _translatedFeaturesForId = _featuresForId.map(f => {
+    println(f)
+    translate(lang,f)
+  })
+  val _resultForId :List[(String,String)] = for {
+    _jfeature <- _translatedFeaturesForId
+    JString(name) <- _jfeature \ "name"
+    JString(value) <- _jfeature \ "value"
+  } yield (name, value)
+  //println(_resultForId)
+  //println(_resultForId.toMap)
+  result = zipper(result, _resultForId.toMap).toMap
 }
-result
-result.map {
-  case (k,v) => {
-    val list = v.split(",").toList.tail
-    val diff = if(list.toSet.size == 1) "0" else "1"
-    (k,(list.::(diff)).reverse)
+println(result)
+
+
+val newsource = _source.children.toList map {
+  jv => {
+    //println(jv)
+    translate(lang, jv)
   }
 }
+compact(render(newsource))
 
 
 
@@ -367,18 +375,32 @@ result.map {
 
 
 
-/***************************************************************************/
-//val result = rawResult.groupBy(_._1).map {
-//  case (_feature, v) => {
-//    val valueList : List[String] = v.map(_._2)
-//    val diff : String = if (valueList.toSet.size == 1) "0" else "1"
-//    (_feature, valueList.::(diff))
-//  }
-//}
-//val formated_result = compact(render(res))
-//parse(formated_result)
-("abc", "ABC", "12_").zipped foreach { (x, y, z) =>
-  println(x.toString + y + z)
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

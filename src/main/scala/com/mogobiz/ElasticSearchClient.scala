@@ -21,7 +21,9 @@ import scala.util.Success
 import spray.http.HttpRequest
 import com.mogobiz.vo.{Comment,CommentRequest,CommentGetRequest, Paging}
 import scala.collection.immutable
-import org.json4s.native.Serialization
+import org.json4s.JsonAST.{JNothing, JArray, JObject}
+//import org.json4s.JObject
+//import org.json4s.JArray
 
 /**
  * Created by Christophe on 18/02/14.
@@ -536,7 +538,7 @@ class ElasticSearchClient /*extends Actor*/ {
       val formatedPrice = format(price, currency.get, locale, cur.rate)
       val formatedEndPrice = format(endPrice, currency.get, locale, cur.rate)
       val additionalFields = (
-        ("localTaxRate" -> taxRate) ~
+          ("localTaxRate" -> taxRate) ~
           ("endPrice" -> endPrice) ~
           ("formatedPrice" -> formatedPrice) ~
           ("formatedEndPrice" -> formatedEndPrice)
@@ -694,7 +696,10 @@ class ElasticSearchClient /*extends Actor*/ {
           "_source": {
             "include": [
               "id",
+              "name",
               $nameFields,
+              "features.name",
+              "features.value",
               $featuresNameField,
               $featuresValueField
             ]
@@ -722,9 +727,39 @@ class ElasticSearchClient /*extends Actor*/ {
       yield (key -> (map1.getOrElse(key, "-") + "," + map2.getOrElse(key, "-")))
     }
 
-    def httpResponseToFuture(response: HttpResponse, withHightLight: Boolean): Future[JValue] = {
-      if (response.status.isSuccess) {
+    // TODO A VALIDER !
+    /**
+     * This method translates properties returned by the store to the specified language
+     * @param lang - the lang to use for translation
+     * @param jv - the JValue object to be translated
+     * @return the properties translated
+     */
+    def translate(lang: String, jv: JValue): JValue = {
+      implicit val formats = DefaultFormats
+      val map = collection.mutable.Map(jv.extract[Map[String, JValue]].toSeq: _*)
+      if (!lang.equals("_all")) {
+        val _jvLang: JValue = map.getOrElse(lang, JNothing)
+        if (_jvLang != JNothing) {
+          val _langMap = _jvLang.extract[Map[String, JValue]]
+          _langMap foreach {
+            case (k, v) => map(k) = v
+          }
+          map.remove(lang)
+        }
+        map foreach {
+          case (k: String, v: JObject) => map(k) = translate(lang, v)
+          case (k: String, v: JArray) => map(k) = v.children.toList map {
+            jv => translate(lang, jv)
+          }
+          case (k: String, _) =>
+        }
+      }
+      JsonDSL.map2jvalue(map.toMap)
+    }
 
+    def httpResponseToFuture(response: HttpResponse, params: CompareProductParameters): Future[JValue] = {
+      if (response.status.isSuccess) {
+        val lang : String = params._lang
         val json = parse(response.entity.asString)
         val docsArray = (json \ "docs")
 
@@ -747,11 +782,12 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val _featuresForId = rawFeatures.toMap.getOrElse(id, List.empty)
 
+          val _translatedFeaturesForId = _featuresForId.map(f => translate(lang,f))
+
           val _resultForId = for {
-            JObject(result) <- _featuresForId
-            (lang, JObject(f)) <- result
-            ("name", JString(name)) <- f
-            ("value", JString(value)) <- f
+            _jfeature <- _translatedFeaturesForId
+            JString(name) <- _jfeature \ "name"
+            JString(value) <- _jfeature \ "value"
           } yield (name, value)
 
           result = zipper(result, _resultForId.toMap).toMap
@@ -765,7 +801,6 @@ class ElasticSearchClient /*extends Actor*/ {
               val _list = v.split(",").toList
               val list = if(_list.size > rawIds.size ) _list.tail else _list
               val diff = if (list.toSet.size == 1) "0" else "1"
-              //Map("indicator" -> diff, "label" -> k, "values" -> (list.map(v => Map("value" -> v))))
               Feature(diff,k,list.map(v => FeatureValue(v)))
             }
           }
@@ -779,7 +814,6 @@ class ElasticSearchClient /*extends Actor*/ {
         //println(compact(render(resultWithDiffAndIds)))
         println(compact(render(Extraction.decompose(resultWithDiffAndIds))))
 
-
         future(Extraction.decompose(resultWithDiffAndIds))
 
       } else {
@@ -790,7 +824,7 @@ class ElasticSearchClient /*extends Actor*/ {
     }
 
     val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/_mget"), multipleGetQueryTemplate))
-    fresponse.flatMap (response => httpResponseToFuture(response,false))
+    fresponse.flatMap (response => httpResponseToFuture(response,params))
 
   }
    
