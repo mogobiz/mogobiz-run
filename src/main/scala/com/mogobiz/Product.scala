@@ -43,11 +43,20 @@ case class Product(
 class CommonProductParameters(val lang:String,val currency:Option[String],val country:Option[String])
 //,lang:String,currency:String,country:String
 case class FulltextSearchProductParameters(
-                                            _lang:String
-                                            ,_currency:Option[String]
-                                            ,_country:Option[String]
-                                            , val query:String
-                                            , val highlight:Boolean) extends CommonProductParameters(_lang,_currency,_country)
+                                            _lang: String
+                                            , _currency: Option[String]
+                                            , _country: Option[String]
+                                            , val query: String
+                                            , val highlight: Boolean) extends CommonProductParameters(_lang, _currency, _country)
+
+case class CompareProductParameters(
+                                     _lang: String
+                                     , _currency: Option[String]
+                                     , _country: Option[String]
+                                     , val ids: String) extends CommonProductParameters(_lang, _currency, _country)
+case class FeatureValue(value: String)
+case class Feature(indicator: String, label: String, values: List[FeatureValue])
+case class ComparisonResult(ids: List[String],result:List[Feature])
 
 case class ProductRequest(
                            override val maxItemPerPage: Option[Int]

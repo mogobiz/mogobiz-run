@@ -227,7 +227,9 @@ trait StoreService extends HttpService {
 
       }
     } ~ findRoute(storeCode) ~
+      productCompareRoute (storeCode) ~
       productDetailsRoute(storeCode,uuid)
+
   }
 
   /**
@@ -241,6 +243,22 @@ trait StoreService extends HttpService {
           req =>
             onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
               complete(products)
+            }
+        }
+    }
+  }
+
+  /**
+   * Compare product within the same category
+   * @param storeCode
+   * @return
+   */
+  def productCompareRoute(storeCode:String) = path("compare") {
+    respondWithMediaType(`application/json`) {
+        parameters('lang?"_all",'currency.?,'country.?, 'ids).as(CompareProductParameters) {
+          req =>
+            onSuccess(esClient.getProductsFeatures(storeCode, req)){ features =>
+              complete(features)
             }
         }
     }

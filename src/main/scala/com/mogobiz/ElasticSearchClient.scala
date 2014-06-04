@@ -1,9 +1,8 @@
 package com.mogobiz
 
-import akka.actor.{Actor, ActorSystem}
+import akka.actor.ActorSystem
 import akka.io.IO
 import akka.pattern.ask
-import scala.util.{Success, Failure}
 import scala.concurrent._
 import scala.concurrent.duration._
 import spray.can.Http
@@ -12,15 +11,19 @@ import spray.util._
 import org.json4s.native.JsonMethods._
 import org.json4s._
 import org.json4s.JsonDSL._
-import java.util._
+import java.util.{Date, Calendar, Locale}
 import java.text.{SimpleDateFormat, NumberFormat}
 import scala.util.Failure
 import scala.Some
-import spray.http.{HttpResponse, HttpRequest}
+import spray.http.HttpResponse
 import scala.List
 import scala.util.Success
 import spray.http.HttpRequest
 import com.mogobiz.vo.{Comment,CommentRequest,CommentGetRequest, Paging}
+import scala.collection.immutable
+import org.json4s.JsonAST.{JNothing, JArray, JObject}
+//import org.json4s.JObject
+//import org.json4s.JArray
 
 /**
  * Created by Christophe on 18/02/14.
@@ -314,13 +317,26 @@ class ElasticSearchClient /*extends Actor*/ {
     langsTokens.mkString("\"", "\",\"", "\"")
   }
 
-  def getIncludedFields(field: String): String = {
+  def getLangFieldsWithPrefix(preField: String, field: String): String = {
     val langs = listAllLanguages()
     val langsTokens = langs.flatMap {
-      l => l + "." + field :: Nil
-    } //map{ l => "*."+l}
+      l => preField + l + "." + field :: Nil
+    }
+    langsTokens.mkString("\"", "\", \"", "\"")
+  }
 
-    langsTokens.mkString("\"", "\",\"", "\"")
+  def getIncludedFieldWithPrefix(preField:  String, field: String, lang: String) : String = {
+    {
+      if ("_all".equals(lang)) {
+        getLangFieldsWithPrefix(preField, field)
+      } else {
+        "\"" + preField + lang + "." + field + "\""
+      }
+    }
+  }
+
+  def getIncludedFields(field: String, lang: String) : String = {
+    getIncludedFieldWithPrefix("",field,lang)
   }
 
   def getHighlightedFields(field: String): String = {
@@ -522,7 +538,7 @@ class ElasticSearchClient /*extends Actor*/ {
       val formatedPrice = format(price, currency.get, locale, cur.rate)
       val formatedEndPrice = format(endPrice, currency.get, locale, cur.rate)
       val additionalFields = (
-        ("localTaxRate" -> taxRate) ~
+          ("localTaxRate" -> taxRate) ~
           ("endPrice" -> endPrice) ~
           ("formatedPrice" -> formatedPrice) ~
           ("formatedEndPrice" -> formatedEndPrice)
@@ -658,7 +674,183 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
+
   /**
+   * Get multiple products features
+   * @param store
+   * @param params
+   * @return a list of products
+   */
+  def getProductsFeatures(store: String, params: CompareProductParameters): Future[JValue] = {
+
+    val idList = params.ids.split(",").toList
+
+    def getFetchConfig(id: String, lang: String): String = {
+      val nameFields = getIncludedFields("name", lang)
+      val featuresNameField = getIncludedFieldWithPrefix("features.", "name", lang)
+      val featuresValueField = getIncludedFieldWithPrefix("features.", "value", lang)
+      s"""
+        {
+          "_type": "product",
+          "_id": "$id",
+          "_source": {
+            "include": [
+              "id",
+              "name",
+              $nameFields,
+              "features.name",
+              "features.value",
+              $featuresNameField,
+              $featuresValueField
+            ]
+          }
+        }
+        """.stripMargin
+    }
+
+    val fetchConfigsList = idList.map(id => getFetchConfig(id, params._lang))
+
+    val fetchConfigs = fetchConfigsList.filter {
+      str => !str.isEmpty
+    }.mkString("[", ",", "]")
+
+    val multipleGetQueryTemplate = s"""
+      {
+        "docs": $fetchConfigs
+      }
+      """.stripMargin
+
+    println(multipleGetQueryTemplate)
+
+    /**
+     * This function zip tow map with default value
+     * @param map1
+     * @param map2
+     * @return map with zipped value
+     */
+    def zipper(map1: immutable.Map[String, String], map2: immutable.Map[String, String]) = {
+
+      val elementsNumberSet: Set[Int] = map1.values.map(v => v.split(",").size).toSet
+      val elementsNumber = if (elementsNumberSet.isEmpty) 0 else elementsNumberSet.max
+
+      for (key <- map1.keys ++ map2.keys) yield key -> {
+        val map1Size: Int = map1.getOrElse(key, "-").split(",").size
+        val map1Value = if (map1Size < elementsNumber) {
+          {
+            for (i <- 1 to elementsNumber - map1Size)
+            yield map1.getOrElse(key, "-")
+          }.mkString(",")
+        } else {
+          map1.getOrElse(key, "-")
+        }
+        (map1Value + "," + map2.getOrElse(key, "-"))
+      }
+    }
+
+      // TODO A VALIDER !
+    /**
+     * This function translates properties returned by the store to the specified language
+     * @param lang - the lang to use for translation
+     * @param jv - the JValue object to be translated
+     * @return the properties translated
+     */
+    def translate(lang: String, jv: JValue): JValue = {
+      implicit val formats = DefaultFormats
+      val map = collection.mutable.Map(jv.extract[Map[String, JValue]].toSeq: _*)
+      if (!lang.equals("_all")) {
+        val _jvLang: JValue = map.getOrElse(lang, JNothing)
+        if (_jvLang != JNothing) {
+          val _langMap = _jvLang.extract[Map[String, JValue]]
+          _langMap foreach {
+            case (k, v) => map(k) = v
+          }
+          map.remove(lang)
+        }
+        map foreach {
+          case (k: String, v: JObject) => map(k) = translate(lang, v)
+          case (k: String, v: JArray) => map(k) = v.children.toList map {
+            jv => translate(lang, jv)
+          }
+          case (k: String, _) =>
+        }
+      }
+      JsonDSL.map2jvalue(map.toMap)
+    }
+
+    def httpResponseToFuture(response: HttpResponse, params: CompareProductParameters): Future[JValue] = {
+      if (response.status.isSuccess) {
+        val lang : String = params._lang
+        val json = parse(response.entity.asString)
+        val docsArray = (json \ "docs")
+
+        val rawIds: List[BigInt] = for {
+          JObject(result) <- (docsArray \ "_source")
+          JField("id", JInt(id)) <- result
+        } yield (id)
+
+        val rawFeatures: List[(BigInt, List[JValue])] = {
+          for {
+            JObject(result) <- (docsArray \ "_source")
+            JField("id", JInt(id)) <- result
+            JField("features", JArray(features)) <- result
+          } yield (id -> features)
+        }
+
+        var result = immutable.Map.empty[String, String]
+
+
+        for (id <- rawIds) {
+
+          val _featuresForId = rawFeatures.toMap.getOrElse(id, List.empty)
+
+          val _translatedFeaturesForId = _featuresForId.map(f => translate(lang,f))
+
+          val _resultForId = for {
+            _jfeature <- _translatedFeaturesForId
+            JString(name) <- _jfeature \ "name"
+            JString(value) <- _jfeature \ "value"
+          } yield (name, value)
+
+          result = zipper(result, _resultForId.toMap).toMap
+
+        }
+
+        implicit val formats = DefaultFormats
+
+        val resultWithDiff : List[Feature]= {
+          result.map {
+            case (k, v) => {
+              val _list = v.split(",").toList
+              val list = if(_list.size > rawIds.size ) _list.tail else _list
+              val diff = if (list.toSet.size == 1) "0" else "1"
+              Feature(diff,k,list.map(v => FeatureValue(v)))
+            }
+          }
+        }.toList
+        //case class MyResult (ids: Map[String, List[String]], result: Map[String,Map[String, List[String]]])
+
+        val resultWithDiffAndIds = ComparisonResult(rawIds.map(id => String.valueOf(id)),resultWithDiff)
+        //val resultWithDiffAndIds = Map("ids"-> rawIds.map(id => String.valueOf(id))) ++ Map("result" -> resultWithDiff)
+        //val resultWithDiffAndIds = ("ids"-> rawIds.map(id => String.valueOf(id))) ~ ("result" -> resultWithDiff)
+        //println(compact(render(resultWithDiff)))
+        //println(compact(render(resultWithDiffAndIds)))
+        println(compact(render(Extraction.decompose(resultWithDiffAndIds))))
+
+        future(Extraction.decompose(resultWithDiffAndIds))
+
+      } else {
+        //TODO log l'erreur
+        future(parse(response.entity.asString))
+        //throw new ElasticSearchClientException(resp.status.reason)
+      }
+    }
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/_mget"), multipleGetQueryTemplate))
+    fresponse.flatMap (response => httpResponseToFuture(response,params))
+
+  }
+   
+   /**
    * Fulltext products search
    * @param store
    * @param params
@@ -670,13 +862,7 @@ class ElasticSearchClient /*extends Actor*/ {
       ""
     }
     else {
-      ", \"name\", " + {
-        if ("_all".equals(params.lang)) {
-          getIncludedFields("name")
-        } else {
-          "\"" + params.lang + ".name\""
-        }
-      }
+      ", \"name\", " + getIncludedFields("name",params._lang)
     }
 
     val source = s"""
@@ -689,7 +875,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
     val textQuery = {
       val text = params.query
-      val included = getIncludedFields("name")
+      val included = getIncludedFields("name",params._lang)
       s"""
        "query": {
           "query_string": {
@@ -763,6 +949,8 @@ class ElasticSearchClient /*extends Actor*/ {
     fresponse.flatMap (response => httpResponseToFuture(response,params.highlight))
 
   }
+
+
 
   /**
    * Return all the valid date according the specified periods
@@ -1105,8 +1293,7 @@ class ElasticSearchClient /*extends Actor*/ {
     try{
       c.validate()
 
-      import org.json4s.native.Serialization
-      import org.json4s.native.Serialization.{read, write}
+      import org.json4s.native.Serialization.write
       implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Comment]()
 
       val comment = Comment(None,c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)
