@@ -209,7 +209,7 @@ case class TicketType(id:Long,name:String,price:Long,minOrder:Long=0,maxOrder:Lo
 }
 object TicketType extends SQLSyntaxSupport[TicketType] {
 
-  def apply(rs:WrappedResultSet):TicketType = new TicketType(
+  def apply(rs:WrappedResultSet):TicketType = TicketType(
     id=rs.long("id"),
     name=rs.string("name"),
     price=rs.long("price"),minOrder=rs.long("min_order"),maxOrder=rs.long("max_order"),

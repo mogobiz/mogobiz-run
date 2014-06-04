@@ -3,6 +3,17 @@ package com.mogobiz.cart
 import java.util.Locale
 import com.mogobiz.{Currency, RateBoService}
 import org.json4s.{FieldSerializer, DefaultFormats, Formats}
+import org.json4s.JsonAST._
+import scala.Some
+import org.json4s.JsonAST.JDouble
+import org.json4s.JsonAST.JString
+import com.mogobiz.Currency
+import org.json4s.native.JsonMethods._
+import scala.Some
+import com.mogobiz.Currency
+import org.json4s.native.Serialization._
+import scala.Some
+import com.mogobiz.Currency
 
 /**
  * Created by Christophe on 09/05/2014.
@@ -19,23 +30,31 @@ object CartRenderService {
     val items = cart.cartItemVOs.map(item => renderCartItem(item,currency,locale))
     map+=("cartItemVOs" -> items)
 
-    /*
-            updateCoupons(cart)
-        List<Map> listCoupon = []
-        cart.coupons?.each { CouponVO c ->
-            listCoupon << renderCoupon(locale, currencyCode, c)
-        }
+    val cartWithUpdatedCoupons = updateCoupons(cart)
 
-     */
-    val coupons = List()
+    val coupons = cartWithUpdatedCoupons.coupons.map{
+      c => renderCoupon(c,currency, locale)
+    }
     map+=("coupons"-> coupons)
 
-    val prices = renderPriceCart(cart,currency,locale)
+    val prices = renderPriceCart(cartWithUpdatedCoupons,currency,locale)
     map++=prices
 
     println("renderCart->Map")
     println(map)
     map
+  }
+
+  def renderCoupon(coupon:CouponVO, currency:Currency, locale:Locale) = {
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
+    val jsonCoupon = parse(write(coupon))
+
+    //code from renderPriceCoupon
+    val formatedPrice = rateService.format(coupon.price, currency.code, locale);
+    val additionalsData = parse(write(Map(("formatedPrice"->formatedPrice))))
+
+    val renderedCoupon = jsonCoupon merge additionalsData
+    renderedCoupon
   }
 
   def renderCartItem(item:CartItemVO,currency:Currency,locale:Locale) ={
@@ -71,7 +90,10 @@ object CartRenderService {
 
   def renderPriceCart(cart:CartVO, currency:Currency,locale:Locale)={
     val formatedPrice = rateService.format(cart.price, currency.code, locale, currency.rate)
-    val formatedEndPrice = rateService.format(cart.endPrice, currency.code, locale, currency.rate)
+    val formatedEndPrice = cart.endPrice match{
+      case Some(endprice) => rateService.format(endprice, currency.code, locale, currency.rate)
+      case _ => None
+    }
     val formatedReduction = rateService.format(cart.reduction, currency.code, locale, currency.rate)
     val formatedFinalPrice =  rateService.format(cart.finalPrice, currency.code, locale, currency.rate)
 
@@ -86,6 +108,18 @@ object CartRenderService {
       ("formatedFinalPrice"->formatedFinalPrice)
     )
     price
+  }
+
+  private def updateCoupons(cart: CartVO):CartVO= {
+
+    val reduc = cart.coupons.foldLeft(0l)((acc,c) => acc + CouponService.updateCoupon(c, cart).price)
+
+    val finalprice = cart.endPrice match{
+      case Some(endprice) => endprice - reduc
+      case _ => cart.price - reduc
+    }
+
+    cart.copy(reduction = reduc, finalPrice = finalprice)
   }
 
 }
