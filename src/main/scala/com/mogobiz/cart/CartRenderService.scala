@@ -45,6 +45,10 @@ object CartRenderService {
     map
   }
 
+  def renderTransactionCart(cart:CartVO, currency:Currency,locale:Locale):Map[String,Any]={
+    render(cart,currency,locale)
+  }
+
   def renderCoupon(coupon:CouponVO, currency:Currency, locale:Locale) = {
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
     val jsonCoupon = parse(write(coupon))

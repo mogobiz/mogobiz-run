@@ -49,6 +49,12 @@ case class CartParameters(_currency:Option[String],_country:Option[String],_lang
 
 case class CouponParameters(companyId:Long,_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
+case class PrepareTransactionParameters(companyId:Long,_currency:Option[String],_country:Option[String],state:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+
+case class CommitTransactionParameters(transactionUuid:String)
+
+case class CancelTransactionParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+
 case class FulltextSearchProductParameters(
                                             _lang:String
                                             ,_currency:Option[String]

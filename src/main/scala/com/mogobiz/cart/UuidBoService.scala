@@ -1,10 +1,7 @@
 package com.mogobiz.cart
 
 import com.mogobiz.cart.UuidBoService.VAR1024
-import com.mogobiz.cart.ProductCalendar.ProductCalendar
-import java.util.Calendar
 import org.json4s.{FieldSerializer, DefaultFormats, Formats}
-import com.mogobiz.vo.Comment
 import scalikejdbc._, SQLInterpolation._
 
 import org.joda.time.DateTime
@@ -40,7 +37,7 @@ object UuidBoService extends BoService {
 
   def get(uuid:String): Option[UuidData] = {
     DB readOnly{ implicit session =>
-      sql"""select * from uuid_data where uuid=${uuid}""".map(rs => new UuidData(Some(rs.int("id")),rs.string("uuid"),rs.string("payload"),rs.string("xtype"),rs.dateTime("expire_date"))).single().apply()
+      sql"""select * from uuid_data where uuid=${uuid}""".map(rs => UuidData(Some(rs.int("id")),rs.string("uuid"),rs.string("payload"),rs.string("xtype"),rs.dateTime("expire_date"))).single().apply()
     }
   }
 

@@ -1,19 +1,19 @@
 package com.mogobiz.cart
 
-import java.util.{Date, Locale, Calendar}
+import java.util.{Date, Locale}
 import com.mogobiz.cart.ProductType.ProductType
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
 import org.json4s.{DefaultFormats, Formats}
-import com.mogobiz.{Currency, Cart, Utils}
+import com.mogobiz.{Currency, Utils}
 import org.joda.time.DateTime
 import scalikejdbc.config.DBs
-import akka.actor.FSM.->
 import com.mogobiz.cart.TransactionStatus.TransactionStatus
 import scalikejdbc.SQLInterpolation._
 import scala.Some
 import scalikejdbc.{DBSession, DB, WrappedResultSet}
+import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
 
 /**
  * Created by Christophe on 05/05/2014.
@@ -68,7 +68,6 @@ object CartBoService extends BoService {
 
     var errors:Map[String,String] = Map()
 
-    //TODO check parameters
     if(cartVO.inTransaction){ //if(cartVO.uuid){
       errors = addError(errors, "cart", "initiate.payment.error", null, locale)
     }
@@ -126,7 +125,7 @@ object CartBoService extends BoService {
 
     // value cartItem
     val itemPrice = ticketType.price
-    val tax = taxRateService.findTaxRateByProduct(product, locale.getCountry)
+    val tax = taxRateService.findTaxRateByProduct(product, locale.getCountry) //TODO revoir la validité de ce dernier paramètre par rapports aux appels
     val endPrice = taxRateService.calculateEndPrix(itemPrice, tax)
     val totalPrice = quantity * itemPrice;
     val totalEndPrice = endPrice match {
@@ -411,7 +410,7 @@ object CartBoService extends BoService {
 
   }
 
-  def prepareBeforePayment(companyId:Long, countryCode:String, stateCode:String, currencyCode:String, cartVO:CartVO,rate:Currency) : CartVO = {
+  def prepareBeforePayment(companyId:Long, countryCode:String, stateCode:Option[String], currencyCode:String, cartVO:CartVO,rate:Currency) : CartVO = {
     //val rate:MogopayRate = rateService.getMogopayRate(currencyCode)
     //val rate:Currency= rateService.getMogopayRate(currencyCode)
 
@@ -597,7 +596,7 @@ object CartBoService extends BoService {
     }
 
 
-    /*
+    /*TODO dans renderTransactionCart
     // Construit la map correspondant au panier pour le jsoniser
     Map map = [:]
     map["count"] = cartVO.count
@@ -786,17 +785,19 @@ object CartBoService extends BoService {
   }
 }
 
-case class AddCartItemException(val errors:Map[String,String]) extends Exception
+class CartException(val errors:Map[String,String]) extends Exception
 
-case class UpdateCartItemException (val errors:Map[String,String]) extends Exception
+case class AddCartItemException (override val errors:Map[String,String]) extends CartException(errors)
 
-case class RemoveCartItemException (val errors:Map[String,String]) extends Exception
+case class UpdateCartItemException (override val errors:Map[String,String]) extends CartException(errors)
 
-case class ClearCartException (val errors:Map[String,String]) extends Exception
+case class RemoveCartItemException (override val errors:Map[String,String]) extends CartException(errors)
 
-case class AddCouponToCartException (val errors:Map[String,String]) extends Exception
+case class ClearCartException (override val errors:Map[String,String]) extends CartException(errors)
 
-case class RemoveCouponFromCartException (val errors:Map[String,String]) extends Exception
+case class AddCouponToCartException (override val errors:Map[String,String]) extends CartException(errors)
+
+case class RemoveCouponFromCartException (override val errors:Map[String,String]) extends CartException(errors)
 
 case class CartVO(price: Long = 0, endPrice: Option[Long] = Some(0), reduction: Long = 0, finalPrice: Long = 0, count: Int = 0, uuid: String,
                   cartItemVOs: Array[CartItemVO]=Array(), coupons: Array[CouponVO]=Array(), inTransaction:Boolean = false)
@@ -894,8 +895,73 @@ object CouponVO {
 case class Coupon
 (id: Long, name: String, code: String, companyFk: Long,startDate: Option[DateTime]=None, endDate: Option[DateTime]=None, //price: Long,
   numberOfUses:Option[Long]=None, reductionSoldFk:Option[Long]=None,active: Boolean = true,catalogWise:Boolean = false,
+  dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
+
+  def rules = Coupon.getRules(this.id)
+}
+
+object Coupon extends SQLSyntaxSupport[Coupon]{
+  def apply(rn: ResultName[Coupon])(rs:WrappedResultSet): Coupon = Coupon(
+    id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code), startDate=rs.get(rn.startDate),endDate=rs.get(rn.endDate),
+    numberOfUses = rs.get(rn.numberOfUses),companyFk = rs.get(rn.companyFk),reductionSoldFk=rs.get(rn.reductionSoldFk),
+    dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
+
+  def findByCode(companyId:Long, couponCode:String):Option[Coupon]={
+    val c = Coupon.syntax("c")
+    DB readOnly {
+      implicit session =>
+        withSQL {
+          select.from(Coupon as c).where.eq(c.code, couponCode).and.eq(c.companyFk,companyId)
+        }.map(Coupon(c.resultName)).single().apply()
+    }
+  }
+
+  def get(id: Long)/*(implicit session: DBSession)*/:Option[Coupon]={
+    val c = Coupon.syntax("c")
+    DB readOnly { implicit session =>
+      withSQL {
+        select.from(Coupon as c).where.eq(c.id, id)
+      }.map(Coupon(c.resultName)).single().apply()
+    }
+  }
+
+  def getRules(couponId:Long):List[ReductionRule]={
+    val c = ReductionRule.syntax("c")
+    DB readOnly { implicit session =>
+      withSQL {
+        select.from(ReductionRule as c).where.eq(c.id, couponId)
+      }.map(ReductionRule(c.resultName)).list().apply()
+    }
+  }
+}
+
+object ReductionRuleType extends Enumeration {
+  type ReductionRuleType = Value
+  val DISCOUNT = Value("DISCOUNT")
+  val X_PURCHASED_Y_OFFERED = Value("X_PURCHASED_Y_OFFERED")
+
+  def apply(name:String) = name match{
+    case "DISCOUNT" => DISCOUNT
+    case "X_PURCHASED_Y_OFFERED" => X_PURCHASED_Y_OFFERED
+    case _ => throw new Exception("Not expected ReductionRuleType")
+  }
+}
+
+case class ReductionRule(
+                          id:Long,
+                          xtype: ReductionRuleType,
+                          quantityMin:Option[Long],
+                          quantityMax:Option[Long],
+                          discount:Option[String], //discount (or percent) if type is DISCOUNT (example : -1000 or * 10%)
+                          xPurchased:Option[Long], yOffered:Option[Long],
   dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware
 
+object ReductionRule extends SQLSyntaxSupport[ReductionRule] {
+  def apply(rn: ResultName[ReductionRule])(rs: WrappedResultSet): ReductionRule = ReductionRule(
+    id = rs.get(rn.id), xtype = ReductionRuleType(rs.string("reduction_rule_type")), quantityMin = rs.get(rn.quantityMin), quantityMax = rs.get(rn.quantityMax),
+    discount = rs.get(rn.discount), xPurchased = rs.get(rn.xPurchased), yOffered = rs.get(rn.yOffered),
+    dateCreated = rs.get(rn.dateCreated), lastUpdated = rs.get(rn.lastUpdated))
+}
 object CouponService extends BoService {
 
   /*
@@ -917,7 +983,7 @@ object CouponService extends BoService {
    * @param coupon
    * @return
    */
-  def consumeCoupon(coupon:Coupon) : Boolean = {
+  def consumeCoupon(coupon: Coupon): Boolean = {
     DB localTx { implicit s =>
 
       val reducId = if (coupon.reductionSoldFk.isEmpty) {
@@ -926,36 +992,36 @@ object CouponService extends BoService {
           id = newId()
           val d = ReductionSold(id)
           val col = ReductionSold.column
-          insert.into(ReductionSold).namedValues(col.id->d.id, col.sold -> d.sold, col.dateCreated -> d.dateCreated, col.lastUpdated -> d.lastUpdated)
+          insert.into(ReductionSold).namedValues(col.id -> d.id, col.sold -> d.sold, col.dateCreated -> d.dateCreated, col.lastUpdated -> d.lastUpdated)
         }.update.apply()
 
         val c = Coupon.column
         withSQL {
-          update(Coupon).set(c.reductionSoldFk -> id,c.lastUpdated -> DateTime.now).where.eq(c.id, coupon.id)
+          update(Coupon).set(c.reductionSoldFk -> id, c.lastUpdated -> DateTime.now).where.eq(c.id, coupon.id)
         }.update.apply()
         id
-      }else{
+      } else {
         coupon.reductionSoldFk.get
       }
       val reduc = ReductionSold.get(reducId).get
       val canConsume = coupon.numberOfUses match {
         case Some(nb) => {
-          nb>reduc.sold
+          nb > reduc.sold
         }
         case _ => true
       }
 
-      if(canConsume){
+      if (canConsume) {
         val c = ReductionSold.column
         withSQL {
-          update(ReductionSold).set(c.sold -> (reduc.sold+1),c.lastUpdated -> DateTime.now).where.eq(c.id, reducId)
+          update(ReductionSold).set(c.sold -> (reduc.sold + 1), c.lastUpdated -> DateTime.now).where.eq(c.id, reducId)
         }.update.apply()
       }
       canConsume
     }
   }
 
-  def releaseCoupon(coupon:Coupon):Unit= {
+  def releaseCoupon(coupon: Coupon): Unit = {
     DB localTx { implicit s =>
       coupon.reductionSoldFk.foreach {
         reducId => {
@@ -972,21 +1038,33 @@ object CouponService extends BoService {
     }
   }
 
+  def getTicketTypesIdsWhereCouponApply(couponId: Long) : List[Long] = DB readOnly {
+    implicit session => {
+      sql"""
+         | select id from ticket_type
+         | where tt.product_fk is in(select product_id from coupon_product where products_fk=${couponId})
+         | or tt.product_fk is in (select id from product where category_fk in (select category_id from coupon_category where categories_fk=${couponId}))
+       """.map(rs => rs.long("id")).list.apply()
+    }
+  }
+
+
   /**
    * update the active attribute and calculate the reduction price
    * using the content of the cartVO and the current date (to define if coupon
    * is active or not)
-   * @param couponVO
+   * @param c
    * @param cart
    */
-  def updateCoupon(couponVO:CouponVO, cart:CartVO):CouponVO = {
-    val coupon = Coupon.get(couponVO.id).get
+  def updateCoupon(c: CouponVO, cart: CartVO): CouponVO = {
+    val coupon = Coupon.get(c.id).get
 
-    val updatedCouponVO = CouponVO(coupon)
+    val couponVO = CouponVO(coupon)
 
-    (coupon.active,coupon.startDate,coupon.endDate) match {
-      case (true,Some(startDate),Some(endDate)) => {
-        if((startDate.isBeforeNow || startDate.isEqualNow) && (endDate.isAfterNow || endDate.isEqualNow)){
+    //the coupon must be active and is valid for a date between startDate and endDate
+    (coupon.active, coupon.startDate, coupon.endDate) match {
+      case (true, Some(startDate), Some(endDate)) => {
+        if ((startDate.isBeforeNow || startDate.isEqualNow) && (endDate.isAfterNow || endDate.isEqualNow)) {
           /*
           List<TicketType> listTicketType = TicketType.createCriteria().list {
             or {
@@ -1002,27 +1080,56 @@ object CouponService extends BoService {
                 "in"("id", coupon.ticketTypes.collect {it.id})
               }
             }
-          }
+          }*/
 
-          if (listTicketType.size() > 0) {
-            long quantity = 0
-            long xPurchasedPrice = Long.MAX_VALUE;
-            cart.cartItemVOs.each { CartItemVO cartItem ->
-              if (listTicketType.find {it.id == cartItem.skuId} != null) {
+          // liste des ticketTypes pour lesquels le coupon s'applique
+          //val listTicketType = List[TicketType]()
+          //pas besoin de ramener les ticketTypes, les id suffisent
+
+          val listTicketTypeIds = getTicketTypesIdsWhereCouponApply(c.id)
+
+          if (listTicketTypeIds.size > 0) {
+            var quantity = 0l
+            var xPurchasedPrice = java.lang.Long.MAX_VALUE
+            cart.cartItemVOs.foreach { cartItem =>
+              if (listTicketTypeIds.exists {
+                _ == cartItem.skuId
+              }) {
                 quantity += cartItem.quantity
-                if (cartItem.endPrice > 0) {
-                  xPurchasedPrice = Math.min(xPurchasedPrice, cartItem.endPrice)
+                if (cartItem.endPrice.getOrElse(0l) > 0) {
+                  xPurchasedPrice = Math.min(xPurchasedPrice, cartItem.endPrice.get)
                 }
               }
             }
-            if (xPurchasedPrice == Long.MAX_VALUE) {
+            if (xPurchasedPrice == java.lang.Long.MAX_VALUE) {
               xPurchasedPrice = 0
             }
 
             if (quantity > 0) {
-              couponVO.active = true
-              coupon.rules.each {ReductionRule rule ->
-                if (ReductionRuleType.DISCOUNT.equals(rule.xtype)) {
+              //couponVO.active = true
+              var couponVOprice = couponVO.price
+              coupon.rules.foreach {
+                //TODO foldLeft later
+                rule => {
+                  couponVOprice = rule.xtype match {
+                    case ReductionRuleType.DISCOUNT => {
+                      cart.endPrice match {
+                        case Some(endprice) => couponVOprice + computeDiscount(rule.discount, endprice)
+                        case None => couponVOprice + computeDiscount(rule.discount, cart.price)
+                      }
+                    }
+                    case ReductionRuleType.X_PURCHASED_Y_OFFERED => {
+                      val multiple = quantity / rule.xPurchased.get //FIXME None.get possible
+                      (couponVO.price + (xPurchasedPrice * rule.yOffered.get * multiple)) //FIXME None.get possible
+                    }
+                    case _ => couponVOprice
+                  }
+                }
+              }
+              couponVO.copy(active = true, price = couponVOprice)
+
+              /* code iper
+                if (ReductionRuleType.DISCOUNT == rule.xtype) {
                   if (cart.endPrice != null) {
                     couponVO.price += IperUtil.computeDiscount(rule.discount, cart.endPrice)
                   }
@@ -1033,42 +1140,59 @@ object CouponService extends BoService {
                 else if (ReductionRuleType.X_PURCHASED_Y_OFFERED.equals(rule.xtype)) {
                   long multiple = quantity / rule.xPurchased
                   couponVO.price += xPurchasedPrice * rule.yOffered * multiple
-                }
-              }
+                }*/
+
+            } else {
+              couponVO
             }
-          }*/
-          couponVO.copy()
-        }else couponVO
+          } else {
+            couponVO
+          }
+        } else {
+          couponVO
+        }
       }
       case _ => couponVO
     }
   }
-}
-object Coupon extends SQLSyntaxSupport[Coupon]{
-  def apply(rn: ResultName[Coupon])(rs:WrappedResultSet): Coupon = Coupon(
-    id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code), startDate=rs.get(rn.startDate),endDate=rs.get(rn.endDate),
-    numberOfUses = rs.get(rn.numberOfUses),companyFk = rs.get(rn.companyFk),reductionSoldFk=rs.get(rn.reductionSoldFk),
-    dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
 
-  def findByCode(companyId:Long, couponCode:String):Option[Coupon]={
-    val c = Coupon.syntax("c")
-    DB readOnly {
-      implicit session =>
-        withSQL {
-          select.from(Coupon as c).where.eq(c.code, couponCode).and.eq(c.companyFk,companyId)
-        }.map(Coupon(c.resultName)).single().apply()
+  /**
+   *
+   * @param discountRule
+   * @param prixDeBase
+   * @return
+   */
+  //TODO translate variable label
+  def computeDiscount(discountRule: Option[String], prixDeBase: Long) = {
+
+    discountRule match{
+      case Some(regle) => {
+        if (regle.endsWith("%"))
+        {
+          val pourcentage = java.lang.Float.parseFloat(regle.substring(0, regle.length()-1))
+          (prixDeBase * pourcentage / 100).toLong //TODO recheck the rounded value computed
+        }
+        else if (regle.startsWith ("+"))
+        {
+
+          val increment = java.lang.Long.parseLong(regle.substring(1))
+          prixDeBase + increment;
+        }
+        else if (regle.startsWith ("-"))
+        {
+          val decrement = java.lang.Long.parseLong (regle.substring(1))
+          prixDeBase - decrement;
+        }
+        else
+        {
+          java.lang.Long.parseLong(regle)
+        }
+      }
+      case None => prixDeBase
     }
   }
-
-  def get(id: Long)/*(implicit session: DBSession)*/:Option[Coupon]={
-      val c = Coupon.syntax("c")
-      DB readOnly { implicit session =>
-        withSQL {
-          select.from(Coupon as c).where.eq(c.id, id)
-        }.map(Coupon(c.resultName)).single().apply()
-      }
-  }
 }
+
 
 object TransactionStatus extends Enumeration {
   type TransactionStatus = Value

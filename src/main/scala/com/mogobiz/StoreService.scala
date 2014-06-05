@@ -593,21 +593,89 @@ trait StoreService extends HttpService {
           }
       }~pathPrefix("payment"){
         post{
-          parameters('companyId,'currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) { params =>
-            println("evaluate payment parameters")
-            val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-          val locale = Locale.forLanguageTag(lang)
-            val currency = esClient.getCurrency(storeCode,params.currency,lang)
             path("prepare") {
+              parameters('companyId,'currency.?, 'country.?,'state.?, 'lang ? "_all").as(PrepareTransactionParameters) { params =>
+                val lang: String = if (params.lang == "_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val country = params.country.getOrElse(locale.getCountry)
+                val currency = esClient.getCurrency(storeCode, params.currency, lang)
 
-              //TODO cartService.prepareBeforePayment()
-              complete("prepare")
+                val cart = cartService.initCart(uuid)
+
+                try{
+                  val updatedCart = cartService.prepareBeforePayment(params.companyId, country, params.state, currency.code, cart, currency)
+                  val data = cartRenderService.renderTransactionCart(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+                  complete(response)
+                }catch{
+                  case e: CartException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+                //complete("prepare")
+              }
             } ~ path("commit") {
-              complete("commit")
+                parameters('transactionUuid).as(CommitTransactionParameters) { params =>
+                  val cart = cartService.initCart(uuid)
+
+                  try {
+                    val emailingData = cartService.commit(cart, params.transactionUuid)
+                    val response = Map(
+                      ("success" -> true),
+                      ("data" -> emailingData),
+                      ("errors" -> List())
+                    )
+                    complete(response)
+                  } catch {
+                    case e: CartException => {
+                      val response = Map(
+                        ("success" -> false),
+                        ("data" -> cart),
+                        ("errors" -> e.errors)
+                      )
+                      complete(response)
+                    }
+                  }
+                  //complete("commit")
+                }
             } ~ path("cancel") {
-              complete("cancel")
+              parameters('currency.?, 'country.?, 'lang ? "_all").as(CancelTransactionParameters) { params =>
+                val lang: String = if (params.lang == "_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val currency = esClient.getCurrency(storeCode, params.currency, lang)
+                val cart = cartService.initCart(uuid)
+                try {
+                  val updatedCart = cartService.cancel(locale, currency.code, cart)
+                  val data = cartRenderService.render(updatedCart, currency, locale)
+                  val response = Map(
+                    ("success" -> true),
+                    ("data" -> data),
+                    ("errors" -> List())
+                  )
+                  complete(response)
+                } catch {
+                  case e: CartException => {
+                    val response = Map(
+                      ("success" -> false),
+                      ("data" -> cart),
+                      ("errors" -> e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+              }
+              //complete("cancel")
             }
-          }
+
         }
       }
     }
