@@ -733,12 +733,14 @@ object CartBoService extends BoService {
         cartVO.endPrice = 0
         cartVO.count = 0;
         cartVO.cartItemVOs = null
-        //uuidDataService.removeCart(); PAS IMPLEMENTE DANS IPER
+        //TODO uuidDataService.removeCart(); PAS IMPLEMENTE DANS IPER
         */
         }
-        val updatedCart = cartVO.copy(inTransaction = false, price = 0, endPrice = Some(0),count = 0, cartItemVOs = Array())
+        //code traduit en : val updatedCart = cartVO.copy(inTransaction = false, price = 0, endPrice = Some(0),count = 0, cartItemVOs = Array())
+        //TODO a confirmer, mais je pense que c'est un reset complet du panier qu'on veut, comme suit :
+        val updatedCart = CartVO(uuid = cartVO.uuid)
         uuidService.set(updatedCart)
-        //TODO sendEmails(emailingData)
+        //TODO sendEmails(emailingData) faire un Actor
         emailingData
       }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
