@@ -810,6 +810,10 @@ class ElasticSearchClient /*extends Actor*/ {
         val json = parse(response.entity.asString)
         val docsArray = (json \ "docs")
 
+        var result = immutable.Map.empty[String, String]
+        var _langValueMap = collection.mutable.Map.empty[String,Map[String,String]]
+        var _langNameMap = collection.mutable.Map.empty[String,Map[String,String]]
+
         val rawIds: List[BigInt] = for {
           JObject(result) <- (docsArray \ "_source")
           JField("id", JInt(id)) <- result
@@ -822,10 +826,6 @@ class ElasticSearchClient /*extends Actor*/ {
             JField("features", JArray(features)) <- result
           } yield (id -> features)
         }
-
-        var result = immutable.Map.empty[String, String]
-        var _langValueMap = collection.mutable.Map.empty[String,Map[String,String]]
-
 
         for (id <- rawIds) {
 
@@ -855,6 +855,17 @@ class ElasticSearchClient /*extends Actor*/ {
                   })
                   _langValueMap(name).getOrElse(_lang,_langValueMap(name) ++ Map(_lang -> value))
                 }
+                for {
+                  _jfeature <- _featuresForId
+                  JString(value) <- _jfeature \ _lang
+                  JString(name) <- _jfeature \ "name"
+                } yield {
+                  _langNameMap.getOrElse(name,{
+                    _langNameMap.put(name, Map(_lang -> value))
+                    _langNameMap(name)
+                  })
+                  _langNameMap(name).getOrElse(_lang,_langNameMap(name) ++ Map(_lang -> value))
+                }
               }
             }
           }
@@ -863,13 +874,14 @@ class ElasticSearchClient /*extends Actor*/ {
           //println("langs = " + langValues)
         }
         //println(_langValueMap)
+        //println(_langNameMap)
         val resultWithDiff: List[Map[String, Object]] = {
           result.map {
             case (k, v) => {
               val _list = v.split(",").toList
               val list = if (_list.size > rawIds.size) _list.tail else _list
               val diff = if (list.toSet.size == 1) "0" else "1"
-              Map(
+              var _resultWithDiff = Map(
                 "indicator" -> diff,
                 "label" -> k,
                 "values" -> list.map(v => {
@@ -887,6 +899,15 @@ class ElasticSearchClient /*extends Actor*/ {
                   _map
                 })
               )
+              listAllLanguages() foreach {
+                _lang => {
+                  val s :String = _langNameMap.getOrElse(k, Map(_lang -> "")).getOrElse(_lang, "")
+                  if (s.nonEmpty) {
+                    _resultWithDiff = _resultWithDiff + (_lang -> s)
+                  }
+                }
+              }
+              _resultWithDiff
             }
           }
         }.toList
