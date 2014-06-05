@@ -20,8 +20,10 @@ import scala.List
 import scala.util.Success
 import spray.http.HttpRequest
 import com.mogobiz.vo.{Comment,CommentRequest,CommentGetRequest, Paging}
-import scala.collection.immutable
+import scala.collection.{mutable, immutable}
 import org.json4s.JsonAST.{JNothing, JArray, JObject}
+import java.util
+
 //import org.json4s.JObject
 //import org.json4s.JArray
 
@@ -773,15 +775,44 @@ class ElasticSearchClient /*extends Actor*/ {
           }
           case (k: String, _) =>
         }
+      } else {
+        listAllLanguages() foreach {
+          _lng => {
+            val _jvLang: JValue = map.getOrElse(_lng, JNothing)
+            //println(_jvLang)
+            if (_jvLang != JNothing) {
+              val _langMap = _jvLang.extract[Map[String, JValue]]
+              //println(_langMap)
+              _langMap foreach {
+                case (k, v) => map.put(_lng,v)
+              }
+              //println(map)
+            }
+            map foreach {
+              case (k: String, v: JObject) => map(k) = translate(lang, v)
+              case (k: String, v: JArray) => map(k) = v.children.toList map {
+                jv => translate(lang, jv)
+              }
+              case (k: String, _) =>
+            }
+          }
+        }
       }
+      //println(compact(render(JsonDSL.map2jvalue(map.toMap))))
       JsonDSL.map2jvalue(map.toMap)
     }
 
     def httpResponseToFuture(response: HttpResponse, params: CompareProductParameters): Future[JValue] = {
+      implicit def formats = DefaultFormats
+
       if (response.status.isSuccess) {
         val lang : String = params._lang
         val json = parse(response.entity.asString)
         val docsArray = (json \ "docs")
+
+        var result = immutable.Map.empty[String, String]
+        var _langValueMap = collection.mutable.Map.empty[String,Map[String,String]]
+        var _langNameMap = collection.mutable.Map.empty[String,Map[String,String]]
 
         val rawIds: List[BigInt] = for {
           JObject(result) <- (docsArray \ "_source")
@@ -796,44 +827,97 @@ class ElasticSearchClient /*extends Actor*/ {
           } yield (id -> features)
         }
 
-        var result = immutable.Map.empty[String, String]
-
-
         for (id <- rawIds) {
 
           val _featuresForId = rawFeatures.toMap.getOrElse(id, List.empty)
 
-          val _translatedFeaturesForId = _featuresForId.map(f => translate(lang,f))
+          val _translatedFeaturesForId = _featuresForId.map(f => translate(lang, f))
+          //println(compact(render(_translatedFeaturesForId)))
 
-          val _resultForId = for {
+          val _resultForId : List[(String,String)] = for {
             _jfeature <- _translatedFeaturesForId
             JString(name) <- _jfeature \ "name"
             JString(value) <- _jfeature \ "value"
-          } yield (name, value)
+          } yield (name , value)
 
+          if (lang.equals("_all")) {
+            listAllLanguages() foreach {
+              _lang => {
+                //val list : List[Map[String,Map[String,String]]] =
+                for {
+                  _jfeature <- _translatedFeaturesForId
+                  JString(value) <- _jfeature \ _lang
+                  JString(name) <- _jfeature \ "name"
+                } yield {
+                   _langValueMap.getOrElse(name,{
+                    _langValueMap.put(name, Map(_lang -> value))
+                     _langValueMap(name)
+                  })
+                  _langValueMap(name).getOrElse(_lang,_langValueMap(name) ++ Map(_lang -> value))
+                }
+                for {
+                  _jfeature <- _featuresForId
+                  JString(value) <- _jfeature \ _lang
+                  JString(name) <- _jfeature \ "name"
+                } yield {
+                  _langNameMap.getOrElse(name,{
+                    _langNameMap.put(name, Map(_lang -> value))
+                    _langNameMap(name)
+                  })
+                  _langNameMap(name).getOrElse(_lang,_langNameMap(name) ++ Map(_lang -> value))
+                }
+              }
+            }
+          }
           result = zipper(result, _resultForId.toMap).toMap
-
+          //println("without langs = " + result)
+          //println("langs = " + langValues)
         }
-
-        implicit val formats = DefaultFormats
-
-        val resultWithDiff : List[Feature]= {
+        //println(_langValueMap)
+        //println(_langNameMap)
+        val resultWithDiff: List[Map[String, Object]] = {
           result.map {
             case (k, v) => {
               val _list = v.split(",").toList
-              val list = if(_list.size > rawIds.size ) _list.tail else _list
+              val list = if (_list.size > rawIds.size) _list.tail else _list
               val diff = if (list.toSet.size == 1) "0" else "1"
-              Feature(diff,k,list.map(v => FeatureValue(v)))
+              var _resultWithDiff = Map(
+                "indicator" -> diff,
+                "label" -> k,
+                "values" -> list.map(v => {
+                  var _map = Map("value" -> v)
+                  if(!v.equals("-") && lang.equals("_all")){
+                    listAllLanguages() foreach {
+                      _lang => {
+                        val s :String = _langValueMap.getOrElse(k, Map(_lang -> "")).getOrElse(_lang, "")
+                        if (s.nonEmpty) {
+                          _map = _map + (_lang -> s)
+                        }
+                      }
+                    }
+                  }
+                  _map
+                })
+              )
+              listAllLanguages() foreach {
+                _lang => {
+                  val s :String = _langNameMap.getOrElse(k, Map(_lang -> "")).getOrElse(_lang, "")
+                  if (s.nonEmpty) {
+                    _resultWithDiff = _resultWithDiff + (_lang -> s)
+                  }
+                }
+              }
+              _resultWithDiff
             }
           }
         }.toList
         //case class MyResult (ids: Map[String, List[String]], result: Map[String,Map[String, List[String]]])
 
-        val resultWithDiffAndIds = ComparisonResult(rawIds.map(id => String.valueOf(id)),resultWithDiff)
-        //val resultWithDiffAndIds = Map("ids"-> rawIds.map(id => String.valueOf(id))) ++ Map("result" -> resultWithDiff)
-        //val resultWithDiffAndIds = ("ids"-> rawIds.map(id => String.valueOf(id))) ~ ("result" -> resultWithDiff)
-        //println(compact(render(resultWithDiff)))
-        //println(compact(render(resultWithDiffAndIds)))
+        //val resultWithDiffAndIds = ComparisonResult(rawIds.map(id => String.valueOf(id)),resultWithDiff)
+        val resultWithDiffAndIds = Map(
+          "ids" -> rawIds.map(id => String.valueOf(id)),
+          "result" -> resultWithDiff)
+
         println(compact(render(Extraction.decompose(resultWithDiffAndIds))))
 
         future(Extraction.decompose(resultWithDiffAndIds))
