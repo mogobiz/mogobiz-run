@@ -130,29 +130,9 @@ class ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   def queryCountries(store: String, lang: String): Future[HttpResponse] = {
-
-    val template = (lang: String) =>
-      s"""
-        | {
-        |  "_source": {
-        |    "include": [
-        |      "id",
-        |      "code",
-        |      "name",
-        |      "$lang.*"
-        |    ]
-        |   }
-        | }
-        |
-      """.stripMargin
-
-    val plang = if (lang == "_all") "*" else lang
-    val query = template(plang)
-    println(query)
-    val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/country/_search"), query))
-    response
+    val esRequest = createESRequest(createExcludeLang(store, lang) :+ "imported")
+    search(store, "country", esRequest)
   }
-
 
   /**
    *
@@ -395,22 +375,17 @@ class ElasticSearchClient /*extends Actor*/ {
    */
   def queryCategories(store: String, qr: CategoryRequest): Future[HttpResponse] = {
     if (qr.brandId.isDefined) {
-      val include = List()
       val exclude = createExcludeLang(store, qr.lang) :+ "imported"
 
       val brandIdFilter = createTermFilterWithStr("brand.id", qr.brandId)
       val hideFilter = if (!qr.hidden) createTermFilterWithStr("category.hide", Option("false")) else ""
       val parentIdFilter = createTermFilterWithStr("category.parentId", qr.parentId)
       val categoryPathFilter = createExpRegFilter("category.path", qr.categoryPath)
-      val andFilters = createAndFilter(List(brandIdFilter, hideFilter, parentIdFilter, categoryPathFilter))
 
-      val query = createQuery(include, exclude, createFilter(andFilters))
-      println(query)
-      val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product/_search"), query))
-      response
+      val query = createESRequest(exclude, createAndFilter(List(brandIdFilter, hideFilter, parentIdFilter, categoryPathFilter)))
+      search(store, "product", query)
     }
     else {
-      var include = List()
       val exclude = createExcludeLang(store, qr.lang) :+ "imported"
 
       val hideFilter = if (!qr.hidden) createTermFilterWithStr("hide", Option("false")) else ""
@@ -418,12 +393,9 @@ class ElasticSearchClient /*extends Actor*/ {
                             else if (!qr.categoryPath.isDefined) createMissingFilter("parentId", true, true)
                             else ""
       val categoryPathFilter = createExpRegFilter("path", qr.categoryPath)
-      val andFilters = createAndFilter(List(hideFilter, parentIdFilter, categoryPathFilter))
 
-      val query = createQuery(include, exclude, createFilter(andFilters))
-      println(query)
-      val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/category/_search"), query))
-      response
+      val query = createESRequest(exclude, createAndFilter(List(hideFilter, parentIdFilter, categoryPathFilter)))
+      search(store, "category", query)
     }
   }
 
@@ -1516,26 +1488,35 @@ class ElasticSearchClient /*extends Actor*/ {
     */
 
   /**
-   * Create a Query with "_source" (complete using "include" and "exclude" parameters)
-   * and with "query" (complete using "filtered" parameter)
-   * @param include
+   * Create ESRequest with exclude
    * @param exclude
-   * @param filtered
    * @return
    */
-  private def createQuery(include: List[String], exclude: List[String], filtered: String): String = {
-    val incl = if (!include.isEmpty) s""" "include": [${include.collect{case s:String => s"""\"$s\""""}.mkString(",")}] """.stripMargin else ""
-    val excl = if (!exclude.isEmpty) s""" "exclude": [${exclude.collect{case s:String => s"""\"$s\""""}.mkString(",")}] """.stripMargin else ""
-    s"""
-        | {
-        |  "_source": {
-        |    ${List(incl, excl).filter(s => !s.isEmpty).mkString(",")}
-        |  },
-        |  "query":{
-        |   "filtered":$filtered
-        |  }
-        | }
-      """.stripMargin
+  private def createESRequest(exclude: List[String]): String = {
+    createESRequest(exclude, "")
+  }
+
+  private def createESRequest(exclude: List[String], filter: String): String = {
+    val excl = exclude.filter(s => !s.isEmpty).collect{case s:String => "\"" + s + "\""}.mkString(",")
+    val source = if (excl.isEmpty) ""
+                  else s""" |   "_source": {
+                            |      "exclude": [
+                            |         $excl
+                            |      ]
+                            |   }""".stripMargin
+
+    val query = if (filter.isEmpty) ""
+                  else s""" |   "query": {
+                            |      "filtered" : {
+                            |         "filter" :
+                            |            $filter
+                            |         }
+                            |      }
+                            |   }""".stripMargin
+
+    s"""  |{
+          |${List(source, query).filter(s => !s.isEmpty).mkString(",\n")}
+          |}""".stripMargin
   }
 
   /**
@@ -1550,17 +1531,6 @@ class ElasticSearchClient /*extends Actor*/ {
     else getStoreLanguagesAsList(store).filter{case l: String => l != lang}.collect { case l:String =>
       "*." + l
     }
-  }
-
-  /**
-   * Create a Filter with the given "filter"<br/>
-   * The result can bu use with the method "createQuery"
-   * @param filter
-   * @return
-   */
-  private def createFilter(filter: String): String = {
-    if (filter.isEmpty) ""
-    else s"""{"filter": $filter}"""
   }
 
   /**
@@ -1624,4 +1594,15 @@ class ElasticSearchClient /*extends Actor*/ {
     else s"""{"term": {"$field": "${value.get}"}}"""
   }
 
+  /**
+   * Run the url "/" + store + "/" + typeQuery + "/_search" with the given query
+   * @param store
+   * @param typeQuery
+   * @param query
+   * @return
+   */
+  private def search(store: String, typeQuery: String, query: String): Future[HttpResponse] = {
+    println(query)
+     pipeline(Post(route("/" + store + "/" + typeQuery + "/_search"), query))
+  }
 }
