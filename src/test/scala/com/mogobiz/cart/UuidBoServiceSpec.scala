@@ -1,7 +1,6 @@
 package com.mogobiz.cart
 
 import org.specs2.mutable.Specification
-import com.mogobiz.cart.CartVO
 import java.util.UUID
 import scalikejdbc.config.DBs
 

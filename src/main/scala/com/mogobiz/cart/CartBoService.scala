@@ -293,24 +293,21 @@ object CartBoService extends BoService {
     }
 
     val parts = cartVO.cartItemVOs.partition { cartItem  => cartItem.id == cartItemId }
-    val items = parts._1
-    val removed = parts._2.headOption
+    val removed = parts._1.headOption
+    val items = parts._2
 
 
-    val cartItem = removed.get
+    val cartItem = removed.get //FIXME manage None.get
 
     val sku = TicketType.get(cartItem.skuId)
 
     productService.increment(sku, cartItem.quantity, cartItem.startDate)
-    /* TODO
-    cartVO.cartItemVOs -= cartItem
-    cartVO.price -= cartItem.totalPrice;
-    if (cartVO.endPrice != null && cartItem.totalEndPrice != null) {
-      cartVO.endPrice -= cartItem.totalEndPrice;
+
+    val newEndPrice:Option[Long] = (cartVO.endPrice,cartItem.totalEndPrice) match {
+      case (Some(cartendprice),Some(itemtotalendprice)) => Some(cartendprice - itemtotalendprice)
+      case _ => None
     }
-    cartVO.count -= 1;
-    */
-    val updatedCart = cartVO //TODO return cartVO.copy
+    val updatedCart = cartVO.copy(cartItemVOs = items, price = (cartVO.price - cartItem.totalPrice), endPrice = newEndPrice, count = (cartVO.count - 1))
     uuidService.set(updatedCart);
 
     updatedCart
@@ -846,20 +843,32 @@ case class CartItemVO
 
 object WeightUnit extends Enumeration {
   type WeightUnit = Value
-  val KG = Value("kg")
-  val LB = Value("lb")
-  val G = Value("g")
+  val KG = Value("KG")
+  val LB = Value("LB")
+  val G = Value("G")
+
+  def apply(str:String) = str match{
+    case "KG" => KG
+    case "LB" => LB
+    case "G"  => G
+    case _ => throw new RuntimeException("unexpected WeightUnit value")
+  }
 }
 
 object LinearUnit extends Enumeration {
   type LinearUnit = Value
-  val CM = Value("cm")
-  val IN = Value("in")
+  val CM = Value("CM")
+  val IN = Value("IN")
+
+  def apply(str:String) = str match{
+    case "CM" => CM
+    case "IN" => IN
+    case _ => throw new RuntimeException("unexpected LinearUnit value")
+  }
 }
 
 case class ShippingVO
-(weight: Long, weightUnit: WeightUnit, width: Long, height: Long, depth: Long, linearUnit: LinearUnit, amount: Long, free: Boolean)
-
+(id:Long, weight: Long, weightUnit: WeightUnit, width: Long, height: Long, depth: Long, linearUnit: LinearUnit, amount: Long, free: Boolean)
 
 case class ReductionSold(id:Long,sold:Long=0,dateCreated:DateTime = DateTime.now, lastUpdated:DateTime = DateTime.now) extends DateAware
 

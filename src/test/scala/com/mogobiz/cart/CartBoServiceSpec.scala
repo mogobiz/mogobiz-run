@@ -28,7 +28,6 @@ class CartBoServiceSpec extends Specification {
   }
 
   "addToCart a product" in {
-    skipped
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
     println(s"uuid=${uuid}")
@@ -39,9 +38,18 @@ class CartBoServiceSpec extends Specification {
     val dateTime = None
     val resCart = service.addItem(Locale.getDefault,cur,cart,ttid,quantity,dateTime, List())
 
+    val item = resCart.cartItemVOs(0)
+
     println("cart.price="+resCart.price)
     resCart.count must be_==(1)
     resCart.cartItemVOs.size must be_==(1)
+    item.shipping must beSome[ShippingVO]
+    val shipping = item.shipping.get
+    shipping.id must_==(55)
+    shipping.weight must_==(25)
+    shipping.free must beFalse
+    shipping.amount must_==(0)
+
   }
 
   "addToCart should fail if quantity is too much" in {
@@ -134,6 +142,7 @@ class CartBoServiceSpec extends Specification {
   }
 
   "updateCart change the quantity" in {
+    skipped
     //took 5 and update to 1
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
@@ -179,4 +188,86 @@ class CartBoServiceSpec extends Specification {
         true must beFalse}
     }*/
   }
+
+  "delete item from cart after 2 addItem" in {
+    skipped
+
+    val cur = "EUR"
+    val uuid = UUID.randomUUID.toString
+    var locale = Locale.getDefault()
+    println(s"uuid=${uuid}")
+    val cart = service.initCart(uuid)
+    val ttid58 = 58
+    val tt58 = TicketType.get(ttid58)
+    val quantity = 1
+    val dateTime = None
+    val resCart = service.addItem(locale,cur,cart,ttid58,quantity,dateTime, List())
+
+    val itemId58 = resCart.cartItemVOs(0).id
+
+    println("1. cart.price="+resCart.price)
+    resCart.price must be_==(tt58.price)
+    resCart.price must be_==(35000)
+    resCart.count must be_==(1)
+    resCart.cartItemVOs.size must be_==(1)
+
+    val ttid51 = 51
+    val tt51 = TicketType.get(ttid51)
+    val resCart2 = service.addItem(locale,cur,resCart,ttid51,quantity,dateTime, List())
+
+    println("2. cart.price="+resCart2.price)
+    resCart2.price must be_==(tt58.price+tt51.price)
+    resCart2.price must be_==(35000+30000)
+    resCart2.count must be_==(2)
+    resCart2.cartItemVOs.size must be_==(2)
+
+    val resCart3 = service.removeItem(locale, cur, resCart2, itemId58)
+    println("3. cart.price="+resCart3.price)
+    resCart3.price must be_==(tt51.price)
+    resCart3.price must be_==(30000)
+    resCart3.count must be_==(1)
+    resCart3.cartItemVOs.size must be_==(1)
+
+  }
+
+  "clear cart after 2 addItem" in {
+    skipped
+
+    val cur = "EUR"
+    val uuid = UUID.randomUUID.toString
+    var locale = Locale.getDefault()
+    println(s"uuid=${uuid}")
+    val cart = service.initCart(uuid)
+    val ttid58 = 58
+    val tt58 = TicketType.get(ttid58)
+    val quantity = 1
+    val dateTime = None
+    val resCart = service.addItem(locale, cur, cart, ttid58, quantity, dateTime, List())
+
+    val itemId58 = resCart.cartItemVOs(0).id
+
+    println("1. cart.price=" + resCart.price)
+    resCart.price must be_==(tt58.price)
+    resCart.price must be_==(35000)
+    resCart.count must be_==(1)
+    resCart.cartItemVOs.size must be_==(1)
+
+    val ttid51 = 51
+    val tt51 = TicketType.get(ttid51)
+    val resCart2 = service.addItem(locale, cur, resCart, ttid51, quantity, dateTime, List())
+
+    println("2. cart.price=" + resCart2.price)
+    resCart2.price must be_==(tt58.price + tt51.price)
+    resCart2.price must be_==(35000 + 30000)
+    resCart2.count must be_==(2)
+    resCart2.cartItemVOs.size must be_==(2)
+
+    val resCart3 = service.clear(locale,cur,resCart2)
+    println("3. cart.price=" + resCart3.price)
+    resCart3.price must be_==(0)
+    resCart3.count must be_==(0)
+    resCart3.cartItemVOs.size must be_==(0)
+
+  }
+
 }
