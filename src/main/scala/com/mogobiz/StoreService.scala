@@ -169,12 +169,18 @@ trait StoreService extends HttpService {
   def categoriesRoutes(storeCode: String) = path("categories") {
     respondWithMediaType(`application/json`) {
       get{
-        parameters('hidden ? false, 'parentId.?, 'lang?"_all").as(CategoryRequest) { categoryReq =>
+        parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang?"_all").as(CategoryRequest) { categoryReq: CategoryRequest =>
           onSuccess(esClient.queryCategories(storeCode,categoryReq)){ response =>
             val json = parse(response.entity.asString)
           //TODO renvoyer les fils directs si parentId renseigné
-            val subset = json \ "hits" \ "hits" \ "_source"
-            complete(subset)
+            val subset = if (categoryReq.brandId.isDefined) json \ "hits" \ "hits" \ "_source" \ "category" else json \ "hits" \ "hits" \ "_source"
+            val result = subset match {
+              case JNothing => JArray(List())
+              case o:JObject => JArray(List(o))
+              case a:JArray => JArray(a.children.distinct)
+              case _ => subset
+            }
+            complete(result)
           }
         }
       }

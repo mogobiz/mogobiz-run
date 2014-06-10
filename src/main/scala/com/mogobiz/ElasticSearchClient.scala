@@ -215,7 +215,7 @@ class ElasticSearchClient /*extends Actor*/ {
         | {
         | "_source": {
         |    "exclude": [
-        |      "imported",
+        |      "imported"
         |      $lang
         |    ]
         |  }$hiddenFilter
@@ -350,48 +350,45 @@ class ElasticSearchClient /*extends Actor*/ {
     langsTokens.mkString("\"", "\": {}, \"", "\": {}")
   }
 
+  /**
+   * retreive categories for given request<br/>
+   * if brandId is set, the caller must test distinct results
+   * @param store
+   * @param qr
+   * @return
+   */
   def queryCategories(store: String, qr: CategoryRequest): Future[HttpResponse] = {
+    if (qr.brandId.isDefined) {
+      val include = List()
+      val exclude = createExcludeLang(qr.lang) :+ "imported"
 
-    //"name","description","keywords",
-    val template = (lang: String, query: String) =>
-      s"""
-        | {
-        |  "_source": {
-        |    "include": [
-        |      "id","uuid","name","path","parentId",
-        |      "$lang.*"
-        |    ]
-        |   }$query
-        | }
-        |
-      """.stripMargin
+      val brandIdFilter = createTermFilterWithStr("brand.id", qr.brandId)
+      val hideFilter = if (!qr.hidden) createTermFilterWithStr("category.hide", Option("false")) else ""
+      val parentIdFilter = createTermFilterWithStr("category.parentId", qr.parentId)
+      val categoryPathFilter = createExpRegFilter("category.path", qr.categoryPath)
+      val andFilters = createAndFilter(List(brandIdFilter, hideFilter, parentIdFilter, categoryPathFilter))
 
-    val queryWrapper = (filter: String) =>
-      s"""
-       |,"query":{"filtered":{"filter":$filter}}
-      """.stripMargin
+      val query = createQuery(include, exclude, createFilter(andFilters))
+      println(query)
+      val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product/_search"), query))
+      response
+    }
+    else {
+      var include = List()
+      val exclude = createExcludeLang(qr.lang) :+ "imported"
 
-    val andFilter = (filter1: String, filter2: String) =>
-      s"""
-        | {"and":[$filter1,$filter2]}
-      """.stripMargin
+      val hideFilter = if (!qr.hidden) createTermFilterWithStr("hide", Option("false")) else ""
+      val parentIdFilter = if (qr.parentId.isDefined) createTermFilterWithStr("parentId", qr.parentId)
+                            else if (!qr.categoryPath.isDefined) createMissingFilter("parentId", true, true)
+                            else ""
+      val categoryPathFilter = createExpRegFilter("path", qr.categoryPath)
+      val andFilters = createAndFilter(List(hideFilter, parentIdFilter, categoryPathFilter))
 
-    val hiddenFilter = """{"term":{"hide":false}}"""
-    val parentFilter = (parent: String) => s"""{"term":{"parentId":$parent}}"""
-
-    val filters = if (!qr.hidden && !qr.parent.isEmpty)
-      queryWrapper(andFilter(hiddenFilter, parentFilter(qr.parent.get)))
-    else if (!qr.hidden)
-      queryWrapper(hiddenFilter)
-    else if (!qr.parent.isEmpty)
-      queryWrapper(parentFilter(qr.parent.get))
-    else ""
-
-    val plang = if (qr.lang == "_all") "*" else qr.lang
-    val query = template(plang, filters)
-    println(query)
-    val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/category/_search"), query))
-    response
+      val query = createQuery(include, exclude, createFilter(andFilters))
+      println(query)
+      val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/category/_search"), query))
+      response
+    }
   }
 
 
@@ -618,26 +615,6 @@ class ElasticSearchClient /*extends Actor*/ {
         "range": {
           "$field": { $ranges }
         }
-      }""".stripMargin
-    }
-  }
-
-  private def createTermFilterWithStr(field: String, value: Option[String]): String = {
-    if (value.isEmpty) ""
-    else {
-      val valu = value.get
-      s"""{
-      "term": {"$field": "$valu"}
-     }""".stripMargin
-    }
-  }
-
-  private def createTermFilterWithNum(field: String, value: Option[Int]): String = {
-    if (value.isEmpty) ""
-    else {
-      val valu = value.get
-      s"""{
-      "term": {"$field": $valu}
       }""".stripMargin
     }
   }
@@ -1508,4 +1485,113 @@ class ElasticSearchClient /*extends Actor*/ {
   val response: Future[OrderConfirmation] =
     pipeline(Post("http://example.com/orders", Order(42)))
     */
+
+  /**
+   * Create a Query with "_source" (complete using "include" and "exclude" parameters)
+   * and with "query" (complete using "filtered" parameter)
+   * @param include
+   * @param exclude
+   * @param filtered
+   * @return
+   */
+  private def createQuery(include: List[String], exclude: List[String], filtered: String): String = {
+    val incl = if (!include.isEmpty) s""" "include": [${include.collect{case s:String => s"""\"$s\""""}.mkString(",")}] """.stripMargin else ""
+    val excl = if (!exclude.isEmpty) s""" "exclude": [${exclude.collect{case s:String => s"""\"$s\""""}.mkString(",")}] """.stripMargin else ""
+    s"""
+        | {
+        |  "_source": {
+        |    ${List(incl, excl).filter(s => !s.isEmpty).mkString(",")}
+        |  },
+        |  "query":{
+        |   "filtered":$filtered
+        |  }
+        | }
+      """.stripMargin
+  }
+
+  /**
+   * il lang == "_all" returns a empty list
+   * else returns the list of all languages except the given language
+   * @param lang
+   * @return
+   */
+  private def createExcludeLang(lang: String): List[String] = {
+    if (lang == "_all") List()
+    else listAllLanguages().filter{case l: String => l != lang}.collect { case l:String =>
+      "*." + l
+    }
+  }
+
+  /**
+   * Create a Filter with the given "filter"<br/>
+   * The result can bu use with the method "createQuery"
+   * @param filter
+   * @return
+   */
+  private def createFilter(filter: String): String = {
+    if (filter.isEmpty) ""
+    else s"""{"filter": $filter}"""
+  }
+
+  /**
+   * Extract not empty filters of the list and return :<br/>
+   * - a empty string if the list is empty<br/>
+   * - the filter if the list contains only one filter<br/>
+   * - the "and" filter with the not empty given filters
+   *
+   * @param list
+   * @return
+   */
+  private def createAndFilter(list: List[String]): String = {
+    val nomEmptyList = list.filter { s => !s.isEmpty }
+    if (nomEmptyList.isEmpty) ""
+    else if (nomEmptyList.length == 0) nomEmptyList.head
+    else s"""{"and":[${nomEmptyList.mkString(",")}]}"""
+  }
+
+  /**
+   * Create a "regexp" filter for the given fied.<br/>
+   * the regexp is build using lower case of the given value
+   * @param field
+   * @param value
+   * @return
+   */
+  private def createExpRegFilter(field: String, value: Option[String]): String = {
+    if (value.isEmpty) ""
+    else s"""{"regexp": {"$field": ".*${value.get.toLowerCase()}.*"}}"""
+  }
+
+  /**
+   * Create a "missing" filter
+   * @param field
+   * @param existence
+   * @param nullValue
+   * @return
+   */
+  private def createMissingFilter(field: String, existence: Boolean, nullValue: Boolean): String = {
+    s"""{"missing": {"field": "$field", "existence": $existence, "null_value": $nullValue}}"""
+  }
+
+  /**
+   * Create a "term" filter
+   * @param field
+   * @param value
+   * @return
+   */
+  private def createTermFilterWithStr(field: String, value: Option[String]): String = {
+    if (value.isEmpty) ""
+    else s"""{"term": {"$field": "${value.get}"}}"""
+  }
+
+  /**
+   * Create a "term" filter
+   * @param field
+   * @param value
+   * @return
+   */
+  private def createTermFilterWithNum(field: String, value: Option[Int]): String = {
+    if (value.isEmpty) ""
+    else s"""{"term": {"$field": "${value.get}"}}"""
+  }
+
 }

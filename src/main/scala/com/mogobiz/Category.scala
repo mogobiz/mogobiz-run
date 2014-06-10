@@ -5,4 +5,4 @@ package com.mogobiz
  */
 case class Category(id: Int, code: String, name: String, translations: List[String])
 
-case class CategoryRequest(hidden: Boolean, parent: Option[String], lang: String)
+case class CategoryRequest(hidden: Boolean, parentId: Option[String], brandId: Option[String], categoryPath: Option[String], lang: String)
