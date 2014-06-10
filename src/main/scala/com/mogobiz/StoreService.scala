@@ -96,7 +96,7 @@ trait StoreService extends HttpService {
   def   brandsRoutes(storeCode:String) = path("brands") {
     respondWithMediaType(`application/json`) {
       get {
-        parameters('hidden?false,'lang?"_all").as(BrandRequest) { brandRequest =>
+        parameters('hidden?false, 'categoryPath.?, 'lang?"_all").as(BrandRequest) { brandRequest =>
 
           onSuccess(esClient.queryBrands(storeCode,brandRequest)){ response =>
 

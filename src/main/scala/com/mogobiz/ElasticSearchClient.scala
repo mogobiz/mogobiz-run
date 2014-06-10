@@ -13,19 +13,19 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import java.util.{Date, Calendar, Locale}
 import java.text.{SimpleDateFormat, NumberFormat}
+import scala.List
+import com.mogobiz.vo.{Paging}
+import scala.collection.{immutable}
+import org.json4s.JsonAST.{JNothing, JObject}
 import scala.util.Failure
 import scala.Some
 import spray.http.HttpResponse
-import scala.List
+import com.mogobiz.vo.Comment
 import scala.util.Success
 import spray.http.HttpRequest
-import com.mogobiz.vo.{Comment,CommentRequest,CommentGetRequest, Paging}
-import scala.collection.{mutable, immutable}
-import org.json4s.JsonAST.{JNothing, JArray, JObject}
-import java.util
-
-//import org.json4s.JObject
-//import org.json4s.JArray
+import com.mogobiz.vo.CommentRequest
+import org.json4s.JsonAST.JArray
+import com.mogobiz.vo.CommentGetRequest
 
 /**
  * Created by Christophe on 18/02/14.
@@ -141,27 +141,8 @@ class ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   def queryCurrencies(store: String, lang: String): Future[JValue] = {
-
-    val template = (lang: String) =>
-      s"""
-        | {
-        |  "_source": {
-        |    "include": [
-        |      "id",
-        |      "currencyFractionDigits",
-        |      "rate",
-        |      "code",
-        |      "name",
-        |      "$lang.*"
-        |    ]
-        |   }
-        | }
-        |
-      """.stripMargin
-
-    val plang = if (lang == "_all") "*" else lang
-    val query = template(plang)
-    val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/rate/_search"), query))
+    val esRequest = createESRequest(createExcludeLang(store, lang) :+ "imported")
+    val response: Future[HttpResponse]  = search(store, "rate", esRequest)
     response.flatMap {
       response => {
         val json = parse(response.entity.asString)
@@ -188,54 +169,54 @@ class ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   def queryBrands(store: String, qr: BrandRequest): Future[JValue] = {
+    if (qr.categoryPath.isDefined) {
+      val exclude = createExcludeLang(store, qr.lang) :+ "imported"
 
-    val templateSource = (lang: String, hiddenFilter: String) =>
-      s"""
-        | {
-        | "_source": {
-        |    "exclude": [
-        |      "imported"
-        |      $lang
-        |    ]
-        |  }$hiddenFilter
-        | }
-        |
-      """.stripMargin
+      val hideFilter = if (!qr.hidden) createTermFilterWithStr("category.hide", Option("false")) else ""
+      val categoryPathFilter = createExpRegFilter("category.path", qr.categoryPath)
 
-    val templateQuery = (hideValue: Boolean) =>
-      s"""
-        | ,"query": {
-        |    "filtered": {
-        |      "filter": {
-        |        "term": {
-        |          "hide": $hideValue
-        |        }
-        |      }
-        |    }
-        |  }
-      """.stripMargin
+      val query = createESRequest(exclude, createAndFilter(List(hideFilter, categoryPathFilter)))
+      val response = search(store, "product", query)
 
-    val qfilter = if (qr.hidden) "" else templateQuery(qr.hidden)
-    val langToExclude = if (qr.lang == "_all") "" else "," + getAllExcludedLanguagesExceptAsString(store, qr.lang)
+      response.flatMap {
+        resp => {
+          if (resp.status.isSuccess) {
+            val json = parse(resp.entity.asString)
+            val subset = json \ "hits" \ "hits" \ "_source" \ "brand"
+            val result = subset match {
+              case JNothing => JArray(List())
+              case o:JObject => JArray(List(o))
+              case a:JArray => JArray(a.children.distinct)
+              case _ => subset
+            }
+            future(result)
+          } else {
+            //TODO log l'erreur
+            future(parse(resp.entity.asString))
+            //throw new ElasticSearchClientException(resp.status.reason)
+          }
+        }
+      }
+    }
+    else {
+      val exclude = createExcludeLang(store, qr.lang) :+ "imported"
 
-    val query = templateSource(langToExclude, qfilter)
+      val hideFilter = if (!qr.hidden) createTermFilterWithStr("hide", Option("false")) else ""
 
-    //TODO logger pour les query
-    //TODO logger pour les reponses
-    //TODO logger WARNING pour les requetes trop longues
-    //TODO créer une PartialFunction qui s'occupe de la gestion d'erreur quand requetes ES KO
-    val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/brand/_search"), query))
+      val query = createESRequest(exclude, hideFilter)
+      val response = search(store, "brand", query)
 
-    response.flatMap {
-      resp => {
-        if (resp.status.isSuccess) {
-          val json = parse(resp.entity.asString)
-          val subset = json \ "hits" \ "hits" \ "_source"
-          future(subset)
-        } else {
-          //TODO log l'erreur
-          future(parse(resp.entity.asString))
-          //throw new ElasticSearchClientException(resp.status.reason)
+      response.flatMap {
+        resp => {
+          if (resp.status.isSuccess) {
+            val json = parse(resp.entity.asString)
+            val subset = json \ "hits" \ "hits" \ "_source"
+            future(subset)
+          } else {
+            //TODO log l'erreur
+            future(parse(resp.entity.asString))
+            //throw new ElasticSearchClientException(resp.status.reason)
+          }
         }
       }
     }
