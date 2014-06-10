@@ -396,7 +396,7 @@ class ElasticSearchClient /*extends Actor*/ {
   def queryCategories(store: String, qr: CategoryRequest): Future[HttpResponse] = {
     if (qr.brandId.isDefined) {
       val include = List()
-      val exclude = createExcludeLang(qr.lang) :+ "imported"
+      val exclude = createExcludeLang(store, qr.lang) :+ "imported"
 
       val brandIdFilter = createTermFilterWithStr("brand.id", qr.brandId)
       val hideFilter = if (!qr.hidden) createTermFilterWithStr("category.hide", Option("false")) else ""
@@ -411,7 +411,7 @@ class ElasticSearchClient /*extends Actor*/ {
     }
     else {
       var include = List()
-      val exclude = createExcludeLang(qr.lang) :+ "imported"
+      val exclude = createExcludeLang(store, qr.lang) :+ "imported"
 
       val hideFilter = if (!qr.hidden) createTermFilterWithStr("hide", Option("false")) else ""
       val parentIdFilter = if (qr.parentId.isDefined) createTermFilterWithStr("parentId", qr.parentId)
@@ -1541,12 +1541,13 @@ class ElasticSearchClient /*extends Actor*/ {
   /**
    * il lang == "_all" returns a empty list
    * else returns the list of all languages except the given language
+   * @param store
    * @param lang
    * @return
    */
-  private def createExcludeLang(lang: String): List[String] = {
+  private def createExcludeLang(store: String, lang: String): List[String] = {
     if (lang == "_all") List()
-    else listAllLanguages().filter{case l: String => l != lang}.collect { case l:String =>
+    else getStoreLanguagesAsList(store).filter{case l: String => l != lang}.collect { case l:String =>
       "*." + l
     }
   }
