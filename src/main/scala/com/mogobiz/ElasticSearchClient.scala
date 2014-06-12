@@ -25,6 +25,28 @@ import scala.util.Success
 import spray.http.HttpRequest
 import com.mogobiz.vo.CommentRequest
 import com.mogobiz.vo.CommentGetRequest
+import com.mogobiz.ProductTimesRequest
+import scala.util.Failure
+import scala.Some
+import spray.http.HttpResponse
+import com.mogobiz.vo.Comment
+import com.mogobiz.IntraDayPeriod
+import com.mogobiz.ProductDatesRequest
+import com.mogobiz.CategoryRequest
+import com.mogobiz.FulltextSearchProductParameters
+import com.mogobiz.BrandRequest
+import com.mogobiz.ProductRequest
+import com.mogobiz.EndPeriod
+import com.mogobiz.Prefs
+import scala.util.Success
+import com.mogobiz.ProductDetailsRequest
+import spray.http.HttpRequest
+import com.mogobiz.vo.CommentRequest
+import org.json4s.JsonAST.JArray
+import com.mogobiz.vo.CommentGetRequest
+import com.mogobiz.CompareProductParameters
+import com.mogobiz.TagRequest
+import com.mogobiz.Currency
 
 /**
  * Created by Christophe on 18/02/14.
@@ -684,56 +706,21 @@ class ElasticSearchClient /*extends Actor*/ {
 
     println(multipleGetQueryTemplate)
 
-    /**
-     * fonction interne qui permet de récupérer la liste valeur traduite
-     * d'une feature. Elle renvoie un JObject contenant le champ "value"
-     * et si besoin tous les champs lang
-     * @param feature
-     * @return
-     */
-    def traduireFeatureValues(feature: JValue): JObject = {
-      // Récupération de la valeur en remplacant par "-" si la valeur n'existe pas
-      val value = extractJSonProperty(feature, "value", "-")
+    // Permet de traduire la value ou le name d'une feature
+    def translateFeature(feature: JValue, esProperty: String, targetPropery: String): List[JField] = {
+      val value = extractJSonProperty(feature, esProperty)
 
-      val valueForGivenLang = if (params._lang.equals("_all")) {
-        // Dans le cas de toutes les langues,
-        // on récupère toutes les traductions des valeurs et on ajout en plus la valeur sans traduction
-        val valueForAllLanguages: List[JField] = allLangues.map { lang: String => {
-          val v = extractJSonProperty(extractJSonProperty(feature, lang), "value")
+      if (params._lang.equals("_all")) {
+        allLangues.map { lang: String => {
+          val v = extractJSonProperty(extractJSonProperty(feature, lang), esProperty)
           if (v == JNothing) JField("-", "-")
           else JField(lang, v)
-        }
-        }.filter{v: JField => v._1 != "-"}
-
-        valueForAllLanguages :+ JField("value", value)
+        }}.filter{v: JField => v._1 != "-"} :+ JField(targetPropery, value)
       }
       else {
-        // Dans la cas d'une langue précise,
-        // on remplace la valeur non traduite par la valeur traduite (si elle existe) dans la langue demandée
-        val valueInGivenLang = extractJSonProperty(extractJSonProperty(feature, params._lang), "value")
-        if (valueInGivenLang == JNothing) List(JField("value", value))
-        else List(JField("value", valueInGivenLang))
-      }
-      JObject(valueForGivenLang)
-    }
-
-    def traduireFeatureLabel(featureName: String, featuresLabelByNameAndLang: List[(String, JValue)]): List[JField] = {
-      if (params._lang.equals("_all")) {
-        // Dans la cas de toutes les langues, on récupère la label pour chaque langue
-        // et on ajoute le label par défaut
-        val labelForAllLanguages: List[JField] = allLangues.map { lang: String => {
-          val label = featuresLabelByNameAndLang.find{ nameLangAndLabel: (String, JValue) => nameLangAndLabel._1 == (featureName + "_" + lang) }
-          if (label.isDefined && label.get._2 != JNothing) JField(lang, label.get._2)
-          else JField("-", "-")
-        }}.filter{v: JField => v._1 != "-"}
-        labelForAllLanguages :+ JField("label", featureName)
-      }
-      else {
-        // On remplace renvoie une List de JField correspond au label traduit
-        // ou au label par défaut si aucune traduction n'existe
-        val label = featuresLabelByNameAndLang.find{ nameLangAndLabel: (String, JValue) => nameLangAndLabel._1 == (featureName + "_" + params._lang) }
-        if (label.isDefined && label.get._2 != JNothing) List(JField("label", label.get._2))
-        else List(JField("label", featureName))
+        val valueInGivenLang = extractJSonProperty(extractJSonProperty(feature, params._lang), esProperty)
+        if (valueInGivenLang == JNothing) List(JField(targetPropery, value))
+        else List(JField(targetPropery, valueInGivenLang))
       }
     }
 
@@ -750,60 +737,46 @@ class ElasticSearchClient /*extends Actor*/ {
         val json = parse(response.entity.asString)
         val docsArray = (json \ "docs")
 
-        // Liste des ids des produits comparés
-        val ids: List[BigInt] = for {
+
+        val featuresByNameAndIds : List[(BigInt, List[(String, JValue, List[JField])])] = for {
           JObject(result) <- (docsArray \ "_source")
           JField("id", JInt(id)) <- result
-        } yield (id)
-
-        // List (sans doublon) de l'ensemble des noms des features des produits comparés
-        val featuresNames: List[String] =  {
-          val listAvecDoublon: List[String] = for {
-            JArray(features) <- (docsArray \ "_source" \ "features")
+        } yield {
+          val featuresByName : List[(String, JValue, List[JField])] = for {
+            JField("features", JArray(features)) <- result
             JObject(feature) <- features
             JField("name", JString(name)) <- feature
-          } yield name
-          listAvecDoublon.distinct
+          } yield (name, JObject(feature), translateFeature(feature, "value", "value"))
+          (id, featuresByName)
         }
 
-        // List des couples ('nom de la feature'_'lang', 'label traduit ou JNothing')
-        // Permet de retrouver le label à partir du nom de la feature et de la langue
-        val featuresLabelByNameAndLang: List[(String, JValue)] = for {
-          JArray(features) <- (docsArray \ "_source" \ "features")
-          JObject(feature) <- features
-          JField("name", JString(name)) <- feature
-          lang <- allLangues
-        } yield ((name + "_" + lang) -> extractJSonProperty(extractJSonProperty(feature, lang), "name"))
+        // Liste des ids des produits comparés
+        val ids: List[BigInt] = featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1}.distinct
 
-        // List des couples ('id du produit'_'nom de la feature', 'feature ou JNothing')
-        // Permet de retrouver la feature à partir de l'id du produit et du nom de la feature
-        val featuresByIdAndName: List[(String, JValue)] = for {
-          JObject(result) <- (docsArray \ "_source")
-          JField("id", JInt(id)) <- result
-          JField("features", JArray(features)) <- result
-          JObject(feature) <- features
-          JField("name", JString(name)) <- feature
-        } yield ((id + "_" + name) -> JObject(feature))
+        // Liste des noms des features (avec traduction des noms des features)
+        val featuresName : List[(String, List[JField])] = {for {feature: (String, JValue, List[JField]) <-
+          featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._2}.
+          flatMap {featuresByName: List[(String, JValue, List[JField])] => featuresByName}
+        } yield (feature._1, translateFeature(feature._2, "name", "label"))}.distinct
 
         // List de JObject correspond au contenu de la propriété "result" du résultat de la méthode
         // On construit pour chaque nom de feature et pour chaque id de produit
         // la résultat de la comparaison en gérant les traductions et en mettant "-"
         // si une feature n'existe pas pour un produit
-        var resultContent: List[JObject] = for (featureName: String <- featuresNames) yield {
+        val resultContent: List[JObject] = featuresName.map { featureName: (String, List[JField]) =>
 
           // Contenu pour la future propriété "values" du résultat
           val valuesList = ids.map { id: BigInt =>
-            val feature: Option[(String, JValue)] = featuresByIdAndName.find{ idNameAndFeature: (String, JValue) => idNameAndFeature._1 == (id + "_" + featureName) }
-            if (feature.isDefined && feature.get._2 != JNothing) {
-              traduireFeatureValues(feature.get._2)
+            val featuresByName: Option[(BigInt, List[(String, JValue, List[JField])])] = featuresByNameAndIds.find{ idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1 == id }
+            if (featuresByName.isDefined) {
+              val feature: Option[(String, JValue, List[JField])] = featuresByName.get._2.find { nameAndFeature: (String, JValue, List[JField]) => nameAndFeature._1 == featureName._1}
+              if (feature.isDefined) {
+                JObject(feature.get._3)
+              }
+              else JObject(List(JField("value", "-")))
             }
-            else {
-              JObject(List(JField("value", "-")))
-            }
+            else JObject(List(JField("value", "-")))
           }
-
-          // Contenu de l'ensemble des labels (éventuellement avec traduction) de la feature
-          val labelsList = traduireFeatureLabel(featureName, featuresLabelByNameAndLang)
 
           // Récupération des valeurs différents pour le calcul de l'indicateur
           val uniqueValue = valuesList.map {valueObject: JValue =>
@@ -813,7 +786,7 @@ class ElasticSearchClient /*extends Actor*/ {
             }
           }.distinct
 
-          JObject(labelsList :+ JField("values", valuesList) :+ JField("indicator", if (uniqueValue.size == 1) "0" else "1"))
+          JObject(featureName._2 :+ JField("values", valuesList) :+ JField("indicator", if (uniqueValue.size == 1) "0" else "1"))
         }
 
         val jFieldIds = JField("ids", JArray(ids.map {id: BigInt => JString(String.valueOf(id))}))
