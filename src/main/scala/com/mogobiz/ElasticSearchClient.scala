@@ -646,7 +646,7 @@ class ElasticSearchClient /*extends Actor*/ {
    * @return a list of products
    */
   def getProductsFeatures(store: String, params: CompareProductParameters): Future[JValue] = {
-
+    var allLangues: List[String] = getStoreLanguagesAsList(store)
     val idList = params.ids.split(",").toList
 
     def getFetchConfig(id: String, lang: String): String = {
@@ -698,7 +698,7 @@ class ElasticSearchClient /*extends Actor*/ {
       val valueForGivenLang = if (params._lang.equals("_all")) {
         // Dans le cas de toutes les langues,
         // on récupère toutes les traductions des valeurs et on ajout en plus la valeur sans traduction
-        val valueForAllLanguages: List[JField] = getStoreLanguagesAsList(store).map { lang: String => {
+        val valueForAllLanguages: List[JField] = allLangues.map { lang: String => {
           val v = extractJSonProperty(extractJSonProperty(feature, lang), "value")
           if (v == JNothing) JField("-", "-")
           else JField(lang, v)
@@ -721,7 +721,7 @@ class ElasticSearchClient /*extends Actor*/ {
       if (params._lang.equals("_all")) {
         // Dans la cas de toutes les langues, on récupère la label pour chaque langue
         // et on ajoute le label par défaut
-        val labelForAllLanguages: List[JField] = getStoreLanguagesAsList(store).map { lang: String => {
+        val labelForAllLanguages: List[JField] = allLangues.map { lang: String => {
           val label = featuresLabelByNameAndLang.find{ nameLangAndLabel: (String, JValue) => nameLangAndLabel._1 == (featureName + "_" + lang) }
           if (label.isDefined && label.get._2 != JNothing) JField(lang, label.get._2)
           else JField("-", "-")
@@ -772,7 +772,7 @@ class ElasticSearchClient /*extends Actor*/ {
           JArray(features) <- (docsArray \ "_source" \ "features")
           JObject(feature) <- features
           JField("name", JString(name)) <- feature
-          lang <- getStoreLanguagesAsList(store)
+          lang <- allLangues
         } yield ((name + "_" + lang) -> extractJSonProperty(extractJSonProperty(feature, lang), "name"))
 
         // List des couples ('id du produit'_'nom de la feature', 'feature ou JNothing')
