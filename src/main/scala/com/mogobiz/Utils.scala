@@ -1,11 +1,8 @@
 package com.mogobiz
 
-import com.mogobiz.vo.{ PagingParams, Paging}
-import org.json4s.JsonAST.JValue
-import org.json4s.{FieldSerializer, DefaultFormats, Formats}
-import java.util.Calendar
 import com.mogobiz.cart.{ProductCalendar, TicketType}
 import org.joda.time.DateTime
+import scalikejdbc._, SQLInterpolation._
 
 /**
  * Created by Christophe on 24/04/2014.
@@ -21,7 +18,7 @@ object Utils {
    * @param optDate
    * @return
    */
-  def verifyAndExtractStartEndDate(optTicketType:Option[TicketType], optDate:Option[DateTime] ): Tuple2[Option[DateTime],Option[DateTime]]=
+  def verifyAndExtractStartEndDate(optTicketType:Option[TicketType], optDate:Option[DateTime] ): (Option[DateTime],Option[DateTime])=
   {
     val emptyResult = (None,None)
     if(optTicketType.isEmpty || optDate.isEmpty){
@@ -54,36 +51,46 @@ object Utils {
         }
       }
       case ProductCalendar.DATE_TIME => {
-        /*
+
         if (dateValidForTicketType)
         {
-          def listIncluded = IntraDayPeriod.createCriteria().list{
-            eq('product',product)
-            le('startDate',date)
-            ge('endDate',date)
+
+          val listIncluded = DB readOnly { implicit session =>
+            sql"select * from intra_day_period where product_fk = ${product.id} and ${date}<=startDate and ${date}>=endDate".map(rs => IntraDayPeriod(startDate = rs.dateTime("start_date"), endDate = rs.dateTime("end_date"))).list.apply
+
           }
-          for (IntraDayPeriod intraDayPeriod in listIncluded) {
-            // On vérifie que l'heure demandé correspond à la place horaire du calendrier
-            String patternComparaisonHeure = "HHmm";
-            if (DateUtilitaire.isBeforeOrEqual(intraDayPeriod.startDate, date, patternComparaisonHeure)
-              && DateUtilitaire.isAfterOrEqual(intraDayPeriod.endDate, date, patternComparaisonHeure))
-            {
-              Calendar endDate = DateUtilitaire.copy(intraDayPeriod.startDate);
-              endDate.set(Calendar.HOUR, intraDayPeriod.endDate.get(Calendar.HOUR))
-              endDate.set(Calendar.MINUTE, intraDayPeriod.endDate.get(Calendar.MINUTE))
-              return [
-              intraDayPeriod.startDate,
-              endDate
-              ]
-            }
-          }
-        }*/
-        (optDate,optDate)  //TODO
+          //TODO
+
+            /*
+            def listIncluded = IntraDayPeriod.createCriteria().list{
+              eq('product',product)
+              le('startDate',date)
+              ge('endDate',date)
+            }*/
+            /*
+            for (IntraDayPeriod intraDayPeriod in listIncluded) {
+              // On vérifie que l'heure demandé correspond à la place horaire du calendrier
+              String patternComparaisonHeure = "HHmm";
+              if (DateUtilitaire.isBeforeOrEqual(intraDayPeriod.startDate, date, patternComparaisonHeure)
+                && DateUtilitaire.isAfterOrEqual(intraDayPeriod.endDate, date, patternComparaisonHeure))
+              {
+                Calendar endDate = DateUtilitaire.copy(intraDayPeriod.startDate);
+                endDate.set(Calendar.HOUR, intraDayPeriod.endDate.get(Calendar.HOUR))
+                endDate.set(Calendar.MINUTE, intraDayPeriod.endDate.get(Calendar.MINUTE))
+                return [
+                intraDayPeriod.startDate,
+                endDate
+                ]
+              }
+            }*/
+          (optDate,optDate)  //TODO
+        }else emptyResult
       }
     }
     }
-
   }
+  case class IntraDayPeriod(startDate:DateTime, endDate:DateTime)
+
 }
 
 /**

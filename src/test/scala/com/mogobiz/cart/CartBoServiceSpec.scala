@@ -3,6 +3,7 @@ package com.mogobiz.cart
 import org.specs2.mutable.Specification
 import java.util.{Locale, UUID}
 import scalikejdbc.config.DBs
+import com.mogobiz.Currency
 
 /**
  * Created by Christophe on 06/05/2014.
@@ -28,6 +29,7 @@ class CartBoServiceSpec extends Specification {
   }
 
   "addToCart a product" in {
+    skipped
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
     println(s"uuid=${uuid}")
@@ -270,4 +272,42 @@ class CartBoServiceSpec extends Specification {
 
   }
 
+  "prepare transaction without coupons" in {
+    val cur = "EUR"
+    val uuid = UUID.randomUUID.toString
+    println(s"uuid=${uuid}")
+    val cart = service.initCart(uuid)
+    val ttid58 = 58
+    val tt58 = TicketType.get(ttid58)
+    val quantity = 1
+    val dateTime = None
+    val resCart = service.addItem(Locale.getDefault,cur,cart,ttid58,quantity,dateTime, List())
+
+    println("1. cart.price="+resCart.price)
+    resCart.price must be_==(tt58.price)
+    resCart.price must be_==(35000)
+    resCart.count must be_==(1)
+    resCart.cartItemVOs.size must be_==(1)
+
+    val ttid51 = 51
+    val tt51 = TicketType.get(ttid51)
+    val resCart2 = service.addItem(Locale.getDefault,cur,resCart,ttid51,quantity,dateTime, List())
+
+    println("2. cart.price="+resCart2.price)
+    resCart2.price must be_==(tt58.price+tt51.price)
+    resCart2.price must be_==(35000+30000)
+    resCart2.count must be_==(2)
+    resCart2.cartItemVOs.size must be_==(2)
+
+
+    val companyId = 8
+    val countryCode = "FR"
+    val state = None
+    val currency = Currency(2, 1960,"euro","EUR")
+    val preparedCart = service.prepareBeforePayment(companyId, countryCode, state, currency.code, resCart2, currency)
+
+    //TODO println(render(preparedCart))
+
+    true must beTrue
+  }
 }
