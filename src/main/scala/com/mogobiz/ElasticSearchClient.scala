@@ -1301,7 +1301,7 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
   private def createESRequest(exclude: List[String], queryFilter: String): String = {
-    createESRequest(exclude, "", List(), None, None, None, None)
+    createESRequest(exclude, queryFilter, List(), None, None, None, None)
   }
 
   private def createESRequest(exclude: List[String], queryFilter: String, filter: List[String], from: Option[Int], size: Option[Int], sort: Option[String], sortOrder: Option[String]): String = {
@@ -1379,7 +1379,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
   private def createFilter(filter: String): String = {
     if (filter.isEmpty) ""
-    else s"""{"filter":$filter}"""
+    else s""""filter":$filter"""
   }
 
   /**
