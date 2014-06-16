@@ -40,7 +40,7 @@ trait StoreService extends HttpService {
           productsRoutes(storeCode,uuid) ~
           visitedProductsRoute(storeCode,uuid) ~
           preferencesRoute(storeCode, uuid)
-          //testCookie(storeCode)
+        //testCookie(storeCode)
       }
     }
   }
@@ -67,12 +67,12 @@ trait StoreService extends HttpService {
       optionalCookie("mogobiz_uuid") {
         case Some(mogoCookie) => complete(s"mogoCookie='${mogoCookie.content}")
         case None => //complete("no cookie defined")
-         {
-           val id = UUID.randomUUID.toString
-           setCookie(HttpCookie("mogobiz_uuid",content=id)) {
-             complete(s"mogobiz_uuid cookie set to '${id}'")
-           }
-         }
+        {
+          val id = UUID.randomUUID.toString
+          setCookie(HttpCookie("mogobiz_uuid",content=id)) {
+            complete(s"mogobiz_uuid cookie set to '${id}'")
+          }
+        }
       }
     }~put{
       val id = UUID.randomUUID.toString
@@ -155,13 +155,13 @@ trait StoreService extends HttpService {
    */
   def currenciesRoutes(storeCode: String) = path("currencies") {
     respondWithMediaType(`application/json`) {
-    get{
-      parameters('lang?"_all").as(CurrencyRequest) { currencyReq =>
-        onSuccess(esClient.queryCurrencies(storeCode, currencyReq.lang)){ json =>
-          complete(json)
+      get{
+        parameters('lang?"_all").as(CurrencyRequest) { currencyReq =>
+          onSuccess(esClient.queryCurrencies(storeCode, currencyReq.lang)){ json =>
+            complete(json)
+          }
         }
       }
-    }
     }
   }
 
@@ -172,7 +172,7 @@ trait StoreService extends HttpService {
         parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang?"_all").as(CategoryRequest) { categoryReq: CategoryRequest =>
           onSuccess(esClient.queryCategories(storeCode,categoryReq)){ response =>
             val json = parse(response.entity.asString)
-          //TODO renvoyer les fils directs si parentId renseigné
+            //TODO renvoyer les fils directs si parentId renseigné
             val subset = if (categoryReq.brandId.isDefined) json \ "hits" \ "hits" \ "_source" \ "category" else json \ "hits" \ "hits" \ "_source"
             val result = subset match {
               case JNothing => JArray(List())
@@ -208,15 +208,15 @@ trait StoreService extends HttpService {
           , 'xtype.?
           , 'name.?
           , 'code.?
-          , 'categoryId.?
+          , 'categoryPath.?
           , 'brandId.?
-          , 'path.?
           , 'tagName.?
           , 'priceMin.?
           , 'priceMax.?
+          , 'creationDateMin.?
+          , 'featured.?
           , 'orderBy.?
           , 'orderDirection.?
-          , 'featured.?
           , 'lang?"_all"
           , 'currency.?
           , 'country.?).as(ProductRequest) {
@@ -245,12 +245,12 @@ trait StoreService extends HttpService {
    */
   def findRoute(storeCode:String) = path("find") {
     respondWithMediaType(`application/json`) {
-        parameters('lang?"_all",'currency.?,'country.?, 'query, 'highlight ? false).as(FulltextSearchProductParameters) {
-          req =>
-            onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
-              complete(products)
-            }
-        }
+      parameters('lang?"_all",'currency.?,'country.?, 'query, 'highlight ? false).as(FulltextSearchProductParameters) {
+        req =>
+          onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
+            complete(products)
+          }
+      }
     }
   }
 
@@ -261,12 +261,12 @@ trait StoreService extends HttpService {
    */
   def productCompareRoute(storeCode:String) = path("compare") {
     respondWithMediaType(`application/json`) {
-        parameters('lang?"_all",'currency.?,'country.?, 'ids).as(CompareProductParameters) {
-          req =>
-            onSuccess(esClient.getProductsFeatures(storeCode, req)){ features =>
-              complete(features)
-            }
-        }
+      parameters('lang?"_all",'currency.?,'country.?, 'ids).as(CompareProductParameters) {
+        req =>
+          onSuccess(esClient.getProductsFeatures(storeCode, req)){ features =>
+            complete(features)
+          }
+      }
     }
   }
 
@@ -280,29 +280,29 @@ trait StoreService extends HttpService {
     productId => pathEnd {
       respondWithMediaType(`application/json`) {
         get{
-        parameters(
-          'historize ? false
-          , 'visitorId.?
-          , 'currency.?
-          , 'country.?
-          , 'lang?"_all").as(ProductDetailsRequest) {
-          pdr => /*cookie("mogobiz_uuid") { cookie =>
+          parameters(
+            'historize ? false
+            , 'visitorId.?
+            , 'currency.?
+            , 'country.?
+            , 'lang?"_all").as(ProductDetailsRequest) {
+            pdr => /*cookie("mogobiz_uuid") { cookie =>
             val uuid = cookie.content*/
-                if(pdr.historize){
-                  val f = esClient.addToHistory(storeCode,productId.toLong,uuid)
-                  f onComplete {
-                    case Success(res) => if(res)println("addToHistory ok")else println("addToHistory failed")
-                    case Failure(t) => {
-                      println("addToHistory future failure")
-                      t.printStackTrace()
-                    }
+              if(pdr.historize){
+                val f = esClient.addToHistory(storeCode,productId.toLong,uuid)
+                f onComplete {
+                  case Success(res) => if(res)println("addToHistory ok")else println("addToHistory failed")
+                  case Failure(t) => {
+                    println("addToHistory future failure")
+                    t.printStackTrace()
                   }
                 }
-                onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
-                  complete(response)
-                }
-            }
-//        }
+              }
+              onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
+                complete(response)
+              }
+          }
+          //        }
         }
       }
     } ~ productDatesRoute(storeCode,productId.toLong) ~ productTimesRoute(storeCode,productId.toLong) ~ commentsRoute(storeCode,productId.toLong)
@@ -313,9 +313,9 @@ trait StoreService extends HttpService {
       get{
         parameters('date.?).as(ProductDatesRequest) {
           pdr =>
-              onSuccess(esClient.queryProductDates(storeCode,productId.toLong, pdr)){ response =>
-                complete(response)
-              }
+            onSuccess(esClient.queryProductDates(storeCode,productId.toLong, pdr)){ response =>
+              complete(response)
+            }
         }
       }
     }
@@ -341,25 +341,25 @@ trait StoreService extends HttpService {
       get {
         parameters('currency.?, 'country.?, 'lang ? "_all").as(VisitorHistoryRequest) {
           req =>
-            /*cookie("mogobiz_uuid") { cookie =>
-              val uuid = cookie.content
-              */
+          /*cookie("mogobiz_uuid") { cookie =>
+            val uuid = cookie.content
+            */
             println(s"visitedProductsRoute with mogobiz_uuid=${uuid}")
-                onComplete(esClient.getProductHistory(storeCode,uuid)){
-                  case Success(ids) => {
-                    if(ids.isEmpty){
-                      complete(List()) //return empty list
-                    }else{
-                      onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
-                        println("visitedProductsRoute returned results",products.length)
-                        complete(products)
-                      }
-
-                    }
+            onComplete(esClient.getProductHistory(storeCode,uuid)){
+              case Success(ids) => {
+                if(ids.isEmpty){
+                  complete(List()) //return empty list
+                }else{
+                  onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
+                    println("visitedProductsRoute returned results",products.length)
+                    complete(products)
                   }
-                  case Failure(t) => complete(t)
+
                 }
-//            }
+              }
+              case Failure(t) => complete(t)
+            }
+          //            }
         }
       }
     }
@@ -381,11 +381,11 @@ trait StoreService extends HttpService {
           }
         }
       } ~
-      get {
-        onComplete(esClient.getPreferences(store, uuid)) { prefs =>
-          complete(prefs)
+        get {
+          onComplete(esClient.getPreferences(store, uuid)) { prefs =>
+            complete(prefs)
+          }
         }
-      }
     }
   }
 
@@ -416,7 +416,7 @@ trait StoreService extends HttpService {
             entity(as[CommentPutRequest]) {
               req =>
                 onSuccess(esClient.updateComment(storeCode, productId, id, req.note == 1)) { res =>
-                    complete("")
+                  complete("")
                 }
             }
           }
@@ -424,4 +424,4 @@ trait StoreService extends HttpService {
       }
     }
   }
- }
+}

@@ -1,6 +1,5 @@
 package com.mogobiz
 
-import spray.http.DateTime
 import java.util.Date
 import com.mogobiz.vo.PagingParams
 
@@ -64,19 +63,19 @@ case class ProductRequest(
                            , xtype: Option[String]
                            , name: Option[String]
                            , code: Option[String]
-                           , categoryId: Option[Int]
+                           , categoryPath: Option[String]
                            , brandId: Option[Int]
-                           , path:Option[String]
                            , tagName: Option[String]
                            , priceMin: Option[Long]
                            , priceMax: Option[Long]
+                           , creationDateMin: Option[String]
+                           , featured: Option[Boolean]
                            , orderBy: Option[String]
                            , orderDirection: Option[String]
-                           , featured: Option[Boolean] // = false
                            , lang: String
                            , currencyCode: Option[String]
                            , countryCode: Option[String]) extends PagingParams {
-  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,None,Some(false),lang,None,None)
+  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None)
 }
 
 case class ProductDetailsRequest(
@@ -93,13 +92,13 @@ case class ProductTimesRequest(date: Option[String])
 class DatePeriod(val startDate:Date,val endDate:Date)
 case class EndPeriod(start:Date,end:Date) extends DatePeriod(start,end)
 case class IntraDayPeriod(override val startDate:Date,override val endDate:Date,
-                           val weekday1:Boolean,
-                           val weekday2:Boolean,
-                           val weekday3:Boolean,
-                           val weekday4:Boolean,
-                           val weekday5:Boolean,
-                           val weekday6:Boolean,
-                           val weekday7:Boolean
+                          val weekday1:Boolean,
+                          val weekday2:Boolean,
+                          val weekday3:Boolean,
+                          val weekday4:Boolean,
+                          val weekday5:Boolean,
+                          val weekday6:Boolean,
+                          val weekday7:Boolean
                            ) extends DatePeriod(startDate,endDate)
 
 

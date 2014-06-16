@@ -15,38 +15,16 @@ import java.util.{Date, Calendar, Locale}
 import java.text.{SimpleDateFormat, NumberFormat}
 import scala.List
 import com.mogobiz.vo.{Paging}
-import scala.collection.{immutable}
-import org.json4s.JsonAST.{JObject, JNothing, JArray}
+import org.json4s.JsonAST.{JObject, JNothing}
 import scala.util.Failure
 import scala.Some
 import spray.http.HttpResponse
 import com.mogobiz.vo.Comment
 import scala.util.Success
-import spray.http.HttpRequest
-import com.mogobiz.vo.CommentRequest
-import com.mogobiz.vo.CommentGetRequest
-import com.mogobiz.ProductTimesRequest
-import scala.util.Failure
-import scala.Some
-import spray.http.HttpResponse
-import com.mogobiz.vo.Comment
-import com.mogobiz.IntraDayPeriod
-import com.mogobiz.ProductDatesRequest
-import com.mogobiz.CategoryRequest
-import com.mogobiz.FulltextSearchProductParameters
-import com.mogobiz.BrandRequest
-import com.mogobiz.ProductRequest
-import com.mogobiz.EndPeriod
-import com.mogobiz.Prefs
-import scala.util.Success
-import com.mogobiz.ProductDetailsRequest
 import spray.http.HttpRequest
 import com.mogobiz.vo.CommentRequest
 import org.json4s.JsonAST.JArray
 import com.mogobiz.vo.CommentGetRequest
-import com.mogobiz.CompareProductParameters
-import com.mogobiz.TagRequest
-import com.mogobiz.Currency
 
 /**
  * Created by Christophe on 18/02/14.
@@ -118,8 +96,8 @@ class ElasticSearchClient /*extends Actor*/ {
 
     val response: Future[HttpResponse] = pipeline(Put(route("/" + prefsIndex(store) + "/prefs/" + uuid), query))
     response.flatMap { response => {
-        future(response.status.isSuccess)
-      }
+      future(response.status.isSuccess)
+    }
     }
   }
 
@@ -196,7 +174,7 @@ class ElasticSearchClient /*extends Actor*/ {
       val hideFilter = if (!qr.hidden) createTermFilterWithStr("category.hide", Option("false")) else ""
       val categoryPathFilter = createExpRegFilter("category.path", qr.categoryPath)
 
-      val query = createESRequest(exclude, createAndFilter(List(hideFilter, categoryPathFilter)))
+      val query = createESRequest(exclude, createFilter(createAndFilter(List(hideFilter, categoryPathFilter))))
       val response = search(store, "product", query)
 
       response.flatMap {
@@ -224,7 +202,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
       val hideFilter = if (!qr.hidden) createTermFilterWithStr("hide", Option("false")) else ""
 
-      val query = createESRequest(exclude, hideFilter)
+      val query = createESRequest(exclude, createFilter(hideFilter))
       val response = search(store, "brand", query)
 
       response.flatMap {
@@ -384,7 +362,7 @@ class ElasticSearchClient /*extends Actor*/ {
       val parentIdFilter = createTermFilterWithStr("category.parentId", qr.parentId)
       val categoryPathFilter = createExpRegFilter("category.path", qr.categoryPath)
 
-      val query = createESRequest(exclude, createAndFilter(List(brandIdFilter, hideFilter, parentIdFilter, categoryPathFilter)))
+      val query = createESRequest(exclude, createFilter(createAndFilter(List(brandIdFilter, hideFilter, parentIdFilter, categoryPathFilter))))
       search(store, "product", query)
     }
     else {
@@ -392,11 +370,11 @@ class ElasticSearchClient /*extends Actor*/ {
 
       val hideFilter = if (!qr.hidden) createTermFilterWithStr("hide", Option("false")) else ""
       val parentIdFilter = if (qr.parentId.isDefined) createTermFilterWithStr("parentId", qr.parentId)
-                            else if (!qr.categoryPath.isDefined) createMissingFilter("parentId", true, true)
-                            else ""
+      else if (!qr.categoryPath.isDefined) createMissingFilter("parentId", true, true)
+      else ""
       val categoryPathFilter = createExpRegFilter("path", qr.categoryPath)
 
-      val query = createESRequest(exclude, createAndFilter(List(hideFilter, parentIdFilter, categoryPathFilter)))
+      val query = createESRequest(exclude, createFilter(createAndFilter(List(hideFilter, parentIdFilter, categoryPathFilter))))
       search(store, "category", query)
     }
   }
@@ -404,79 +382,32 @@ class ElasticSearchClient /*extends Actor*/ {
 
   def queryProductsByCriteria(store: String, req: ProductRequest): Future[JValue] = {
 
-    val fieldsToExclude = (getAllExcludedLanguagesExceptAsList(store, req.lang) ::: fieldsToRemoveForProductSearchRendering).mkString("\"", "\",\"", "\"")
+    val fieldsToExclude = getAllExcludedLanguagesExceptAsList(store, req.lang) ::: fieldsToRemoveForProductSearchRendering
     //TODO propose a way to request include / exclude fields         "include":["id","price","taxRate"],
 
 
-    val source = s"""
-        |  "_source": {
-        |    "exclude": [$fieldsToExclude]
-        |   }
-      """.stripMargin
-    val nameCriteria = if (req.name.isEmpty) {
-      ""
-    } else {
-      val name = req.name.get
-      s"""
-      "query": {
-                "match": {
-                    "name": {
-                        "query": "$name",
-                        "operator": "and"
-                    }
-                }
-            }
-      """.stripMargin
-    }
-
-    val queryCriteria = s"""
-      "query": {
-        "filtered": {
-          $nameCriteria
-        }
-      }
-      """.stripMargin
-
+    val nameCriteria = createMatchQueryFilter("name", req.name)
 
     val codeFilter = createTermFilterWithStr("code", req.code)
-    val categoryFilter = createTermFilterWithNum("category.id", req.categoryId)
     val xtypeFilter = createTermFilterWithStr("xtype", req.xtype)
-    val pathFilter = createTermFilterWithStr("path", req.path)
+    val categoryPathFilter = createExpRegFilter("path", req.categoryPath)
     val brandFilter = createTermFilterWithNum("brand.id", req.brandId)
     val tagsFilter = createTermFilterWithStr("tags.name", req.tagName)
     val priceFilter = createRangeFilter("price", req.priceMin, req.priceMax)
+    val creationDateMinFilter = createRangeFilterWithString("creationDate", req.creationDateMin, None)
+
     val featuredFilter = createFeaturedFilter(req.featured.getOrElse(false))
 
-    val filters = (codeFilter :: categoryFilter :: xtypeFilter :: pathFilter :: brandFilter :: tagsFilter :: priceFilter :: featuredFilter :: Nil).filter {
-      s => !s.isEmpty
-    }.mkString(",")
-    println(filters)
+    val filters = List(codeFilter, xtypeFilter, categoryPathFilter, brandFilter, tagsFilter, priceFilter, featuredFilter, creationDateMinFilter)
 
+    val size: Int = req.maxItemPerPage.getOrElse(100)
+    val from: Int = req.pageOffset.getOrElse(0) * size
+    val sort = req.orderBy.getOrElse("name")
+    val sortOrder = req.orderDirection.getOrElse("asc")
 
-    val filterCriteria = if (filters.isEmpty) ""
-    else s"""
-      "filter": {
-        "bool": {
-          "must": [$filters]
-        }
-      }
-    """.stripMargin
+    val query = createESRequest(fieldsToExclude, nameCriteria, filters, Option(from), Option(size), Option(sort), Option(sortOrder))
 
-    val pagingAndSortingCriteria = (from: Int, size: Int, sortField: String, sortOrder: String) =>
-      s"""
-        |"sort": {"$sortField": "$sortOrder"},
-        |"from": $from,
-        |"size": $size
-      """.stripMargin
-
-    val pageAndSort = pagingAndSortingCriteria(req.pageOffset.getOrElse(0) * req.maxItemPerPage.getOrElse(100), req.maxItemPerPage.getOrElse(100), req.orderBy.getOrElse("name"), req.orderDirection.getOrElse("asc"))
-
-    val query = List(source, queryCriteria, filterCriteria, pageAndSort).filter {
-      str => !str.isEmpty
-    }.mkString("{", ",", "}")
-
-
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product/_search"), query))
+    val fresponse: Future[HttpResponse] = search(store, "product", query)
     fresponse.flatMap {
       response => {
         if (response.status.isSuccess) {
@@ -544,7 +475,7 @@ class ElasticSearchClient /*extends Actor*/ {
       val formatedPrice = format(price, currency.get, locale, cur.rate)
       val formatedEndPrice = format(endPrice, currency.get, locale, cur.rate)
       val additionalFields = (
-          ("localTaxRate" -> taxRate) ~
+        ("localTaxRate" -> taxRate) ~
           ("endPrice" -> endPrice) ~
           ("formatedPrice" -> formatedPrice) ~
           ("formatedEndPrice" -> formatedEndPrice)
@@ -596,35 +527,6 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-
-  private def createRangeFilter(field: String, gte: Option[Long], lte: Option[Long]): String = {
-
-    if (gte.isEmpty && lte.isEmpty) ""
-    else {
-      val gteStr = if (gte.isEmpty) ""
-      else {
-        val gteVal = gte.get
-        s""" "gte":$gteVal """.stripMargin
-      }
-
-      val lteStr = if (lte.isEmpty) ""
-      else {
-        val lteVal = lte.get
-        s""" "lte":$lteVal """.stripMargin
-      }
-
-      val range = (gteStr :: lteStr :: Nil).filter {
-        str => !str.isEmpty
-      }
-      if (range.isEmpty) ""
-      val ranges = range.mkString(",")
-      s"""{
-        "range": {
-          "$field": { $ranges }
-        }
-      }""".stripMargin
-    }
-  }
 
   /**
    * get the product detail
@@ -755,8 +657,8 @@ class ElasticSearchClient /*extends Actor*/ {
 
         // Liste des noms des features (avec traduction des noms des features)
         val featuresName : List[(String, List[JField])] = {for {feature: (String, JValue, List[JField]) <-
-          featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._2}.
-          flatMap {featuresByName: List[(String, JValue, List[JField])] => featuresByName}
+                                                                featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._2}.
+                                                                  flatMap {featuresByName: List[(String, JValue, List[JField])] => featuresByName}
         } yield (feature._1, translateFeature(feature._2, "name", "label"))}.distinct
 
         // List de JObject correspond au contenu de la propriété "result" du résultat de la méthode
@@ -765,7 +667,7 @@ class ElasticSearchClient /*extends Actor*/ {
         // si une feature n'existe pas pour un produit
         val resultContent: List[JObject] = featuresName.map { featureName: (String, List[JField]) =>
 
-          // Contenu pour la future propriété "values" du résultat
+        // Contenu pour la future propriété "values" du résultat
           val valuesList = ids.map { id: BigInt =>
             val featuresByName: Option[(BigInt, List[(String, JValue, List[JField])])] = featuresByNameAndIds.find{ idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1 == id }
             if (featuresByName.isDefined) {
@@ -816,7 +718,7 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-   /**
+  /**
    * Fulltext products search
    * @param store
    * @param params
@@ -824,15 +726,15 @@ class ElasticSearchClient /*extends Actor*/ {
    */
   def queryProductsByFulltextCriteria(store: String, params: FulltextSearchProductParameters): Future[JValue] = {
 
-     val fields: String = getIncludedFields(store, "name", params._lang)
-     val includedFields = if (params.highlight) {
-       ""
-     }
-     else {
-       ", \"name\", " + fields
-     }
+    val fields: String = getIncludedFields(store, "name", params._lang)
+    val includedFields = if (params.highlight) {
+      ""
+    }
+    else {
+      ", \"name\", " + fields
+    }
 
-     val source = s"""
+    val source = s"""
         "_source": {
           "include": [
            "id"$includedFields
@@ -840,10 +742,10 @@ class ElasticSearchClient /*extends Actor*/ {
         }
       """.stripMargin
 
-     val textQuery = {
-       val text = params.query
-       val included = fields
-       s"""
+    val textQuery = {
+      val text = params.query
+      val included = fields
+      s"""
        "query": {
           "query_string": {
             "fields": [
@@ -854,16 +756,16 @@ class ElasticSearchClient /*extends Actor*/ {
           }
        }
       """.stripMargin
-     }
+    }
 
-     val highlightedFields = if (params.highlight) if ("_all".equals(params.lang)) {
-       getHighlightedFields(store, "name")
-     } else {
-       "\"" + params.lang + ".name\" : {}"
-     }
+    val highlightedFields = if (params.highlight) if ("_all".equals(params.lang)) {
+      getHighlightedFields(store, "name")
+    } else {
+      "\"" + params.lang + ".name\" : {}"
+    }
 
-     val highlightConf = if (params.highlight) {
-       s"""
+    val highlightConf = if (params.highlight) {
+      s"""
         "highlight": {
           "fields": {
             "name": {},
@@ -871,51 +773,51 @@ class ElasticSearchClient /*extends Actor*/ {
           }
         }
       """.stripMargin
-     } else ""
+    } else ""
 
-     val query = List(source, textQuery, highlightConf).filter {
-       str => !str.isEmpty
-     }.mkString("{", ",", "}")
+    val query = List(source, textQuery, highlightConf).filter {
+      str => !str.isEmpty
+    }.mkString("{", ",", "}")
 
-     def httpResponseToFuture(response: HttpResponse, withHightLight: Boolean): Future[JValue] = {
-       if (response.status.isSuccess) {
+    def httpResponseToFuture(response: HttpResponse, withHightLight: Boolean): Future[JValue] = {
+      if (response.status.isSuccess) {
 
-         val json = parse(response.entity.asString)
-         val subset = json \ "hits" \ "hits"
+        val json = parse(response.entity.asString)
+        val subset = json \ "hits" \ "hits"
 
-         val rawResult = if (withHightLight) {
-           for {
-             JObject(result) <- subset.children.children
-             JField("_type", JString(_type)) <- result
-             JField("_source", JObject(_source)) <- result
-             JField("highlight", JObject(highlight)) <- result
-           } yield (_type -> (_source ::: highlight))
-         } else {
-           for {
-             JObject(result) <- subset.children.children
-             JField("_type", JString(_type)) <- result
-             JField("_source", JObject(_source)) <- result
-           } yield (_type -> _source)
-         }
+        val rawResult = if (withHightLight) {
+          for {
+            JObject(result) <- subset.children.children
+            JField("_type", JString(_type)) <- result
+            JField("_source", JObject(_source)) <- result
+            JField("highlight", JObject(highlight)) <- result
+          } yield (_type -> (_source ::: highlight))
+        } else {
+          for {
+            JObject(result) <- subset.children.children
+            JField("_type", JString(_type)) <- result
+            JField("_source", JObject(_source)) <- result
+          } yield (_type -> _source)
+        }
 
-         val result = rawResult.groupBy(_._1).map {
-           case (_cat, v) => (_cat, v.map(_._2))
-         }
-         println(compact(render(result)))
-         future(result)
+        val result = rawResult.groupBy(_._1).map {
+          case (_cat, v) => (_cat, v.map(_._2))
+        }
+        println(compact(render(result)))
+        future(result)
 
-       } else {
-         //TODO log l'erreur
-         future(parse(response.entity.asString))
-         //throw new ElasticSearchClientException(resp.status.reason)
-       }
-     }
+      } else {
+        //TODO log l'erreur
+        future(parse(response.entity.asString))
+        //throw new ElasticSearchClientException(resp.status.reason)
+      }
+    }
 
-     println(query)
-     val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product,category,brand/_search"), query))
-     fresponse.flatMap(response => httpResponseToFuture(response, params.highlight))
+    println(query)
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product,category,brand/_search"), query))
+    fresponse.flatMap(response => httpResponseToFuture(response, params.highlight))
 
-   }
+  }
 
 
 
@@ -1034,7 +936,7 @@ class ElasticSearchClient /*extends Actor*/ {
           val day = dateToEval
           //TODO refacto this part with the one is in isIncluded method
           val startingHours = inPeriods.filter {
-                //get the matching periods
+            //get the matching periods
             period => {
               val dow = day.get(Calendar.DAY_OF_WEEK)
               //println("dow="+dow)
@@ -1060,7 +962,7 @@ class ElasticSearchClient /*extends Actor*/ {
               cond
             }
           }.map{
-                //get the start date hours value only
+            //get the start date hours value only
             period => {
               // the parsed date returned by ES is parsed according to the serveur Timezone and so it returns 16 (parsed value) instead of 15 (ES value)
               // because the my current timezone is GMT+1
@@ -1112,7 +1014,7 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
   private def isDateIncluded(periods: List[IntraDayPeriod], day: Calendar): Boolean = {
-//    println("isDateIncluded date : " + sdf.format(day.getTime))
+    //    println("isDateIncluded date : " + sdf.format(day.getTime))
 
     periods.find {
       period => {
@@ -1398,7 +1300,11 @@ class ElasticSearchClient /*extends Actor*/ {
     createESRequest(exclude, "")
   }
 
-  private def createESRequest(exclude: List[String], filter: String): String = {
+  private def createESRequest(exclude: List[String], queryFilter: String): String = {
+    createESRequest(exclude, "", List(), None, None, None, None)
+  }
+
+  private def createESRequest(exclude: List[String], queryFilter: String, filter: List[String], from: Option[Int], size: Option[Int], sort: Option[String], sortOrder: Option[String]): String = {
     val excl = exclude.filter(s => !s.isEmpty).collect{case s:String => "\"" + s + "\""}.mkString(",")
     val source = if (excl.isEmpty) ""
                   else s""" |   "_source": {
@@ -1407,17 +1313,37 @@ class ElasticSearchClient /*extends Actor*/ {
                             |      ]
                             |   }""".stripMargin
 
-    val query = if (filter.isEmpty) ""
+    val query = if (queryFilter.isEmpty) s""" |   "query": {
+                                              |      "filtered" : {
+                                              |      }
+                                              |   }""".stripMargin
                   else s""" |   "query": {
                             |      "filtered" : {
-                            |         "filter" :
-                            |            $filter
-                            |         }
+                            |         $queryFilter
                             |      }
                             |   }""".stripMargin
 
+    val filterPart = {
+      val notEmptyFilter = filter.filter{s => !s.isEmpty}.mkString(",")
+      if (notEmptyFilter.isEmpty) ""
+      else s""" |   "filter": {
+                |      "bool" : {
+                |         "must" :[
+                |            $notEmptyFilter
+                |         ]
+                |      }
+                |   }""".stripMargin
+    }
+
+    val sortPart = if (!sort.isDefined || !sortOrder.isDefined) ""
+    else s""""sort": {"${sort.get}": "${sortOrder.get}"}"""
+    val fromPart = if (!from.isDefined) ""
+    else s""""from": ${from.get}"""
+    val sizePart = if (!size.isDefined) ""
+    else s""""size": ${size.get}"""
+
     s"""  |{
-          |${List(source, query).filter(s => !s.isEmpty).mkString(",\n")}
+          |${List(source, query, filterPart, sortPart, fromPart, sizePart).filter(s => !s.isEmpty).mkString(",\n")}
           |}""".stripMargin
   }
 
@@ -1449,6 +1375,11 @@ class ElasticSearchClient /*extends Actor*/ {
     if (nomEmptyList.isEmpty) ""
     else if (nomEmptyList.length == 0) nomEmptyList.head
     else s"""{"and":[${nomEmptyList.mkString(",")}]}"""
+  }
+
+  private def createFilter(filter: String): String = {
+    if (filter.isEmpty) ""
+    else s"""{"filter":$filter}"""
   }
 
   /**
@@ -1496,6 +1427,52 @@ class ElasticSearchClient /*extends Actor*/ {
     else s"""{"term": {"$field": "${value.get}"}}"""
   }
 
+  private def createRangeFilter(field: String, gte: Option[Long], lte: Option[Long]): String = {
+    if (gte.isEmpty && lte.isEmpty) ""
+    else {
+      val gteStr = if (gte.isEmpty) ""
+      else s""""gte":${gte.get}"""
+
+      val lteStr = if (lte.isEmpty) ""
+      else s""""lte":${lte.get}"""
+
+      val range = List(gteStr, lteStr).filter {str => !str.isEmpty }
+      if (range.isEmpty) ""
+      else s"""{"range": {"$field": { ${range.mkString(",")}}}}"""
+    }
+  }
+
+  private def createRangeFilterWithString(field: String, gte: Option[String], lte: Option[String]): String = {
+    if (gte.isEmpty && lte.isEmpty) ""
+    else {
+      val gteStr = if (gte.isEmpty) ""
+      else s""""gte":
+                "${gte.get}"
+            """
+
+      val lteStr = if (lte.isEmpty) ""
+      else s""""lte":
+                "${lte.get}"
+            """
+
+      val range = List(gteStr, lteStr).filter {str => !str.isEmpty }
+      if (range.isEmpty) ""
+      else s"""{"range": {"$field": { ${range.mkString(",")}}}}"""
+    }
+  }
+
+  private def createMatchQueryFilter(field: String, value: Option[String]): String = {
+    if (value.isEmpty) ""
+    else s""""query": {
+                "match": {
+                    "$field": {
+                      "query": "${value.get}",
+                      "operator": "and"
+                    }
+                }
+              }"""
+  }
+
   /**
    * Run the url "/" + store + "/" + typeQuery + "/_search" with the given query
    * @param store
@@ -1505,6 +1482,6 @@ class ElasticSearchClient /*extends Actor*/ {
    */
   private def search(store: String, typeQuery: String, query: String): Future[HttpResponse] = {
     println(query)
-     pipeline(Post(route("/" + store + "/" + typeQuery + "/_search"), query))
+    pipeline(Post(route("/" + store + "/" + typeQuery + "/_search"), query))
   }
 }
