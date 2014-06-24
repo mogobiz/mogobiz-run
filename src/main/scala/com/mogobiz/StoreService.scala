@@ -3,17 +3,22 @@ package com.mogobiz
 import com.mogobiz.session.SessionCookieDirectives._
 import com.mogobiz.session.Session
 */
-import com.mogobiz.vo._
 import spray.http.{StatusCodes, HttpCookie, DateTime}
-import scala.util.{Success, Failure}
-import akka.actor.Actor
 import spray.routing.HttpService
 import spray.http.MediaTypes._
-import spray.httpx.Json4sSupport
 import org.json4s._
 import scala.concurrent.ExecutionContext
 import org.json4s.native.JsonMethods._
-import java.util.UUID
+import java.util.{Locale, UUID}
+import com.mogobiz.cart._
+import scala.util.Failure
+import scala.Some
+import com.mogobiz.vo.CommentPutRequest
+import com.mogobiz.vo.MogoError
+import scala.util.Success
+import com.mogobiz.cart.AddToCartCommand
+import com.mogobiz.vo.CommentRequest
+import com.mogobiz.vo.CommentGetRequest
 
 /**
  * Created by Christophe on 17/02/14.
@@ -39,8 +44,9 @@ trait StoreService extends HttpService {
           categoriesRoutes(storeCode) ~
           productsRoutes(storeCode,uuid) ~
           visitedProductsRoute(storeCode,uuid) ~
-          preferencesRoute(storeCode, uuid)
-        //testCookie(storeCode)
+          preferencesRoute(storeCode, uuid) ~
+          cartRoute(storeCode,uuid)
+          //testCookie(storeCode)
       }
     }
   }
@@ -420,6 +426,280 @@ trait StoreService extends HttpService {
                 }
             }
           }
+        }
+      }
+    }
+  }
+
+  val cartService = CartBoService
+  val cartRenderService = CartRenderService
+
+  //CART ROUTES
+  def cartRoute(storeCode:String,uuid:String) = pathPrefix("cart"){
+    respondWithMediaType(`application/json`) {
+      pathEnd{
+        get{
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            //TODO get from ES first and if none init from BO
+            val cart = cartService.initCart(uuid)
+
+            val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+            val locale = Locale.forLanguageTag(lang)
+            val currency = esClient.getCurrency(storeCode,params.currency,lang)
+            complete(cartRenderService.render(cart, currency,locale))
+          }
+        }~delete{
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            val cart = cartService.initCart(uuid)
+
+            val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+            val locale = Locale.forLanguageTag(lang)
+            val currency = esClient.getCurrency(storeCode,params.currency,lang)
+            val updatedCart = cartService.clear(locale,currency.code,cart)
+            complete(cartRenderService.render(updatedCart, currency,locale))
+          }
+        }
+      }~path("items"){
+        post{
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            entity(as[AddToCartCommand]){
+              cmd => {
+                val cart = cartService.initCart(uuid)
+
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                try{
+                  val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.ticketTypeId,cmd.quantity,cmd.dateTime,cmd.registeredCartItems )
+                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+
+                  complete(response)
+
+                }catch{
+                  case e:AddCartItemException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+              }
+            }
+        }
+        }~put{
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            entity(as[UpdateCartItemCommand]){
+              cmd => {
+                val cart = cartService.initCart(uuid)
+
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                try{
+                  val updatedCart = cartService.updateItem(locale, currency.code, cart, cmd.cartItemId, cmd.quantity)
+                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+
+                  complete(response)
+                }catch{
+                  case e:UpdateCartItemException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+              }
+            }
+          }
+        }~delete{
+          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+            entity(as[RemoveCartItemCommand]){
+              cmd => {
+                val cart = cartService.initCart(uuid)
+
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                try {
+                  val updatedCart = cartService.removeItem(locale, currency.code, cart, cmd.cartItemId)
+                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+                  complete(response)
+                }catch{
+                  case e: RemoveCartItemException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }~path("coupons" / Segment){
+          couponCode => pathEnd {
+            parameters('companyId,'currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) { params =>
+              println("evaluate coupon parameters")
+              val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+              val locale = Locale.forLanguageTag(lang)
+              val currency = esClient.getCurrency(storeCode,params.currency,lang)
+
+              post {
+                val cart = cartService.initCart(uuid)
+
+                try{
+                  val updatedCart = cartService.addCoupon(params.companyId,couponCode,cart,locale,currency.code)
+                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+                  complete(response)
+                }catch{
+                  case e: AddCouponToCartException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+
+                //complete("add coupon")
+              } ~ delete {
+                val cart = cartService.initCart(uuid)
+
+                try{
+                  val updatedCart = cartService.removeCoupon(params.companyId,couponCode,cart,locale,currency.code)
+                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+                  complete(response)
+                }catch{
+                  case e: RemoveCouponFromCartException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+                //complete("remove coupon")
+              }
+            }
+          }
+      }~pathPrefix("payment"){
+        post{
+            path("prepare") {
+              parameters('companyId,'currency.?, 'country.?,'state.?, 'lang ? "_all").as(PrepareTransactionParameters) { params =>
+                val lang: String = if (params.lang == "_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val country = params.country.getOrElse(locale.getCountry)
+                val currency = esClient.getCurrency(storeCode, params.currency, lang)
+
+                val cart = cartService.initCart(uuid)
+
+                try{
+                  val updatedCart = cartService.prepareBeforePayment(params.companyId, country, params.state, currency.code, cart, currency)
+                  val data = cartRenderService.renderTransactionCart(updatedCart, currency,locale)
+                  val response = Map(
+                    ("success"->true),
+                    ("data"->data),
+                    ("errors"->List())
+                  )
+                  complete(response)
+                }catch{
+                  case e: CartException => {
+                    val response = Map(
+                      ("success"->false),
+                      ("data"->cart),
+                      ("errors"->e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+                //complete("prepare")
+              }
+            } ~ path("commit") {
+                parameters('transactionUuid).as(CommitTransactionParameters) { params =>
+                  val cart = cartService.initCart(uuid)
+
+                  try {
+                    val emailingData = cartService.commit(cart, params.transactionUuid)
+                    val response = Map(
+                      ("success" -> true),
+                      ("data" -> emailingData),
+                      ("errors" -> List())
+                    )
+                    complete(response)
+                  } catch {
+                    case e: CartException => {
+                      val response = Map(
+                        ("success" -> false),
+                        ("data" -> cart),
+                        ("errors" -> e.errors)
+                      )
+                      complete(response)
+                    }
+                  }
+                  //complete("commit")
+                }
+            } ~ path("cancel") {
+              parameters('currency.?, 'country.?, 'lang ? "_all").as(CancelTransactionParameters) { params =>
+                val lang: String = if (params.lang == "_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val currency = esClient.getCurrency(storeCode, params.currency, lang)
+                val cart = cartService.initCart(uuid)
+                try {
+                  val updatedCart = cartService.cancel(locale, currency.code, cart)
+                  val data = cartRenderService.render(updatedCart, currency, locale)
+                  val response = Map(
+                    ("success" -> true),
+                    ("data" -> data),
+                    ("errors" -> List())
+                  )
+                  complete(response)
+                } catch {
+                  case e: CartException => {
+                    val response = Map(
+                      ("success" -> false),
+                      ("data" -> cart),
+                      ("errors" -> e.errors)
+                    )
+                    complete(response)
+                  }
+                }
+              }
+              //complete("cancel")
+            }
+
         }
       }
     }

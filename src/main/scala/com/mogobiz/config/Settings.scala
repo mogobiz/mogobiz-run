@@ -2,6 +2,7 @@ package com.mogobiz.config
 
 import com.typesafe.config.ConfigFactory
 import java.io.File
+import scalikejdbc.config._
 
 object Settings {
 
@@ -23,6 +24,10 @@ object Settings {
     val apiId = ""
     val sender = ""
   }
+
+  DBs.setupAll()
+  //DBsWithEnv("development").setupAll()
+
 
   require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
   require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")

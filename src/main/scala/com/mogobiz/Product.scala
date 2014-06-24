@@ -6,6 +6,7 @@ import com.mogobiz.vo.PagingParams
 /**
  * Created by Christophe on 17/02/14.
  */
+/*
 case class Product(
                     code: String
                     , name: String
@@ -36,11 +37,23 @@ case class Product(
   def this(code: String, name: String) = this(code, name, "", 0)
 
 }
-
+*/
 //class LangParam(lang:String)
 
 class CommonProductParameters(val lang:String,val currency:Option[String],val country:Option[String])
-//,lang:String,currency:String,country:String
+
+//case class CartParameters(val currency:Option[String],val country:Option[String],val lang:String)
+
+case class CartParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+
+case class CouponParameters(companyId:Long,_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+
+case class PrepareTransactionParameters(companyId:Long,_currency:Option[String],_country:Option[String],state:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+
+case class CommitTransactionParameters(transactionUuid:String)
+
+case class CancelTransactionParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+
 case class FulltextSearchProductParameters(
                                             _lang: String
                                             , _currency: Option[String]
