@@ -8,7 +8,7 @@ import spray.http.MediaTypes._
  */
 
 
-trait CartService extends HttpService {
+trait CartHttpService extends HttpService {
 
   import Json4sProtocol._
 
