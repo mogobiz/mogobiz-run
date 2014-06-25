@@ -19,7 +19,7 @@ case class Comment(val id:Option[String], val userId:String
 case class CommentRequest(val userId:String, val surname: String,val notation:Int, val subject:String,val comment:String, val created:Date = new Date){
   def validate() {
     if(!(notation>=0 && notation<=5)) throw CommentException(CommentException.BAD_NOTATION)
-    if((subject.size + comment.size) < 130) throw CommentException(CommentException.COMMENT_TOO_SHORT)
+    //if((subject.size + comment.size) < 130) throw CommentException(CommentException.COMMENT_TOO_SHORT)
 
   }
 }
