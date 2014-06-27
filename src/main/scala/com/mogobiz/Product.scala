@@ -46,7 +46,7 @@ class CommonProductParameters(val lang:String,val currency:Option[String],val co
 
 case class CartParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
-case class CouponParameters(companyId:Long,_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+case class CouponParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
 case class PrepareTransactionParameters(companyId:Long,_currency:Option[String],_country:Option[String],state:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 

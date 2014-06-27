@@ -31,12 +31,12 @@ object CartBoService extends BoService {
 
   def initCart(uuid:String): CartVO = {
 
-    val cartVO = getCart(uuid)
+    val cartVO = uuidService.getCart(uuid)
     cartVO match {
       case Some(c) => c
       case None => {
         val c = CartVO(uuid = uuid)
-        uuidService.set(c)
+        uuidService.setCart(c)
         c
       }
     }
@@ -156,7 +156,7 @@ object CartBoService extends BoService {
         count = items.size,
         cartItemVOs = items)
 
-    uuidService.set(newcart)
+    uuidService.setCart(newcart)
     newcart
   }
 
@@ -261,7 +261,7 @@ object CartBoService extends BoService {
           cartItemVOs = updatedItems
         )
 
-        uuidService.set(updatedCart)
+        uuidService.setCart(updatedCart)
         //cartVO.cartItemVOs.foreach(println)
         updatedCart
       }else{
@@ -308,7 +308,7 @@ object CartBoService extends BoService {
       case _ => None
     }
     val updatedCart = cartVO.copy(cartItemVOs = items, price = (cartVO.price - cartItem.totalPrice), endPrice = newEndPrice, count = (cartVO.count - 1))
-    uuidService.set(updatedCart);
+    uuidService.setCart(updatedCart);
 
     updatedCart
   }
@@ -331,15 +331,15 @@ object CartBoService extends BoService {
       //TODO ??? uuidDataService.removeCart(); not implemented in iper
 
     val updatedCart = new CartVO(uuid=cartVO.uuid)
-    uuidService.set(updatedCart);
+    uuidService.setCart(updatedCart);
     updatedCart
   }
 
   @throws[AddCouponToCartException]
-  def addCoupon(companyId:Long, couponCode:String, cartVO:CartVO, locale:Locale, currencyCode:String) : CartVO = {
+  def addCoupon(companyCode:String, couponCode:String, cartVO:CartVO, locale:Locale, currencyCode:String) : CartVO = {
     val errors:Map[String,String] = Map()
 
-    val optCoupon = Coupon.findByCode(companyId, couponCode)
+    val optCoupon = Coupon.findByCode(companyCode, couponCode)
 
     val updatedCart = optCoupon match {
       case Some(coupon) => {
@@ -354,7 +354,7 @@ object CartBoService extends BoService {
 
           val coupons = CouponVO(coupon)::(cartVO.coupons.toList)
           val cart = cartVO.copy( coupons = coupons.toArray)
-          uuidService.set(cart);
+          uuidService.setCart(cart);
           cart
         }
       }
@@ -370,7 +370,7 @@ object CartBoService extends BoService {
 
   /**
    * Remove the coupon from the cart
-   * @param companyId
+   * @param companyCode
    * @param locale
    * @param currencyCode
    * @param cartVO
@@ -378,10 +378,10 @@ object CartBoService extends BoService {
    * @return
    */
   @throws[RemoveCouponFromCartException]
-  def removeCoupon(companyId:Long, couponCode:String, cartVO:CartVO,locale:Locale, currencyCode: String ):CartVO = {
+  def removeCoupon(companyCode:String, couponCode:String, cartVO:CartVO,locale:Locale, currencyCode: String ):CartVO = {
     val errors:Map[String,String] = Map()
 
-    val optCoupon = Coupon.findByCode(companyId, couponCode)
+    val optCoupon = Coupon.findByCode(companyCode, couponCode)
     val updatedCart = optCoupon match {
       case None => {
         addError(errors, "coupon", "unknown.error", null, locale)
@@ -395,9 +395,9 @@ object CartBoService extends BoService {
           CouponService.releaseCoupon(coupon)
 
           // reprise des items existants sauf celui à supprimer
-          val coupons = cartVO.coupons.filter{ c => couponCode == c.code }
+          val coupons = cartVO.coupons.filter{ c => couponCode != c.code }
           val cart = cartVO.copy( coupons = coupons.toArray)
-          uuidService.set(cart);
+          uuidService.setCart(cart);
           cart
         }
       }
@@ -736,7 +736,7 @@ object CartBoService extends BoService {
         //code traduit en : val updatedCart = cartVO.copy(inTransaction = false, price = 0, endPrice = Some(0),count = 0, cartItemVOs = Array())
         //TODO a confirmer, mais je pense que c'est un reset complet du panier qu'on veut, comme suit :
         val updatedCart = CartVO(uuid = cartVO.uuid)
-        uuidService.set(updatedCart)
+        uuidService.setCart(updatedCart)
         //TODO sendEmails(emailingData) faire un Actor
         emailingData
       }
@@ -762,25 +762,11 @@ object CartBoService extends BoService {
         }
 
         val updatedCart = cartVO.copy(inTransaction = false) //cartVO.uuid = null;
-        uuidService.set(cartVO);
+        uuidService.setCart(cartVO);
         updatedCart
       }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
       }
-  }
-
-  private def getCart(uuid:String): Option[CartVO] = {
-    import org.json4s.native.JsonMethods._
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    uuidService.get(uuid) match {
-      case Some(data) => {
-        val parsed = parse(data.payload)
-        val cart = parsed.extract[CartVO]
-        Some(cart)
-      }
-      case _ => None
-    }
   }
 }
 
@@ -911,19 +897,43 @@ case class Coupon
   def rules = Coupon.getRules(this.id)
 }
 
+case class Company(id: Long, name: String, code: String,dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
+}
+
+object Company extends SQLSyntaxSupport[Company]{
+  def apply(rn: ResultName[Company])(rs:WrappedResultSet): Company = Company(
+    id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code),
+    dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
+
+  def findByCode(code:String):Option[Company]={
+    val c = Company.syntax("c")
+    DB readOnly {
+      implicit session =>
+        withSQL {
+          select.from(Company as c).where.eq(c.code, code)
+        }.map(Company(c.resultName)).single().apply()
+    }
+  }
+
+}
+
 object Coupon extends SQLSyntaxSupport[Coupon]{
   def apply(rn: ResultName[Coupon])(rs:WrappedResultSet): Coupon = Coupon(
     id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code), startDate=rs.get(rn.startDate),endDate=rs.get(rn.endDate),
     numberOfUses = rs.get(rn.numberOfUses),companyFk = rs.get(rn.companyFk),reductionSoldFk=rs.get(rn.reductionSoldFk),
     dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
 
-  def findByCode(companyId:Long, couponCode:String):Option[Coupon]={
-    val c = Coupon.syntax("c")
-    DB readOnly {
-      implicit session =>
-        withSQL {
-          select.from(Coupon as c).where.eq(c.code, couponCode).and.eq(c.companyFk,companyId)
-        }.map(Coupon(c.resultName)).single().apply()
+  def findByCode(companyCode:String, couponCode:String):Option[Coupon]={
+    val compagny = Company.findByCode(companyCode)
+    if (compagny.isEmpty) None
+    else {
+      val c = Coupon.syntax("c")
+      DB readOnly {
+        implicit session =>
+          withSQL {
+            select.from(Coupon as c).where.eq(c.code, couponCode).and.eq(c.companyFk,compagny.get.id)
+          }.map(Coupon(c.resultName)).single().apply()
+      }
     }
   }
 

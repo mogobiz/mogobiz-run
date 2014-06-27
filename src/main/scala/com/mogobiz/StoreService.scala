@@ -559,17 +559,17 @@ trait StoreService extends HttpService {
         }
       }~path("coupons" / Segment){
           couponCode => pathEnd {
-            parameters('companyId,'currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) { params =>
-              println("evaluate coupon parameters")
-              val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-              val locale = Locale.forLanguageTag(lang)
-              val currency = esClient.getCurrency(storeCode,params.currency,lang)
+            post {
+              parameters('currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) { params =>
+                println("evaluate coupon parameters")
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val currency = esClient.getCurrency(storeCode,params.currency,lang)
 
-              post {
                 val cart = cartService.initCart(uuid)
 
                 try{
-                  val updatedCart = cartService.addCoupon(params.companyId,couponCode,cart,locale,currency.code)
+                  val updatedCart = cartService.addCoupon(storeCode,couponCode,cart,locale,currency.code)
                   val data = cartRenderService.render(updatedCart, currency,locale)
                   val response = Map(
                     ("success"->true),
@@ -589,11 +589,19 @@ trait StoreService extends HttpService {
                 }
 
                 //complete("add coupon")
-              } ~ delete {
+              }
+            } ~
+            delete {
+              parameters('currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) { params =>
+                println("evaluate coupon parameters")
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+                val locale = Locale.forLanguageTag(lang)
+                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+
                 val cart = cartService.initCart(uuid)
 
                 try{
-                  val updatedCart = cartService.removeCoupon(params.companyId,couponCode,cart,locale,currency.code)
+                  val updatedCart = cartService.removeCoupon(storeCode,couponCode,cart,locale,currency.code)
                   val data = cartRenderService.render(updatedCart, currency,locale)
                   val response = Map(
                     ("success"->true),

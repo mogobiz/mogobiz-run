@@ -13,23 +13,13 @@ class UuidBoServiceSpec extends Specification {
 
   val service = UuidBoService
 
-  "store an empty cart" in {
-    val uuid = UUID.randomUUID.toString
-    println(s"uuid=${uuid}")
-    val cart = new CartVO(uuid=uuid)
-    val res = service.set(cart)
-    println(res)
-    res.id must not beNone
-  }
-
-  "get the stored cart" in {
+  "store and get the stored cart" in {
     val uuid = UUID.randomUUID.toString
     //println(s"uuid=${uuid}")
     val cart = new CartVO(uuid=uuid)
-    val res = service.set(cart)
-    res.id must not beNone
+    service.setCart(cart)
 
-    val data = service.get(uuid)
+    val data = service.getCart(uuid)
     println(data)
     data must not beNone
     val getCart = data.get

@@ -16,7 +16,7 @@ class CouponSpec extends Specification {
   "findByCode" in {
     val companyId = 8
     val code = "TEST1"
-    val res = Coupon.findByCode(companyId,code)
+    val res = Coupon.findByCode("mogobiz",code)
 
     //res must beSome(coupon)
     res must beSome[Coupon]
@@ -28,7 +28,7 @@ class CouponSpec extends Specification {
   "consumeCoupon" in {
     val companyId = 8
     val code = "TEST1"
-    val res = Coupon.findByCode(companyId,code)
+    val res = Coupon.findByCode("mogobiz",code)
 
     //res must beSome(coupon)
     res must beSome[Coupon]
@@ -43,7 +43,7 @@ class CouponSpec extends Specification {
   "releaseCoupon" in {
     val companyId = 8
     val code = "TEST1"
-    val res = Coupon.findByCode(companyId,code)
+    val res = Coupon.findByCode("mogobiz",code)
 
     //res must beSome(coupon)
     res must beSome[Coupon]
