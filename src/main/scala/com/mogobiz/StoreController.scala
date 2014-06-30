@@ -67,7 +67,7 @@ trait StoreController extends HttpService {
     respondWithMediaType(`application/json`) {
       parameters('hidden?false,'parentId.?,'lang,'store).as(CategoryRequest) { cr =>
         complete {
-          val  categories = Category(1,"CNM","Cinéma",Nil)::Category(2,"HBG","Habillage",Nil)::Nil
+          val  categories = Category(1,"CNM","Cinéma",Nil)::Category(2,"HBG","Habillement",Nil)::Nil
           categories
         }
       }
