@@ -4,6 +4,7 @@ import org.specs2.mutable.Specification
 import java.util.{Locale, UUID}
 import scalikejdbc.config.DBs
 import com.mogobiz.Currency
+import org.json4s.{DefaultFormats, Formats}
 
 /**
  * Created by Christophe on 06/05/2014.
@@ -272,7 +273,7 @@ class CartBoServiceSpec extends Specification {
 
   }
 
-  "prepare transaction without coupons" in {
+  def prepareCartWith2items : CartVO = {
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
     println(s"uuid=${uuid}")
@@ -299,15 +300,80 @@ class CartBoServiceSpec extends Specification {
     resCart2.count must be_==(2)
     resCart2.cartItemVOs.size must be_==(2)
 
+    resCart2
+  }
 
-    val companyId = 8
+  "prepare transaction without coupons" in {
+    //val companyId = 8
+    val companyCode = "mogobiz"
     val countryCode = "FR"
     val state = None
     val currency = Currency(2, 1960,"euro","EUR")
-    val preparedCart = service.prepareBeforePayment(companyId, countryCode, state, currency.code, resCart2, currency)
+    val cart = prepareCartWith2items
 
-    //TODO println(render(preparedCart))
+    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, cart, currency)
 
-    true must beTrue
+
+/*
+    implicit def json4sFormats: Formats = DefaultFormats
+    import org.json4s.native.JsonMethods._
+    import org.json4s.native.Serialization.{ write}
+    import org.json4s.JsonDSL._
+
+    println(pretty(render(write(data))))
+*/
+    println("-----------------------------------------------------------------------------------------------")
+    println(data)
+
+    val expectedAmount = 77740
+    data("amount") must be_==(expectedAmount)
+    data("currencyCode") must be_==(currency.code)
+    data("currencyRate") must be_==(currency.rate)
   }
+
+  "prepare transaction without coupons and commit" in {
+    val companyCode = "mogobiz"
+    val countryCode = "FR"
+    val state = None
+    val currency = Currency(2, 1960,"euro","EUR")
+    val preparedCart = prepareCartWith2items
+
+    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency)
+
+    val cartService = CartBoService
+    val cart = cartService.initCart(preparedCart.uuid)
+    cart.inTransaction must beTrue
+
+    val transactionUuid = UUID.randomUUID().toString
+    val emailsData = service.commit(cart, transactionUuid)
+
+    emailsData.length must be_==(0)
+
+    //TODO check en base le statut de la transaction
+    //TODO check en base le valeur du panier
+  }
+
+  "prepare transaction without coupons and cancel" in {
+    val companyCode = "mogobiz"
+    val countryCode = "FR"
+    val state = None
+    val currency = Currency(2, 1960,"euro","EUR")
+    val preparedCart = prepareCartWith2items
+
+    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency)
+
+    val cartService = CartBoService
+    val cart = cartService.initCart(preparedCart.uuid)
+    cart.inTransaction must beTrue
+
+    var locale = Locale.getDefault()
+    val canceledCart = service.cancel(cart)
+
+    canceledCart.inTransaction must beFalse
+
+    //TODO check en base le statut de la transaction
+    //TODO check en base le valeur du panier
+
+  }
+
 }

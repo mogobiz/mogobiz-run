@@ -14,6 +14,8 @@ import com.mogobiz.Currency
 import org.json4s.native.Serialization._
 import scala.Some
 import com.mogobiz.Currency
+import scala.Some
+import com.mogobiz.Currency
 
 /**
  * Created by Christophe on 09/05/2014.
@@ -22,7 +24,7 @@ object CartRenderService {
 
   val rateService = RateBoService
 
-  def render(cart:CartVO, currency:Currency,locale:Locale):Map[String,Any]={
+  def renderCart(cart:CartVO, currency:Currency,locale:Locale):Map[String,Any]={
     var map :Map[String,Any]= Map()
 
     map+=("count" -> cart.count)
@@ -45,10 +47,39 @@ object CartRenderService {
     map
   }
 
-  def renderTransactionCart(cart:CartVO, currency:Currency,locale:Locale):Map[String,Any]={
-    render(cart,currency,locale)
+  /**
+   * Idem que renderCart à quelques différences près d'où la dupplication de code
+   * @param cart
+   * @param rate
+   * @return
+   */
+  def renderTransactionCart(cart:CartVO, rate:Currency):Map[String,Any]={
+
+    val items = cart.cartItemVOs.map(item => renderTransactionCartItem(item,rate))
+    val cartWithUpdatedCoupons = updateCoupons(cart)
+    val coupons = cartWithUpdatedCoupons.coupons.map{
+      c => renderTransactionCoupon(c,rate)
+    }
+    val prices = renderTransactionPriceCart(cartWithUpdatedCoupons,rate)
+
+    var map :Map[String,Any]= Map(
+      "count" -> cart.count,
+      "cartItemVOs" -> items,
+      "coupons"-> coupons
+    )
+
+    map++=prices
+
+    map
   }
 
+  /**
+   * Renvoie un coupon JSONiné augmenté par un calcul de prix formaté
+   * @param coupon
+   * @param currency
+   * @param locale
+   * @return
+   */
   def renderCoupon(coupon:CouponVO, currency:Currency, locale:Locale) = {
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
     val jsonCoupon = parse(write(coupon))
@@ -61,6 +92,24 @@ object CartRenderService {
     renderedCoupon
   }
 
+  def renderTransactionCoupon(coupon:CouponVO, rate:Currency) = {
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
+    val jsonCoupon = parse(write(coupon))
+
+    val price = rateService.calculateAmount(coupon.price, rate);
+    val updatedData = parse(write(Map(("price"->price))))
+
+    val renderedCoupon = jsonCoupon merge updatedData
+    renderedCoupon
+  }
+
+  /**
+   * Renvoie un cartItem JSONinsé augmenté par le calcul des prix formattés
+   * @param item item du panier
+   * @param currency
+   * @param locale
+   * @return
+   */
   def renderCartItem(item:CartItemVO,currency:Currency,locale:Locale) ={
 
     import org.json4s.native.JsonMethods._
@@ -92,6 +141,37 @@ object CartRenderService {
     renderedItem
   }
 
+  def renderTransactionCartItem(item:CartItemVO,rate:Currency) ={
+
+    import org.json4s.native.JsonMethods._
+    import org.json4s.native.Serialization.{ write}
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
+    val jsonItem = parse(write(item))
+
+    val price = rateService.calculateAmount(item.price, rate);
+    val endPrice = rateService.calculateAmount(item.endPrice.getOrElse(0l), rate);
+    val totalPrice = rateService.calculateAmount(item.totalPrice, rate);
+    val totalEndPrice = rateService.calculateAmount(item.totalEndPrice.getOrElse(0l), rate);
+
+    val updatedData = parse(write(Map(
+      ("price"->price),
+      ("endPrice"->endPrice),
+      ("totalPrice"->totalPrice),
+      ("totalEndPrice"->totalEndPrice)
+    )))
+
+    val renderedItem = jsonItem merge updatedData
+
+    renderedItem
+  }
+
+  /**
+   * Renvoie tous les champs prix calculé sur le panier
+   * @param cart
+   * @param currency
+   * @param locale
+   * @return
+   */
   def renderPriceCart(cart:CartVO, currency:Currency,locale:Locale)={
     val formatedPrice = rateService.format(cart.price, currency.code, locale, currency.rate)
     val formatedEndPrice = cart.endPrice match{
@@ -101,7 +181,7 @@ object CartRenderService {
     val formatedReduction = rateService.format(cart.reduction, currency.code, locale, currency.rate)
     val formatedFinalPrice =  rateService.format(cart.finalPrice, currency.code, locale, currency.rate)
 
-    val price :Map[String,Any]= Map(
+    val prices :Map[String,Any]= Map(
       ("price"->cart.price),
       ("endPrice"->cart.endPrice),
       ("reduction"->cart.reduction),
@@ -111,17 +191,37 @@ object CartRenderService {
       ("formatedReduction"->formatedReduction),
       ("formatedFinalPrice"->formatedFinalPrice)
     )
-    price
+    prices
+  }
+
+  def renderTransactionPriceCart(cart:CartVO, rate:Currency)={
+
+    val price = rateService.calculateAmount(cart.price, rate)
+    val endPrice = rateService.calculateAmount(cart.endPrice.getOrElse(0l), rate)
+    val reduction = rateService.calculateAmount(cart.reduction, rate)
+    val finalPrice= rateService.calculateAmount(cart.finalPrice, rate)
+
+    val prices :Map[String,Any]= Map(
+      ("price"->price),
+      ("endPrice"->endPrice),
+      ("reduction"->reduction),
+      ("finalPrice"->finalPrice)
+    )
+    prices
   }
 
   private def updateCoupons(cart: CartVO):CartVO= {
 
+    println("updateCoupons")
     val reduc = cart.coupons.foldLeft(0l)((acc,c) => acc + CouponService.updateCoupon(c, cart).price)
+    println(s"reduc=$reduc")
+    println(s"cart.endPrice=${cart.endPrice}")
 
     val finalprice = cart.endPrice match{
       case Some(endprice) => endprice - reduc
       case _ => cart.price - reduc
     }
+    println(s"finalprice=$finalprice")
 
     cart.copy(reduction = reduc, finalPrice = finalprice)
   }

@@ -154,6 +154,7 @@ object ProductBoService extends BoService {
 
 class InsufficientStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
 class UnavailableStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
+import scalikejdbc._, SQLInterpolation._
 
 case class Stock(stock:Long=0,stockUnlimited:Boolean = true,stockOutSelling:Boolean = false)
 object Stock  extends SQLSyntaxSupport[Stock]{
@@ -170,34 +171,56 @@ case class StockCalendar(
 
 case class Poi(road1:Option[String],road2:Option[String],city:Option[String],postalCode:Option[String],state:Option[String],countryCode:Option[String])
 
-case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRate:Option[TaxRate],shippingFk:Option[Long],
+case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRateFk:Option[Long], taxRate: Option[TaxRate],shippingFk:Option[Long],
                    startDate:Option[DateTime],stopDate:Option[DateTime] ){
 
   def shipping = shippingFk match {
     case Some(shippingId) => Product.getShipping(shippingId)
     case None => None
   }
+
+  //def taxRate =
 }
 
 object Product extends SQLSyntaxSupport[Product]{
-  def apply(rn: ResultName[Product])(rs:WrappedResultSet): Product = Product(
-    rs.get(rn.id),
-    rs.get(rn.name),
-    ProductType.valueOf(rs.string("xtype")),//rs.get(rn.xtype),
-    ProductCalendar.valueOf(rs.string("calendar_type")), //rs.get(rn.calendarType),
-    Some(TaxRate(rs)), //rs.get(rn.taxRate),
-    rs.get(rn.shippingFk),
-    rs.get(rn.startDate),
-    rs.get(rn.stopDate))
-  def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRate = Some(TaxRate(rs)),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
-  def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRate = Some(TaxRate(rs)),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+
+  def apply(p: SyntaxProvider[Product])(rs:WrappedResultSet) : Product = apply(p.resultName)(rs)
+
+  def apply(rn: ResultName[Product])(rs:WrappedResultSet): Product = new Product(
+    id = rs.get(rn.id),
+    name = rs.get(rn.name),
+    xtype = ProductType.valueOf(rs.string("x_on_p")),//,rs.get(rn.xtype), //FIXME
+    calendarType = ProductCalendar.valueOf(rs.string("ct_on_p")), //rs.get(rn.calendarType), //FIXME
+    taxRateFk = rs.get(rn.taxRateFk),
+    taxRate = None, //Some(TaxRate(rs)),
+    shippingFk = rs.get(rn.shippingFk),
+    startDate = rs.get(rn.startDate),
+    stopDate = rs.get(rn.stopDate)
+  )
+
+
+  def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+  def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
 
   def get(id:Long):Option[Product] = {
-    val p = Product.syntax("p")
+
+    val (p,tr) = (Product.syntax("p"), TaxRate.syntax("tr"))
+
     val res = DB readOnly { implicit session =>
       withSQL {
-        select.from(Product as p).where.eq(p.id, id)
-      }.map(Product(p.resultName)).single().apply()
+        select.from(Product as p).leftJoin(TaxRate as tr).on(p.taxRateFk, tr.id).where.eq(p.id, id)
+      }
+        .one(Product(p))
+        .toOptionalOne(TaxRate.opt(tr))
+        .map{
+        (product, taxrate) => product.copy(taxRate = Some(taxrate))
+      }
+        /*.map { (product, taxrate) => taxrate match {
+        case Some(txr) => product.copy(taxRate = txr)
+        case None => product
+      }}*/
+        .single.apply()
+      //.map(Product(p.resultName)).single().apply()
     }
     res
   }
@@ -216,11 +239,14 @@ object Product extends SQLSyntaxSupport[Product]{
   }
 }
 
-import scalikejdbc._, SQLInterpolation._
 case class TaxRate(id:Long,name:String,company_fk:Long)
 object TaxRate extends SQLSyntaxSupport[TaxRate] {
+  def apply(p: SyntaxProvider[TaxRate])(rs:WrappedResultSet) : TaxRate = apply(p.resultName)(rs)
   def apply(tr: ResultName[TaxRate])(rs:WrappedResultSet) : TaxRate = new TaxRate(id=rs.get(tr.id),name=rs.get(tr.name),company_fk = rs.get(tr.company_fk))
   def apply(rs:WrappedResultSet) : TaxRate = new TaxRate(id=rs.long("tax_rate_fk"),name=rs.string("name"),company_fk = rs.long("company_fk"))
+
+  def opt(tr: SyntaxProvider[TaxRate])(rs: WrappedResultSet): Option[TaxRate] =
+    rs.longOpt(tr.resultName.id).map(_ => TaxRate(tr)(rs))
 }
 
 case class TicketType(id:Long,name:String,price:Long,minOrder:Long=0,maxOrder:Long=0,stock:Option[Stock]=None,product:Option[Product]=None,startDate:Option[DateTime]=None,stopDate:Option[DateTime]=None){

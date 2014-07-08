@@ -6,7 +6,7 @@ import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
 import org.json4s.{DefaultFormats, Formats}
-import com.mogobiz.{Currency, Utils}
+import com.mogobiz.{RateBoService, Currency, Utils}
 import org.joda.time.DateTime
 import scalikejdbc.config.DBs
 import com.mogobiz.cart.TransactionStatus.TransactionStatus
@@ -14,6 +14,9 @@ import scalikejdbc.SQLInterpolation._
 import scala.Some
 import scalikejdbc.{DBSession, DB, WrappedResultSet}
 import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
+import org.json4s.native.Serialization._
+import scala.Some
+import scalikejdbc.WrappedResultSet
 
 /**
  * Created by Christophe on 05/05/2014.
@@ -407,35 +410,50 @@ object CartBoService extends BoService {
 
   }
 
-  def prepareBeforePayment(companyId:Long, countryCode:String, stateCode:Option[String], currencyCode:String, cartVO:CartVO,rate:Currency) : CartVO = {
-    //val rate:MogopayRate = rateService.getMogopayRate(currencyCode)
-    //val rate:Currency= rateService.getMogopayRate(currencyCode)
+  /**
+   * Calcul des montants TTC
+   * @param cartVO
+   * @param countryCode
+   * @param stateCode
+   * @return
+   */
+  private def calculAmountAllTaxIncluded(cartVO: CartVO,countryCode:String, stateCode:Option[String]) : CartVO = {
+
+    var newEndPrice = 0l
+    val newCartItemVOs = cartVO.cartItemVOs.map { cartItem =>
+      val product = Product.get(cartItem.productId).get
+
+      val tax = taxRateService.findTaxRateByProduct(product, countryCode, stateCode)
+      val endPrice = taxRateService.calculateEndPrix(cartItem.price, tax)
+      val totalEndPrice = endPrice match {
+        case Some(p) => Some(cartItem.quantity * p)
+        case _ => None
+      }
+      newEndPrice = newEndPrice + totalEndPrice.getOrElse(0l)
+
+      cartItem.copy(endPrice = endPrice, totalEndPrice = totalEndPrice, tax = tax)
+    }
+
+    cartVO.copy(endPrice = Some(newEndPrice), cartItemVOs = newCartItemVOs)
+  }
+
+  def prepareBeforePayment(companyCode:String, countryCode:String, stateCode:Option[String], currencyCode:String, cartVO:CartVO,rate:Currency) = { //:Map[String,Any]=
 
     val errors:Map[String,String] = Map()
 
+    // récup du companyId à partir du storeCode
+    val companyId = Company.findByCode(companyCode).get.id
+
     // Calcul des montants TTC
-    /* TODO a remplacé par une méthode calculAmountAllTaxIncluded sur CartVO (renvoie un new CartVO avec une new colloection of items)
-    cartVO.endPrice = 0;
-    cartVO.cartItemVOs?.each {CartItemVO cartItem ->
-      Product product = Product.get(cartItem.getProductId());
-      cartItem.tax = taxRateService.findTaxRateByProduct(product, countryCode, stateCode)
-      if (cartItem.tax == null) {
-        // Le pays/state de livraison n'ont pas de taxRate associé,
-        // la taxe est donc de 0
-        cartItem.tax = 0;
-      }
-      cartItem.endPrice = taxRateService.calculateEndPrix(cartItem.price, cartItem.tax)
-      cartItem.totalEndPrice = cartItem.quantity * cartItem.endPrice;
-      cartVO.endPrice += cartItem.totalEndPrice
-    }*/
+    val cartTTC = calculAmountAllTaxIncluded(cartVO,countryCode, stateCode)
 
     //TRANSACTION 1 : SUPPRESSIONS
     DB localTx { implicit session =>
 
-      if (cartVO.inTransaction) {
-        //if (cartVO.uuid) {
+      if (cartTTC.inTransaction) {
+        //if (cartTTC.uuid) {
         // On supprime tout ce qui concerne l'ancien BOCart (s'il est en attente)
-        val boCart = BOCart.findByTransactionUuidAndStatus(cartVO.uuid, TransactionStatus.PENDING)
+        val boCart = BOCart.findByTransactionUuidAndStatus(cartTTC.uuid, TransactionStatus.PENDING)
         if (boCart.isDefined) {
 
         BOCartItem.findByBOCart(boCart.get).foreach { boCartItem =>
@@ -454,25 +472,38 @@ object CartBoService extends BoService {
     }
 
 //    if (result.success) {
-      //cartVO.uuid = UUID.randomUUID();
+      //cartTTC.uuid = UUID.randomUUID();
 
-    val updatedCart = cartVO.copy(inTransaction = true) //cartVO.inTransaction = true
+    val updatedCart = cartTTC.copy(inTransaction = true)
 
     //TRANSACTION 2 : INSERTIONS
     DB localTx { implicit session =>
 
       var boCartId = 0
-      withSQL { // =boCart.save()
+      withSQL {
+        // =boCart.save()
         val newid = newId()
         boCartId = newid
-        insert.into(BOCart).values(newid, cartVO.uuid, DateTime.now, cartVO.price, TransactionStatus.PENDING, currencyCode, rate.rate, companyId)
+        val b = BOCart.column
+        insert.into(BOCart).namedValues(
+          b.id -> boCartId,
+          b.companyFk -> companyId,
+          b.currencyCode -> currencyCode,
+          b.currencyRate -> rate.rate,
+          b.date -> DateTime.now,
+          b.dateCreated -> DateTime.now,
+          b.lastUpdated -> DateTime.now,
+          b.price -> cartTTC.price,
+          b.status -> TransactionStatus.PENDING.toString,
+          b.transactionUuid -> cartTTC.uuid
+        )
       }.update.apply()
 
       val boCart = new BOCart(
         id = boCartId,
-        transactionUuid = cartVO.uuid,
+        transactionUuid = cartTTC.uuid,
         date = DateTime.now,
-        price = cartVO.price,
+        price = cartTTC.price,
         status = TransactionStatus.PENDING,
         currencyCode = currencyCode,
         currencyRate = rate.rate,
@@ -480,19 +511,27 @@ object CartBoService extends BoService {
       )
 
 
-      cartVO.cartItemVOs.foreach { cartItem => {
+      cartTTC.cartItemVOs.foreach { cartItem => {
         //val product = Product.get(cartItem.productId)
         val ticketType = TicketType.get(cartItem.skuId)
 
         // Création du BOProduct correspondant au produit principal
         var boProductId = 0
-        val boProduct = new BOProduct(id = boProductId, principal = true, productFk = cartItem.productId, price = cartItem.totalEndPrice.getOrElse(-1))
         withSQL {
+          val boProduct = new BOProduct(id = boProductId, principal = true, productFk = cartItem.productId, price = cartItem.totalEndPrice.getOrElse(-1))
           //=boProduct.save()
           val newid = newId()
           boProductId = newid
           //acquittement:Boolean=false,price:Long=0,principal:Boolean=false,productFk:Long,dateCreated:DateTime = DateTime.now,lastUpdate:DateTime = DateTime.now
-          insert.into(BOProduct).values(newid, boProduct.acquittement, boProduct.price, boProduct.principal, boProduct.productFk, boProduct.dateCreated, boProduct.lastUpdated)
+          val b = BOProduct.column
+          insert.into(BOProduct).namedValues(
+            b.id -> newid,
+            b.acquittement -> boProduct.acquittement,
+            b.price -> boProduct.price,
+            b.principal -> boProduct.principal,
+            b.productFk -> boProduct.productFk,
+            b.dateCreated -> boProduct.dateCreated,
+            b.lastUpdated -> boProduct.lastUpdated)
         }.update.apply()
 
 
@@ -551,7 +590,7 @@ object CartBoService extends BoService {
         //create Sale
         var saleId = 0
         val sale = new BOCartItem(id = saleId,
-          code = "SALE_" + boCart.id + "_" + boProduct.id,
+          code = "SALE_" + boCart.id + "_" + boProductId,
           price = cartItem.price,
           tax = cartItem.tax.get,
           endPrice = cartItem.endPrice.get,
@@ -572,7 +611,7 @@ object CartBoService extends BoService {
           saleId = newid
           insert.into(BOCartItem).namedValues(
             b.id -> saleId,
-            b.code -> ("SALE_" + boCart.id + "_" + boProduct.id),
+            b.code -> ("SALE_" + boCart.id + "_" + boProductId),
             b.price -> cartItem.price,
             b.tax -> cartItem.tax.get,
             b.endPrice -> cartItem.endPrice.get,
@@ -592,78 +631,26 @@ object CartBoService extends BoService {
       }
     }
 
+    uuidService.setCart(updatedCart)
 
-    /*TODO dans renderTransactionCart
-    // Construit la map correspondant au panier pour le jsoniser
-    Map map = [:]
-    map["count"] = cartVO.count
+    val renderedCart = CartRenderService.renderTransactionCart(updatedCart,rate)
 
-    List<Map> listMapItem = []
-    cartVO.cartItemVOs?.each { CartItemVO cartItem ->
-      String [] included = [
-      "id", "productId", "productName", "xtype", "skuId", "skuName", "quantity", "tax", "startDate", "endDate",
-      "shipping",
-      "shipping.weight",
-      "shipping.weightUnit",
-      "shipping.width",
-      "shipping.height",
-      "shipping.depth",
-      "shipping.linearUnit",
-      "shipping.amount",
-      "shipping.free",
-      "registeredCartItemVOs",
-      "registeredCartItemVOs.cartItemId",
-      "registeredCartItemVOs.id",
-      "registeredCartItemVOs.email",
-      "registeredCartItemVOs.firstname",
-      "registeredCartItemVOs.lastname",
-      "registeredCartItemVOs.phone",
-      "registeredCartItemVOs.birthdate"
-      ]
-      Map mapItem = RenderUtil.asMapForJSON(null, included, null, cartItem)
-      mapItem["price"] = rateService.calculateAmount(cartItem.price, rate);
-      mapItem["endPrice"] = rateService.calculateAmount(cartItem.endPrice, rate);
-      mapItem["totalPrice"] = rateService.calculateAmount(cartItem.totalPrice, rate);
-      mapItem["totalEndPrice"] = rateService.calculateAmount(cartItem.totalEndPrice, rate);
-      listMapItem << mapItem
-    }
-    map["cartItemVOs"] = listMapItem
+    implicit def json4sFormats: Formats = DefaultFormats
+    import org.json4s.native.JsonMethods._
+    import org.json4s.JsonDSL._
 
-    // Calcul du prix des coupons
-    updateCoupons(cartVO);
-    List<Map> listCoupon = []
-    cartVO.coupons?.each { CouponVO c ->
-      String [] included = [
-      "id",
-      "name",
-      "code",
-      "active",
-      "startDate",
-      "endDate"
-      ]
-      Map mapCoupon = RenderUtil.asMapForJSON(null, included, null, c)
-      mapCoupon["price"] = rateService.calculateAmount(c.price, rate);
-      listCoupon << mapCoupon
-    }
-    map["coupons"] = listCoupon
+    println("-----------------------------------------------------------------------------------------------")
+    val prettyJsonCart = pretty(render(write(renderedCart)))
+    println(prettyJsonCart)
+    println("-----------------------------------------------------------------------------------------------")
 
-    map["price"] = rateService.calculateAmount(cartVO.price, rate)
-    map["endPrice"] = rateService.calculateAmount(cartVO.endPrice, rate)
-    map["reduction"] = rateService.calculateAmount(cartVO.reduction, rate)
-    map["finalPrice"] = rateService.calculateAmount(cartVO.finalPrice, rate)
-
-    Map data = [:]
-    data["amount"] = rateService.calculateAmount(cartVO.finalPrice, rate)
-    data["currencyCode"] = currencyCode
-    data["currencyRate"] = rate.rate.doubleValue();
-    data["transactionExtra"] = new JsonBuilder(map).toPrettyString();
-
-    result.data = data
-    uuidDataService.setCart(cartVO);
-    return result;
-
-    */
-    updatedCart
+    val data = Map(
+      "amount" -> RateBoService.calculateAmount(updatedCart.finalPrice, rate),
+      "currencyCode" -> currencyCode,
+      "currencyRate" -> rate.rate.doubleValue(),
+      "transactionExtra" ->  renderedCart
+    )
+    data
   }
 
   def commit(cartVO:CartVO, transactionUuid:String ):List[Map[String,Any]]=
@@ -719,7 +706,7 @@ object CartBoService extends BoService {
           withSQL {
             update(BOCart).set(
               BOCart.column.transactionUuid -> transactionUuid,
-              BOCart.column.status -> TransactionStatus.COMPLETE,
+              BOCart.column.status -> TransactionStatus.COMPLETE.toString,
               BOCart.column.lastUpdated -> DateTime.now
             ).where.eq(BOCart.column.id, boCart.id)
           }.update.apply()
@@ -744,7 +731,7 @@ object CartBoService extends BoService {
     }
   }
 
-  def cancel(locale:Locale, currencyCode:String , cartVO:CartVO ):CartVO = {
+  def cancel(cartVO:CartVO ):CartVO = {
     BOCart.findByTransactionUuid(cartVO.uuid) match {
       case Some(boCart) => {
         DB localTx { implicit session =>
@@ -755,7 +742,7 @@ object CartBoService extends BoService {
         */
           withSQL {
             update(BOCart).set(
-              BOCart.column.status -> TransactionStatus.FAILED,
+              BOCart.column.status -> TransactionStatus.FAILED.toString,
               BOCart.column.lastUpdated -> DateTime.now
             ).where.eq(BOCart.column.id, boCart.id)
           }.update.apply()
@@ -1241,6 +1228,9 @@ case class BOProduct(id:Long,acquittement:Boolean=false,price:Long=0,principal:B
   }
 }
 object BOProduct extends SQLSyntaxSupport[BOProduct]{
+
+  override val tableName = "b_o_product"
+
   def apply(rn: ResultName[BOProduct])(rs:WrappedResultSet): BOProduct = new BOProduct(id=rs.get(rn.id),acquittement=rs.get(rn.acquittement),price=rs.get(rn.price),principal=rs.get(rn.principal),productFk=rs.get(rn.productFk),dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
 
 
@@ -1305,8 +1295,12 @@ case class BOCart(id:Long, transactionUuid:String,date:DateTime, price:Long,stat
 
 object BOCart extends SQLSyntaxSupport[BOCart]{
 
-  def apply(rn: ResultName[BOCart])(rs:WrappedResultSet): BOCart = new BOCart(id=rs.get(rn.id),transactionUuid=rs.get(rn.transactionUuid),price=rs.get(rn.price),
-    date=rs.get(rn.date),status=TransactionStatus.valueOf(rs.string("status")),currencyCode = rs.get(rn.currencyCode),currencyRate = rs.get(rn.currencyRate),
+  override val tableName = "b_o_cart"
+
+  def apply(rn: ResultName[BOCart])(rs:WrappedResultSet): BOCart = BOCart(
+    id=rs.get(rn.id),transactionUuid=rs.get(rn.transactionUuid),price=rs.get(rn.price),
+    date=rs.get(rn.date),status=TransactionStatus.valueOf(rs.string("s_on_t")), //FIXME
+    currencyCode = rs.get(rn.currencyCode),currencyRate = rs.get(rn.currencyRate),
     companyFk=rs.get(rn.companyFk),dateCreated=rs.get(rn.dateCreated),lastUpdated=rs.get(rn.lastUpdated))
 
   def findByTransactionUuidAndStatus(uuid:String, status:TransactionStatus):Option[BOCart] = {
@@ -1362,6 +1356,8 @@ case class BOCartItem(id:Long,code : String,
 }
 
 object BOCartItem extends SQLSyntaxSupport[BOCartItem]{
+
+  override val tableName = "b_o_cart_item"
 
   def apply(rn: ResultName[BOCartItem])(rs:WrappedResultSet): BOCartItem = new BOCartItem(id=rs.get(rn.id),code=rs.get(rn.code),price=rs.get(rn.price),tax=rs.get(rn.tax),
     endPrice=rs.get(rn.endPrice),totalPrice=rs.get(rn.totalPrice),totalEndPrice=rs.get(rn.totalEndPrice),quantity=rs.get(rn.quantity),hidden=rs.get(rn.hidden),

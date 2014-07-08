@@ -446,7 +446,7 @@ trait StoreService extends HttpService {
             val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
             val locale = Locale.forLanguageTag(lang)
             val currency = esClient.getCurrency(storeCode,params.currency,lang)
-            complete(cartRenderService.render(cart, currency,locale))
+            complete(cartRenderService.renderCart(cart, currency,locale))
           }
         }~delete{
           parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
@@ -456,7 +456,7 @@ trait StoreService extends HttpService {
             val locale = Locale.forLanguageTag(lang)
             val currency = esClient.getCurrency(storeCode,params.currency,lang)
             val updatedCart = cartService.clear(locale,currency.code,cart)
-            complete(cartRenderService.render(updatedCart, currency,locale))
+            complete(cartRenderService.renderCart(updatedCart, currency,locale))
           }
         }
       }~path("items"){
@@ -471,7 +471,7 @@ trait StoreService extends HttpService {
                 val currency = esClient.getCurrency(storeCode,params.currency,lang)
                 try{
                   val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.ticketTypeId,cmd.quantity,cmd.dateTime,cmd.registeredCartItems )
-                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val data = cartRenderService.renderCart(updatedCart, currency,locale)
                   val response = Map(
                     ("success"->true),
                     ("data"->data),
@@ -504,7 +504,7 @@ trait StoreService extends HttpService {
                 val currency = esClient.getCurrency(storeCode,params.currency,lang)
                 try{
                   val updatedCart = cartService.updateItem(locale, currency.code, cart, cmd.cartItemId, cmd.quantity)
-                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val data = cartRenderService.renderCart(updatedCart, currency,locale)
                   val response = Map(
                     ("success"->true),
                     ("data"->data),
@@ -536,7 +536,7 @@ trait StoreService extends HttpService {
                 val currency = esClient.getCurrency(storeCode,params.currency,lang)
                 try {
                   val updatedCart = cartService.removeItem(locale, currency.code, cart, cmd.cartItemId)
-                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val data = cartRenderService.renderCart(updatedCart, currency,locale)
                   val response = Map(
                     ("success"->true),
                     ("data"->data),
@@ -570,7 +570,7 @@ trait StoreService extends HttpService {
 
                 try{
                   val updatedCart = cartService.addCoupon(storeCode,couponCode,cart,locale,currency.code)
-                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val data = cartRenderService.renderCart(updatedCart, currency,locale)
                   val response = Map(
                     ("success"->true),
                     ("data"->data),
@@ -602,7 +602,7 @@ trait StoreService extends HttpService {
 
                 try{
                   val updatedCart = cartService.removeCoupon(storeCode,couponCode,cart,locale,currency.code)
-                  val data = cartRenderService.render(updatedCart, currency,locale)
+                  val data = cartRenderService.renderCart(updatedCart, currency,locale)
                   val response = Map(
                     ("success"->true),
                     ("data"->data),
@@ -626,7 +626,7 @@ trait StoreService extends HttpService {
       }~pathPrefix("payment"){
         post{
             path("prepare") {
-              parameters('companyId,'currency.?, 'country.?,'state.?, 'lang ? "_all").as(PrepareTransactionParameters) { params =>
+              parameters('currency.?, 'country.?,'state.?, 'lang ? "_all").as(PrepareTransactionParameters) { params =>
                 val lang: String = if (params.lang == "_all") "fr" else params.lang //FIX with default Lang
                 val locale = Locale.forLanguageTag(lang)
                 val country = params.country.getOrElse(locale.getCountry)
@@ -635,8 +635,8 @@ trait StoreService extends HttpService {
                 val cart = cartService.initCart(uuid)
 
                 try{
-                  val updatedCart = cartService.prepareBeforePayment(params.companyId, country, params.state, currency.code, cart, currency)
-                  val data = cartRenderService.renderTransactionCart(updatedCart, currency,locale)
+                  val data = cartService.prepareBeforePayment(storeCode, country, params.state, currency.code, cart, currency)
+
                   val response = Map(
                     ("success"->true),
                     ("data"->data),
@@ -686,8 +686,8 @@ trait StoreService extends HttpService {
                 val currency = esClient.getCurrency(storeCode, params.currency, lang)
                 val cart = cartService.initCart(uuid)
                 try {
-                  val updatedCart = cartService.cancel(locale, currency.code, cart)
-                  val data = cartRenderService.render(updatedCart, currency, locale)
+                  val updatedCart = cartService.cancel(cart)
+                  val data = cartRenderService.renderCart(updatedCart, currency, locale)
                   val response = Map(
                     ("success" -> true),
                     ("data" -> data),
