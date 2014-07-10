@@ -169,10 +169,34 @@ case class StockCalendar(
                           id:Long,stock:Long,sold:Long,startDate:Option[DateTime],product:Product,ticketType:TicketType,
                           dateCreated:DateTime,lastUpdated:DateTime) extends DateAware
 
-case class Poi(road1:Option[String],road2:Option[String],city:Option[String],postalCode:Option[String],state:Option[String],countryCode:Option[String])
+case class Poi(id:Long,road1:Option[String],road2:Option[String],city:Option[String],postalCode:Option[String],state:Option[String],countryCode:Option[String])
+object Poi extends SQLSyntaxSupport[Poi] {
 
-case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRateFk:Option[Long], taxRate: Option[TaxRate]
-                   ,shippingFk:Option[Long],companyFk:Long,
+  def apply(rn: ResultName[Poi])(rs: WrappedResultSet): Poi = Poi(
+    id = rs.get(rn.id),
+    road1 = rs.get(rn.road1),
+    road2 = rs.get(rn.road2),
+    city = rs.get(rn.city),
+    postalCode = rs.get(rn.postalCode),
+    state = rs.get(rn.state),
+  countryCode = rs.get(rn.countryCode)
+  )
+
+  def get(id:Long):Option[Poi] = {
+
+    val c = Poi.syntax("c")
+
+    val res = DB readOnly { implicit session =>
+      withSQL {
+        select.from(Poi as c).where.eq(c.id, id)
+      }.map(Poi(c.resultName)).single().apply()
+    }
+    res
+  }
+
+}
+case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRateFk:Option[Long], taxRate: Option[TaxRate],
+                   poiFk:Option[Long],shippingFk:Option[Long],companyFk:Long,
                    startDate:Option[DateTime],stopDate:Option[DateTime] ){
 
   def company = Company.get(companyFk)
@@ -182,7 +206,10 @@ case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCa
     case None => None
   }
 
-  //def taxRate =
+  def poi = poiFk match {
+    case Some(id) => Poi.get(id)
+    case None => None
+  }
 }
 
 object Product extends SQLSyntaxSupport[Product]{
@@ -197,14 +224,15 @@ object Product extends SQLSyntaxSupport[Product]{
     taxRateFk = rs.get(rn.taxRateFk),
     taxRate = None, //Some(TaxRate(rs)),
     companyFk = rs.get(rn.companyFk),
+    poiFk = rs.get(rn.poiFk),
     shippingFk = rs.get(rn.shippingFk),
     startDate = rs.get(rn.startDate),
     stopDate = rs.get(rn.stopDate)
   )
 
 
-  def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
-  def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+  def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+  def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"), shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
 
   def get(id:Long):Option[Product] = {
 

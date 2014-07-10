@@ -673,32 +673,17 @@ object CartBoService extends BoService {
 
         val emailingData = BOCartItem.findByBOCart(boCart).map { boCartItem =>
           BOCartItem.bOProducts(boCart).map { boProduct =>
-          //boCartItem.bOProducts.each { BOProduct boProduct ->
-            //Product product = boProduct.product;
             val product = boProduct.product
             BOTicketType.findByBOProduct(boProduct.id).map {  boTicketType =>
-              /*
-              def emailContent = [:]
-              emailContent.put("email", boTicketType.email)
-              emailContent.put("eventName", product.name)
-              emailContent.put("startDate", RenderUtil.asMapForJSON(boTicketType.startDate))
-              emailContent.put("stopDate", RenderUtil.asMapForJSON(boTicketType.endDate))
-              emailContent.put("location", toEventLocationVO(product.poi))
-              emailContent.put("type", boTicketType.ticketType)
-              emailContent.put("price",boTicketType.price)
-              emailContent.put("qrcode", boTicketType.qrcodeContent)
-              emailContent.put("shortCode", boTicketType.shortCode)
-              emailingData << emailContent
-              */
               var map :Map[String,Any]= Map()
               map+=("email" -> boTicketType.email)
               map+=("eventName" -> product.name)
               map+=("startDate" -> (boTicketType.startDate))
               map+=("stopDate" -> (boTicketType.endDate))
-              //TODO map+=("location" -> toEventLocationVO(product.poi))
+              map+=("location" -> toEventLocationVO(product.poi))
               map+=("type" -> boTicketType.ticketType)
               map+=("price" ->boTicketType.price)
-              //TODO map+=("qrcode" -> boTicketType.qrcodeContent)
+              map+=("qrcode" -> boTicketType.qrcodeContent)
               map+=("shortCode" -> boTicketType.shortCode)
 
               map
@@ -739,6 +724,32 @@ object CartBoService extends BoService {
       }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
     }
+  }
+
+  /**
+   * @param poiOpt
+   * @return formated location
+   */
+  private def toEventLocationVO(poiOpt:Option[Poi]) = poiOpt match{
+    case Some(poi) => {
+      poi.road1.getOrElse("")+" "+
+      poi.road2.getOrElse("")+" "+
+      poi.city.getOrElse("")+" "+
+      poi.postalCode.getOrElse("")+" "+
+      poi.state.getOrElse("")+" "+
+      poi.city.getOrElse("")+" "+
+      poi.countryCode.getOrElse("")+" "
+    }
+    case None => ""
+      /*
+    if (poi){
+      strLocation = poi.road1?poi.road1 + ", ":""
+      strLocation += poi.road2?poi.road2 + ", ":""
+      strLocation += poi.city?poi.city + " ":""
+      strLocation += poi.postalCode?poi.postalCode + " ":""
+      strLocation += poi.state?poi.state + ". " :""
+      strLocation += poi.countryCode?poi.countryCode+".":""
+    }*/
   }
 
   def cancel(cartVO:CartVO ):CartVO = {
