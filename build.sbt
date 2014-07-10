@@ -41,9 +41,12 @@ libraryDependencies ++= Seq(
     "com.typesafe.akka"   %%  "akka-actor"    % akkaV,
     "com.typesafe.akka"   %%  "akka-testkit"  % akkaV,
     "com.sksamuel.elastic4s" %% "elastic4s" % elastic4sV,
+    "com.google.zxing" % "core" % "1.7",
     "org.specs2"          %%  "specs2"        % "2.2.3" % "test",
     "org.scala-lang.modules" %% "scala-async" % "0.9.0-M6" % "test"
 )
+//    "commons-codec" % "commons-codec" % "1.9",
+//    "com.google.gdata" % "core" % "1.0",
 
 seq(Revolver.settings: _*)
 

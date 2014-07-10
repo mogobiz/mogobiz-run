@@ -1,10 +1,14 @@
 package com.mogobiz.cart
 
+import java.io.ByteArrayOutputStream
 import java.util.{Date, Locale}
 import com.mogobiz.cart.ProductType.ProductType
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
+import com.mogobiz.utils.{QRCodeUtils, SecureCodec}
+import com.sun.org.apache.xml.internal.security.utils.Base64
+import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 import org.json4s.{DefaultFormats, Formats}
 import com.mogobiz.{RateBoService, Currency, Utils}
 import org.joda.time.DateTime
@@ -512,7 +516,6 @@ object CartBoService extends BoService {
 
 
       cartTTC.cartItemVOs.foreach { cartItem => {
-        //val product = Product.get(cartItem.productId)
         val ticketType = TicketType.get(cartItem.skuId)
 
         // Création du BOProduct correspondant au produit principal
@@ -539,7 +542,7 @@ object CartBoService extends BoService {
           registeredCartItem => {
             // Création des BOTicketType (SKU)
             var boTicketId = 0
-            val boTicket = new BOTicketType(id = boTicketId,
+            val boTicketTmp = new BOTicketType(id = boTicketId,
               quantity = 1, price = cartItem.totalEndPrice.getOrElse(-1),shortCode = None,
               ticketType = Some(ticketType.name), firstname = registeredCartItem.firstname,
               lastname = registeredCartItem.lastname, email = registeredCartItem.email,
@@ -549,41 +552,48 @@ object CartBoService extends BoService {
               //bOProduct = boProduct
               bOProductFk = boProductId
             )
+
             withSQL {
               //=boTicket.save()
               val b = BOTicketType.column
               val newid = newId()
               boTicketId = newid
+
+              //génération du qr code uniquement pour les services
+              val product = Product.get(cartItem.productId).get
+
+              val boTicket = if (product.xtype == ProductType.SERVICE)
+              {
+
+                //val sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm")
+                val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
+
+                val shortCode = "P" + boProductId + "T" + boTicketId
+                val qrCodeContent = "EventId:"+product.id+";BoProductId:"+boProductId+";BoTicketId:"+boTicketId +
+                  ";EventName:" + product.name + ";EventDate:" +startDateStr + ";FirstName:" +
+                  boTicketTmp.firstname + ";LastName:" + boTicketTmp.lastname + ";Phone:" + boTicketTmp.phone +
+                  ";TicketType:" +boTicketTmp.ticketType + ";shortCode:" + shortCode
+
+                val encryptedQrCodeContent = SecureCodec.encrypt(qrCodeContent, product.company.get.aesPassword);
+                val output = new ByteArrayOutputStream()
+                QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256,"png")
+                val qrCodeBase64 = Base64.encode(output.toByteArray())
+
+                boTicketTmp.copy(id=boTicketId,shortCode = Some(shortCode), qrcode = Some(qrCodeBase64), qrcodeContent = Some(encryptedQrCodeContent))
+              }else{
+                boTicketTmp.copy(id=boTicketId)
+              }
+
               insert.into(BOTicketType).namedValues(
-                b.id -> boTicketId,
-                b.quantity -> 1, b.price -> cartItem.totalEndPrice.getOrElse(-1), b.ticketType -> Some(ticketType.name), b.firstname -> registeredCartItem.firstname,
-                b.lastname -> registeredCartItem.lastname, b.email -> registeredCartItem.email,
-                b.phone -> registeredCartItem.phone,
-                b.birthdate -> registeredCartItem.birthdate, b.startDate -> cartItem.startDate, b.endDate -> cartItem.endDate,
+                b.id -> boTicketId, b.shortCode -> boTicket.shortCode, b.quantity -> boTicket.quantity,
+                b.price -> boTicket.price, b.ticketType -> boTicket.ticketType, b.firstname -> boTicket.firstname,
+                b.lastname -> boTicket.lastname, b.email -> boTicket.email, b.phone -> boTicket.phone,
+                b.birthdate -> boTicket.birthdate, b.startDate -> boTicket.startDate, b.endDate -> boTicket.endDate,
+                b.qrcode -> boTicket.qrcode, b.qrcodeContent -> boTicket.qrcodeContent,
                 b.dateCreated -> DateTime.now, b.lastUpdated -> DateTime.now,
                 b.bOProductFk -> boProductId
               )
             }.update.apply()
-
-
-            //génération du qr code uniquement pour les services
-            /* TODO
-          if (product.xtype == ProductType.SERVICE)
-          {
-            boTicket.shortCode = "P" + boProduct.id + "T" + boTicket.id
-            String qrCodeContent = "EventId:"+product.id+";BoProductId:"+boProduct.id+";BoTicketId:"+boTicket.id
-            qrCodeContent += ";EventName:" + product.name + ";EventDate:" + DateUtilitaire.format(cartItem.startDate, "dd/MM/yyyy HH:mm") + ";FirstName:"
-            qrCodeContent += boTicket.firstname + ";LastName:" + boTicket.lastname + ";Phone:" + boTicket.phone
-            qrCodeContent += ";TicketType:" +boTicket.ticketType + ";shortCode:" + boTicket.shortCode
-            qrCodeContent = SecureCodec.encrypt(qrCodeContent, product.company.aesPassword);
-            ByteArrayOutputStream output = new ByteArrayOutputStream()
-            QRCodeUtils.createQrCode(output, qrCodeContent, 256,"png")
-            String qrCodeBase64 = Base64.encode(output.toByteArray())
-            boTicket.qrcode = qrCodeBase64
-            boTicket.qrcodeContent = qrCodeContent
-          }
-          boTicket.save()
-          */
           }
         }
 
@@ -884,13 +894,25 @@ case class Coupon
   def rules = Coupon.getRules(this.id)
 }
 
-case class Company(id: Long, name: String, code: String,dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
+case class Company(id: Long, name: String, code: String,aesPassword:String,dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
 }
 
 object Company extends SQLSyntaxSupport[Company]{
   def apply(rn: ResultName[Company])(rs:WrappedResultSet): Company = Company(
-    id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code),
+    id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code),aesPassword = rs.get(rn.aesPassword),
     dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
+
+  def get(id:Long):Option[Company] = {
+
+    val c = Company.syntax("c")
+
+    val res = DB readOnly { implicit session =>
+      withSQL {
+        select.from(Company as c).where.eq(c.id, id)
+      }.map(Company(c.resultName)).single().apply()
+    }
+    res
+  }
 
   def findByCode(code:String):Option[Company]={
     val c = Company.syntax("c")
@@ -1244,6 +1266,7 @@ case class BOTicketType(id:Long,quantity : Int = 1, price:Long,shortCode:Option[
                         ticketType : Option[String],firstname : Option[String], lastname : Option[String],
                         email : Option[String],phone : Option[String],
                         birthdate : Option[DateTime],startDate : Option[DateTime],endDate : Option[DateTime],
+                        qrcode:Option[String]=None, qrcodeContent:Option[String]=None,
                         //bOProduct : BOProduct,
                         bOProductFk : Long,
                         dateCreated:DateTime,lastUpdated:DateTime) extends DateAware {

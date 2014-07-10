@@ -171,8 +171,11 @@ case class StockCalendar(
 
 case class Poi(road1:Option[String],road2:Option[String],city:Option[String],postalCode:Option[String],state:Option[String],countryCode:Option[String])
 
-case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRateFk:Option[Long], taxRate: Option[TaxRate],shippingFk:Option[Long],
+case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRateFk:Option[Long], taxRate: Option[TaxRate]
+                   ,shippingFk:Option[Long],companyFk:Long,
                    startDate:Option[DateTime],stopDate:Option[DateTime] ){
+
+  def company = Company.get(companyFk)
 
   def shipping = shippingFk match {
     case Some(shippingId) => Product.getShipping(shippingId)
@@ -193,14 +196,15 @@ object Product extends SQLSyntaxSupport[Product]{
     calendarType = ProductCalendar.valueOf(rs.string("ct_on_p")), //rs.get(rn.calendarType), //FIXME
     taxRateFk = rs.get(rn.taxRateFk),
     taxRate = None, //Some(TaxRate(rs)),
+    companyFk = rs.get(rn.companyFk),
     shippingFk = rs.get(rn.shippingFk),
     startDate = rs.get(rn.startDate),
     stopDate = rs.get(rn.stopDate)
   )
 
 
-  def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
-  def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+  def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+  def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
 
   def get(id:Long):Option[Product] = {
 
