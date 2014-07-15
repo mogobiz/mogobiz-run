@@ -6,11 +6,11 @@ import com.mogobiz.cart.ProductType.ProductType
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
-import com.mogobiz.utils.{QRCodeUtils, SecureCodec}
+import com.mogobiz.utils.{Utils, QRCodeUtils, SecureCodec}
 import com.sun.org.apache.xml.internal.security.utils.Base64
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 import org.json4s.{DefaultFormats, Formats}
-import com.mogobiz.{RateBoService, Currency, Utils}
+import com.mogobiz.{RateBoService, Currency}
 import org.joda.time.DateTime
 import scalikejdbc.config.DBs
 import com.mogobiz.cart.TransactionStatus.TransactionStatus
@@ -71,7 +71,7 @@ object CartBoService extends BoService {
     val ticketType:TicketType = TicketType.get(ticketTypeId) //TODO error management
 
     val product = ticketType.product.get;
-    val startEndDate = Utils.verifyAndExtractStartEndDate(Some(ticketType), dateTime); //TODO finish implement the method
+    val startEndDate = Utils.verifyAndExtractStartEndDate(Some(ticketType), dateTime);
 
     var errors:Map[String,String] = Map()
 
