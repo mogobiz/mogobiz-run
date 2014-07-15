@@ -291,6 +291,8 @@ object TicketType extends SQLSyntaxSupport[TicketType] {
     name=rs.string("name"),
     price=rs.long("price"),minOrder=rs.long("min_order"),maxOrder=rs.long("max_order"),
     stock=Some(Stock(rs)),
+  startDate = rs.dateTimeOpt("start_date"),
+  stopDate = rs.dateTimeOpt("stop_date"),
     product = Some(Product.applyFk(rs)))
 
   def apply(rn: ResultName[TicketType])(rs:WrappedResultSet): TicketType = new TicketType(

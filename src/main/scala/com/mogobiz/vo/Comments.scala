@@ -1,7 +1,7 @@
 package com.mogobiz.vo
 
 import java.util.Date
-import com.mogobiz.{CommentException, Copying}
+import com.mogobiz.CommentException
 
 /**
  * Created by Christophe on 24/04/2014.

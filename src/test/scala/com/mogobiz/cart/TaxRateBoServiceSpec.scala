@@ -41,7 +41,7 @@ class TaxRateBoServiceSpec  extends Specification {
 
     val country = "FR"
     val state = None
-    val product = new Product(id=47,name="",xtype=ProductType.PRODUCT, calendarType=ProductCalendar.NO_DATE,taxRateFk = Some(taxRateId),taxRate=Some(defaultTaxRate),shippingFk=None,startDate=None,stopDate=None)
+    val product = new Product(id=47,name="",xtype=ProductType.PRODUCT, calendarType=ProductCalendar.NO_DATE,taxRateFk = Some(taxRateId),taxRate=Some(defaultTaxRate),shippingFk=None,startDate=None,stopDate=None,poiFk=None,companyFk=8)
 
     val rate = service.findTaxRateByProduct(product,country,state)
     rate must beSome(19.6f)
