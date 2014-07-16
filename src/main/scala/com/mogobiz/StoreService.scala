@@ -411,7 +411,7 @@ trait StoreService extends HttpService {
           }
         } ~ get{
           parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest){ req =>
-            onSuccess(esClient.getComments(storeCode,req)){ comments =>
+            onSuccess(esClient.getComments(storeCode,productId,req)){ comments =>
               complete(comments)
             }
           }

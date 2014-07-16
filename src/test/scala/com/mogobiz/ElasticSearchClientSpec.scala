@@ -166,7 +166,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
 
   "get comments sorted by date desc" in {
     val req = new CommentGetRequest(Some(2),Some(0))
-    val res = Await.result(esClient.getComments(store,req), 3 second)
+    val res = Await.result(esClient.getComments(store,1, req), 3 second)
     println(res)
     true must beTrue
   }

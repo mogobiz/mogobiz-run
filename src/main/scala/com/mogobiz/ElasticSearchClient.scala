@@ -1258,14 +1258,15 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  def getComments(store:String, req:CommentGetRequest) : Future[Paging[Comment]] = {
+  def getComments(store:String, productId:Long , req:CommentGetRequest) : Future[Paging[Comment]] = {
     implicit def json4sFormats: Formats = DefaultFormats
 
     val size = req.maxItemPerPage.getOrElse(100)
     val from = req.pageOffset.getOrElse(0) * size
 
     val query = s"""{
-      "sort": {"created": "desc"},"from": $from,"size": $size
+      "sort": {"created": "desc"},"from": $from,"size": $size,
+      "query": {"filtered": {"filter": {"term": {"productId": $productId}}}}
     }"""
 
     val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/_search"),query))
