@@ -1,7 +1,10 @@
 package com.mogobiz.cart
 
 import java.util.Locale
+import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz.{Currency, RateBoService}
+import org.joda.time.DateTime
+import org.json4s.ext.JodaTimeSerializers
 import org.json4s.{FieldSerializer, DefaultFormats, Formats}
 import org.json4s.JsonAST._
 import scala.Some
@@ -115,7 +118,7 @@ object CartRenderService {
     import org.json4s.native.JsonMethods._
     //import org.json4s.native.Serialization
     import org.json4s.native.Serialization.{read, write}
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar) ++ JodaTimeSerializers.all
     val jsonItem = parse(write(item))
 
     val formatedPrice = rateService.format(item.price, currency.code, locale, currency.rate)

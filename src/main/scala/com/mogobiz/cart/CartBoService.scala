@@ -151,7 +151,8 @@ object CartBoService extends BoService {
     val item = CartItemVO(newItemId,product.id,product.name,product.xtype,product.calendarType,ticketType.id,ticketType.name,quantity,
       itemPrice,endPrice,tax,totalPrice,totalEndPrice,startEndDate._1,startEndDate._2,registeredItems.toArray,shipping)
 
-    val items = cartVO.cartItemVOs:+item //WARNING not optimal
+    //val items = cartVO.cartItemVOs:+item //WARNING not optimal
+    val items = item::cartVO.cartItemVOs
 
     val newEndPrice = (oldCartEndPrice,item.totalEndPrice) match {
       case (Some(o),Some(t))=> Some(o+t)
@@ -780,7 +781,9 @@ object CartBoService extends BoService {
 
 class CartException(val errors:Map[String,String]) extends Exception
 
-case class AddCartItemException (override val errors:Map[String,String]) extends CartException(errors)
+case class AddCartItemException (override val errors:Map[String,String]) extends CartException(errors) {
+  override def toString = errors.toString()
+}
 
 case class UpdateCartItemException (override val errors:Map[String,String]) extends CartException(errors)
 
@@ -793,7 +796,7 @@ case class AddCouponToCartException (override val errors:Map[String,String]) ext
 case class RemoveCouponFromCartException (override val errors:Map[String,String]) extends CartException(errors)
 
 case class CartVO(price: Long = 0, endPrice: Option[Long] = Some(0), reduction: Long = 0, finalPrice: Long = 0, count: Int = 0, uuid: String,
-                  cartItemVOs: Array[CartItemVO]=Array(), coupons: Array[CouponVO]=Array(), inTransaction:Boolean = false)
+                  cartItemVOs: List[CartItemVO]=List(), coupons: Array[CouponVO]=Array(), inTransaction:Boolean = false)
 
 object ProductType extends Enumeration {
   type ProductType = Value
@@ -827,7 +830,7 @@ object ProductCalendar extends Enumeration {
 }
 
 case class RegisteredCartItemVO
-(cartItemId: String, id: String, email: Option[String], firstname: Option[String], lastname: Option[String], phone: Option[String], birthdate: Option[DateTime])
+(cartItemId: String, id: String, email: Option[String], firstname: Option[String]=None, lastname: Option[String]=None, phone: Option[String]=None, birthdate: Option[DateTime]=None)
 
 case class CartItemVO
 (id: String, productId: Long, productName: String, xtype: ProductType, calendarType: ProductCalendar, skuId: Long, skuName: String,
