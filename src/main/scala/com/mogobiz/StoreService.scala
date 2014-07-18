@@ -470,7 +470,7 @@ trait StoreService extends HttpService {
                 val locale = Locale.forLanguageTag(lang)
                 val currency = esClient.getCurrency(storeCode,params.currency,lang)
                 try{
-                  val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.ticketTypeId,cmd.quantity,cmd.dateTime,cmd.registeredCartItems )
+                  val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.skuId,cmd.quantity,cmd.dateTime,cmd.registeredCartItems )
                   val data = cartRenderService.renderCart(updatedCart, currency,locale)
                   val response = Map(
                     ("success"->true),

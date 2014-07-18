@@ -38,7 +38,7 @@ object UuidBoService extends BoService {
 
   def getCart(uuid:String): Option[CartVO] = {
     import org.json4s.native.JsonMethods._
-    implicit def json4sFormats: Formats = DefaultFormats
+    import com.mogobiz.Json4sProtocol._
 
     UuidDataDao.findByUuidAndXtype(uuid, QUEUE_XTYPE_CART) match {
       case Some(data) => {
@@ -52,7 +52,7 @@ object UuidBoService extends BoService {
 
   def setCart(cart: CartVO): Unit = {
     import org.json4s.native.Serialization.{write}
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartVO]()
+    import com.mogobiz.Json4sProtocol._
 
     val payload = write(cart)
     createAndSave(cart.uuid,payload,QUEUE_XTYPE_CART)

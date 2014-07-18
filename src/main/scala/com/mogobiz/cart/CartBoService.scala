@@ -152,7 +152,7 @@ object CartBoService extends BoService {
       itemPrice,endPrice,tax,totalPrice,totalEndPrice,startEndDate._1,startEndDate._2,registeredItems.toArray,shipping)
 
     //val items = cartVO.cartItemVOs:+item //WARNING not optimal
-    val items = item::cartVO.cartItemVOs
+    val items = item::cartVO.cartItemVOs.toList
 
     val newEndPrice = (oldCartEndPrice,item.totalEndPrice) match {
       case (Some(o),Some(t))=> Some(o+t)
@@ -162,7 +162,7 @@ object CartBoService extends BoService {
         price = oldCartPrice + item.totalPrice,//(cartVO.price + item.totalPrice),
         endPrice = newEndPrice,
         count = items.size,
-        cartItemVOs = items)
+        cartItemVOs = items.toArray)
 
     uuidService.setCart(newcart)
     newcart
@@ -796,15 +796,16 @@ case class AddCouponToCartException (override val errors:Map[String,String]) ext
 case class RemoveCouponFromCartException (override val errors:Map[String,String]) extends CartException(errors)
 
 case class CartVO(price: Long = 0, endPrice: Option[Long] = Some(0), reduction: Long = 0, finalPrice: Long = 0, count: Int = 0, uuid: String,
-                  cartItemVOs: List[CartItemVO]=List(), coupons: Array[CouponVO]=Array(), inTransaction:Boolean = false)
+                  cartItemVOs: Array[CartItemVO]=Array(), coupons: Array[CouponVO]=Array(), inTransaction:Boolean = false)
 
 object ProductType extends Enumeration {
-  type ProductType = Value
-  val SERVICE = Value("SERVICE")
-  val PRODUCT = Value("PRODUCT")
-  val DOWNLOADABLE = Value("DOWNLOADABLE")
-  val PACKAGE = Value("PACKAGE")
-  val OTHER = Value("OTHER")
+  class ProductTypeType(s: String) extends Val(s)
+  type ProductType = ProductTypeType
+  val SERVICE = new ProductTypeType("SERVICE")
+  val PRODUCT = new ProductTypeType("PRODUCT")
+  val DOWNLOADABLE = new ProductTypeType("DOWNLOADABLE")
+  val PACKAGE = new ProductTypeType("PACKAGE")
+  val OTHER = new ProductTypeType("OTHER")
 
   def valueOf(str:String):ProductType = str match {
     case "SERVICE"=> SERVICE
@@ -817,10 +818,11 @@ object ProductType extends Enumeration {
 }
 
 object ProductCalendar extends Enumeration {
-  type ProductCalendar = Value
-  val NO_DATE = Value("NO_DATE")
-  val DATE_ONLY = Value("DATE_ONLY")
-  val DATE_TIME = Value("DATE_TIME")
+  class ProductCalendarType(s: String) extends Val(s)
+  type ProductCalendar = ProductCalendarType
+  val NO_DATE = new ProductCalendarType("NO_DATE")
+  val DATE_ONLY = new ProductCalendarType("DATE_ONLY")
+  val DATE_TIME = new ProductCalendarType("DATE_TIME")
 
   def valueOf(str:String):ProductCalendar = str match {
     case "DATE_ONLY"=> DATE_ONLY
@@ -839,10 +841,11 @@ case class CartItemVO
 
 
 object WeightUnit extends Enumeration {
-  type WeightUnit = Value
-  val KG = Value("KG")
-  val LB = Value("LB")
-  val G = Value("G")
+  class WeightUnitType(s: String) extends Val(s)
+  type WeightUnit = WeightUnitType
+  val KG = new WeightUnitType("KG")
+  val LB = new WeightUnitType("LB")
+  val G = new WeightUnitType("G")
 
   def apply(str:String) = str match{
     case "KG" => KG
@@ -853,9 +856,10 @@ object WeightUnit extends Enumeration {
 }
 
 object LinearUnit extends Enumeration {
-  type LinearUnit = Value
-  val CM = Value("CM")
-  val IN = Value("IN")
+  class LinearUnitType(s: String) extends Val(s)
+  type LinearUnit = LinearUnitType
+  val CM = new LinearUnitType("CM")
+  val IN = new LinearUnitType("IN")
 
   def apply(str:String) = str match{
     case "CM" => CM
@@ -980,9 +984,10 @@ object Coupon extends SQLSyntaxSupport[Coupon]{
 }
 
 object ReductionRuleType extends Enumeration {
-  type ReductionRuleType = Value
-  val DISCOUNT = Value("DISCOUNT")
-  val X_PURCHASED_Y_OFFERED = Value("X_PURCHASED_Y_OFFERED")
+  class ReductionRuleTypeType(s: String) extends Val(s)
+  type ReductionRuleType = ReductionRuleTypeType
+  val DISCOUNT = new ReductionRuleTypeType("DISCOUNT")
+  val X_PURCHASED_Y_OFFERED = new ReductionRuleTypeType("X_PURCHASED_Y_OFFERED")
 
   def apply(name:String) = name match{
     case "DISCOUNT" => DISCOUNT
@@ -1239,11 +1244,12 @@ object CouponService extends BoService {
 
 
 object TransactionStatus extends Enumeration {
-  type TransactionStatus = Value
-  val PENDING = Value("PENDING")
-  val PAYMENT_NOT_INITIATED = Value("PAYMENT_NOT_INITIATED")
-  val FAILED = Value("FAILED")
-  val COMPLETE = Value("COMPLETE")
+  class TransactionStatusType(s: String) extends Val(s)
+  type TransactionStatus = TransactionStatusType
+  val PENDING = new TransactionStatusType("PENDING")
+  val PAYMENT_NOT_INITIATED = new TransactionStatusType("PAYMENT_NOT_INITIATED")
+  val FAILED = new TransactionStatusType("FAILED")
+  val COMPLETE = new TransactionStatusType("COMPLETE")
 
   def valueOf(str:String):TransactionStatus = str match {
     case "PENDING"=> PENDING

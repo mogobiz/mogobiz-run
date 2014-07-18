@@ -11,7 +11,7 @@ object CartCommands {
 
 case class AddToCartCommand(
                              //ticketType:TicketType,
-                             ticketTypeId:Long,
+                             skuId:Long,
                              quantity:Int,
                              dateTime:Option[DateTime],
                              registeredCartItems:List[RegisteredCartItemVO])
