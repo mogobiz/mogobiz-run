@@ -10,6 +10,20 @@ import scalikejdbc._
  */
 object Utils {
 
+  def printJSON(o:Object)={
+    import org.json4s.{DefaultFormats, Formats}
+    import org.json4s.native.Serialization._
+    import org.json4s.native.JsonMethods._
+    import org.json4s.JsonDSL._
+
+    implicit def json4sFormats: Formats = DefaultFormats
+    println("-----------------------------------------------------------------------------------------------")
+    val prettyJson = pretty(render(write(o)))
+    println(prettyJson)
+    println("-----------------------------------------------------------------------------------------------")
+
+  }
+
   /**
    * Cette méthode permet de récupérer la date de début et de fin d'utilisation d'un ticket à partir de la date
    * choisie par le client et de la configuration du produit et du TicketType.
