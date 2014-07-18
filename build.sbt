@@ -12,9 +12,9 @@ resolvers ++= Seq(
   "spray repo" at "http://repo.spray.io/"
 )
 
-val akkaV = "2.3.3"
+val akkaV = "2.2.3" //2.3.3
 
-val sprayV = "1.2.0"
+val sprayV = "1.2.0" //1.3.1
 
 val json4sV = "3.2.6"
 
