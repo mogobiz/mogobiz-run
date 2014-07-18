@@ -21,6 +21,8 @@ class CartBoServiceSpec extends Specification {
   val service = CartBoService
   val renderService = CartRenderService
 
+  val defaultCurrency = new Currency(2, 0.01, "EUR", "euro")
+
   "init cart" in {
     skipped
     val uuid = UUID.randomUUID.toString
@@ -317,7 +319,7 @@ class CartBoServiceSpec extends Specification {
     val companyCode = "mogobiz"
     val countryCode = "FR"
     val state = None
-    val currency = Currency(2, 1960, "euro", "EUR")
+    val currency = defaultCurrency
     val cart = prepareCartWith2items
 
     val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, cart, currency)
@@ -346,7 +348,7 @@ class CartBoServiceSpec extends Specification {
     val companyCode = "mogobiz"
     val countryCode = "FR"
     val state = None
-    val currency = Currency(2, 1960, "euro", "EUR")
+    val currency = defaultCurrency
     val preparedCart = prepareCartWith2items
 
     val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency)
@@ -370,7 +372,7 @@ class CartBoServiceSpec extends Specification {
     val companyCode = "mogobiz"
     val countryCode = "FR"
     val state = None
-    val currency = Currency(2, 1960, "euro", "EUR")
+    val currency = defaultCurrency
     val preparedCart = prepareCartWith2items
 
     val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency)
@@ -551,7 +553,7 @@ class CartBoServiceSpec extends Specification {
       updatedCart.count must be_==(1)
 
       "and should render in JSON with formatted amount " in {
-        val currency = Currency(2, 1960, "euro", "EUR")
+        val currency = defaultCurrency
         val rCart = renderService.renderCart(updatedCart,currency,locale)
         val items = rCart("cartItemVOs")
         //println(items)

@@ -447,7 +447,7 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  private val defaultCurrency = new Currency(2, 1, "EUR", "euro") //FIXME trouvez autre chose
+  private val defaultCurrency = new Currency(2, 0.01, "EUR", "euro") //FIXME trouvez autre chose
 
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
 
@@ -594,7 +594,6 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
   def getCurrency(store:String,currencyCode:Option[String],lang:String):Currency = {
-    val defaultCurrency = new Currency(2, 1, code="EUR", name="euro") //TODO
     if(currencyCode.isEmpty)
       defaultCurrency
     else{
