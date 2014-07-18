@@ -38,6 +38,7 @@ libraryDependencies ++= Seq(
     "io.spray"            %   "spray-httpx"   % sprayV,
     "io.spray"            %   "spray-util"   % sprayV,
     "org.json4s"          %%  "json4s-native" % json4sV, //"json4s-jackson"
+    "org.json4s"          %%  "json4s-ext" % json4sV,
     "com.typesafe.akka"   %%  "akka-actor"    % akkaV,
     "com.typesafe.akka"   %%  "akka-testkit"  % akkaV,
     "com.sksamuel.elastic4s" %% "elastic4s" % elastic4sV,
