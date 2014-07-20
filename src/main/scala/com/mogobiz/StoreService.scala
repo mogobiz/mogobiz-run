@@ -3,6 +3,9 @@ package com.mogobiz
 import com.mogobiz.session.SessionCookieDirectives._
 import com.mogobiz.session.Session
 */
+
+import com.typesafe.scalalogging.slf4j.Logger
+import org.slf4j.LoggerFactory
 import spray.http.{StatusCodes, HttpCookie, DateTime}
 import spray.routing.HttpService
 import spray.http.MediaTypes._
@@ -28,6 +31,8 @@ trait StoreService extends HttpService {
 
   import Json4sProtocol._
   import ExecutionContext.Implicits.global
+
+  //private val log = Logger(LoggerFactory.getLogger("StoreService"))
 
   val esClient = new ElasticSearchClient
 
@@ -444,7 +449,10 @@ trait StoreService extends HttpService {
             val cart = cartService.initCart(uuid)
 
             val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-            val locale = Locale.forLanguageTag(lang)
+            //val locale = Locale.forLanguageTag(lang)
+            val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+            val locale = new Locale(lang,country)
+
             val currency = esClient.getCurrency(storeCode,params.currency,lang)
             complete(cartRenderService.renderCart(cart, currency,locale))
           }
@@ -453,7 +461,10 @@ trait StoreService extends HttpService {
             val cart = cartService.initCart(uuid)
 
             val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-            val locale = Locale.forLanguageTag(lang)
+            //val locale = Locale.forLanguageTag(lang)
+            val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+            val locale = new Locale(lang,country)
+
             val currency = esClient.getCurrency(storeCode,params.currency,lang)
             val updatedCart = cartService.clear(locale,currency.code,cart)
             complete(cartRenderService.renderCart(updatedCart, currency,locale))
@@ -466,8 +477,12 @@ trait StoreService extends HttpService {
               cmd => {
                 val cart = cartService.initCart(uuid)
 
-                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-                val locale = Locale.forLanguageTag(lang)
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIXME with default Lang
+                //val locale = Locale.forLanguageTag(lang)
+
+                val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+                val locale = new Locale(lang,country)
+
                 val currency = esClient.getCurrency(storeCode,params.currency,lang)
                 try{
                   val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.skuId,cmd.quantity,cmd.dateTime,cmd.registeredCartItems )
@@ -499,8 +514,12 @@ trait StoreService extends HttpService {
               cmd => {
                 val cart = cartService.initCart(uuid)
 
-                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-                val locale = Locale.forLanguageTag(lang)
+                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIXME with default Lang
+               //val locale = Locale.forLanguageTag(lang)
+                val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+                val locale = new Locale(lang,country)
+
+
                 val currency = esClient.getCurrency(storeCode,params.currency,lang)
                 try{
                   val updatedCart = cartService.updateItem(locale, currency.code, cart, cmd.cartItemId, cmd.quantity)
@@ -532,7 +551,10 @@ trait StoreService extends HttpService {
                 val cart = cartService.initCart(uuid)
 
                 val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-                val locale = Locale.forLanguageTag(lang)
+                //val locale = Locale.forLanguageTag(lang)
+                val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+                val locale = new Locale(lang,country)
+
                 val currency = esClient.getCurrency(storeCode,params.currency,lang)
                 try {
                   val updatedCart = cartService.removeItem(locale, currency.code, cart, cmd.cartItemId)
@@ -563,9 +585,12 @@ trait StoreService extends HttpService {
               parameters('currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) { params =>
                 println("evaluate coupon parameters")
                 val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-                val locale = Locale.forLanguageTag(lang)
-                val currency = esClient.getCurrency(storeCode,params.currency,lang)
 
+                //val locale = Locale.forLanguageTag(lang)
+                val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+                val locale = new Locale(lang,country)
+
+                val currency = esClient.getCurrency(storeCode,params.currency,lang)
                 val cart = cartService.initCart(uuid)
 
                 try{
@@ -595,9 +620,12 @@ trait StoreService extends HttpService {
               parameters('currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) { params =>
                 println("evaluate coupon parameters")
                 val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-                val locale = Locale.forLanguageTag(lang)
-                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                //val locale = Locale.forLanguageTag(lang)
+                val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+                val locale = new Locale(lang,country)
 
+
+                val currency = esClient.getCurrency(storeCode,params.currency,lang)
                 val cart = cartService.initCart(uuid)
 
                 try{
@@ -628,10 +656,20 @@ trait StoreService extends HttpService {
             path("prepare") {
               parameters('currency.?, 'country.?,'state.?, 'lang ? "_all").as(PrepareTransactionParameters) { params =>
                 val lang: String = if (params.lang == "_all") "fr" else params.lang //FIX with default Lang
-                val locale = Locale.forLanguageTag(lang)
-                val country = params.country.getOrElse(locale.getCountry)
-                val currency = esClient.getCurrency(storeCode, params.currency, lang)
 
+
+                //val locale = Locale.forLanguageTag(lang)
+                //val country = params.country.getOrElse(locale.getCountry)
+                val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+                val locale = new Locale(lang,country)
+
+                /*
+                println(s"locale=${locale}")
+                println(s"params.country=${params.country}")
+                println(s"locale.getCountry=${locale.getCountry}")
+                */
+
+                val currency = esClient.getCurrency(storeCode, params.currency, lang)
                 val cart = cartService.initCart(uuid)
 
                 try{

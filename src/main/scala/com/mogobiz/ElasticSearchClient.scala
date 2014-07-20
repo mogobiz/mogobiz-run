@@ -1,8 +1,11 @@
 package com.mogobiz
 
 import akka.actor.ActorSystem
+import akka.event.Logging
 import akka.io.IO
 import akka.pattern.ask
+import com.typesafe.scalalogging.slf4j.Logger
+import org.slf4j.LoggerFactory
 import scala.concurrent._
 import scala.concurrent.duration._
 import spray.can.Http
@@ -40,6 +43,9 @@ class ElasticSearchClient /*extends Actor*/ {
 
   //  def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
   //  override def receive: Actor.Receive = execute
+
+  //private val logger = Logging(system,this)
+  private val log = Logger(LoggerFactory.getLogger("ElasticSearchClient"))
 
   private val ES_URL = "http://localhost"
   private val ES_HTTP_PORT = 9200
@@ -447,7 +453,7 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  private val defaultCurrency = new Currency(2, 0.01, "EUR", "euro") //FIXME trouvez autre chose
+  private val defaultCurrency = Currency(currencyFractionDigits = 2, rate = 0.01d, name="Euro", code = "EUR") //FIXME trouvez autre chose
 
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
 
@@ -594,9 +600,13 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
   def getCurrency(store:String,currencyCode:Option[String],lang:String):Currency = {
-    if(currencyCode.isEmpty)
+    assert(!store.isEmpty)
+    assert(!lang.isEmpty)
+
+    if(currencyCode.isEmpty){
+      log.warn(s"No currency code supplied: fallback to programmatic default currency: ${defaultCurrency.code}, ${defaultCurrency.rate}")
       defaultCurrency
-    else{
+    }else{
       try{
         val currencies = Await.result(getCurrencies(store, lang), 1 second)
         val currency = currencies.filter {

@@ -10,7 +10,6 @@ object CartCommands {
 }
 
 case class AddToCartCommand(
-                             //ticketType:TicketType,
                              skuId:Long,
                              quantity:Int,
                              dateTime:Option[DateTime],

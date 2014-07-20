@@ -24,13 +24,12 @@ class CartBoServiceSpec extends Specification {
   val defaultCurrency = new Currency(2, 0.01, "EUR", "euro")
 
   "init cart" in {
-    skipped
     val uuid = UUID.randomUUID.toString
     println(s"uuid=${uuid}")
 
     val cart = service.initCart(uuid)
 
-    cart.uuid must_== ("")
+    cart.uuid must_== (uuid)
     cart.finalPrice must_== 0
     cart.count must_== 0
     cart.cartItemVOs.length must_== 0
@@ -38,12 +37,11 @@ class CartBoServiceSpec extends Specification {
   }
 
   "addToCart a product" in {
-    skipped
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
     println(s"uuid=${uuid}")
     val cart = service.initCart(uuid)
-    val ttid = 58
+    val ttid = 63
     //val ticketType = TicketType.get(ttid)
     val quantity = 5
     val dateTime = None
@@ -63,8 +61,8 @@ class CartBoServiceSpec extends Specification {
 
   }
 
+  /*
   "addToCart should fail if quantity is too much" in {
-    skipped
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
     println(s"uuid=${uuid}")
@@ -87,7 +85,6 @@ class CartBoServiceSpec extends Specification {
 
 
   "addToCart a product + another" in {
-    skipped
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
     println(s"uuid=${uuid}")
@@ -117,7 +114,6 @@ class CartBoServiceSpec extends Specification {
   }
 
   "addToCart the same product twice" in {
-    skipped
     //FIXME fail("ne gere pas l'ajout du mm produit au panier")
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
@@ -145,15 +141,7 @@ class CartBoServiceSpec extends Specification {
 
   }
 
-
-  "addToCart a service" in {
-    //TODO ticket de cinéma
-    skipped
-
-  }
-
   "updateCart change the quantity" in {
-    skipped
     //took 5 and update to 1
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
@@ -201,7 +189,6 @@ class CartBoServiceSpec extends Specification {
   }
 
   "delete item from cart after 2 addItem" in {
-    skipped
 
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
@@ -242,7 +229,6 @@ class CartBoServiceSpec extends Specification {
   }
 
   "clear cart after 2 addItem" in {
-    skipped
 
     val cur = "EUR"
     val uuid = UUID.randomUUID.toString
@@ -314,8 +300,6 @@ class CartBoServiceSpec extends Specification {
 
   "prepare transaction without coupons" in {
 
-    skipped("TODO because error")
-    //val companyId = 8
     val companyCode = "mogobiz"
     val countryCode = "FR"
     val state = None
@@ -343,7 +327,6 @@ class CartBoServiceSpec extends Specification {
   }
 
   "prepare transaction without coupons and commit" in {
-    skipped("ok")
 
     val companyCode = "mogobiz"
     val countryCode = "FR"
@@ -367,7 +350,6 @@ class CartBoServiceSpec extends Specification {
   }
 
   "prepare transaction without coupons and cancel" in {
-    skipped("ok")
 
     val companyCode = "mogobiz"
     val countryCode = "FR"
@@ -391,11 +373,9 @@ class CartBoServiceSpec extends Specification {
 
   }
 
-  "Suite of addToCart tests that already passed" in {
+  "addToCart should" in {
 
-    if(false){
-      "addToCart a DATE_ONLY product with a valid date and no registered person" in {
-        //skipped("a implémenter")
+      "add a DATE_ONLY product with a valid date and no registered person" in {
 
         val locale = Locale.getDefault()
         val currencyCode = "EUR"
@@ -427,8 +407,7 @@ class CartBoServiceSpec extends Specification {
         exceptionCatched must beTrue
       }
 
-      "addToCart a DATE_ONLY product with no date and a registered person" in {
-        //    skipped("a implémenter")
+      "add a DATE_ONLY product with no date and a registered person" in {
         val locale = Locale.getDefault()
         val currencyCode = "EUR"
         val ticketTypeId = 121 // or 119
@@ -458,7 +437,7 @@ class CartBoServiceSpec extends Specification {
         exceptionCatched must beTrue
       }
 
-      "addToCart a DATE_ONLY product with an invalid date and a registered person" in {
+      "add a DATE_ONLY product with an invalid date and a registered person" in {
 
         val locale = Locale.getDefault()
         val currencyCode = "EUR"
@@ -492,9 +471,8 @@ class CartBoServiceSpec extends Specification {
 
     }
 
-    "addToCart a DATE_ONLY product with a date and a registered person" in {
+    "add a DATE_ONLY product with a date and a registered person" in {
 
-      skipped("ok")
 
       val locale = Locale.getDefault()
       val currencyCode = "EUR"
@@ -515,53 +493,47 @@ class CartBoServiceSpec extends Specification {
       updatedCart.count must be_==(1)
 
     }
-  }
-
-  "addToCart " should {
 
 
-    "add a DATE_TIME product (cinema ticket) with a valid datetime and a registered person" in {
-      //skipped("a implémenter")
+  "add a DATE_TIME product (cinema ticket) with a valid datetime and a registered person" in {
 
-      val locale = Locale.getDefault()
-      val currencyCode = "EUR"
-      val ticketTypeId = 128 // or 126
-      val quantity = 1
-      val dateTime = Some(new DateTime(2014, 5, 7, 15, 0))
-      val person = RegisteredCartItemVO(cartItemId = "", id = "", email = Some("christophe.galant@ebiznext.com"))
-      val registeredCartItems = List(person)
+    val locale = Locale.getDefault()
+    val currencyCode = "EUR"
+    val ticketTypeId = 128 // or 126
+    val quantity = 1
+    val dateTime = Some(new DateTime(2014, 5, 7, 15, 0))
+    val person = RegisteredCartItemVO(cartItemId = "", id = "", email = Some("christophe.galant@ebiznext.com"))
+    val registeredCartItems = List(person)
 
-      val uuid = UUID.randomUUID.toString
-      val cart = service.initCart(uuid)
+    val uuid = UUID.randomUUID.toString
+    val cart = service.initCart(uuid)
 
-      /*
-      val res = try{
+    /*
+    val res = try{
 
 
-        true
-      }catch{
-        case e: AddCartItemException => println(e.errors); false;
-        case t:Throwable => t.printStackTrace;false;
-      }
+      true
+    }catch{
+      case e: AddCartItemException => println(e.errors); false;
+      case t:Throwable => t.printStackTrace;false;
+    }
 
-      res must beTrue
-*/
-      val updatedCart = service.addItem(locale, currencyCode, cart, ticketTypeId, quantity, dateTime, registeredCartItems)
-//      Utils.printJSON(updatedCart)
+    res must beTrue
+    */
+    val updatedCart = service.addItem(locale, currencyCode, cart, ticketTypeId, quantity, dateTime, registeredCartItems)
+    //      Utils.printJSON(updatedCart)
 
-      updatedCart.cartItemVOs.size must be_==(1)
-      updatedCart.count must be_==(1)
+    updatedCart.cartItemVOs.size must be_==(1)
+    updatedCart.count must be_==(1)
 
-      "and should render in JSON with formatted amount " in {
-        val currency = defaultCurrency
-        val rCart = renderService.renderCart(updatedCart,currency,locale)
-        val items = rCart("cartItemVOs")
-        //println(items)
-        //println(rCart)
+    "and should render in JSON with formatted amount " in {
+      val currency = defaultCurrency
+      val rCart = renderService.renderCart(updatedCart, currency, locale)
+      val items = rCart("cartItemVOs")
+      //println(items)
+      //println(rCart)
 
-        success
-      }
-
+      success
     }
 
   }
@@ -583,5 +555,5 @@ class CartBoServiceSpec extends Specification {
 
 
   }
-
+*/
 }

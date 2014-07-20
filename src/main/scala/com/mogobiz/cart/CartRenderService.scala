@@ -2,32 +2,33 @@ package com.mogobiz.cart
 
 import java.util.Locale
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
-import com.mogobiz.{Currency, RateBoService}
+import com.mogobiz._
+import com.typesafe.scalalogging.slf4j.Logger
 import org.joda.time.DateTime
 import org.json4s.ext.JodaTimeSerializers
 import org.json4s.{FieldSerializer, DefaultFormats, Formats}
 import org.json4s.JsonAST._
+import org.slf4j.LoggerFactory
 import scala.Some
 import org.json4s.JsonAST.JDouble
 import org.json4s.JsonAST.JString
-import com.mogobiz.Currency
 import org.json4s.native.JsonMethods._
 import scala.Some
-import com.mogobiz.Currency
 import org.json4s.native.Serialization._
 import scala.Some
-import com.mogobiz.Currency
 import scala.Some
-import com.mogobiz.Currency
 
 /**
  * Created by Christophe on 09/05/2014.
  */
 object CartRenderService {
 
+  val logger = Logger(LoggerFactory.getLogger("CartRenderService"))
+
   val rateService = RateBoService
 
   def renderCart(cart:CartVO, currency:Currency,locale:Locale):Map[String,Any]={
+    logger.info(s"currency: ${currency.code}, ${currency.rate}")
     var map :Map[String,Any]= Map()
 
     map+=("count" -> cart.count)
@@ -148,7 +149,8 @@ object CartRenderService {
 
     import org.json4s.native.JsonMethods._
     import org.json4s.native.Serialization.{ write}
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
+    //implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
+    import Json4sProtocol._
     val jsonItem = parse(write(item))
 
     val price = rateService.calculateAmount(item.price, rate);

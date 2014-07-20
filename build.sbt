@@ -29,6 +29,8 @@ libraryDependencies ++= Seq(
     "org.scalikejdbc" %% "scalikejdbc-config"        % scalikeV,
     "org.scalikejdbc" %% "scalikejdbc-interpolation" % scalikeV,
     "org.scalikejdbc" %% "scalikejdbc-test"          % scalikeV   % "test",
+    //"com.typesafe.scala-logging" %% "scala-logging" % "2.1.2", //3.0.0 require scala 2.11
+    "com.typesafe.scala-logging" % "scala-logging-slf4j_2.10" % "2.1.2",
     "ch.qos.logback"  %  "logback-classic"           % "1.1.2",
     "io.spray"            %   "spray-can"     % sprayV,
     "io.spray"            %   "spray-client"     % sprayV,

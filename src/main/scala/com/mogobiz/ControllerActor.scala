@@ -2,6 +2,7 @@ package com.mogobiz
 
 import akka.actor.Actor
 import org.json4s._
+import org.json4s.ext.JodaTimeSerializers
 import spray.httpx.Json4sSupport
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
@@ -32,12 +33,14 @@ class ControllerActor extends Actor with StoreService {
 
 object Json4sProtocol extends Json4sSupport {
 
+  /*
   class JodaDateTimeSerializer extends CustomSerializer[DateTime](format => (
     // deserialisation
     { case x: JString => ISODateTimeFormat.dateOptionalTimeParser().parseDateTime(x.values) },
     // serialisation
     { case x: DateTime => JString(ISODateTimeFormat.dateOptionalTimeParser().print(x)) }
     ))
+    */
 
   class ProductTypeSerializer extends CustomSerializer[ProductType](format => (
     // deserialisation
@@ -105,8 +108,8 @@ object Json4sProtocol extends Json4sSupport {
     }
     ))
 
-  implicit def json4sFormats: Formats = DefaultFormats +
-    new JodaDateTimeSerializer() +
+  implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all +
+    //new JodaDateTimeSerializer() +
     new ProductTypeSerializer() +
     new ProductCalendarSerializer() +
     new WeightUnitSerializer() +

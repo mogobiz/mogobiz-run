@@ -8,10 +8,12 @@ import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
 import com.mogobiz.utils.{Utils, QRCodeUtils, SecureCodec}
 import com.sun.org.apache.xml.internal.security.utils.Base64
+import com.typesafe.scalalogging.slf4j.Logger
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 import org.json4s.{DefaultFormats, Formats}
 import com.mogobiz.{RateBoService, Currency}
 import org.joda.time.DateTime
+import org.slf4j.LoggerFactory
 import scalikejdbc.config.DBs
 import com.mogobiz.cart.TransactionStatus.TransactionStatus
 import scalikejdbc.SQLInterpolation._
@@ -31,6 +33,8 @@ object CartBoService extends BoService {
   type CouponVO = Coupon
 
   DBs.setupAll()
+
+  private val logger = Logger(LoggerFactory.getLogger("CartBoService"))
 
   val uuidService = UuidBoService
   val productService = ProductBoService
@@ -67,6 +71,15 @@ object CartBoService extends BoService {
    */
   @throws[AddCartItemException]
   def addItem(locale:Locale , currencyCode:String , cartVO:CartVO , ticketTypeId:Long, quantity:Int, dateTime:Option[DateTime], registeredCartItems:List[RegisteredCartItemVO]):CartVO  = {
+
+    assert(!currencyCode.isEmpty,"currencyCode should not be empty")
+    assert(!locale.getCountry.isEmpty,"locale.getCountry should not be empty")
+
+    logger.info(s"addItem dateTime : ${dateTime}")
+    println("+++++++++++++++++++++++++++++++++++++++++")
+    println(s"dateTime=${dateTime}")
+    println("+++++++++++++++++++++++++++++++++++++++++")
+
     // init local vars
     val ticketType:TicketType = TicketType.get(ticketTypeId) //TODO error management
 
@@ -115,7 +128,6 @@ object CartBoService extends BoService {
     productService.decrement(ticketType,quantity,startEndDate._1)
 
     //resume existing items
-
     var oldCartPrice = 0l;
     var oldCartEndPrice: Option[Long] = Some(0l);
     cartVO.cartItemVOs.foreach{
@@ -136,7 +148,7 @@ object CartBoService extends BoService {
     val endPrice = taxRateService.calculateEndPrix(itemPrice, tax)
     val totalPrice = quantity * itemPrice;
     val totalEndPrice = endPrice match {
-      case Some(p) => Some(quantity * itemPrice)
+      case Some(p) => Some(quantity * endPrice.get)
       case _ => None
     }
 
@@ -423,6 +435,7 @@ object CartBoService extends BoService {
    * @return
    */
   private def calculAmountAllTaxIncluded(cartVO: CartVO,countryCode:String, stateCode:Option[String]) : CartVO = {
+    assert(!countryCode.isEmpty)
 
     var newEndPrice = 0l
     val newCartItemVOs = cartVO.cartItemVOs.map { cartItem =>
@@ -444,6 +457,10 @@ object CartBoService extends BoService {
 
   def prepareBeforePayment(companyCode:String, countryCode:String, stateCode:Option[String], currencyCode:String, cartVO:CartVO,rate:Currency) = { //:Map[String,Any]=
 
+    assert(!companyCode.isEmpty)
+    assert(!countryCode.isEmpty)
+    assert(!currencyCode.isEmpty)
+
     val errors:Map[String,String] = Map()
 
     // récup du companyId à partir du storeCode
@@ -462,7 +479,11 @@ object CartBoService extends BoService {
         if (boCart.isDefined) {
 
         BOCartItem.findByBOCart(boCart.get).foreach { boCartItem =>
-          BOCartItem.bOProducts(boCart.get).foreach { boProduct =>
+          BOCartItem.bOProducts(boCartItem).foreach { boProduct =>
+
+            //b_o_cart_item_b_o_product (b_o_products_fk,boproduct_id) values(${saleId},${boProductId})
+            sql"delete from b_o_cart_item_b_o_product where boproduct_id=${boProduct.id}".update.apply()
+
             //Product product = boProduct.product;
             BOTicketType.findByBOProduct(boProduct.id).foreach {  boTicketType =>
               boTicketType.delete()
@@ -492,6 +513,7 @@ object CartBoService extends BoService {
         val b = BOCart.column
         insert.into(BOCart).namedValues(
           b.id -> boCartId,
+          b.buyer -> "christophe.galant@ebiznext.com", //FIXME
           b.companyFk -> companyId,
           b.currencyCode -> currencyCode,
           b.currencyRate -> rate.rate,
@@ -506,6 +528,7 @@ object CartBoService extends BoService {
 
       val boCart = new BOCart(
         id = boCartId,
+        buyer = "christophe.galant@ebiznext.com", //FIXME
         transactionUuid = cartTTC.uuid,
         date = DateTime.now,
         price = cartTTC.price,
@@ -547,7 +570,7 @@ object CartBoService extends BoService {
               quantity = 1, price = cartItem.totalEndPrice.getOrElse(-1),shortCode = None,
               ticketType = Some(ticketType.name), firstname = registeredCartItem.firstname,
               lastname = registeredCartItem.lastname, email = registeredCartItem.email,
-              phone = registeredCartItem.phone,
+              phone = registeredCartItem.phone, age = 0,
               birthdate = registeredCartItem.birthdate, startDate = cartItem.startDate, endDate = cartItem.endDate,
               dateCreated = DateTime.now, lastUpdated = DateTime.now,
               //bOProduct = boProduct
@@ -563,32 +586,30 @@ object CartBoService extends BoService {
               //génération du qr code uniquement pour les services
               val product = Product.get(cartItem.productId).get
 
-              val boTicket = if (product.xtype == ProductType.SERVICE)
-              {
+              val boTicket = product.xtype match{
+                case ProductType.SERVICE => {
+                  val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
 
-                //val sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm")
-                val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
+                  val shortCode = "P" + boProductId + "T" + boTicketId
+                  val qrCodeContent = "EventId:" + product.id + ";BoProductId:" + boProductId + ";BoTicketId:" + boTicketId +
+                    ";EventName:" + product.name + ";EventDate:" + startDateStr + ";FirstName:" +
+                    boTicketTmp.firstname + ";LastName:" + boTicketTmp.lastname + ";Phone:" + boTicketTmp.phone +
+                    ";TicketType:" + boTicketTmp.ticketType + ";shortCode:" + shortCode
 
-                val shortCode = "P" + boProductId + "T" + boTicketId
-                val qrCodeContent = "EventId:"+product.id+";BoProductId:"+boProductId+";BoTicketId:"+boTicketId +
-                  ";EventName:" + product.name + ";EventDate:" +startDateStr + ";FirstName:" +
-                  boTicketTmp.firstname + ";LastName:" + boTicketTmp.lastname + ";Phone:" + boTicketTmp.phone +
-                  ";TicketType:" +boTicketTmp.ticketType + ";shortCode:" + shortCode
+                  val encryptedQrCodeContent = SecureCodec.encrypt(qrCodeContent, product.company.get.aesPassword);
+                  val output = new ByteArrayOutputStream()
+                  QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
+                  val qrCodeBase64 = Base64.encode(output.toByteArray())
 
-                val encryptedQrCodeContent = SecureCodec.encrypt(qrCodeContent, product.company.get.aesPassword);
-                val output = new ByteArrayOutputStream()
-                QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256,"png")
-                val qrCodeBase64 = Base64.encode(output.toByteArray())
-
-                boTicketTmp.copy(id=boTicketId,shortCode = Some(shortCode), qrcode = Some(qrCodeBase64), qrcodeContent = Some(encryptedQrCodeContent))
-              }else{
-                boTicketTmp.copy(id=boTicketId)
+                  boTicketTmp.copy(id = boTicketId, shortCode = Some(shortCode), qrcode = Some(qrCodeBase64), qrcodeContent = Some(encryptedQrCodeContent))
+                }
+                case _ => boTicketTmp.copy(id=boTicketId)
               }
 
               insert.into(BOTicketType).namedValues(
                 b.id -> boTicketId, b.shortCode -> boTicket.shortCode, b.quantity -> boTicket.quantity,
                 b.price -> boTicket.price, b.ticketType -> boTicket.ticketType, b.firstname -> boTicket.firstname,
-                b.lastname -> boTicket.lastname, b.email -> boTicket.email, b.phone -> boTicket.phone,
+                b.lastname -> boTicket.lastname, b.email -> boTicket.email, b.phone -> boTicket.phone, b.age -> boTicket.age,
                 b.birthdate -> boTicket.birthdate, b.startDate -> boTicket.startDate, b.endDate -> boTicket.endDate,
                 b.qrcode -> boTicket.qrcode, b.qrcodeContent -> boTicket.qrcodeContent,
                 b.dateCreated -> DateTime.now, b.lastUpdated -> DateTime.now,
@@ -645,18 +666,19 @@ object CartBoService extends BoService {
     uuidService.setCart(updatedCart)
 
     val renderedCart = CartRenderService.renderTransactionCart(updatedCart,rate)
+    /*
+        implicit def json4sFormats: Formats = DefaultFormats
+        import org.json4s.native.JsonMethods._
+        import org.json4s.JsonDSL._
 
-    implicit def json4sFormats: Formats = DefaultFormats
-    import org.json4s.native.JsonMethods._
-    import org.json4s.JsonDSL._
 
-    println("-----------------------------------------------------------------------------------------------")
-    val prettyJsonCart = pretty(render(write(renderedCart)))
-    println(prettyJsonCart)
-    println("-----------------------------------------------------------------------------------------------")
-
+        println("-----------------------------------------------------------------------------------------------")
+        val prettyJsonCart = pretty(render(write(renderedCart)))
+        println(prettyJsonCart)
+        println("-----------------------------------------------------------------------------------------------")
+        */
     val data = Map(
-      "amount" -> RateBoService.calculateAmount(updatedCart.finalPrice, rate),
+      "amount" ->  renderedCart("finalPrice"), //RateBoService.calculateAmount(updatedCart.finalPrice, rate),
       "currencyCode" -> currencyCode,
       "currencyRate" -> rate.rate.doubleValue(),
       "transactionExtra" ->  renderedCart
@@ -666,14 +688,14 @@ object CartBoService extends BoService {
 
   def commit(cartVO:CartVO, transactionUuid:String ):List[Map[String,Any]]=
   {
-    //def emailingData = []
 
+    assert(!transactionUuid.isEmpty,"transactionUuid should not be empty")
 
     BOCart.findByTransactionUuid(cartVO.uuid) match {
       case Some(boCart) => {
 
         val emailingData = BOCartItem.findByBOCart(boCart).map { boCartItem =>
-          BOCartItem.bOProducts(boCart).map { boProduct =>
+          BOCartItem.bOProducts(boCartItem).map { boProduct =>
             val product = boProduct.product
             BOTicketType.findByBOProduct(boProduct.id).map {  boTicketType =>
               var map :Map[String,Any]= Map()
@@ -771,7 +793,7 @@ object CartBoService extends BoService {
         }
 
         val updatedCart = cartVO.copy(inTransaction = false) //cartVO.uuid = null;
-        uuidService.setCart(cartVO);
+        uuidService.setCart(updatedCart);
         updatedCart
       }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
@@ -1257,6 +1279,13 @@ object TransactionStatus extends Enumeration {
     case "FAILED"=> FAILED
     case "COMPLETE"=> COMPLETE
   }
+
+  override def toString = this match {
+    case PENDING => "PENDING"
+    case PAYMENT_NOT_INITIATED => "PAYMENT_NOT_INITIATED"
+    case FAILED => "FAILED"
+    case COMPLETE => "COMPLETE"
+  }
 }
 
 case class BOProduct(id:Long,acquittement:Boolean=false,price:Long=0,principal:Boolean=false,productFk:Long,
@@ -1284,7 +1313,7 @@ object BOProduct extends SQLSyntaxSupport[BOProduct]{
 }
 case class BOTicketType(id:Long,quantity : Int = 1, price:Long,shortCode:Option[String],
                         ticketType : Option[String],firstname : Option[String], lastname : Option[String],
-                        email : Option[String],phone : Option[String],
+                        email : Option[String],phone : Option[String],age:Int,
                         birthdate : Option[DateTime],startDate : Option[DateTime],endDate : Option[DateTime],
                         qrcode:Option[String]=None, qrcodeContent:Option[String]=None,
                         //bOProduct : BOProduct,
@@ -1304,9 +1333,13 @@ case class BOTicketType(id:Long,quantity : Int = 1, price:Long,shortCode:Option[
 }
 
 object BOTicketType extends SQLSyntaxSupport[BOTicketType]{
+
+  override val tableName = "b_o_ticket_type"
+
   def apply(rn: ResultName[BOTicketType])(rs:WrappedResultSet): BOTicketType = new BOTicketType(id=rs.get(rn.id),quantity=rs.get(rn.quantity),price=rs.get(rn.price),
     shortCode = rs.get(rn.shortCode),ticketType=rs.get(rn.ticketType),firstname=rs.get(rn.firstname),lastname=rs.get(rn.lastname),email=rs.get(rn.email),phone=rs.get(rn.phone),
-    birthdate=rs.get(rn.birthdate),startDate=rs.get(rn.endDate),endDate=rs.get(rn.endDate),bOProductFk=rs.get(rn.bOProductFk),
+    age = rs.get(rn.age), birthdate=rs.get(rn.birthdate),startDate=rs.get(rn.endDate),endDate=rs.get(rn.endDate),bOProductFk=rs.get(rn.bOProductFk),
+    qrcode = rs.get(rn.qrcode), qrcodeContent = rs.get(rn.qrcodeContent),
     dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
 
   def findByBOProduct(boProductId:Long):List[BOTicketType]={
@@ -1328,7 +1361,7 @@ object BOTicketType extends SQLSyntaxSupport[BOTicketType]{
   }
 }
 
-case class BOCart(id:Long, transactionUuid:String,date:DateTime, price:Long,status : TransactionStatus, currencyCode:String,currencyRate:Double,companyFk:Long,
+case class BOCart(id:Long, transactionUuid:String,date:DateTime, price:Long,status : TransactionStatus, currencyCode:String,currencyRate:Double,companyFk:Long,buyer:String = "christophe.galant@ebiznext.com",
                   dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
 
   def delete()(implicit session: DBSession){
@@ -1352,7 +1385,7 @@ object BOCart extends SQLSyntaxSupport[BOCart]{
     val res: Option[BOCart] = DB readOnly {
       implicit session =>
         withSQL {
-          select.from(BOCart as t).where.eq(t.transactionUuid, uuid).and.eq(t.status, status)
+          select.from(BOCart as t).where.eq(t.transactionUuid, uuid).and.eq(t.status, status.toString) //"PENDING"
         }.map(BOCart(t.resultName)).single().apply()
     }
     res
@@ -1418,12 +1451,12 @@ object BOCartItem extends SQLSyntaxSupport[BOCartItem]{
     res
   }
 
-  def bOProducts(boCart:BOCart) : List[BOProduct] = {
+  def bOProducts(boCartItem: BOCartItem) : List[BOProduct] = {
 
     DB readOnly {
       implicit session =>
-        sql"select p.* from b_o_cart_item_b_o_product ass inner join b_o_product p on ass.boproduct_id=p.id where b_o_products_fk=${boCart.id}"
-          .map(rs => new BOProduct(id=rs.long("id"),acquittement=rs.boolean("acquittement"),price=rs.long("price"),principal=rs.boolean("principal"),productFk=rs.long("productFk"),dateCreated = rs.dateTime("dateCreated"),lastUpdated = rs.dateTime("lastUpdated"))).list().apply()
+        sql"select p.* from b_o_cart_item_b_o_product ass inner join b_o_product p on ass.boproduct_id=p.id where b_o_products_fk=${boCartItem.id}"
+          .map(rs => new BOProduct(id=rs.long("id"),acquittement=rs.boolean("acquittement"),price=rs.long("price"),principal=rs.boolean("principal"),productFk=rs.long("product_fk"),dateCreated = rs.dateTime("date_created"),lastUpdated = rs.dateTime("last_updated"))).list().apply()
     }
   }
 
