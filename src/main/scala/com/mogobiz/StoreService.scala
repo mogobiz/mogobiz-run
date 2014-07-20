@@ -507,78 +507,78 @@ trait StoreService extends HttpService {
                 }
               }
             }
+          }
         }
-        }~put{
-          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
-            entity(as[UpdateCartItemCommand]){
-              cmd => {
-                val cart = cartService.initCart(uuid)
+      }~path("item" / Segment){
+          cartItemId => pathEnd {
+            put{
+              parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+                entity(as[UpdateCartItemCommand]){
+                  cmd => {
+                    val cart = cartService.initCart(uuid)
 
-                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIXME with default Lang
-               //val locale = Locale.forLanguageTag(lang)
-                val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
-                val locale = new Locale(lang,country)
+                    val lang:String = if(params.lang=="_all") "fr" else params.lang //FIXME with default Lang
+                    //val locale = Locale.forLanguageTag(lang)
+                    val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+                    val locale = new Locale(lang,country)
 
 
-                val currency = esClient.getCurrency(storeCode,params.currency,lang)
-                try{
-                  val updatedCart = cartService.updateItem(locale, currency.code, cart, cmd.cartItemId, cmd.quantity)
-                  val data = cartRenderService.renderCart(updatedCart, currency,locale)
-                  val response = Map(
-                    ("success"->true),
-                    ("data"->data),
-                    ("errors"->List())
-                  )
+                    val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                    try{
+                      val updatedCart = cartService.updateItem(locale, currency.code, cart, cartItemId, cmd.quantity)
+                      val data = cartRenderService.renderCart(updatedCart, currency,locale)
+                      val response = Map(
+                        ("success"->true),
+                        ("data"->data),
+                        ("errors"->List())
+                      )
 
-                  complete(response)
-                }catch{
-                  case e:UpdateCartItemException => {
-                    val response = Map(
-                      ("success"->false),
-                      ("data"->cart),
-                      ("errors"->e.errors)
-                    )
-                    complete(response)
+                      complete(response)
+                    }catch{
+                      case e:UpdateCartItemException => {
+                        val response = Map(
+                          ("success"->false),
+                          ("data"->cart),
+                          ("errors"->e.errors)
+                        )
+                        complete(response)
+                      }
+                    }
                   }
                 }
               }
-            }
-          }
-        }~delete{
-          parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
-            entity(as[RemoveCartItemCommand]){
-              cmd => {
-                val cart = cartService.initCart(uuid)
+            }~delete{
+              parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params =>
+                    val cart = cartService.initCart(uuid)
 
-                val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
-                //val locale = Locale.forLanguageTag(lang)
-                val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
-                val locale = new Locale(lang,country)
+                    val lang:String = if(params.lang=="_all") "fr" else params.lang //FIX with default Lang
+                    //val locale = Locale.forLanguageTag(lang)
+                    val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
+                    val locale = new Locale(lang,country)
 
-                val currency = esClient.getCurrency(storeCode,params.currency,lang)
-                try {
-                  val updatedCart = cartService.removeItem(locale, currency.code, cart, cmd.cartItemId)
-                  val data = cartRenderService.renderCart(updatedCart, currency,locale)
-                  val response = Map(
-                    ("success"->true),
-                    ("data"->data),
-                    ("errors"->List())
-                  )
-                  complete(response)
-                }catch{
-                  case e: RemoveCartItemException => {
-                    val response = Map(
-                      ("success"->false),
-                      ("data"->cart),
-                      ("errors"->e.errors)
-                    )
-                    complete(response)
-                  }
-                }
+                    val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                    try {
+                      val updatedCart = cartService.removeItem(locale, currency.code, cart, cartItemId)
+                      val data = cartRenderService.renderCart(updatedCart, currency,locale)
+                      val response = Map(
+                        ("success"->true),
+                        ("data"->data),
+                        ("errors"->List())
+                      )
+                      complete(response)
+                    }catch{
+                      case e: RemoveCartItemException => {
+                        val response = Map(
+                          ("success"->false),
+                          ("data"->cart),
+                          ("errors"->e.errors)
+                        )
+                        complete(response)
+                      }
+                    }
               }
             }
           }
-        }
       }~path("coupons" / Segment){
           couponCode => pathEnd {
             post {

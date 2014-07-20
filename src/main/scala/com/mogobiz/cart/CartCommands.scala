@@ -15,6 +15,4 @@ case class AddToCartCommand(
                              dateTime:Option[DateTime],
                              registeredCartItems:List[RegisteredCartItemVO])
 
-case class UpdateCartItemCommand (cartItemId: String,quantity: Int)
-
-case class RemoveCartItemCommand (cartItemId: String)
+case class UpdateCartItemCommand (quantity: Int)

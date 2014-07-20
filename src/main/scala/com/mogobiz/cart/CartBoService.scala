@@ -1285,6 +1285,7 @@ object TransactionStatus extends Enumeration {
     case PAYMENT_NOT_INITIATED => "PAYMENT_NOT_INITIATED"
     case FAILED => "FAILED"
     case COMPLETE => "COMPLETE"
+    case _ => "Invalid value"
   }
 }
 
