@@ -4,16 +4,13 @@ package com.mogobiz.session
  * Created by hayssams on 04/03/14.
  */
 
-import shapeless._
-
+import com.mogobiz.config.Settings
+import shapeless.{::, _}
 import spray.http.HttpCookie
 import spray.http.HttpHeaders.Cookie
-import spray.routing.directives._
 import spray.routing._
-import com.mogobiz.config.Settings
-import java.io._
-import scala.Some
-import shapeless.::
+import spray.routing.directives._
+
 import scala.collection.mutable.Map
 
 case object MissingSessionCookieRejection extends Rejection
@@ -21,16 +18,16 @@ case object MissingSessionCookieRejection extends Rejection
 trait SessionDirectives {
   this: Backend =>
 
-  import BasicDirectives._
-  import HeaderDirectives._
-  import CookieDirectives._
+  import spray.routing.directives.BasicDirectives._
+  import spray.routing.directives.CookieDirectives._
+  import spray.routing.directives.HeaderDirectives._
 
   def session: Directive[Session :: HNil] = headerValue {
     case Cookie(cookies) => cookies.find(_.name == Settings.SessionCookieName) map {
       sessionFromCookie
     }
-    case _ => Some(Session())
-  }
+    case _ => None
+  } | provide(Session())
 
 
   def optionalSession: Directive[Option[Session] :: HNil] =
@@ -48,7 +45,7 @@ trait SessionDirectives {
     Session(load(cookie.content).getOrElse(Map.empty[String, Any]), cookie.expires, cookie.maxAge, cookie.domain, cookie.path, cookie.secure, cookie.httpOnly, cookie.extension)
 
   implicit def sessionToCookie(session: Session): HttpCookie = {
-    val res= HttpCookie(Settings.SessionCookieName, store(session.data), session.expires, session.maxAge, session.domain, session.path, session.secure, session.httpOnly, session.extension)
+    val res = HttpCookie(Settings.SessionCookieName, store(session.data), session.expires, session.maxAge, session.domain, session.path, session.secure, session.httpOnly, session.extension)
     println(res)
     res
 
@@ -97,6 +94,7 @@ trait CookieBackend extends Backend {
   }
 
 }
+
 /*
 trait FileBackend extends Backend {
   private def filename(bucket: String, key: String) = s"$bucket-$key"
