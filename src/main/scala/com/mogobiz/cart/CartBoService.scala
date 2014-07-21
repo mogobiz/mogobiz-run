@@ -854,7 +854,7 @@ object ProductCalendar extends Enumeration {
 }
 
 case class RegisteredCartItemVO
-(cartItemId: String, id: String, email: Option[String], firstname: Option[String]=None, lastname: Option[String]=None, phone: Option[String]=None, birthdate: Option[DateTime]=None)
+(cartItemId: String = "", id: String, email: Option[String], firstname: Option[String]=None, lastname: Option[String]=None, phone: Option[String]=None, birthdate: Option[DateTime]=None)
 
 case class CartItemVO
 (id: String, productId: Long, productName: String, xtype: ProductType, calendarType: ProductCalendar, skuId: Long, skuName: String,
