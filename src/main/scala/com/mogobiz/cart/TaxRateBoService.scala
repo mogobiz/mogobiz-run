@@ -35,7 +35,7 @@ object TaxRateBoService {
           }
           str.map(rs => rs.float("rate")).single().apply()
         }
-        rate
+        if (rate.isDefined) rate else if (state.isDefined) findTaxRate(Some(taxRate), country, None) else None
 
         /*val query = new StringBuffer("SELECT DISTINCT localTaxRate FROM TaxRate taxRate RIGHT JOIN taxRate.localTaxRates AS localTaxRate WHERE taxRate.id = :taxRateId AND localTaxRate.active = true AND localTaxRate.countryCode = :country")
         def params = [taxRateId: taxRate.id, country: country]
