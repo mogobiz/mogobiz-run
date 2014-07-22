@@ -218,7 +218,9 @@ object CartRenderService {
   private def updateCoupons(cart: CartVO):CartVO= {
 
     println("updateCoupons")
-    val reduc = cart.coupons.foldLeft(0l)((acc,c) => acc + CouponService.updateCoupon(c, cart).price)
+    val updatedCoupons = cart.coupons.map(c => CouponService.updateCoupon(c, cart))
+    val reduc = updatedCoupons.foldLeft(0l)((acc,c) => acc + c.price)
+
     println(s"reduc=$reduc")
     println(s"cart.endPrice=${cart.endPrice}")
 
@@ -228,7 +230,7 @@ object CartRenderService {
     }
     println(s"finalprice=$finalprice")
 
-    cart.copy(reduction = reduc, finalPrice = finalprice)
+    cart.copy(reduction = reduc, finalPrice = finalprice, coupons = updatedCoupons)
   }
 
 }

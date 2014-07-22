@@ -995,6 +995,14 @@ object Coupon extends SQLSyntaxSupport[Coupon]{
     }
   }
 
+  def getRules(couponId:Long):List[ReductionRule]= DB readOnly {
+    implicit session => {
+      sql"""select rr.* from reduction_rule rr inner join coupon_reduction_rule crr on crr.reduction_rule_id = rr.id and rules_fk = ${couponId}"""
+        .map(rs => ReductionRule(rs)).list().apply()
+    }
+  }
+
+  /*
   def getRules(couponId:Long):List[ReductionRule]={
     val c = ReductionRule.syntax("c")
     DB readOnly { implicit session =>
@@ -1002,7 +1010,7 @@ object Coupon extends SQLSyntaxSupport[Coupon]{
         select.from(ReductionRule as c).where.eq(c.id, couponId)
       }.map(ReductionRule(c.resultName)).list().apply()
     }
-  }
+  }*/
 }
 
 object ReductionRuleType extends Enumeration {
@@ -1029,12 +1037,19 @@ case class ReductionRule(
 
 object ReductionRule extends SQLSyntaxSupport[ReductionRule] {
   def apply(rn: ResultName[ReductionRule])(rs: WrappedResultSet): ReductionRule = ReductionRule(
-    id = rs.get(rn.id), xtype = ReductionRuleType(rs.string("reduction_rule_type")), quantityMin = rs.get(rn.quantityMin), quantityMax = rs.get(rn.quantityMax),
+    id = rs.get(rn.id), xtype = ReductionRuleType(rs.string("xtype")), quantityMin = rs.get(rn.quantityMin), quantityMax = rs.get(rn.quantityMax),
     discount = rs.get(rn.discount), xPurchased = rs.get(rn.xPurchased), yOffered = rs.get(rn.yOffered),
     dateCreated = rs.get(rn.dateCreated), lastUpdated = rs.get(rn.lastUpdated))
+
+  def apply(rs: WrappedResultSet):ReductionRule = ReductionRule(
+    id = rs.long("id"), xtype = ReductionRuleType(rs.string("xtype")),quantityMin = rs.longOpt("quantity_min"), quantityMax = rs.longOpt("quantity_max"),
+    discount = rs.stringOpt("discount"), xPurchased = rs.longOpt("x_purchased"), yOffered = rs.longOpt("y_offered"),
+    dateCreated = rs.dateTime("date_created"), lastUpdated = rs.dateTime("last_updated")
+  )
 }
 object CouponService extends BoService {
 
+  private val logger = Logger(LoggerFactory.getLogger("CouponService"))
   /*
   private def getOrCreate(coupon:Coupon) : ReductionSold = {
     def get(id:Long):Option[ReductionSold]={
@@ -1112,9 +1127,9 @@ object CouponService extends BoService {
   def getTicketTypesIdsWhereCouponApply(couponId: Long) : List[Long] = DB readOnly {
     implicit session => {
       sql"""
-         | select id from ticket_type
-         | where tt.product_fk is in(select product_id from coupon_product where products_fk=${couponId})
-         | or tt.product_fk is in (select id from product where category_fk in (select category_id from coupon_category where categories_fk=${couponId}))
+         select id from ticket_type tt
+         where tt.product_fk in(select product_id from coupon_product where products_fk=${couponId})
+         or tt.product_fk in (select id from product where category_fk in (select category_id from coupon_category where categories_fk=${couponId}))
        """.map(rs => rs.long("id")).list.apply()
     }
   }
@@ -1128,102 +1143,77 @@ object CouponService extends BoService {
    * @param cart
    */
   def updateCoupon(c: CouponVO, cart: CartVO): CouponVO = {
+    logger.info(s"updateCoupon1 couponId=${c.id}")
     val coupon = Coupon.get(c.id).get
+    logger.info(s"updateCoupon2: ${coupon}")
 
     val couponVO = CouponVO(coupon)
+    logger.info(s"updateCoupon3: ${couponVO}")
 
-    //the coupon must be active and is valid for a date between startDate and endDate
-    (coupon.active, coupon.startDate, coupon.endDate) match {
-      case (true, Some(startDate), Some(endDate)) => {
-        if ((startDate.isBeforeNow || startDate.isEqualNow) && (endDate.isAfterNow || endDate.isEqualNow)) {
-          /*
-          List<TicketType> listTicketType = TicketType.createCriteria().list {
-            or {
-              if (coupon.products) {
-                "in"("product", coupon.products)
-              }
-              if (coupon.categories) {
-                product {
-                  'in' ('category', coupon.categories)
-                }
-              }
-              if (coupon.ticketTypes) {
-                "in"("id", coupon.ticketTypes.collect {it.id})
-              }
+    logger.info(s"updateCoupon: (${coupon.active} ${coupon.startDate} ${coupon.endDate})")
+
+    //the coupon must be active with no date or with valid date between startDate and endDate
+    if ( (coupon.startDate.isEmpty && coupon.endDate.isEmpty) ||
+      ((coupon.startDate.get.isBeforeNow || coupon.startDate.get.isEqualNow) && (coupon.endDate.get.isAfterNow || coupon.endDate.get.isEqualNow))) {
+      val listTicketTypeIds = getTicketTypesIdsWhereCouponApply(c.id)
+      logger.info(s"updateCoupon(${c.id}) listTicketTypeIds:${listTicketTypeIds}")
+
+      if (listTicketTypeIds.size > 0) {
+        var quantity = 0l
+        var xPurchasedPrice = java.lang.Long.MAX_VALUE
+        cart.cartItemVOs.foreach { cartItem =>
+          if (listTicketTypeIds.exists {
+            _ == cartItem.skuId
+          }) {
+            quantity += cartItem.quantity
+            if (cartItem.endPrice.getOrElse(0l) > 0) {
+              xPurchasedPrice = Math.min(xPurchasedPrice, cartItem.endPrice.get)
+              logger.info(s"updateCoupon(${c.id}) xPurchasedPrice:${xPurchasedPrice}")
             }
-          }*/
-
-          // liste des ticketTypes pour lesquels le coupon s'applique
-          //val listTicketType = List[TicketType]()
-          //pas besoin de ramener les ticketTypes, les id suffisent
-
-          val listTicketTypeIds = getTicketTypesIdsWhereCouponApply(c.id)
-
-          if (listTicketTypeIds.size > 0) {
-            var quantity = 0l
-            var xPurchasedPrice = java.lang.Long.MAX_VALUE
-            cart.cartItemVOs.foreach { cartItem =>
-              if (listTicketTypeIds.exists {
-                _ == cartItem.skuId
-              }) {
-                quantity += cartItem.quantity
-                if (cartItem.endPrice.getOrElse(0l) > 0) {
-                  xPurchasedPrice = Math.min(xPurchasedPrice, cartItem.endPrice.get)
-                }
-              }
-            }
-            if (xPurchasedPrice == java.lang.Long.MAX_VALUE) {
-              xPurchasedPrice = 0
-            }
-
-            if (quantity > 0) {
-              //couponVO.active = true
-              var couponVOprice = couponVO.price
-              coupon.rules.foreach {
-                //TODO foldLeft later
-                rule => {
-                  couponVOprice = rule.xtype match {
-                    case ReductionRuleType.DISCOUNT => {
-                      cart.endPrice match {
-                        case Some(endprice) => couponVOprice + computeDiscount(rule.discount, endprice)
-                        case None => couponVOprice + computeDiscount(rule.discount, cart.price)
-                      }
-                    }
-                    case ReductionRuleType.X_PURCHASED_Y_OFFERED => {
-                      val multiple = quantity / rule.xPurchased.get //FIXME None.get possible
-                      (couponVO.price + (xPurchasedPrice * rule.yOffered.get * multiple)) //FIXME None.get possible
-                    }
-                    case _ => couponVOprice
-                  }
-                }
-              }
-              couponVO.copy(active = true, price = couponVOprice)
-
-              /* code iper
-                if (ReductionRuleType.DISCOUNT == rule.xtype) {
-                  if (cart.endPrice != null) {
-                    couponVO.price += IperUtil.computeDiscount(rule.discount, cart.endPrice)
-                  }
-                  else {
-                    couponVO.price += IperUtil.computeDiscount(rule.discount, cart.price)
-                  }
-                }
-                else if (ReductionRuleType.X_PURCHASED_Y_OFFERED.equals(rule.xtype)) {
-                  long multiple = quantity / rule.xPurchased
-                  couponVO.price += xPurchasedPrice * rule.yOffered * multiple
-                }*/
-
-            } else {
-              couponVO
-            }
-          } else {
-            couponVO
           }
+        }
+        if (xPurchasedPrice == java.lang.Long.MAX_VALUE) {
+          xPurchasedPrice = 0
+        }
+
+        if (quantity > 0) {
+          var couponVOprice = couponVO.price
+          logger.info(s"updateCoupon(${c.id}) initialPrice:${couponVOprice}")
+          val rules = coupon.rules
+          logger.info(s"updateCoupon(${c.id}) rules:${rules}")
+          rules.foreach {
+            //TODO foldLeft later
+            rule => {
+              logger.info(s"updateCoupon(${c.id}) rule.xtype:${rule.xtype}")
+
+              couponVOprice = rule.xtype match {
+                case ReductionRuleType.DISCOUNT => {
+                  cart.endPrice match {
+                    case Some(endprice) => couponVOprice + computeDiscount(rule.discount, endprice)
+                    case None => couponVOprice + computeDiscount(rule.discount, cart.price)
+                  }
+                }
+                case ReductionRuleType.X_PURCHASED_Y_OFFERED => {
+                  val multiple = quantity / rule.xPurchased.get //FIXME None.get possible
+                  (couponVO.price + (xPurchasedPrice * rule.yOffered.get * multiple)) //FIXME None.get possible
+                }
+                case _ => couponVOprice
+              }
+              logger.info(s"updateCoupon(${c.id}) couponVOprice:${couponVOprice}")
+              couponVOprice
+            }
+          }
+          logger.info(s"updateCoupon(${c.id}) finalPrice:${couponVOprice}")
+          couponVO.copy(active = true, price = couponVOprice)
+
         } else {
           couponVO
         }
+      } else {
+        couponVO
       }
-      case _ => couponVO
+    } else {
+      couponVO
     }
   }
 
