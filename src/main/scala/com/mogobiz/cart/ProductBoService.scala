@@ -158,7 +158,7 @@ import scalikejdbc._, SQLInterpolation._
 
 case class Stock(stock:Long=0,stockUnlimited:Boolean = true,stockOutSelling:Boolean = false)
 object Stock  extends SQLSyntaxSupport[Stock]{
-  def apply(rs: WrappedResultSet):Stock = new Stock(rs.long("stock_stock"),rs.boolean("stock_stock_unlimited"),rs.boolean("stock_stock_out_selling"))
+  def apply(rs: WrappedResultSet):Stock = new Stock(rs.longOpt("stock_stock").getOrElse(0),rs.boolean("stock_stock_unlimited"),rs.boolean("stock_stock_out_selling"))
 //  def apply(rs: WrappedResultSet):Stock = new Stock(rs.long("ss_on_t"),rs.boolean("ssu_on_t"),rs.boolean("ssos_on_t"))
   // t.stock_stock as ss_on_t, t.stock_stock_out_selling as ssos_on_t, t.stock_stock_unlimited as ssu_on_t,
 
@@ -304,7 +304,7 @@ object TicketType extends SQLSyntaxSupport[TicketType] {
 
     val res = DB readOnly {
       implicit session =>
-        sql"select tt.*,p.* from ticket_type tt inner join product p on tt.product_fk=p.id where tt.id=${id}".map( rs => TicketType(rs)).single().apply()
+        sql"select tt.*,p.* from ticket_type tt inner join product p on tt.product_fk=p.id where tt.id=${id}".map(rs => TicketType(rs)).single().apply()
     }
 
     /* standalone with product missing

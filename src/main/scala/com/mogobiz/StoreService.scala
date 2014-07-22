@@ -36,9 +36,7 @@ trait StoreService extends HttpService {
 
   val esClient = new ElasticSearchClient
 
-  def storeRoutes(uuid:String) = {
-    pathPrefix("store" / Segment) {
-      storeCode => {
+  def storeRoutes(storeCode: String, uuid:String) = {
         pathEnd {
           complete("the store code is " + storeCode)
         } ~ langsRoutes ~
@@ -52,22 +50,24 @@ trait StoreService extends HttpService {
           preferencesRoute(storeCode, uuid) ~
           cartRoute(storeCode,uuid)
           //testCookie(storeCode)
-      }
-    }
   }
 
   val storeRoutesWithCookie = {
-    optionalCookie("mogobiz_uuid") {
-      case Some(mogoCookie) => {
-        println(s"mogoCookie=${mogoCookie.content}")
-        storeRoutes(mogoCookie.content)
-      }
-      case None =>
-      {
-        val id = UUID.randomUUID.toString
-        println(s"new uuid=${id}")
-        setCookie(HttpCookie("mogobiz_uuid",content=id,path=Some("/store/mogobiz"))) {
-          storeRoutes(id)
+    pathPrefix("store" / Segment) {
+      storeCode => {
+        optionalCookie("mogobiz_uuid") {
+          case Some(mogoCookie) => {
+            println(s"mogoCookie=${mogoCookie.content}")
+            storeRoutes(storeCode, mogoCookie.content)
+          }
+          case None =>
+          {
+            val id = UUID.randomUUID.toString
+            println(s"new uuid=${id}")
+            setCookie(HttpCookie("mogobiz_uuid",content=id,path=Some("/store/" + storeCode))) {
+              storeRoutes(storeCode, id)
+            }
+          }
         }
       }
     }
