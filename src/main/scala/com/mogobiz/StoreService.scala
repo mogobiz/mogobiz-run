@@ -35,8 +35,7 @@ import com.mogobiz.actors.TagActor
 trait StoreService extends HttpService {
   /// This section to moved elsewhere
   implicit val timeout = Timeout(10.seconds)
-  implicit lazy val system = ActorSystem("mogostore")
-  val tagActor = system.actorOf(Props[TagActor])
+  val tagActor = Boot.system.actorOf(Props[TagActor])
   /// END OF This section to moved elsewhere
 
 
