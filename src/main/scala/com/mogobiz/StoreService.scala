@@ -13,7 +13,7 @@ import spray.http.{StatusCodes, HttpCookie, DateTime}
 import spray.routing.{Directives, HttpService}
 import spray.http.MediaTypes._
 import org.json4s._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Await, ExecutionContext}
 import org.json4s.native.JsonMethods._
 import java.util.{Locale, UUID}
 import com.mogobiz.cart._
@@ -28,7 +28,6 @@ import com.mogobiz.vo.CommentGetRequest
 import akka.actor.{ActorSystem, Props, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import com.mogobiz.actors.TagActor
 
@@ -128,28 +127,30 @@ trait StoreService extends HttpService {
     }
   }
 
-  def tagsRoutes(storeCode: String) = path("tags") {
-    respondWithMediaType(`application/json`) {
-      get{
-        //TODO hidden and inactive ???
-        parameters('hidden?false,'inactive?false,'lang?"_all") { (hidden, inactive, lang) =>
-          // Objet intermediaire permettant de typer les messages à l'acteur
-          // pourpermettre au pattern match de fonctionner dans le receive de l'acteur
-          val tagRequest = QueryTagRequest(storeCode, hidden, inactive, lang)
-          complete {
-            tagActor ? tagRequest
+  def tagsRoutes(storeCode: String) =
+    get {
+      respondWithMediaType(`application/json`) {
+        path("tags") {
+          //TODO hidden and inactive ???
+          parameters('hidden ? false, 'inactive ? false, 'lang ? "_all") {
+            (hidden, inactive, lang) =>
+            // Objet intermediaire permettant de typer les messages à l'acteur
+            // pourpermettre au pattern match de fonctionner dans le receive de l'acteur
+              val tagRequest = QueryTagRequest(storeCode, hidden, inactive, lang)
+              complete {
+                (tagActor ? tagRequest).mapTo[JValue]
+              }
           }
         }
       }
     }
-  }
 
   val langsRoutes =
     get {
-    path("langs") {
+      path("langs") {
         respondWithMediaType(`application/json`) {
           complete {
-            val langs = List("fr","en","de","it","es")
+            val langs = List("fr", "en", "de", "it", "es")
             langs
           }
         }
