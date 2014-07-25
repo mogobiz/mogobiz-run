@@ -20,9 +20,6 @@ import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
 import com.mogobiz.cart.TransactionStatus
 import com.mogobiz.cart.TransactionStatus.TransactionStatus
 
-/**
- * Created by dach on 18/02/2014.
- */
 class ControllerActor extends Actor with StoreService {
 
   def actorRefFactory = context

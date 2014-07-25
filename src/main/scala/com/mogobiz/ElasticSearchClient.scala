@@ -232,14 +232,15 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-
   /**
    *
    * @param store
-   * @param qr
+   * @param hidden
+   * @param inactive
+   * @param lang
    * @return
    */
-  def queryTags(store: String, qr: TagRequest): Future[HttpResponse] = {
+  def queryTags(store: String, hidden:Boolean, inactive:Boolean, lang:String): Future[HttpResponse] = {
 
     val template = (lang: String) =>
       s"""
@@ -253,7 +254,7 @@ class ElasticSearchClient /*extends Actor*/ {
         | }
         |
       """.stripMargin
-    val plang = if (qr.lang == "_all") "*" else qr.lang
+    val plang = if (lang == "_all") "*" else lang
     val query = template(plang)
 
     val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/tag/_search"), query))

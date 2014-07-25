@@ -4,10 +4,13 @@ import com.mogobiz.session.SessionCookieDirectives._
 import com.mogobiz.session.Session
 */
 
+import com.mogobiz.actors.TagActor
+import com.mogobiz.actors.TagActor.QueryTagRequest
+import com.mogobiz.handlers.TagHandler
 import com.typesafe.scalalogging.slf4j.Logger
 import org.slf4j.LoggerFactory
 import spray.http.{StatusCodes, HttpCookie, DateTime}
-import spray.routing.HttpService
+import spray.routing.{Directives, HttpService}
 import spray.http.MediaTypes._
 import org.json4s._
 import scala.concurrent.ExecutionContext
@@ -15,7 +18,6 @@ import org.json4s.native.JsonMethods._
 import java.util.{Locale, UUID}
 import com.mogobiz.cart._
 import scala.util.Failure
-import scala.Some
 import com.mogobiz.vo.CommentPutRequest
 import com.mogobiz.vo.MogoError
 import scala.util.Success
@@ -23,11 +25,20 @@ import com.mogobiz.cart.AddToCartCommand
 import com.mogobiz.vo.CommentRequest
 import com.mogobiz.vo.CommentGetRequest
 
-/**
- * Created by Christophe on 17/02/14.
- */
+import akka.actor.{ActorSystem, Props, ActorRef}
+import akka.pattern.ask
+import akka.util.Timeout
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import com.mogobiz.actors.TagActor
 
 trait StoreService extends HttpService {
+  /// This section to moved elsewhere
+  implicit val timeout = Timeout(10.seconds)
+  implicit lazy val system = ActorSystem("mogostore")
+  val tagActor = system.actorOf(Props[TagActor])
+  /// END OF This section to moved elsewhere
+
 
   import Json4sProtocol._
   import ExecutionContext.Implicits.global
@@ -122,11 +133,12 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       get{
         //TODO hidden and inactive ???
-        parameters('hidden?false,'inactive?false,'lang?"_all").as(TagRequest) { tagRequest =>
-          onSuccess(esClient.queryTags(storeCode, tagRequest)){ response =>
-            val json = parse(response.entity.asString)
-            val subset = json \ "hits" \ "hits" \ "_source"
-            complete(subset)
+        parameters('hidden?false,'inactive?false,'lang?"_all") { (hidden, inactive, lang) =>
+          // Objet intermediaire permettant de typer les messages à l'acteur
+          // pourpermettre au pattern match de fonctionner dans le receive de l'acteur
+          val tagRequest = QueryTagRequest(storeCode, hidden, inactive, lang)
+          complete {
+            tagActor ? tagRequest
           }
         }
       }
@@ -134,8 +146,8 @@ trait StoreService extends HttpService {
   }
 
   val langsRoutes =
+    get {
     path("langs") {
-      get {
         respondWithMediaType(`application/json`) {
           complete {
             val langs = List("fr","en","de","it","es")
