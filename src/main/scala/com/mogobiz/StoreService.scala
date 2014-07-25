@@ -129,18 +129,16 @@ trait StoreService extends HttpService {
 
   def tagsRoutes(storeCode: String) =
     get {
-      respondWithMediaType(`application/json`) {
-        path("tags") {
-          //TODO hidden and inactive ???
-          parameters('hidden ? false, 'inactive ? false, 'lang ? "_all") {
-            (hidden, inactive, lang) =>
-            // Objet intermediaire permettant de typer les messages à l'acteur
-            // pourpermettre au pattern match de fonctionner dans le receive de l'acteur
-              val tagRequest = QueryTagRequest(storeCode, hidden, inactive, lang)
-              complete {
-                (tagActor ? tagRequest).mapTo[JValue]
-              }
-          }
+      path("tags") {
+        //TODO hidden and inactive ???
+        parameters('hidden ? false, 'inactive ? false, 'lang ? "_all") {
+          (hidden, inactive, lang) =>
+          // Objet intermediaire permettant de typer les messages à l'acteur
+          // pourpermettre au pattern match de fonctionner dans le receive de l'acteur
+            val tagRequest = QueryTagRequest(storeCode, hidden, inactive, lang)
+            complete {
+              (tagActor ? tagRequest).mapTo[JValue]
+            }
         }
       }
     }
