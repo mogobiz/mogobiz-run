@@ -3,8 +3,8 @@ package com.mogobiz.handlers
 import com.mogobiz.ElasticSearchClient
 import org.json4s.JsonAST.JValue
 import org.json4s.native.JsonMethods._
-
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
@@ -13,12 +13,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class TagHandler {
   val esClient = new ElasticSearchClient
 
-  def queryTags(storeCode: String, hidden: Boolean, inactive: Boolean, lang: String): Future[JValue] = {
+  def queryTags(storeCode: String, hidden: Boolean, inactive: Boolean, lang: String): JValue = {
     val response = esClient.queryTags(storeCode, hidden, inactive, lang)
-    response map { responseBody =>
+    val data = response map { responseBody =>
       val json = parse(responseBody.entity.asString)
       val subset = json \ "hits" \ "hits" \ "_source"
       subset
     }
+    Await.result(data, 0 nanos)
   }
 }
