@@ -18,7 +18,7 @@ trait BootedMogobizSystem extends MogobizSystem {
   /**
    * Construct the ActorSystem we will use in our application
    */
-  implicit lazy val system = ActorSystem("mogopay")
+  implicit lazy val system = ActorSystem("mogobiz")
 
   /**
    * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
@@ -35,3 +35,4 @@ trait MogobizActors {
 
   val tagActor = system.actorOf(Props[TagActor])
 }
+

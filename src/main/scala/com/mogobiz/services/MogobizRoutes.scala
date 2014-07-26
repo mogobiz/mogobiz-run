@@ -3,7 +3,6 @@ package com.mogobiz.services
 import java.util.UUID
 
 import com.mogobiz.actors.{MogobizActors, MogobizSystem}
-import mogoauth.services._
 import spray.routing._
 import akka.actor.{ActorLogging, Actor, Props}
 import scala.util.control.NonFatal

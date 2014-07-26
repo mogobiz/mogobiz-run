@@ -16,8 +16,7 @@ import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import scalikejdbc.config.DBs
 import com.mogobiz.cart.TransactionStatus.TransactionStatus
-import scalikejdbc.SQLInterpolation._
-import scala.Some
+import scalikejdbc._
 import scalikejdbc.{DBSession, DB, WrappedResultSet}
 import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
 import org.json4s.native.Serialization._

@@ -34,7 +34,7 @@ import com.mogobiz.actors.TagActor
 trait StoreService extends HttpService {
   /// This section to moved elsewhere
   implicit val timeout = Timeout(10.seconds)
-  val tagActor = Boot.system.actorOf(Props[TagActor])
+  //val tagActor = system.actorOf(Props[TagActor])
   /// END OF This section to moved elsewhere
 
 
@@ -137,7 +137,7 @@ trait StoreService extends HttpService {
           // pourpermettre au pattern match de fonctionner dans le receive de l'acteur
             val tagRequest = QueryTagRequest(storeCode, hidden, inactive, lang)
             complete {
-              (tagActor ? tagRequest).mapTo[JValue]
+              ""//(tagActor ? tagRequest).mapTo[JValue]
             }
         }
       }
