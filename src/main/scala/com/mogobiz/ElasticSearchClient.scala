@@ -1528,6 +1528,7 @@ class ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   private def search(store: String, typeQuery: String, query: String): Future[HttpResponse] = {
+    //TODO add log mechanisme INFO DEBUG etc.
     println(query)
     pipeline(Post(route("/" + store + "/" + typeQuery + "/_search"), query))
   }

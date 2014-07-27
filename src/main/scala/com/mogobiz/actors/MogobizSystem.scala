@@ -34,5 +34,6 @@ trait MogobizActors {
   this: MogobizSystem =>
 
   val tagActor = system.actorOf(Props[TagActor])
+  val brandActor = system.actorOf(Props[BrandActor])
 }
 
