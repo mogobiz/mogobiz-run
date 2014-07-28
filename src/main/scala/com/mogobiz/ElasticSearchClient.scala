@@ -102,7 +102,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
     val response: Future[HttpResponse] = pipeline(Put(route("/" + prefsIndex(store) + "/prefs/" + uuid), query))
     response.flatMap { response => {
-      future(response.status.isSuccess)
+      Future{response.status.isSuccess}
     }
     }
   }
@@ -116,13 +116,13 @@ class ElasticSearchClient /*extends Actor*/ {
         if (response.status.isSuccess) {
           val json = parse(response.entity.asString)
           val subset = json \ "_source"
-          val prefs : Future[JValue] = future(subset)
+          val prefs : Future[JValue] = Future{subset}
           prefs.flatMap { p =>
-            future(p.extract[Prefs])
+            Future{p.extract[Prefs]}
           }
         }
         else {
-          future(Prefs(10))
+          Future{Prefs(10)}
         }
       }
     }
@@ -153,10 +153,10 @@ class ElasticSearchClient /*extends Actor*/ {
         if (response.status.isSuccess) {
           val json = parse(response.entity.asString)
           val subset = json \ "hits" \ "hits" \ "_source"
-          future(subset)
+          Future{subset}
         }else{
           println("WARNING: rates not found => returning empty list")
-          future(List())
+          Future{List()}
         }
       }
     }
@@ -166,7 +166,7 @@ class ElasticSearchClient /*extends Actor*/ {
     implicit def json4sFormats: Formats = DefaultFormats
 
     val currencies = queryCurrencies(store, lang).flatMap {
-      json => future(json.extract[List[Currency]])
+      json => Future{json.extract[List[Currency]]}
     }
 
     currencies
@@ -199,10 +199,10 @@ class ElasticSearchClient /*extends Actor*/ {
               case a:JArray => JArray(a.children.distinct)
               case _ => subset
             }
-            future(result)
+            Future{result}
           } else {
             //TODO log l'erreur
-            future(parse(resp.entity.asString))
+            Future{parse(resp.entity.asString)}
             //throw new ElasticSearchClientException(resp.status.reason)
           }
         }
@@ -221,10 +221,10 @@ class ElasticSearchClient /*extends Actor*/ {
           if (resp.status.isSuccess) {
             val json = parse(resp.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
-            future(subset)
+            Future{subset}
           } else {
             //TODO log l'erreur
-            future(parse(resp.entity.asString))
+            Future{parse(resp.entity.asString)}
             //throw new ElasticSearchClientException(resp.status.reason)
           }
         }
@@ -285,7 +285,7 @@ class ElasticSearchClient /*extends Actor*/ {
       response => {
         val json = parse(response.entity.asString)
         val subset = json \ "hits" \ "hits" \ "_source" \ "languages"
-        future(subset)
+        Future{subset}
       }
     }
   }
@@ -295,7 +295,9 @@ class ElasticSearchClient /*extends Actor*/ {
     implicit def json4sFormats: Formats = DefaultFormats
 
     val languages = queryStoreLanguages(store).flatMap {
-      json => future(json.extract[List[String]])
+      json => Future{
+        json.extract[List[String]]
+      }
     }
 
     Await.result(languages, 1 second)
@@ -444,10 +446,14 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val res = Paging.wrap(json,products,req)
 
-          future(res)
+          Future{
+            res
+          }
         } else {
           //TODO log l'erreur
-          future(parse(response.entity.asString))
+          Future{
+            parse(response.entity.asString)
+          }
           //throw new ElasticSearchClientException(resp.status.reason)
         }
       }
@@ -590,10 +596,10 @@ class ElasticSearchClient /*extends Actor*/ {
           val currency = getCurrency(store,req.currency,req.lang)
           val product = renderProduct(subset, req.country, req.currency, req.lang, currency, List())
 
-          future(product)
+          Future{product}
         } else {
           //TODO log l'erreur
-          future(parse(response.entity.asString))
+          Future{parse(response.entity.asString)}
           //throw new ElasticSearchClientException(resp.status.reason)
         }
       }
@@ -755,10 +761,10 @@ class ElasticSearchClient /*extends Actor*/ {
 
         val jFieldIds = JField("ids", JArray(ids.map {id: BigInt => JString(String.valueOf(id))}))
         var jFieldResult = JField("result", JArray(resultContent))
-        future(JObject(List(jFieldIds, jFieldResult)))
+        Future{JObject(List(jFieldIds, jFieldResult))}
       } else {
         //TODO log l'erreur
-        future(parse(response.entity.asString))
+        Future{parse(response.entity.asString)}
         //throw new ElasticSearchClientException(resp.status.reason)
       }
     }
@@ -866,11 +872,11 @@ class ElasticSearchClient /*extends Actor*/ {
           case (_cat, v) => (_cat, v.map(_._2))
         }
         println(compact(render(result)))
-        future(result)
+        Future{result}
 
       } else {
         //TODO log l'erreur
-        future(parse(response.entity.asString))
+        Future{parse(response.entity.asString)}
         //throw new ElasticSearchClientException(resp.status.reason)
       }
     }
@@ -951,10 +957,10 @@ class ElasticSearchClient /*extends Actor*/ {
           val currentDate = getCalendar(startCalendar.getTime())
           val dates = checkDate(currentDate,endCalendar,List())
 
-          future(dates.reverse)
+          Future{dates.reverse}
         } else {
           //TODO log l'erreur
-          future(parse(response.entity.asString))
+          Future{parse(response.entity.asString)}
           //throw new ElasticSearchClientException(resp.status.reason)
         }
       }
@@ -1032,10 +1038,10 @@ class ElasticSearchClient /*extends Actor*/ {
             }
           }
 
-          future(startingHours)
+          Future{startingHours}
         } else {
           //TODO log l'erreur
-          future(parse(response.entity.asString))
+          Future{parse(response.entity.asString)}
           //throw new ElasticSearchClientException(resp.status.reason)
         }
       }
@@ -1121,11 +1127,11 @@ class ElasticSearchClient /*extends Actor*/ {
     fresponse.flatMap {
       response => {
         if (response.status.isSuccess) {
-          future(true)
+          Future{true}
         } else {
           //TODO log l'erreur
           println(response.entity.asString)
-          future(false)
+          Future{false}
         }
       }
     }
@@ -1169,7 +1175,7 @@ class ElasticSearchClient /*extends Actor*/ {
         jproducts
         */
 
-        future(validResponses)
+        Future{validResponses}
       }
     }
 
@@ -1191,10 +1197,10 @@ class ElasticSearchClient /*extends Actor*/ {
           val json = parse(response.entity.asString)
           val subset = json \ "_source"
           val productIds = subset \ "productIds"
-          future(productIds.extract[List[Long]])
+          Future{productIds.extract[List[Long]]}
         } else {
           //no sessionId available, EmptyList products returned
-          future(List())
+          Future{List()}
         }
       }
     }
@@ -1237,7 +1243,7 @@ class ElasticSearchClient /*extends Actor*/ {
             val json = parse(response.entity.asString)
             val id = (json \"_id").extract[String]
 
-            future(Comment(Some(id),c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId))
+            Future{Comment(Some(id),c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)}
           } else {
             //TODO log l'erreur
             println("new ElasticSearchClientException createComment error")
@@ -1260,7 +1266,7 @@ class ElasticSearchClient /*extends Actor*/ {
       response => {
         println(response.entity.asString)
         if (response.status.isSuccess) {
-          future(useful)
+          Future{useful}
         } else {
           Future.failed(CommentException(CommentException.UPDATE_ERROR))
         }
@@ -1300,7 +1306,7 @@ class ElasticSearchClient /*extends Actor*/ {
           val results = JArray(transformedJson).extract[List[Comment]]
           val pagedResults = Paging.add[Comment](json,results,req)
           //val pagedResults = Utils.addPaging[Comment](json,req)
-          future(pagedResults)
+          Future{pagedResults}
         } else {
           Future.failed(new ElasticSearchClientException("getComments error"))
         }
