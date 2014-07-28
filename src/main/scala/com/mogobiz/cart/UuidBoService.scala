@@ -68,8 +68,8 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
       uuid=rs.string("uuid"),
       xtype = rs.string("xtype"),
       payload=rs.string("payload"),
-      createdDate=rs.dateTime("date_created"),
-      expireDate=rs.dateTime("expire_date"))
+      createdDate=rs.get("date_created"),
+      expireDate=rs.get("expire_date"))
   }
 
   def findByUuidAndXtype(uuid: String, xtype: String): Option[UuidData] = {

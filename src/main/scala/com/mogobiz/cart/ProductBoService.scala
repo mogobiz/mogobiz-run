@@ -131,7 +131,7 @@ object ProductBoService extends BoService {
         }
 
         val cal:Calendar = Calendar.getInstance()
-        str.map(rs => new StockCalendar(rs.long("id"), rs.long("stock"), rs.long("sold"), rs.dateTimeOpt("start_date"), product,ticketType, rs.dateTime("date_created"),rs.dateTime("last_updated"))).single().apply()
+        str.map(rs => new StockCalendar(rs.long("id"), rs.long("stock"), rs.long("sold"), rs.get("start_date"), product,ticketType, rs.get("date_created"),rs.get("last_updated"))).single().apply()
     }
 
 
@@ -231,8 +231,8 @@ object Product extends SQLSyntaxSupport[Product]{
   )
 
 
-  def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
-  def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"), shippingFk= rs.longOpt("shipping_fk"),startDate=rs.dateTimeOpt("start_date"),stopDate=rs.dateTimeOpt("stop_date"))
+  def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.get("start_date"),stopDate=rs.get("stop_date"))
+  def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"), shippingFk= rs.longOpt("shipping_fk"),startDate=rs.get("start_date"),stopDate=rs.get("stop_date"))
 
   def get(id:Long):Option[Product] = {
 
@@ -291,8 +291,8 @@ object TicketType extends SQLSyntaxSupport[TicketType] {
     name=rs.string("name"),
     price=rs.long("price"),minOrder=rs.long("min_order"),maxOrder=rs.long("max_order"),
     stock=Some(Stock(rs)),
-  startDate = rs.dateTimeOpt("start_date"),
-  stopDate = rs.dateTimeOpt("stop_date"),
+  startDate = rs.get("start_date"),
+  stopDate = rs.get("stop_date"),
     product = Some(Product.applyFk(rs)))
 
   def apply(rn: ResultName[TicketType])(rs:WrappedResultSet): TicketType = new TicketType(

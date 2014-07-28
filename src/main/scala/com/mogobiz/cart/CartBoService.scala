@@ -1043,7 +1043,7 @@ object ReductionRule extends SQLSyntaxSupport[ReductionRule] {
   def apply(rs: WrappedResultSet):ReductionRule = ReductionRule(
     id = rs.long("id"), xtype = ReductionRuleType(rs.string("xtype")),quantityMin = rs.longOpt("quantity_min"), quantityMax = rs.longOpt("quantity_max"),
     discount = rs.stringOpt("discount"), xPurchased = rs.longOpt("x_purchased"), yOffered = rs.longOpt("y_offered"),
-    dateCreated = rs.dateTime("date_created"), lastUpdated = rs.dateTime("last_updated")
+    dateCreated = rs.get("date_created"), lastUpdated = rs.get("last_updated")
   )
 }
 object CouponService extends BoService {
@@ -1446,7 +1446,7 @@ object BOCartItem extends SQLSyntaxSupport[BOCartItem]{
     DB readOnly {
       implicit session =>
         sql"select p.* from b_o_cart_item_b_o_product ass inner join b_o_product p on ass.boproduct_id=p.id where b_o_products_fk=${boCartItem.id}"
-          .map(rs => new BOProduct(id=rs.long("id"),acquittement=rs.boolean("acquittement"),price=rs.long("price"),principal=rs.boolean("principal"),productFk=rs.long("product_fk"),dateCreated = rs.dateTime("date_created"),lastUpdated = rs.dateTime("last_updated"))).list().apply()
+          .map(rs => new BOProduct(id=rs.long("id"),acquittement=rs.boolean("acquittement"),price=rs.long("price"),principal=rs.boolean("principal"),productFk=rs.long("product_fk"),dateCreated = rs.get("date_created"),lastUpdated = rs.get("last_updated"))).list().apply()
     }
   }
 

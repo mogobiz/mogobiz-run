@@ -74,7 +74,8 @@ object Utils {
           // on récupère le créneau horraire qui correspond à l'interval pour la date/heure donnée
           val listIncluded:Seq[IntraDayPeriod] = DB readOnly { implicit session =>
             //FIXME pb de précision sur les dates :(
-            sql"select * from intra_day_period where product_fk = ${product.id} and start_date <= ${date.plusSeconds(1)} and end_date >= ${date.minusSeconds(1)}".map(rs => IntraDayPeriod(startDate = rs.dateTime("start_date"), endDate = rs.dateTime("end_date"))).list.apply
+            sql"select * from intra_day_period where product_fk = ${product.id} and start_date <= ${date.plusSeconds(1)} and end_date >= ${date.minusSeconds(1)}"
+              .map(rs => IntraDayPeriod(startDate = rs.get("start_date"), endDate = rs.get("end_date"))).list.apply
           }
           val timeonly = date.toLocalTime
           val res = listIncluded.filter{
