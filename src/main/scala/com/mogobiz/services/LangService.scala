@@ -8,7 +8,7 @@ import org.json4s._
 
 import scala.concurrent.ExecutionContext
 
-class LangService(storeCode: String, langActor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
+class LangService(storeCode: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
 
   import akka.pattern.ask
   import akka.util.Timeout
@@ -24,9 +24,9 @@ class LangService(storeCode: String, langActor: ActorRef)(implicit executionCont
 
   lazy val langs = pathEnd {
     get {
-      val brandRequest = QueryLangRequest(storeCode)
+      val request = QueryLangRequest(storeCode)
       complete {
-        (langActor ? brandRequest).mapTo[JValue]
+        (actor ? request).mapTo[JValue]
       }
     }
   }

@@ -2,13 +2,13 @@ package com.mogobiz.services
 
 import akka.actor.ActorRef
 import com.mogobiz.Json4sProtocol._
-import com.mogobiz.actors.BrandActor.QueryBrandRequest
+import com.mogobiz.actors.CountryActor.QueryCountryRequest
 import spray.routing.Directives
 import org.json4s._
 
 import scala.concurrent.ExecutionContext
 
-class BrandService(storeCode: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
+class CountryService(storeCode: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
 
   import akka.pattern.ask
   import akka.util.Timeout
@@ -17,20 +17,22 @@ class BrandService(storeCode: String, actor: ActorRef)(implicit executionContext
   implicit val timeout = Timeout(2.seconds)
 
   val route = {
-    pathPrefix("brands") {
-      brands
+    pathPrefix("countries") {
+      countries
     }
   }
 
-  lazy val brands = pathEnd {
+  lazy val countries = pathEnd {
     get {
-      parameters('hidden ? false, 'categoryPath.?, 'lang ? "_all") {
-        (hidden, categoryPath, lang) =>
-          val request = QueryBrandRequest(storeCode, hidden, categoryPath, lang)
+      parameters('lang ? "_all") {
+        lang => {
+          val request = QueryCountryRequest(storeCode, lang)
           complete {
             (actor ? request).mapTo[JValue]
           }
+        }
       }
     }
   }
+
 }

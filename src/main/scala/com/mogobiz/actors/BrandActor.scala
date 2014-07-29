@@ -12,8 +12,8 @@ object BrandActor {
 
 class BrandActor extends Actor {
   def receive = {
-    case qbr: QueryBrandRequest => {
-      sender ! brandHandler.queryBrand(qbr.storeCode, qbr.hidden, qbr.categoryPath, qbr.lang)
+    case q: QueryBrandRequest => {
+      sender ! brandHandler.queryBrand(q.storeCode, q.hidden, q.categoryPath, q.lang)
     }
   }
 }

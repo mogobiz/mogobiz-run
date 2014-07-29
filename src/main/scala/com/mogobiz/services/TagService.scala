@@ -8,7 +8,7 @@ import org.json4s._
 
 import scala.concurrent.ExecutionContext
 
-class TagService(storeCode: String, tagActor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
+class TagService(storeCode: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
 
   import akka.pattern.ask
   import akka.util.Timeout
@@ -26,9 +26,9 @@ class TagService(storeCode: String, tagActor: ActorRef)(implicit executionContex
     get {
       parameters('hidden ? false, 'inactive ? false, 'lang ? "_all") {
         (hidden, inactive, lang) =>
-          val tagRequest = QueryTagRequest(storeCode, hidden, inactive, lang)
+          val request = QueryTagRequest(storeCode, hidden, inactive, lang)
           complete {
-            (tagActor ? tagRequest).mapTo[JValue]
+            (actor ? request).mapTo[JValue]
           }
       }
     }

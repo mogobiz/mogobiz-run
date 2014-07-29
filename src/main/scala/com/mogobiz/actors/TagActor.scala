@@ -12,8 +12,8 @@ object TagActor {
 
 class TagActor extends Actor {
   def receive = {
-    case t: QueryTagRequest => {
-      sender ! tagHandler.queryTags(t.storeCode, t.hidden, t.inactive, t.lang)
+    case q: QueryTagRequest => {
+      sender ! tagHandler.queryTags(q.storeCode, q.hidden, q.inactive, q.lang)
     }
   }
 }
