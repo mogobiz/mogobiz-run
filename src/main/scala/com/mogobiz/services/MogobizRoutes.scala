@@ -41,7 +41,8 @@ trait MogobizRoutes extends Directives {
       complete("the store code is " + storeCode)
     } ~
       new TagService(storeCode, tagActor).route ~
-      new BrandService(storeCode, brandActor).route
+      new BrandService(storeCode, brandActor).route ~
+      new LangService(storeCode, langActor).route
   }
 
 

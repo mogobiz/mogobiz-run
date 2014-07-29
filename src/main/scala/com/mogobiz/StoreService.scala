@@ -113,47 +113,47 @@ trait StoreService extends HttpService {
    * @param storeCode
    * @return
    */
-  def   brandsRoutes(storeCode:String) = path("brands") {
+  def brandsRoutes(storeCode: String) = path("brands") {
     respondWithMediaType(`application/json`) {
       get {
-        parameters('hidden?false, 'categoryPath.?, 'lang?"_all").as(BrandRequest) { brandRequest =>
+        parameters('hidden ? false, 'categoryPath.?, 'lang ? "_all").as(BrandRequest) {
+          brandRequest =>
 
-          onSuccess(esClient.queryBrands(storeCode,brandRequest)){ response =>
+            onSuccess(esClient.queryBrands(storeCode, brandRequest)) {
+              response =>
 
-            complete(response)
-          }
+                complete(response)
+            }
         }
       }
     }
   }
 
-  def tagsRoutes(storeCode: String) =
-    get {
-      path("tags") {
-        //TODO hidden and inactive ???
-        parameters('hidden ? false, 'inactive ? false, 'lang ? "_all") {
-          (hidden, inactive, lang) =>
-          // Objet intermediaire permettant de typer les messages à l'acteur
-          // pourpermettre au pattern match de fonctionner dans le receive de l'acteur
-            val tagRequest = QueryTagRequest(storeCode, hidden, inactive, lang)
-            complete {
-              ""//(tagActor ? tagRequest).mapTo[JValue]
-            }
-        }
-      }
-    }
-
-  val langsRoutes =
-    get {
-      path("langs") {
-        respondWithMediaType(`application/json`) {
+  def tagsRoutes(storeCode: String) = get {
+    path("tags") {
+      //TODO hidden and inactive ???
+      parameters('hidden ? false, 'inactive ? false, 'lang ? "_all") {
+        (hidden, inactive, lang) =>
+        // Objet intermediaire permettant de typer les messages à l'acteur
+        // pourpermettre au pattern match de fonctionner dans le receive de l'acteur
+          val tagRequest = QueryTagRequest(storeCode, hidden, inactive, lang)
           complete {
-            val langs = List("fr", "en", "de", "it", "es")
-            langs
+            "" //(tagActor ? tagRequest).mapTo[JValue]
           }
+      }
+    }
+  }
+
+  val langsRoutes  = get {
+    path("langs") {
+      respondWithMediaType(`application/json`) {
+        complete {
+          val langs = List("fr", "en", "de", "it", "es")
+          langs
         }
       }
     }
+  }
 
   def countriesRoutes(storeCode: String) = path("countries") {
     respondWithMediaType(`application/json`) {
