@@ -37,6 +37,7 @@ trait MogobizActors {
   val brandActor = system.actorOf(Props[BrandActor])
   val langActor = system.actorOf(Props[LangActor])
   val countryActor = system.actorOf(Props[CountryActor])
+  val currencyActor = system.actorOf(Props[CurrencyActor])
 
 }
 
