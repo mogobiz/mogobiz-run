@@ -1,6 +1,6 @@
 package com.mogobiz.config
 
-import com.mogobiz.handlers.{CurrencyHandler, CountryHandler,LangHandler, BrandHandler, TagHandler}
+import com.mogobiz.handlers._
 
 object HandlersConfig {
   val tagHandler = new TagHandler
@@ -8,4 +8,5 @@ object HandlersConfig {
   val langHandler = new LangHandler
   val countryHandler = new CountryHandler
   val currencyHandler = new CurrencyHandler
+  val categoryHandler = new CategoryHandler
 }

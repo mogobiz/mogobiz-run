@@ -44,7 +44,8 @@ trait MogobizRoutes extends Directives {
       new BrandService(storeCode, brandActor).route ~
       new LangService(storeCode, langActor).route ~
       new CountryService(storeCode, countryActor).route ~
-      new CurrencyService(storeCode, currencyActor).route
+      new CurrencyService(storeCode, currencyActor).route ~
+      new CategoryService(storeCode, categoryActor).route
   }
 
 
