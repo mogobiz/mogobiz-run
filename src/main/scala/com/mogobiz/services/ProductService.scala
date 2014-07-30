@@ -2,12 +2,12 @@ package com.mogobiz.services
 
 import akka.actor.ActorRef
 import com.mogobiz.Json4sProtocol._
-import com.mogobiz.actors.ProductActor.QueryProductRequest
+import com.mogobiz.actors.ProductActor.{QueryFindProductRequest, QueryProductRequest}
 import spray.routing.Directives
 import org.json4s._
 
 import scala.concurrent.ExecutionContext
-import com.mogobiz.ProductRequest
+import com.mogobiz.{FullTextSearchProductParameters, ProductRequest}
 
 class ProductService(storeCode: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
 
@@ -19,13 +19,15 @@ class ProductService(storeCode: String, actor: ActorRef)(implicit executionConte
 
   val route = {
     pathPrefix("products") {
-      products
+      products ~
+      find
     }
   }
 
   lazy val products = pathEnd {
     get {
-      parameters('maxItemPerPage.?
+      parameters(
+        'maxItemPerPage.?
         , 'pageOffset.?
         , 'xtype.?
         , 'name.?
@@ -42,12 +44,27 @@ class ProductService(storeCode: String, actor: ActorRef)(implicit executionConte
         , 'lang ? "_all"
         , 'currency.?
         , 'country.?).as(ProductRequest) {
-        productRequest =>
-          val request = QueryProductRequest(storeCode, productRequest)
+        params =>
+          val request = QueryProductRequest(storeCode, params)
           complete {
             (actor ? request).mapTo[JValue]
           }
       }
+    }
+  }
+
+  lazy val find = path("find") {
+    parameters(
+      'lang ? "_all"
+      , 'currency.?
+      , 'country.?
+      , 'query
+      , 'highlight ? false).as(FullTextSearchProductParameters) {
+      params =>
+        val request = QueryFindProductRequest(storeCode,params)
+        complete {
+          (actor ? request).mapTo[JValue]
+        }
     }
   }
 }

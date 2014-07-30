@@ -871,7 +871,7 @@ class ElasticSearchClient /*extends Actor*/ {
         val result = rawResult.groupBy(_._1).map {
           case (_cat, v) => (_cat, v.map(_._2))
         }
-        println(compact(render(result)))
+        //println(compact(render(result)))
         Future{result}
 
       } else {
@@ -881,7 +881,7 @@ class ElasticSearchClient /*extends Actor*/ {
       }
     }
 
-    println(query)
+    //println(query)
     val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product,category,brand/_search"), query))
     fresponse.flatMap(response => httpResponseToFuture(response, params.highlight))
 
