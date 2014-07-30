@@ -792,7 +792,7 @@ class ElasticSearchClient /*extends Actor*/ {
    * @param params
    * @return a list of products
    */
-  def queryProductsByFulltextCriteria(store: String, params: FulltextSearchProductParameters): Future[JValue] = {
+  def queryProductsByFulltextCriteria(store: String, params: FullTextSearchProductParameters): Future[JValue] = {
 
     val fields: String = getIncludedFields(store, "name", params._lang)
     val includedFields = if (params.highlight) {

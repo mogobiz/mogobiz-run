@@ -54,7 +54,7 @@ case class CommitTransactionParameters(transactionUuid:String)
 
 case class CancelTransactionParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
-case class FulltextSearchProductParameters(
+case class FullTextSearchProductParameters(
                                             _lang: String
                                             , _currency: Option[String]
                                             , _country: Option[String]
