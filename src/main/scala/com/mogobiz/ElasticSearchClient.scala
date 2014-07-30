@@ -674,7 +674,7 @@ class ElasticSearchClient /*extends Actor*/ {
       }
       """.stripMargin
 
-    println(multipleGetQueryTemplate)
+    //println(multipleGetQueryTemplate)
 
     // Permet de traduire la value ou le name d'une feature
     def translateFeature(feature: JValue, esProperty: String, targetPropery: String): List[JField] = {
@@ -922,7 +922,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val intraDayPeriods = subset \ "intraDayPeriods"
           //TODO test exist or send empty
-          println(pretty(render(intraDayPeriods)))
+          //println(pretty(render(intraDayPeriods)))
           val inPeriods = intraDayPeriods.extract[List[IntraDayPeriod]]
 
           //date or today
@@ -947,7 +947,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
               if (isDateIncluded(inPeriods, currentDate) && !isDateExcluded(outPeriods, currentDate)) {
                 val date = sdf.format(currentDate.getTime)
-                println(date)
+                //println(date)
                 checkDate(currentDate,endCalendar,date::acc)
               }else{
                 checkDate(currentDate,endCalendar,acc)
@@ -1130,7 +1130,7 @@ class ElasticSearchClient /*extends Actor*/ {
           Future{true}
         } else {
           //TODO log l'erreur
-          println(response.entity.asString)
+          //println(response.entity.asString)
           Future{false}
         }
       }
@@ -1246,7 +1246,7 @@ class ElasticSearchClient /*extends Actor*/ {
             Future{Comment(Some(id),c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)}
           } else {
             //TODO log l'erreur
-            println("new ElasticSearchClientException createComment error")
+            //("new ElasticSearchClientException createComment error")
             Future.failed(new ElasticSearchClientException("createComment error"))
           }
         }
@@ -1264,7 +1264,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
     fresponse.flatMap {
       response => {
-        println(response.entity.asString)
+        //println(response.entity.asString)
         if (response.status.isSuccess) {
           Future{useful}
         } else {
@@ -1288,7 +1288,7 @@ class ElasticSearchClient /*extends Actor*/ {
     val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/_search"),query))
     fresponse.flatMap {
       response => {
-        println(response.entity.asString)
+        //println(response.entity.asString)
         if (response.status.isSuccess) {
           val json = parse(response.entity.asString)
           val hits = (json \"hits" \ "hits")
