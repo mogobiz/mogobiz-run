@@ -297,36 +297,29 @@ trait StoreService extends HttpService {
    * @param storeCode
    * @return
    */
-  def productDetailsRoute(storeCode:String,uuid:String) = pathPrefix(Segment) {
+  def productDetailsRoute(storeCode: String, uuid: String) = pathPrefix(Segment) {
     productId => pathEnd {
       respondWithMediaType(`application/json`) {
-        get{
+        get {
           parameters(
             'historize ? false
             , 'visitorId.?
             , 'currency.?
             , 'country.?
-            , 'lang?"_all").as(ProductDetailsRequest) {
-            pdr => /*cookie("mogobiz_uuid") { cookie =>
-            val uuid = cookie.content*/
-              if(pdr.historize){
-                val f = esClient.addToHistory(storeCode,productId.toLong,uuid)
-                f onComplete {
-                  case Success(res) => if(res)println("addToHistory ok")else println("addToHistory failed")
-                  case Failure(t) => {
-                    println("addToHistory future failure")
-                    t.printStackTrace()
-                  }
-                }
+            , 'lang ? "_all").as(ProductDetailsRequest) {
+            pdr =>
+              onSuccess(esClient.queryProductDetails(storeCode, pdr, productId.toLong, uuid)) {
+                details =>
+                  complete(details)
               }
-              onSuccess(esClient.queryProductById(storeCode,productId.toLong, pdr)){ response =>
-                complete(response)
-              }
+
           }
-          //        }
         }
-      }
-    } ~ productDatesRoute(storeCode,productId.toLong) ~ productTimesRoute(storeCode,productId.toLong) ~ commentsRoute(storeCode,productId.toLong)
+      } ~
+        productDatesRoute(storeCode, productId.toLong) ~
+        productTimesRoute(storeCode, productId.toLong) ~
+        commentsRoute(storeCode, productId.toLong)
+    }
   }
 
   def productDatesRoute(storeCode:String, productId: Long) = path("dates") {

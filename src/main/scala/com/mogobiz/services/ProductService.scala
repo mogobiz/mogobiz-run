@@ -2,14 +2,26 @@ package com.mogobiz.services
 
 import akka.actor.ActorRef
 import com.mogobiz.Json4sProtocol._
-import com.mogobiz.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductRequest}
+import com.mogobiz.actors.ProductActor._
 import spray.routing.Directives
 import org.json4s._
 
 import scala.concurrent.ExecutionContext
-import com.mogobiz.{CompareProductParameters, FullTextSearchProductParameters, ProductRequest}
+import com.mogobiz._
+import spray.http.MediaTypes._
+import com.mogobiz.ProductRequest
+import com.mogobiz.CompareProductParameters
+import com.mogobiz.FullTextSearchProductParameters
+import scala.util.{Failure, Success}
+import com.mogobiz.actors.ProductActor.QueryFindProductRequest
+import com.mogobiz.ProductRequest
+import com.mogobiz.CompareProductParameters
+import com.mogobiz.FullTextSearchProductParameters
+import com.mogobiz.ProductDetailsRequest
+import com.mogobiz.actors.ProductActor.QueryProductRequest
+import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
 
-class ProductService(storeCode: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
+class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
 
   import akka.pattern.ask
   import akka.util.Timeout
@@ -21,7 +33,8 @@ class ProductService(storeCode: String, actor: ActorRef)(implicit executionConte
     pathPrefix("products") {
       products ~
       find ~
-      compare
+      compare ~
+      details
     }
   }
 
@@ -55,31 +68,54 @@ class ProductService(storeCode: String, actor: ActorRef)(implicit executionConte
   }
 
   lazy val find = path("find") {
-    parameters(
-      'lang ? "_all"
-      , 'currency.?
-      , 'country.?
-      , 'query
-      , 'highlight ? false).as(FullTextSearchProductParameters) {
-      params =>
-        val request = QueryFindProductRequest(storeCode,params)
-        complete {
-          (actor ? request).mapTo[JValue]
-        }
+    get {
+      parameters(
+        'lang ? "_all"
+        , 'currency.?
+        , 'country.?
+        , 'query
+        , 'highlight ? false).as(FullTextSearchProductParameters) {
+        params =>
+          val request = QueryFindProductRequest(storeCode, params)
+          complete {
+            (actor ? request).mapTo[JValue]
+          }
+      }
     }
   }
 
   lazy val compare = path("compare") {
-    parameters(
-      'lang ? "_all"
-      , 'currency.?
-      , 'country.?
-      , 'ids).as(CompareProductParameters) {
-      params =>
-        val request = QueryCompareProductRequest(storeCode, params)
-        complete {
-          (actor ? request).mapTo[JValue]
+    get {
+      parameters(
+        'lang ? "_all"
+        , 'currency.?
+        , 'country.?
+        , 'ids).as(CompareProductParameters) {
+        params =>
+          val request = QueryCompareProductRequest(storeCode, params)
+          complete {
+            (actor ? request).mapTo[JValue]
+          }
+      }
+    }
+  }
+
+  lazy val details = pathPrefix(Segment) {
+    productId => pathEnd {
+      get {
+        parameters(
+          'historize ? false
+          , 'visitorId.?
+          , 'currency.?
+          , 'country.?
+          , 'lang ? "_all").as(ProductDetailsRequest) {
+          params =>
+            val request = QueryProductDetailsRequest(storeCode, params, productId.toLong, uuid)
+            complete {
+              (actor ? request).mapTo[JValue]
+            }
         }
+      }
     }
   }
 }

@@ -574,7 +574,48 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
+  def queryProductDetails(store: String, params: ProductDetailsRequest, productId: Long, sessionId: String): Future[JValue] = {
 
+    /*cookie("mogobiz_uuid") { cookie =>
+    val uuid = cookie.content*/
+    if (params.historize) {
+      val f = addToHistory(store, productId.toLong, sessionId)
+      f onComplete {
+        case Success(res) => if (res) println("addToHistory ok") else println("addToHistory failed")
+        case Failure(t) => {
+          println("addToHistory future failure")
+          t.printStackTrace()
+        }
+      }
+    }
+    queryProductById(store, productId.toLong, params)
+  }
+
+  /**
+   * Add the product (id) to the list of the user visited products through its sessionId
+   * @param store
+   * @param productId
+   * @param sessionId
+   * @return
+   */
+  def addToHistory(store:String,productId:Long,sessionId:String) : Future[Boolean] = {
+
+    val query = s"""{"script":"ctx._source.productIds.contains(pid) ? (ctx.op = \\"none\\") : ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
+
+    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + historyIndex(store) + "/history/"+sessionId+"/_update"), query))
+
+    fresponse.flatMap {
+      response => {
+        if (response.status.isSuccess) {
+          Future{true}
+        } else {
+          //TODO log l'erreur
+          //println(response.entity.asString)
+          Future{false}
+        }
+      }
+    }
+  }
 
   /**
    * get the product detail
@@ -1111,31 +1152,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
   }
 
-  /**
-   * Add the product (id) to the list of the user visited products through its sessionId
-   * @param store
-   * @param productId
-   * @param sessionId
-   * @return
-   */
-  def addToHistory(store:String,productId:Long,sessionId:String) : Future[Boolean] = {
 
-    val query = s"""{"script":"ctx._source.productIds.contains(pid) ? (ctx.op = \\"none\\") : ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
-
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + historyIndex(store) + "/history/"+sessionId+"/_update"), query))
-
-    fresponse.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-          Future{true}
-        } else {
-          //TODO log l'erreur
-          //println(response.entity.asString)
-          Future{false}
-        }
-      }
-    }
-  }
 
   /**
    * Query for products in paralle according to a list of product ids
