@@ -3,11 +3,12 @@ package com.mogobiz.cart
 import java.io.ByteArrayOutputStream
 import java.util.{Date, Locale}
 import com.mogobiz.cart.CartBoService._
+import com.mogobiz.cart.CustomTypes.CartErrors
 import com.mogobiz.cart.ProductType.ProductType
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
-import com.mogobiz.utils.{Utils, QRCodeUtils, SecureCodec}
+import com.mogobiz.utils.{ResourceBundle, Utils, QRCodeUtils, SecureCodec}
 import com.sun.org.apache.xml.internal.security.utils.Base64
 import com.typesafe.scalalogging.slf4j.Logger
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
@@ -51,9 +52,8 @@ object CartBoService extends BoService {
     }
   }
 
-  def addError(errors:Map[String,String],key:String,msg:String,parameters:List[Any],locale:Locale):Map[String,String]={
-    //TODO translate msg
-    errors+(key -> msg)
+  def addError(errors:CartErrors,key:String,msg:String,parameters:Seq[Any],locale:Locale):CartErrors={
+    errors+(key+"."+msg -> parameters)
   }
 
   /**
@@ -84,7 +84,7 @@ object CartBoService extends BoService {
     val product = ticketType.product.get;
     val startEndDate = Utils.verifyAndExtractStartEndDate(Some(ticketType), dateTime);
 
-    var errors:Map[String,String] = Map()
+    var errors:CartErrors = Map()
 
     if(cartVO.inTransaction){ //if(cartVO.uuid){
       errors = addError(errors, "cart", "initiate.payment.error", null, locale)
@@ -190,7 +190,7 @@ object CartBoService extends BoService {
   @throws[UpdateCartItemException]
   def updateItem(locale:Locale, currencyCode:String, cartVO:CartVO , cartItemId:String , quantity:Int ) : CartVO = {
 
-    val errors:Map[String,String] = Map()
+    val errors:CartErrors = Map()
 
     if(cartVO.inTransaction){ //if (cartVO.uuid) {
       // un paiement a été initialisé, on ne peut plus modifier le contenu du panier avant la fin du paiement (ou l'abandon)
@@ -302,7 +302,7 @@ object CartBoService extends BoService {
   @throws[RemoveCartItemException]
   def removeItem(locale:Locale , currencyCode:String , cartVO:CartVO , cartItemId:String ) : CartVO = {
 
-    val errors:Map[String,String] = Map()
+    val errors:CartErrors = Map()
 
     if(cartVO.inTransaction){ //if (cartVO.uuid) {
       // un paiement a été initialisé, on ne peut plus modifier le contenu du panier avant la fin du paiement (ou l'abandon)
@@ -333,7 +333,7 @@ object CartBoService extends BoService {
 
   @throws[ClearCartException]
   def clear(locale:Locale, currencyCode:String, cartVO:CartVO ) : CartVO = {
-    val errors:Map[String,String] = Map()
+    val errors:CartErrors = Map()
 
     if(cartVO.inTransaction){ //if (cartVO.uuid) {
       // un paiement a été initialisé, on ne peut plus modifier le contenu du panier avant la fin du paiement (ou l'abandon)
@@ -355,7 +355,7 @@ object CartBoService extends BoService {
 
   @throws[AddCouponToCartException]
   def addCoupon(companyCode:String, couponCode:String, cartVO:CartVO, locale:Locale, currencyCode:String) : CartVO = {
-    val errors:Map[String,String] = Map()
+    val errors:CartErrors = Map()
 
     val optCoupon = Coupon.findByCode(companyCode, couponCode)
 
@@ -397,7 +397,7 @@ object CartBoService extends BoService {
    */
   @throws[RemoveCouponFromCartException]
   def removeCoupon(companyCode:String, couponCode:String, cartVO:CartVO,locale:Locale, currencyCode: String ):CartVO = {
-    val errors:Map[String,String] = Map()
+    val errors:CartErrors = Map()
 
     val optCoupon = Coupon.findByCode(companyCode, couponCode)
     val updatedCart = optCoupon match {
@@ -459,7 +459,7 @@ object CartBoService extends BoService {
     assert(!countryCode.isEmpty)
     assert(!currencyCode.isEmpty)
 
-    val errors:Map[String,String] = Map()
+    val errors:CartErrors = Map()
 
     // récup du companyId à partir du storeCode
     val companyId = Company.findByCode(companyCode).get.id
@@ -762,21 +762,38 @@ object CartBoService extends BoService {
   }
 }
 
-class CartException(val errors:Map[String,String]) extends Exception
+object CustomTypes {
+  type CartErrors = Map[String,Seq[Any]]
 
-case class AddCartItemException (override val errors:Map[String,String]) extends CartException(errors) {
+}
+
+class CartException(val errors:CartErrors) extends Exception {
+
+  val bundle = ResourceBundle("i18n.errors")
+
+  def getErrors(locale:Locale): List[String] = {
+    val res = for {
+      (key,value) <- errors
+    } yield  bundle.getWithParams(key,locale,value)
+      //bundle.get(key,locale) //bundle.find(key+"."+value,locale).getOrElse(key+"."+value)
+
+    res.toList
+  }
+}
+
+case class AddCartItemException (override val errors:CartErrors) extends CartException(errors) {
   override def toString = errors.toString()
 }
 
-case class UpdateCartItemException (override val errors:Map[String,String]) extends CartException(errors)
+case class UpdateCartItemException (override val errors:CartErrors) extends CartException(errors)
 
-case class RemoveCartItemException (override val errors:Map[String,String]) extends CartException(errors)
+case class RemoveCartItemException (override val errors:CartErrors) extends CartException(errors)
 
-case class ClearCartException (override val errors:Map[String,String]) extends CartException(errors)
+case class ClearCartException (override val errors:CartErrors) extends CartException(errors)
 
-case class AddCouponToCartException (override val errors:Map[String,String]) extends CartException(errors)
+case class AddCouponToCartException (override val errors:CartErrors) extends CartException(errors)
 
-case class RemoveCouponFromCartException (override val errors:Map[String,String]) extends CartException(errors)
+case class RemoveCouponFromCartException (override val errors:CartErrors) extends CartException(errors)
 
 case class CartVO(price: Long = 0, endPrice: Option[Long] = Some(0), reduction: Long = 0, finalPrice: Long = 0, count: Int = 0, uuid: String,
                   cartItemVOs: Array[CartItemVO]=Array(), coupons: Array[CouponVO]=Array(), inTransaction:Boolean = false)
