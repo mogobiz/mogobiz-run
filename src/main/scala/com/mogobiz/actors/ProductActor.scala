@@ -3,7 +3,11 @@ package com.mogobiz.actors
 import akka.actor.Actor
 import com.mogobiz.actors.ProductActor._
 import com.mogobiz.config.HandlersConfig._
-import com.mogobiz.{ProductDetailsRequest, CompareProductParameters, FullTextSearchProductParameters, ProductRequest}
+import com.mogobiz._
+import com.mogobiz.actors.ProductActor.QueryFindProductRequest
+import com.mogobiz.actors.ProductActor.QueryProductRequest
+import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
+import com.mogobiz.actors.ProductActor.QueryProductDetailsRequest
 import com.mogobiz.ProductDetailsRequest
 import com.mogobiz.actors.ProductActor.QueryFindProductRequest
 import com.mogobiz.actors.ProductActor.QueryProductRequest
@@ -23,6 +27,9 @@ object ProductActor {
 
   case class QueryProductDetailsRequest(storeCode: String, params: ProductDetailsRequest, productId: Long, uuid: String)
 
+  case class QueryProductDatesRequest(storeCode: String, params: ProductDatesRequest, productId: Long, uuid: String)
+
+  case class QueryProductTimesRequest(storeCode: String, params: ProductTimesRequest, productId: Long, uuid: String)
 }
 
 class ProductActor extends Actor {
@@ -30,14 +37,26 @@ class ProductActor extends Actor {
     case q: QueryProductRequest => {
       sender ! productHandler.queryProductsByCriteria(q.storeCode, q.params)
     }
+
     case q: QueryFindProductRequest => {
       sender ! productHandler.queryProductsByFulltextCriteria(q.storeCode, q.params)
     }
+
     case q: QueryCompareProductRequest => {
       sender ! productHandler.getProductsFeatures(q.storeCode, q.params)
     }
+
     case q: QueryProductDetailsRequest => {
       sender ! productHandler.getProductDetails(q.storeCode, q.params, q.productId, q.uuid)
     }
+
+    case q: QueryProductDatesRequest => {
+      sender ! productHandler.getProductDates(q.storeCode, q.params, q.productId, q.uuid)
+    }
+
+    case q: QueryProductTimesRequest => {
+      sender ! productHandler.getProductTimes(q.storeCode, q.params, q.productId, q.uuid)
+    }
+
   }
 }

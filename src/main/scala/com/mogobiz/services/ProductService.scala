@@ -34,7 +34,7 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
       products ~
       find ~
       compare ~
-      details
+      product
     }
   }
 
@@ -100,22 +100,52 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
     }
   }
 
-  lazy val details = pathPrefix(Segment) {
-    productId => pathEnd {
-      get {
-        parameters(
-          'historize ? false
-          , 'visitorId.?
-          , 'currency.?
-          , 'country.?
-          , 'lang ? "_all").as(ProductDetailsRequest) {
-          params =>
-            val request = QueryProductDetailsRequest(storeCode, params, productId.toLong, uuid)
-            complete {
-              (actor ? request).mapTo[JValue]
-            }
-        }
+  lazy val product = pathPrefix(Segment) {
+    productId =>
+      details(productId.toLong) ~
+        dates(productId.toLong) ~
+        times(productId.toLong)
+  }
+
+  def details (productId: Long) = get {
+    get {
+      parameters(
+        'historize ? false
+        , 'visitorId.?
+        , 'currency.?
+        , 'country.?
+        , 'lang ? "_all").as(ProductDetailsRequest) {
+        params =>
+          val request = QueryProductDetailsRequest(storeCode, params, productId.toLong, uuid)
+          complete {
+            (actor ? request).mapTo[JValue]
+          }
       }
     }
   }
+
+  def dates (productId: Long) = path("dates") {
+    get {
+      parameters('date.?).as(ProductDatesRequest) {
+        params =>
+          val request = QueryProductDatesRequest(storeCode, params, productId.toLong, uuid)
+          complete {
+            (actor ? request).mapTo[JValue]
+          }
+      }
+    }
+  }
+
+  def times (productId: Long)= path("times") {
+    get {
+      parameters('date.?).as(ProductTimesRequest) {
+        params =>
+          val request = QueryProductTimesRequest(storeCode, params, productId.toLong, uuid)
+          complete {
+            (actor ? request).mapTo[JValue]
+          }
+      }
+    }
+  }
+
 }
