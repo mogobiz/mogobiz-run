@@ -20,11 +20,14 @@ import com.mogobiz.FullTextSearchProductParameters
 import com.mogobiz.ProductDetailsRequest
 import com.mogobiz.actors.ProductActor.QueryProductRequest
 import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
+import com.mogobiz.vo.{CommentPutRequest, CommentGetRequest, MogoError, CommentRequest}
+import spray.http.StatusCodes
 
 class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
 
   import akka.pattern.ask
   import akka.util.Timeout
+  import org.json4s._
   import scala.concurrent.duration._
 
   implicit val timeout = Timeout(2.seconds)
@@ -104,7 +107,8 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
     productId =>
       details(productId.toLong) ~
         dates(productId.toLong) ~
-        times(productId.toLong)
+        times(productId.toLong) ~
+        comments(productId.toLong)
   }
 
   def details (productId: Long) = get {
@@ -147,5 +151,59 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
       }
     }
   }
+
+  def comments(productId: Long) = pathPrefix("comments") {
+
+      pathEnd {
+        createComment(productId) ~
+          getComment(productId)
+      } ~ updateComment(productId)
+
+  }
+
+
+  def updateComment(productId: Long) = path(Segment) {
+    commentId => {
+      put {
+        entity(as[CommentPutRequest]) {
+          req =>
+            val request = QueryUpdateCommentRequest(storeCode, productId, commentId, req.note == 1)
+            onSuccess(actor ? request) {
+              res =>
+                complete("")
+            }
+        }
+      }
+    }
+  }
+
+
+  def getComment(productId: Long) = get {
+      parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest) {
+        req =>
+          val request = QueryGetCommentRequest(storeCode, productId, req)
+          complete {
+            (actor ? request).mapTo[JValue]
+          }
+      }
+    }
+
+
+  def createComment(productId: Long) = post {
+      entity(as[CommentRequest]) {
+        req =>
+          val request = QueryCreateCommentRequest(storeCode, productId, req)
+          complete{
+            (actor ? request) map {
+              case Success(r) =>  r
+              case Failure(t) => t match {
+                case CommentException(code, message) => complete(StatusCodes.BadRequest, (MogoError(code, message)))
+                case _ => complete(StatusCodes.InternalServerError, t.getMessage)
+              }
+              //TODO check userId in mogopay before inserting
+            }
+          }
+      }
+    }
 
 }
