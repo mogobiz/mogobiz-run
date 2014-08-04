@@ -27,6 +27,7 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
 
   import akka.pattern.ask
   import akka.util.Timeout
+  import org.json4s._
   import scala.concurrent.duration._
 
   implicit val timeout = Timeout(2.seconds)
@@ -151,36 +152,33 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
     }
   }
 
-  def comments(productId: Long) = path("comments") {
-    pathEnd {
-      createComment(productId) ~
-        getComment(productId)
-    } ~ updateComment(productId)
+  def comments(productId: Long) = pathPrefix("comments") {
+
+      pathEnd {
+        createComment(productId) ~
+          getComment(productId)
+      } ~ updateComment(productId)
+
   }
 
 
-  def updateComment(productId: Long) = {
-    path(Segment) {
-      commentId => {
-        put {
-          entity(as[CommentPutRequest]) {
-            req =>
-              val request = QueryUpdateCommentRequest(storeCode, productId, commentId, req.note == 1)
-              onComplete((actor ? request).mapTo[JValue]) {
-                case Success(resp) => complete(resp)
-                case Failure(t) => t match {
-                  case CommentException(code, message) => complete(StatusCodes.BadRequest, (MogoError(code, message)))
-                  case _ => complete(StatusCodes.InternalServerError, t.getMessage)
-                }
-              }
-          }
+  def updateComment(productId: Long) = path(Segment) {
+    commentId => {
+      put {
+        entity(as[CommentPutRequest]) {
+          req =>
+            val request = QueryUpdateCommentRequest(storeCode, productId, commentId, req.note == 1)
+            onSuccess(actor ? request) {
+              res =>
+                complete("")
+            }
         }
       }
     }
   }
 
-  def getComment(productId: Long) = {
-    get {
+
+  def getComment(productId: Long) = get {
       parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest) {
         req =>
           val request = QueryGetCommentRequest(storeCode, productId, req)
@@ -189,22 +187,23 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
           }
       }
     }
-  }
 
-  def createComment(productId: Long) = {
-    post {
+
+  def createComment(productId: Long) = post {
       entity(as[CommentRequest]) {
         req =>
           val request = QueryCreateCommentRequest(storeCode, productId, req)
-          onComplete((actor ? request).mapTo[JValue]) {
-            case Success(resp) => complete(resp)
-            case Failure(t) => t match {
-              case CommentException(code, message) => complete(StatusCodes.BadRequest, (MogoError(code, message)))
-              case _ => complete(StatusCodes.InternalServerError, t.getMessage)
+          complete{
+            (actor ? request) map {
+              case Success(r) =>  r
+              case Failure(t) => t match {
+                case CommentException(code, message) => complete(StatusCodes.BadRequest, (MogoError(code, message)))
+                case _ => complete(StatusCodes.InternalServerError, t.getMessage)
+              }
+              //TODO check userId in mogopay before inserting
             }
-            //TODO check userId in mogopay before inserting
           }
       }
     }
-  }
+
 }
