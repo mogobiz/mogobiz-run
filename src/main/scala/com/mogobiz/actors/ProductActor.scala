@@ -16,6 +16,7 @@ import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
 import com.mogobiz.CompareProductParameters
 import com.mogobiz.actors.ProductActor.QueryProductDetailsRequest
 import com.mogobiz.FullTextSearchProductParameters
+import com.mogobiz.vo.{CommentGetRequest, CommentRequest, CommentPutRequest}
 
 object ProductActor {
 
@@ -30,6 +31,12 @@ object ProductActor {
   case class QueryProductDatesRequest(storeCode: String, params: ProductDatesRequest, productId: Long, uuid: String)
 
   case class QueryProductTimesRequest(storeCode: String, params: ProductTimesRequest, productId: Long, uuid: String)
+
+  case class QueryUpdateCommentRequest(storeCode: String, productId: Long, commentId: String, useful: Boolean)
+
+  case class QueryGetCommentRequest(storeCode: String, productId: Long, req: CommentGetRequest)
+
+  case class QueryCreateCommentRequest(storeCode: String, productId: Long, req: CommentRequest)
 }
 
 class ProductActor extends Actor {
@@ -56,6 +63,18 @@ class ProductActor extends Actor {
 
     case q: QueryProductTimesRequest => {
       sender ! productHandler.getProductTimes(q.storeCode, q.params, q.productId, q.uuid)
+    }
+
+    case q: QueryCreateCommentRequest => {
+      sender ! productHandler.createComment(q.storeCode, q.productId, q.req)
+    }
+
+    case q: QueryGetCommentRequest => {
+      sender ! productHandler.getComment(q.storeCode, q.productId, q.req)
+    }
+
+    case q: QueryUpdateCommentRequest => {
+      sender ! productHandler.updateComment(q.storeCode, q.productId, q.commentId, q.useful)
     }
 
   }

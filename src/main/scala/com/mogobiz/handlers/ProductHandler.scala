@@ -8,6 +8,7 @@ import com.mogobiz.ProductRequest
 import com.mogobiz.CompareProductParameters
 import com.mogobiz.FullTextSearchProductParameters
 import scala.util.{Failure, Success}
+import com.mogobiz.vo.{CommentGetRequest, Paging, CommentRequest, Comment}
 
 
 class ProductHandler {
@@ -48,5 +49,24 @@ class ProductHandler {
     val response = esClient.queryProductTimes(storeCode, productId, params)
     Await.result(response, 10 seconds)
   }
+
+  def updateComment(storeCode: String, productId: Long, commentId: String, useful: Boolean): Boolean = {
+    //TODO with Elastic4s
+    val response = esClient.updateComment(storeCode, productId,commentId,useful)
+    Await.result(response, 10 seconds)
+  }
+
+  def createComment(storeCode: String, productId: Long, req: CommentRequest): Comment = {
+    //TODO with Elastic4s
+    val response = esClient.createComment(storeCode, productId, req)
+    Await.result(response, 10 seconds)
+  }
+
+  def getComment(storeCode: String, productId: Long, req: CommentGetRequest): Paging[Comment] = {
+    //TODO with Elastic4s
+    val response = esClient.getComments(storeCode, productId, req)
+    Await.result(response, 10 seconds)
+  }
+
 
 }
