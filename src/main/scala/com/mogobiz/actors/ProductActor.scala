@@ -37,6 +37,10 @@ object ProductActor {
   case class QueryGetCommentRequest(storeCode: String, productId: Long, req: CommentGetRequest)
 
   case class QueryCreateCommentRequest(storeCode: String, productId: Long, req: CommentRequest)
+
+  case class QueryVisitedProductRequest(storeCode: String, req: VisitorHistoryRequest,  uuid: String)
+
+  case class QueryProductsByIdsRequest(storeCode: String, ids: List[Long], req: ProductDetailsRequest)
 }
 
 class ProductActor extends Actor {
@@ -75,6 +79,14 @@ class ProductActor extends Actor {
 
     case q: QueryUpdateCommentRequest => {
       sender ! productHandler.updateComment(q.storeCode, q.productId, q.commentId, q.useful)
+    }
+
+    case q: QueryVisitedProductRequest => {
+        sender ! productHandler.getProductHistory(q.storeCode, q.req, q.uuid)
+    }
+
+    case q: QueryProductsByIdsRequest => {
+      sender ! productHandler.getProductsByIds(q.storeCode, q.ids, q.req)
     }
 
   }

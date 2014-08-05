@@ -1162,7 +1162,7 @@ class ElasticSearchClient /*extends Actor*/ {
    * @param req
    * @return
    */
-  def getProducts(store: String, ids: List[Long], req: ProductDetailsRequest): Future[List[JValue]] = {
+  def getProductsByIds(store: String, ids: List[Long], req: ProductDetailsRequest): Future[List[JValue]] = {
     implicit def json4sFormats: Formats = DefaultFormats
 
     //TODO replace with _mget op http://www.elasticsearch.org/guide/en/elasticsearch/guide/current/_retrieving_multiple_documents.html

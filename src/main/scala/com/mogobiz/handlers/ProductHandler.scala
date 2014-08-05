@@ -3,7 +3,7 @@ package com.mogobiz.handlers
 import com.mogobiz._
 import org.json4s.JsonAST.JValue
 import scala.concurrent.duration._
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 import com.mogobiz.ProductRequest
 import com.mogobiz.CompareProductParameters
 import com.mogobiz.FullTextSearchProductParameters
@@ -65,6 +65,18 @@ class ProductHandler {
   def getComment(storeCode: String, productId: Long, req: CommentGetRequest): Paging[Comment] = {
     //TODO with Elastic4s
     val response = esClient.getComments(storeCode, productId, req)
+    Await.result(response, 10 seconds)
+  }
+
+  def getProductHistory(storeCode: String, req: VisitorHistoryRequest, uuid: String): List[Long] = {
+    //TODO with Elastic4s
+    val response = esClient.getProductHistory(storeCode, uuid)
+    Await.result(response, 10 seconds)
+  }
+
+  def getProductsByIds(storeCode: String, ids: List[Long], req: ProductDetailsRequest): List[JValue] = {
+    //TODO with Elastic4s
+    val response = esClient.getProductsByIds(storeCode, ids, req)
     Await.result(response, 10 seconds)
   }
 
