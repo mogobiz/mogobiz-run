@@ -6,13 +6,13 @@ import com.mogobiz.actors.ProductActor._
 import spray.routing.Directives
 import org.json4s._
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Await, ExecutionContext}
 import com.mogobiz._
 import spray.http.MediaTypes._
 import com.mogobiz.ProductRequest
 import com.mogobiz.CompareProductParameters
 import com.mogobiz.FullTextSearchProductParameters
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
 import com.mogobiz.actors.ProductActor.QueryFindProductRequest
 import com.mogobiz.ProductRequest
 import com.mogobiz.CompareProductParameters
@@ -35,11 +35,26 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
   val route = {
     pathPrefix("products") {
       products ~
-      find ~
-      compare ~
-      product
+        find ~
+        compare ~
+        product
+    } ~
+      history
+  }
+
+  lazy val history = path("history") {
+    get {
+      parameters('currency.?, 'country.?, 'lang ? "_all").as(VisitorHistoryRequest) {
+        req => {
+          val request = QueryVisitedProductRequest(storeCode, req, uuid)
+          complete {
+            (actor ? request).mapTo[List[JValue]]
+          }
+        }
+      }
     }
   }
+
 
   lazy val products = pathEnd {
     get {

@@ -364,7 +364,7 @@ trait StoreService extends HttpService {
                 if(ids.isEmpty){
                   complete(List()) //return empty list
                 }else{
-                  onSuccess(esClient.getProducts(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
+                  onSuccess(esClient.getProductsByIds(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
                     println("visitedProductsRoute returned results",products.length)
                     complete(products)
                   }
