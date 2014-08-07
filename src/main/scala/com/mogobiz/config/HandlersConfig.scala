@@ -10,4 +10,5 @@ object HandlersConfig {
   val currencyHandler = new CurrencyHandler
   val categoryHandler = new CategoryHandler
   val productHandler = new ProductHandler
+  val preferenceHandler = new PreferenceHandler
 }
