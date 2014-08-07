@@ -47,32 +47,8 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
       parameters('currency.?, 'country.?, 'lang ? "_all").as(VisitorHistoryRequest) {
         req => {
           val request = QueryVisitedProductRequest(storeCode, req, uuid)
-          val ids = Await.result((actor ? request), 2 seconds).asInstanceOf[List[Long]]
           complete {
-            if (ids.isEmpty) {
-              List()
-            } else {
-              val request = QueryProductsByIdsRequest(storeCode, ids, ProductDetailsRequest(false, None, req.currency, req.country, req.lang))
-              val products = Await.result((actor ? request), 2 seconds).asInstanceOf[List[JValue]]
-              println("visitedProductsRoute returned results", products.length)
-              products
-            }
-            /*            (actor ? request).mapTo[Try[List[Long]]] map {
-                          case Success(ids) => {
-                            if (ids.isEmpty) {
-                              List()
-                            } else {
-                              val request = QueryProductsByIdsRequest(storeCode, ids, ProductDetailsRequest(false, None, req.currency, req.country, req.lang))
-                              complete {
-                                (actor ? request).mapTo[Try[List[JValue]]] map {
-                                  case Success(p) => println("visitedProductsRoute returned results", p.length); p
-                                  case Failure(t) => t
-                                }
-                              }
-                            }
-                          }
-                          case Failure(t) => complete(t)
-                        }*/
+            (actor ? request).mapTo[List[JValue]]
           }
         }
       }

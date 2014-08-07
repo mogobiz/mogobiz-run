@@ -2,6 +2,7 @@ package com.mogobiz.handlers
 
 import com.mogobiz._
 import org.json4s.JsonAST.JValue
+import org.json4s._
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Await}
 import com.mogobiz.ProductRequest
@@ -68,17 +69,18 @@ class ProductHandler {
     Await.result(response, 10 seconds)
   }
 
-  def getProductHistory(storeCode: String, req: VisitorHistoryRequest, uuid: String): List[Long] = {
+  def getProductHistory(storeCode: String, req: VisitorHistoryRequest, uuid: String): List[JValue] = {
     //TODO with Elastic4s
     val response = esClient.getProductHistory(storeCode, uuid)
-    Await.result(response, 10 seconds)
+    val ids = Await.result(response, 10 seconds)
+      if (ids.isEmpty) {
+        List()
+      } else {
+        val future = esClient.getProductsByIds(storeCode,ids,ProductDetailsRequest(false, None, req.currency, req.country, req.lang))
+        val products = Await.result(future, 10 seconds)
+        println("visitedProductsRoute returned results", products.length)
+        products
+      }
+    
   }
-
-  def getProductsByIds(storeCode: String, ids: List[Long], req: ProductDetailsRequest): List[JValue] = {
-    //TODO with Elastic4s
-    val response = esClient.getProductsByIds(storeCode, ids, req)
-    Await.result(response, 10 seconds)
-  }
-
-
 }
