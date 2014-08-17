@@ -12,8 +12,8 @@ class TaxRateBoServiceSpec  extends Specification {
   DBs.setupAll()
 
   val service = TaxRateBoService
-  val taxRateId = 12
-  val companyId = 8
+  val taxRateId = 13
+  val companyId = 9
   val defaultTaxRate = new TaxRate(taxRateId,"",companyId)
 
   val taxRate = Some(defaultTaxRate)

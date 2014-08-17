@@ -14,7 +14,7 @@ class ProductBoServiceSpec  extends Specification {
 
   "increment stock by 1" in {
 
-    val ttid = 51
+    val ttid = 63
     val ticketType = TicketType.get(ttid)
     //id:Long,product:Product,stock:Option[Stock],name:String,price:Long
     ticketType.id must be_==(ttid)
@@ -31,7 +31,7 @@ class ProductBoServiceSpec  extends Specification {
 
   "decrement stock by 1" in {
 
-    val ttid = 58
+    val ttid = 72
     val ticketType = TicketType.get(ttid)
     //id:Long,product:Product,stock:Option[Stock],name:String,price:Long
     ticketType.id must be_==(ttid)

@@ -22,13 +22,22 @@ class CartBoServiceSpec extends Specification {
   val renderService = CartRenderService
 
   val defaultCurrency = new Currency(2, 0.01, "EUR", "euro")
+  val cur = "EUR"
 
-  "init cart" in {
+  private def generateUuid = {
     val uuid = UUID.randomUUID.toString
     println(s"uuid=${uuid}")
+    uuid
+  }
 
+  "init cart" in {
+    // init vars
+    val uuid = generateUuid
+
+    //method to test
     val cart = service.initCart(uuid)
 
+    //assertions
     cart.uuid must_== (uuid)
     cart.finalPrice must_== 0
     cart.count must_== 0
@@ -36,17 +45,21 @@ class CartBoServiceSpec extends Specification {
     cart.coupons.length must_== 0
   }
 
-  "addToCart a product" in {
-    val cur = "EUR"
-    val uuid = UUID.randomUUID.toString
-    println(s"uuid=${uuid}")
+  "addToCart a NO_DATE product" in {
+    val uuid = generateUuid
+
     val cart = service.initCart(uuid)
     val ttid = 63
-    //val ticketType = TicketType.get(ttid)
+    val ticketType = TicketType.get(ttid)
+
+    val product = ticketType.product.get
+    val expectedShipping = product.shipping.get
+
     val quantity = 5
     val dateTime = None
-    val resCart = service.addItem(Locale.getDefault, cur, cart, ttid, quantity, dateTime, List())
 
+
+    val resCart = service.addItem(Locale.getDefault, cur, cart, ttid, quantity, dateTime, List())
     val item = resCart.cartItemVOs(0)
 
     println("cart.price=" + resCart.price)
@@ -54,21 +67,20 @@ class CartBoServiceSpec extends Specification {
     resCart.cartItemVOs.size must be_==(1)
     item.shipping must beSome[ShippingVO]
     val shipping = item.shipping.get
-    shipping.id must_== (55)
-    shipping.weight must_== (25)
+    shipping.id must_== (expectedShipping.id)
+    shipping.weight must_== (expectedShipping.weight)
     shipping.free must beFalse
     shipping.amount must_== (0)
 
   }
 
-  /*
+
   "addToCart should fail if quantity is too much" in {
-    val cur = "EUR"
-    val uuid = UUID.randomUUID.toString
-    println(s"uuid=${uuid}")
+    val uuid = generateUuid
+
     val cart = service.initCart(uuid)
-    val ttid = 58
-    //val ticketType = TicketType.get(ttid)
+    val ttid = 63
+    val ticketType = TicketType.get(ttid)
     val quantity = 100
     val dateTime = None
     service.addItem(Locale.getDefault, cur, cart, ttid, quantity, dateTime, List()) must throwA[AddCartItemException]
@@ -79,17 +91,16 @@ class CartBoServiceSpec extends Specification {
       case _ => false
     } must beTrue
     */
+    //TODO check the message
 
   }
 
 
-
   "addToCart a product + another" in {
-    val cur = "EUR"
-    val uuid = UUID.randomUUID.toString
-    println(s"uuid=${uuid}")
+    val uuid = generateUuid
+
     val cart = service.initCart(uuid)
-    val ttid58 = 58
+    val ttid58 = 63
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
     val dateTime = None
@@ -97,11 +108,11 @@ class CartBoServiceSpec extends Specification {
 
     println("1. cart.price=" + resCart.price)
     resCart.price must be_==(tt58.price)
-    resCart.price must be_==(35000)
+    resCart.price must be_==(30000)
     resCart.count must be_==(1)
     resCart.cartItemVOs.size must be_==(1)
 
-    val ttid51 = 51
+    val ttid51 = 72
     val tt51 = TicketType.get(ttid51)
     val resCart2 = service.addItem(Locale.getDefault, cur, resCart, ttid51, quantity, dateTime, List())
 
@@ -112,7 +123,7 @@ class CartBoServiceSpec extends Specification {
     resCart2.cartItemVOs.size must be_==(2)
 
   }
-
+/*
   "addToCart the same product twice" in {
     //FIXME fail("ne gere pas l'ajout du mm produit au panier")
     val cur = "EUR"
@@ -140,14 +151,15 @@ class CartBoServiceSpec extends Specification {
     resCart2.cartItemVOs.size must be_==(1)
 
   }
+*/
+
 
   "updateCart change the quantity" in {
     //took 5 and update to 1
-    val cur = "EUR"
-    val uuid = UUID.randomUUID.toString
-    println(s"uuid=${uuid}")
+    val uuid = generateUuid
     val cart = service.initCart(uuid)
-    val ttid58 = 58
+
+    val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
     println(tt58)
     val quantity = 5
@@ -188,14 +200,14 @@ class CartBoServiceSpec extends Specification {
     }*/
   }
 
+
   "delete item from cart after 2 addItem" in {
 
-    val cur = "EUR"
-    val uuid = UUID.randomUUID.toString
+    val uuid = generateUuid
+
     var locale = Locale.getDefault()
-    println(s"uuid=${uuid}")
     val cart = service.initCart(uuid)
-    val ttid58 = 58
+    val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
     val dateTime = None
@@ -209,7 +221,7 @@ class CartBoServiceSpec extends Specification {
     resCart.count must be_==(1)
     resCart.cartItemVOs.size must be_==(1)
 
-    val ttid51 = 51
+    val ttid51 = 63
     val tt51 = TicketType.get(ttid51)
     val resCart2 = service.addItem(locale, cur, resCart, ttid51, quantity, dateTime, List())
 
@@ -228,14 +240,14 @@ class CartBoServiceSpec extends Specification {
 
   }
 
+
   "clear cart after 2 addItem" in {
 
-    val cur = "EUR"
-    val uuid = UUID.randomUUID.toString
+    val uuid = generateUuid
+
     var locale = Locale.getDefault()
-    println(s"uuid=${uuid}")
     val cart = service.initCart(uuid)
-    val ttid58 = 58
+    val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
     val dateTime = None
@@ -249,7 +261,7 @@ class CartBoServiceSpec extends Specification {
     resCart.count must be_==(1)
     resCart.cartItemVOs.size must be_==(1)
 
-    val ttid51 = 51
+    val ttid51 = 63
     val tt51 = TicketType.get(ttid51)
     val resCart2 = service.addItem(locale, cur, resCart, ttid51, quantity, dateTime, List())
 
@@ -267,6 +279,7 @@ class CartBoServiceSpec extends Specification {
 
   }
 
+  /*
   def prepareCartWith2items: CartVO = {
 
     val cur = "EUR"

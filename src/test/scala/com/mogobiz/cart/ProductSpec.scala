@@ -12,8 +12,8 @@ class ProductSpec extends Specification {
 
 
   "get by id" in {
-    var taxRateId = 12
-    val id = 56
+    var taxRateId = 13
+    val id = 61
     val res = Product.get(id)
 
     //res must beSome(coupon)
