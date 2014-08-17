@@ -892,7 +892,9 @@ object LinearUnit extends Enumeration {
 case class ShippingVO
 (id:Long, weight: Long, weightUnit: WeightUnit, width: Long, height: Long, depth: Long, linearUnit: LinearUnit, amount: Long, free: Boolean)
 
-case class ReductionSold(id:Long,sold:Long=0,dateCreated:DateTime = DateTime.now, lastUpdated:DateTime = DateTime.now) extends DateAware
+case class ReductionSold(id:Long,sold:Long=0,dateCreated:DateTime = DateTime.now, lastUpdated:DateTime = DateTime.now
+                         , override val uuid : String  = java.util.UUID.randomUUID().toString()) extends Entity with DateAware
+//TODO find a way to avoid repeating the uuid here and compliant with ScalikeJDBC SQLSyntaxSupport
 
 object ReductionSold extends SQLSyntaxSupport[ReductionSold] {
 
@@ -1077,7 +1079,7 @@ object CouponService extends BoService {
           id = newId()
           val d = ReductionSold(id)
           val col = ReductionSold.column
-          insert.into(ReductionSold).namedValues(col.id -> d.id, col.sold -> d.sold, col.dateCreated -> d.dateCreated, col.lastUpdated -> d.lastUpdated)
+          insert.into(ReductionSold).namedValues(col.id -> d.id, col.sold -> d.sold, col.dateCreated -> d.dateCreated, col.lastUpdated -> d.lastUpdated, col.uuid -> d.uuid)
         }.update.apply()
 
         val c = Coupon.column
