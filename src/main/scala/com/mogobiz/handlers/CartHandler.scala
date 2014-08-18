@@ -66,7 +66,7 @@ class CartHandler {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.errors)
+          ("errors" -> e.getErrors(locale))
         )
         response
       }
@@ -97,7 +97,7 @@ class CartHandler {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.errors)
+          ("errors" -> e.getErrors(locale))
         )
         response
       }
@@ -127,7 +127,7 @@ class CartHandler {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.errors)
+          ("errors" -> e.getErrors(locale))
         )
         response
       }
@@ -160,7 +160,7 @@ class CartHandler {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.errors)
+          ("errors" -> e.getErrors(locale))
         )
         response
       }
@@ -191,7 +191,7 @@ class CartHandler {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.errors)
+          ("errors" -> e.getErrors(locale))
         )
         response
       }
@@ -232,7 +232,7 @@ class CartHandler {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.errors)
+          ("errors" -> e.getErrors(locale))
         )
         response
       }
@@ -256,7 +256,7 @@ class CartHandler {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.errors)
+          ("errors" -> e.getErrors(locale))
         )
         response
       }
@@ -283,7 +283,7 @@ class CartHandler {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.errors)
+          ("errors" -> e.getErrors(locale))
         )
         response
       }
