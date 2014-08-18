@@ -2,6 +2,7 @@ package com.mogobiz.cart
 
 import java.io.ByteArrayOutputStream
 import java.util.{Date, Locale}
+import com.mogobiz.cart.CartBoService._
 import com.mogobiz.cart.ProductType.ProductType
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz.cart.WeightUnit.WeightUnit
@@ -17,11 +18,9 @@ import org.slf4j.LoggerFactory
 import scalikejdbc.config.DBs
 import com.mogobiz.cart.TransactionStatus.TransactionStatus
 import scalikejdbc._
-import scalikejdbc.{DBSession, DB, WrappedResultSet}
 import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
 import org.json4s.native.Serialization._
 import scala.Some
-import scalikejdbc.WrappedResultSet
 
 /**
  * Created by Christophe on 05/05/2014.
@@ -504,29 +503,8 @@ object CartBoService extends BoService {
     //TRANSACTION 2 : INSERTIONS
     DB localTx { implicit session =>
 
-      var boCartId = 0
-      withSQL {
-        // =boCart.save()
-        val newid = newId()
-        boCartId = newid
-        val b = BOCart.column
-        insert.into(BOCart).namedValues(
-          b.id -> boCartId,
-          b.buyer -> "christophe.galant@ebiznext.com", //FIXME
-          b.companyFk -> companyId,
-          b.currencyCode -> currencyCode,
-          b.currencyRate -> rate.rate,
-          b.date -> DateTime.now,
-          b.dateCreated -> DateTime.now,
-          b.lastUpdated -> DateTime.now,
-          b.price -> cartTTC.price,
-          b.status -> TransactionStatus.PENDING.toString,
-          b.transactionUuid -> cartTTC.uuid
-        )
-      }.update.apply()
-
-      val boCart = new BOCart(
-        id = boCartId,
+      val boCartTmp = BOCart(
+        id = 0,
         buyer = "christophe.galant@ebiznext.com", //FIXME
         transactionUuid = cartTTC.uuid,
         date = DateTime.now,
@@ -537,35 +515,21 @@ object CartBoService extends BoService {
         companyFk = companyId
       )
 
+      val boCart = BOCart.insertTo(boCartTmp)
 
       cartTTC.cartItemVOs.foreach { cartItem => {
         val ticketType = TicketType.get(cartItem.skuId)
 
         // Création du BOProduct correspondant au produit principal
-        var boProductId = 0
-        withSQL {
-          val boProduct = new BOProduct(id = boProductId, principal = true, productFk = cartItem.productId, price = cartItem.totalEndPrice.getOrElse(-1))
-          //=boProduct.save()
-          val newid = newId()
-          boProductId = newid
-          //acquittement:Boolean=false,price:Long=0,principal:Boolean=false,productFk:Long,dateCreated:DateTime = DateTime.now,lastUpdate:DateTime = DateTime.now
-          val b = BOProduct.column
-          insert.into(BOProduct).namedValues(
-            b.id -> newid,
-            b.acquittement -> boProduct.acquittement,
-            b.price -> boProduct.price,
-            b.principal -> boProduct.principal,
-            b.productFk -> boProduct.productFk,
-            b.dateCreated -> boProduct.dateCreated,
-            b.lastUpdated -> boProduct.lastUpdated)
-        }.update.apply()
+        val boProductTmp = BOProduct(id = 0, principal = true, productFk = cartItem.productId, price = cartItem.totalEndPrice.getOrElse(-1))
+        val boProduct = BOProduct.insert2(boProductTmp)
+        val boProductId = boProduct.id
 
-
-        cartItem.registeredCartItemVOs.foreach {
+          cartItem.registeredCartItemVOs.foreach {
           registeredCartItem => {
             // Création des BOTicketType (SKU)
             var boTicketId = 0
-            val boTicketTmp = new BOTicketType(id = boTicketId,
+            val boTicketTmp = BOTicketType(id = boTicketId,
               quantity = 1, price = cartItem.totalEndPrice.getOrElse(-1),shortCode = None,
               ticketType = Some(ticketType.name), firstname = registeredCartItem.firstname,
               lastname = registeredCartItem.lastname, email = registeredCartItem.email,
@@ -577,10 +541,8 @@ object CartBoService extends BoService {
             )
 
             withSQL {
-              //=boTicket.save()
               val b = BOTicketType.column
-              val newid = newId()
-              boTicketId = newid
+              boTicketId =  newId()
 
               //génération du qr code uniquement pour les services
               val product = Product.get(cartItem.productId).get
@@ -606,6 +568,7 @@ object CartBoService extends BoService {
               }
 
               insert.into(BOTicketType).namedValues(
+                b.uuid -> boTicket.uuid,
                 b.id -> boTicketId, b.shortCode -> boTicket.shortCode, b.quantity -> boTicket.quantity,
                 b.price -> boTicket.price, b.ticketType -> boTicket.ticketType, b.firstname -> boTicket.firstname,
                 b.lastname -> boTicket.lastname, b.email -> boTicket.email, b.phone -> boTicket.phone, b.age -> boTicket.age,
@@ -620,7 +583,7 @@ object CartBoService extends BoService {
 
         //create Sale
         var saleId = 0
-        val sale = new BOCartItem(id = saleId,
+        val sale = BOCartItem(id = saleId,
           code = "SALE_" + boCart.id + "_" + boProductId,
           price = cartItem.price,
           tax = cartItem.tax.get,
@@ -636,11 +599,10 @@ object CartBoService extends BoService {
           //bOProducts = [boProduct]
         )
         withSQL {
-          // = sale.save()
           val b = BOCartItem.column
-          val newid = newId()
-          saleId = newid
+          saleId = newId()
           insert.into(BOCartItem).namedValues(
+            b.uuid -> sale.uuid,
             b.id -> saleId,
             b.code -> ("SALE_" + boCart.id + "_" + boProductId),
             b.price -> cartItem.price,
@@ -1281,7 +1243,9 @@ object TransactionStatus extends Enumeration {
 }
 
 case class BOProduct(id:Long,acquittement:Boolean=false,price:Long=0,principal:Boolean=false,productFk:Long,
-                     dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
+                     dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now
+                      , override val uuid : String = java.util.UUID.randomUUID().toString()
+                      ) extends Entity with DateAware {
 
   def product : Product = {
     Product.get(this.productFk).get
@@ -1296,6 +1260,26 @@ object BOProduct extends SQLSyntaxSupport[BOProduct]{
 
   def apply(rn: ResultName[BOProduct])(rs:WrappedResultSet): BOProduct = new BOProduct(id=rs.get(rn.id),acquittement=rs.get(rn.acquittement),price=rs.get(rn.price),principal=rs.get(rn.principal),productFk=rs.get(rn.productFk),dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
 
+  def insert2(boProduct: BOProduct)(implicit session: DBSession) : BOProduct = {
+    var boProductId = 0
+    applyUpdate {
+      boProductId = newId()
+
+      val b = BOProduct.column
+      insert.into(BOProduct).namedValues(
+        b.uuid -> boProduct.uuid,
+        b.id -> boProductId,
+        b.acquittement -> boProduct.acquittement,
+        b.price -> boProduct.price,
+        b.principal -> boProduct.principal,
+        b.productFk -> boProduct.productFk,
+        b.dateCreated -> boProduct.dateCreated,
+        b.lastUpdated -> boProduct.lastUpdated)
+    }
+
+    boProduct.copy(id = boProductId)
+
+  }
 
   def delete(id:Long)(implicit session: DBSession) {
     withSQL {
@@ -1310,15 +1294,15 @@ case class BOTicketType(id:Long,quantity : Int = 1, price:Long,shortCode:Option[
                         qrcode:Option[String]=None, qrcodeContent:Option[String]=None,
                         //bOProduct : BOProduct,
                         bOProductFk : Long,
-                        dateCreated:DateTime,lastUpdated:DateTime) extends DateAware {
+                        dateCreated:DateTime,lastUpdated:DateTime
+                        , override val uuid : String = java.util.UUID.randomUUID().toString() //TODO
+                         ) extends Entity with  DateAware {
 
-  /*
-  def delete()(implicit session: DBSession) {
-    withSQL {
-      deleteFrom(BOTicketType).where.eq(BOTicketType.column.id,  this.id)
-    }.update.apply()
-  }
-  */
+  /* TODO if possible
+  def insert2(boTicketType : BOTicketType)(implicit session: DBSession) : BOTicketType = {
+
+  }*/
+
   def delete()(implicit session: DBSession){
     BOTicketType.delete(this.id)
   }
@@ -1354,7 +1338,9 @@ object BOTicketType extends SQLSyntaxSupport[BOTicketType]{
 }
 
 case class BOCart(id:Long, transactionUuid:String,date:DateTime, price:Long,status : TransactionStatus, currencyCode:String,currencyRate:Double,companyFk:Long,buyer:String = "christophe.galant@ebiznext.com",
-                  dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
+                  dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now
+                  , override val uuid : String = java.util.UUID.randomUUID().toString() //TODO
+                   ) extends Entity with DateAware {
 
   def delete()(implicit session: DBSession){
     BOCart.delete(this.id)
@@ -1393,7 +1379,29 @@ object BOCart extends SQLSyntaxSupport[BOCart]{
     }
   }
 
-  //def insert():BOCart = {}
+  def insertTo(boCart: BOCart)(implicit session: DBSession):BOCart = {
+    var boCartId = 0
+    applyUpdate {
+      boCartId = newId()
+      val b = BOCart.column
+      insert.into(BOCart).namedValues(
+        b.uuid -> boCart.uuid,
+        b.id -> boCartId,
+        b.buyer -> boCart.buyer,
+        b.companyFk -> boCart.companyFk,
+        b.currencyCode -> boCart.currencyCode,
+        b.currencyRate -> boCart.currencyRate,
+        b.date -> DateTime.now,
+        b.dateCreated -> DateTime.now,
+        b.lastUpdated -> DateTime.now,
+        b.price -> boCart.price,
+        b.status -> TransactionStatus.PENDING.toString,
+        b.transactionUuid -> boCart.transactionUuid
+      )
+    } //.update.apply()
+
+    boCart.copy(id = boCartId)
+  }
 
   def delete(id:Long)(implicit session: DBSession) {
     withSQL {
@@ -1416,7 +1424,9 @@ case class BOCartItem(id:Long,code : String,
                       endDate : Option[DateTime],
                       //bOCart : BOCart,
                       bOCartFk : Long,
-                      dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
+                      dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now
+                      , override val uuid : String = java.util.UUID.randomUUID().toString() //TODO
+                       ) extends Entity with  DateAware {
 
   def delete()(implicit session: DBSession){
     BOCartItem.delete(this.id)
