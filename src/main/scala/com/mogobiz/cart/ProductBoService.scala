@@ -119,7 +119,7 @@ object ProductBoService extends BoService {
    * @return
    */
   //private
-  def retrieveStockCalendar(product:Product , ticketType:TicketType , date:Option[DateTime] , stock:Stock ) : StockCalendar ={
+  def retrieveStockCalendarOld(product:Product , ticketType:TicketType , date:Option[DateTime] , stock:Stock ) : StockCalendar ={
 
     val stockCal = DB readOnly {
       implicit session =>
@@ -140,12 +140,37 @@ object ProductBoService extends BoService {
 
       DB localTx { implicit session =>
         val newid = newId()
-        val defaultStockCal = new StockCalendar(newid, stock.stock, 0, date, product, ticketType, now, now)
+        val defaultStockCal = StockCalendar(newid, stock.stock, 0, date, product, ticketType, now, now)
 
-        sql"""insert into stock_calendar(id, date_created, last_updated, product_fk, sold, start_date, stock, ticket_type_fk)
-           values (${newid},${now},${now},${defaultStockCal.product.id},${defaultStockCal.sold},${date},${defaultStockCal.stock},${defaultStockCal.ticketType.id})""".
-          update().apply()
+        StockCalendar.insert(defaultStockCal).update().apply() //TODO find a way to include .update().apply() into the insert method
         defaultStockCal
+      }
+    }
+  }
+
+  def retrieveStockCalendar(product:Product , ticketType:TicketType , date:Option[DateTime] , stock:Stock ) : StockCalendar ={
+
+    DB localTx { implicit session =>
+        val str = product.calendarType match {
+          case ProductCalendar.NO_DATE => sql"select * from stock_calendar where ticket_type_fk=${ticketType.id}"
+          case _ =>{
+            sql"select * from stock_calendar where ticket_type_fk=${ticketType.id} and start_date=${date}"
+          }
+        }
+
+        val cal:Calendar = Calendar.getInstance()
+        val stockCal = str.map(rs => new StockCalendar(rs.long("id"), rs.long("stock"), rs.long("sold"), rs.get("start_date"), product,ticketType, rs.get("date_created"),rs.get("last_updated"))).single().apply()
+
+      stockCal match {
+        case Some(s) => s
+        case None => {
+          val now = new DateTime()
+          val newid = newId()
+          val defaultStockCal = StockCalendar(newid, stock.stock, 0, date, product, ticketType, now, now)
+
+          StockCalendar.insert(defaultStockCal).update().apply() //TODO find a way to include .update().apply() into the insert method
+          defaultStockCal
+        }
       }
     }
   }
@@ -167,8 +192,15 @@ object Stock  extends SQLSyntaxSupport[Stock]{
 
 case class StockCalendar(
                           id:Long,stock:Long,sold:Long,startDate:Option[DateTime],product:Product,ticketType:TicketType,
-                          dateCreated:DateTime,lastUpdated:DateTime) extends DateAware
+                          dateCreated:DateTime,lastUpdated:DateTime) extends Entity with DateAware
 
+object StockCalendar {
+
+  def insert(s:StockCalendar) = {
+    sql"""insert into stock_calendar(id, date_created, last_updated, product_fk, sold, start_date, stock, ticket_type_fk, uuid)
+           values (${s.id},${s.dateCreated},${s.lastUpdated},${s.product.id},${s.sold},${s.startDate},${s.stock},${s.ticketType.id}, ${s.uuid})"""
+  }
+}
 case class Poi(id:Long,road1:Option[String],road2:Option[String],city:Option[String],postalCode:Option[String],state:Option[String],countryCode:Option[String])
 object Poi extends SQLSyntaxSupport[Poi] {
 
@@ -333,4 +365,8 @@ object TicketType extends SQLSyntaxSupport[TicketType] {
 trait DateAware {
   val dateCreated:DateTime
   val lastUpdated:DateTime
+}
+
+trait Entity {
+  val uuid : String  = java.util.UUID.randomUUID().toString()
 }

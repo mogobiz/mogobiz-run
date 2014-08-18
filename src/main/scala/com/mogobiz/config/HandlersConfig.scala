@@ -11,4 +11,5 @@ object HandlersConfig {
   val categoryHandler = new CategoryHandler
   val productHandler = new ProductHandler
   val preferenceHandler = new PreferenceHandler
+  val cartHandler = new CartHandler
 }

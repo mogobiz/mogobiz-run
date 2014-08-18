@@ -41,6 +41,7 @@ trait MogobizActors {
   val categoryActor = system.actorOf(Props[CategoryActor])
   val productActor = system.actorOf(Props[ProductActor])
   val preferenceActor = system.actorOf(Props[PreferenceActor])
+  val cartActor = system.actorOf(Props[CartActor])
 
 }
 

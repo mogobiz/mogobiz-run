@@ -11,10 +11,11 @@ import scalikejdbc.DB
 class CouponSpec extends Specification {
 
   DBs.setupAll()
+  val companyId = 9
+  val companyCode = "mogobiz"
 
 
   "findByCode" in {
-    val companyId = 8
     val code = "TEST1"
     val res = Coupon.findByCode("mogobiz",code)
 
@@ -26,9 +27,8 @@ class CouponSpec extends Specification {
   }
 
   "consumeCoupon" in {
-    val companyId = 8
     val code = "TEST1"
-    val res = Coupon.findByCode("mogobiz",code)
+    val res = Coupon.findByCode(companyCode,code)
 
     //res must beSome(coupon)
     res must beSome[Coupon]
@@ -41,9 +41,8 @@ class CouponSpec extends Specification {
   }
 
   "releaseCoupon" in {
-    val companyId = 8
     val code = "TEST1"
-    val res = Coupon.findByCode("mogobiz",code)
+    val res = Coupon.findByCode(companyCode,code)
 
     //res must beSome(coupon)
     res must beSome[Coupon]
