@@ -1,12 +1,12 @@
 package com.mogobiz
 
 import akka.actor.Actor
+import com.mogobiz.cart.transaction.TransactionStatus
+import com.mogobiz.cart.transaction.TransactionStatus.TransactionStatus
+import com.mogobiz.cart.transaction.TransactionStatus.TransactionStatus
 import org.json4s._
 import org.json4s.ext.JodaTimeSerializers
 import spray.httpx.Json4sSupport
-import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
-import com.mogobiz.cart.CartItemVO
 import com.mogobiz.cart.ProductType
 import com.mogobiz.cart.ProductType.ProductType
 import com.mogobiz.cart.ProductCalendar
@@ -15,10 +15,8 @@ import com.mogobiz.cart.WeightUnit
 import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
-import com.mogobiz.cart.ReductionRuleType
-import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
-import com.mogobiz.cart.TransactionStatus
-import com.mogobiz.cart.TransactionStatus.TransactionStatus
+import com.mogobiz.cart.domain.ReductionRuleType
+import com.mogobiz.cart.domain.ReductionRuleType.ReductionRuleType
 
 class ControllerActor extends Actor with StoreService {
 

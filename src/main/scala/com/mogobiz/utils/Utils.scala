@@ -1,8 +1,8 @@
 package com.mogobiz.utils
 
-import com.mogobiz.cart.{ProductCalendar, TicketType}
+import com.mogobiz.cart.ProductCalendar
+import com.mogobiz.cart.domain.TicketType
 import org.joda.time.{LocalTime, DateTime}
-import scalikejdbc.SQLInterpolation._
 import scalikejdbc._
 
 /**

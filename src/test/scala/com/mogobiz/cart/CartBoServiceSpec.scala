@@ -1,15 +1,11 @@
 package com.mogobiz.cart
 
-import com.mogobiz.utils.Utils
-import org.joda.time.DateTime
-import org.json4s.JsonAST.JValue
-import org.json4s.native.JsonMethods._
-import org.json4s.native.Serialization._
-import org.specs2.mutable.Specification
 import java.util.{Locale, UUID}
-import scalikejdbc.config.DBs
+
 import com.mogobiz.Currency
-import org.json4s.{DefaultFormats, Formats}
+import com.mogobiz.cart.domain._
+import org.specs2.mutable.Specification
+import scalikejdbc.config.DBs
 
 /**
  * Created by Christophe on 06/05/2014.

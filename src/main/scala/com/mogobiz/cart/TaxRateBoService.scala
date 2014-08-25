@@ -1,6 +1,7 @@
 package com.mogobiz.cart
 
-import scalikejdbc._, SQLInterpolation._
+import com.mogobiz.cart.domain.{TaxRate,Product}
+import scalikejdbc._
 
 /**
  * Created by Christophe on 06/05/2014.
