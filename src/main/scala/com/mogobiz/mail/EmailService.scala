@@ -2,9 +2,8 @@ package com.mogobiz.mail
 
 import akka.actor._
 import akka.actor.SupervisorStrategy._
-import akka.routing.{SmallestMailboxPool, SmallestMailboxRouter}
-import org.apache.commons.mail.{HtmlEmail, DefaultAuthenticator, EmailException}
-import akka.actor.ActorDSL._
+import akka.routing.SmallestMailboxPool
+import org.apache.commons.mail.{EmailException, DefaultAuthenticator, HtmlEmail}
 
 /**
  * Email service
@@ -16,15 +15,15 @@ object EmailService {
    * Uses the smallest inbox strategy to keep 20 instances alive ready to send out email
    * @see SmallestMailboxRouter
    */
-  /*
+
   val emailServiceActor = akka.actor.ActorSystem("system").actorOf(
     Props[EmailServiceActor].withRouter(
       SmallestMailboxPool(nrOfInstances = 50)
       //SmallestMailboxRouter(nrOfInstances = 50)
     ), name = "emailService"
-  )*/
+  )
 
-  def emailServiceActor
+//  def emailServiceActor
 
 
   /**

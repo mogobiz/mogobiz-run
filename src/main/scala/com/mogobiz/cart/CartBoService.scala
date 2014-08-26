@@ -703,7 +703,6 @@ object CartBoService extends BoService {
         //TODO a confirmer, mais je pense que c'est un reset complet du panier qu'on veut, comme suit :
         val updatedCart = CartVO(uuid = cartVO.uuid)
         uuidService.setCart(updatedCart)
-        //TODO sendEmails(emailingData) faire un Actor
         emailingData
       }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
