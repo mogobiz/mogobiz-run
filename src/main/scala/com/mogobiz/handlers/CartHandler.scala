@@ -228,11 +228,11 @@ class CartHandler {
       )
       response
     } catch {
-      case e: CartException => {
+      case e: Exception => {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.getErrors(locale))
+          ("errors" -> e.getMessage)
         )
         response
       }
@@ -245,6 +245,7 @@ class CartHandler {
 
     try {
       val emailingData = cartService.commit(cart, params.transactionUuid)
+
       val response = Map(
         ("success" -> true),
         ("data" -> emailingData),
