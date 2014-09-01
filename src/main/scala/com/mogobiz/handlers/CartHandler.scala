@@ -252,11 +252,11 @@ class CartHandler {
       )
       response
     } catch {
-      case e: CartException => {
+      case e: Exception => {
         val response = Map(
           ("success" -> false),
           ("data" -> cart),
-          ("errors" -> e.getErrors(locale))
+          ("errors" -> e.getMessage)
         )
         response
       }
