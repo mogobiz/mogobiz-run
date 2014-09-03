@@ -772,12 +772,18 @@ class CartException(val errors:CartErrors) extends Exception {
   val bundle = ResourceBundle("i18n.errors")
 
   def getErrors(locale:Locale): List[String] = {
+
     val res = for {
       (key,value) <- errors
-    } yield  bundle.getWithParams(key,locale,value)
-      //bundle.get(key,locale) //bundle.find(key+"."+value,locale).getOrElse(key+"."+value)
+    } yield {
+      if(value==null)
+        bundle.get(key,locale)
+      else
+        bundle.getWithParams(key,locale,value)
+    }
 
     res.toList
+
   }
 }
 
