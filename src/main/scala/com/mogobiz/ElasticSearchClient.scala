@@ -153,7 +153,17 @@ class ElasticSearchClient /*extends Actor*/ {
         if (response.status.isSuccess) {
           val json = parse(response.entity.asString)
           val subset = json \ "hits" \ "hits" \ "_source"
-          Future{subset}
+          //println("subset="+subset)
+          //println("subset.children="+subset.children)
+          //Future{subset.children}
+
+          Future {
+            subset match{
+              case JObject(o) => List(subset)
+              case _ => subset
+            }
+          }
+
         }else{
           println("WARNING: rates not found => returning empty list")
           Future{List()}
