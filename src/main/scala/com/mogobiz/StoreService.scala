@@ -248,7 +248,10 @@ trait StoreService extends HttpService {
 
             onComplete(f) {
               case Success(products) => complete(products)
-              case Failure(t) => complete("error", "error") //TODO change that
+              case Failure(t) => {
+                t.printStackTrace()
+                complete("error", t.getMessage)
+              }
             }
         }
 
