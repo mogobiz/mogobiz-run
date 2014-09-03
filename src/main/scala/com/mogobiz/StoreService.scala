@@ -162,7 +162,12 @@ trait StoreService extends HttpService {
           onSuccess(esClient.queryCountries(storeCode, countryReq.lang)){ response =>
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
-            complete(subset)
+            val res = subset match{
+                case JObject(o) => List(subset)
+                case _ => subset
+              }
+
+            complete(res)
           }
         }
       }
@@ -248,7 +253,10 @@ trait StoreService extends HttpService {
 
             onComplete(f) {
               case Success(products) => complete(products)
-              case Failure(t) => complete("error", "error") //TODO change that
+              case Failure(t) => {
+                t.printStackTrace()
+                complete("error", t.getMessage)
+              }
             }
         }
 
