@@ -1,5 +1,15 @@
 import spray.revolver.RevolverPlugin.Revolver
 
+import AssemblyKeys._
+
+assemblySettings
+
+jarName in assembly := "mogobiz-run.jar"
+
+mainClass in assembly := Some("com.mogobiz.Boot")
+
+test in assembly := {}
+
 organization := "com.mogobiz"
 
 version := "0.0.1-SNAPSHOT"
@@ -41,6 +51,8 @@ val json4sV = "3.2.9"
 libraryDependencies ++= Seq(
   "postgresql" % "postgresql" % "9.1-901.jdbc4",
   "com.h2database" % "h2" % "1.4.177" % "test",
+  "joda-time" % "joda-time" % "2.3",
+  "org.joda" % "joda-convert" % "1.7",
   "org.scalikejdbc" %% "scalikejdbc" % scalikeV,
   "org.scalikejdbc" %% "scalikejdbc-config" % scalikeV,
   "org.scalikejdbc" %% "scalikejdbc-interpolation" % scalikeV,
