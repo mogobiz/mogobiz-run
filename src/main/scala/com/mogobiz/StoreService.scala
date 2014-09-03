@@ -162,7 +162,12 @@ trait StoreService extends HttpService {
           onSuccess(esClient.queryCountries(storeCode, countryReq.lang)){ response =>
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
-            complete(subset)
+            val res = subset match{
+                case JObject(o) => List(subset)
+                case _ => subset
+              }
+
+            complete(res)
           }
         }
       }
