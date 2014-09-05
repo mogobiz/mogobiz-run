@@ -17,8 +17,6 @@ object Settings {
   val SessionCookieMaxAge = config getLong "session.cookie.maxage"
   val RememberCookieName = config getString "session.remember.cookie.name"
   val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
-  val EsPort = config.getInt("elasticsearch.port")
-  val EsHost= config.getString("elasticsearch.host")
 
   object clickatell {
     val user = ""
@@ -29,6 +27,16 @@ object Settings {
 
   DBs.setupAll()
   //DBsWithEnv("development").setupAll()
+
+  object DB {
+    val EsHost = "localhost"
+    val EsHttpPort = 9200
+    val EsPort = 9300
+    val Index = "mogopay"
+    val EsCluster = "elasticsearch"
+    val EsFullUrl = EsHost + ":" + EsHttpPort
+  }
+
 
 
   require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")

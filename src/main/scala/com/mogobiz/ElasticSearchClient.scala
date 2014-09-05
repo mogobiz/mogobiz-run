@@ -48,8 +48,8 @@ class ElasticSearchClient /*extends Actor*/ {
   //private val logger = Logging(system,this)
   private val log = Logger(LoggerFactory.getLogger("ElasticSearchClient"))
 
-  private val ES_URL = Settings.EsHost
-  private val ES_HTTP_PORT = Settings.EsPort
+  private val ES_URL = Settings.DB.EsHost
+  private val ES_HTTP_PORT = Settings.DB.EsPort
 
   val rateService = RateBoService
 
