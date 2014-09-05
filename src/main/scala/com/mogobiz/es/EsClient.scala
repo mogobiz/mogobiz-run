@@ -7,7 +7,7 @@ import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticClient
 import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.common.settings.ImmutableSettings
-import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, update => esupdate4s, _}
 import org.elasticsearch.search.SearchHit
 
 object EsClient {
@@ -51,7 +51,7 @@ object EsClient {
   }
 
   def delete[T: Manifest](uuid: String, refresh: Boolean = true): Boolean = {
-    val req = com.sksamuel.elastic4s.ElasticDsl.delete id uuid from Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName refresh refresh
+    val req = esdelete4s id uuid from Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName refresh refresh
     val res = client.sync.execute(req)
     res.isFound
   }
@@ -60,7 +60,7 @@ object EsClient {
     val now = Calendar.getInstance().getTime
     t.lastUpdated = now
     val js = JacksonConverter.serialize(t)
-    val req = com.sksamuel.elastic4s.ElasticDsl.update id t.uuid in Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName refresh refresh doc new DocumentSource {
+    val req = esupdate4s id t.uuid in Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName refresh refresh doc new DocumentSource {
       override def json: String = js
     }
     req.docAsUpsert(upsert)
@@ -72,7 +72,7 @@ object EsClient {
     val now = Calendar.getInstance().getTime
     t.lastUpdated = now
     val js = JacksonConverter.serialize(t)
-    val req = com.sksamuel.elastic4s.ElasticDsl.update id t.uuid in Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName version version doc new DocumentSource {
+    val req = esupdate4s id t.uuid in Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName version version doc new DocumentSource {
       override def json: String = js
     }
     val res = client.sync.execute(req)
