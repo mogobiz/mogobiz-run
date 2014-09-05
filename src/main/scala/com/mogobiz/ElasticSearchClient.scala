@@ -40,6 +40,8 @@ class ElasticSearchClient /*extends Actor*/ {
 
   import system.dispatcher
 
+  import Settings.DB._
+
   // execution context for futures
 
   //  def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
@@ -48,9 +50,6 @@ class ElasticSearchClient /*extends Actor*/ {
   //private val logger = Logging(system,this)
   private val log = Logger(LoggerFactory.getLogger("ElasticSearchClient"))
 
-  private val ES_URL = Settings.DB.EsHost
-  private val ES_HTTP_PORT = Settings.DB.EsPort
-
   val rateService = RateBoService
 
   val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
@@ -58,13 +57,13 @@ class ElasticSearchClient /*extends Actor*/ {
   val pipeline: Future[SendReceive] =
     for (
       Http.HostConnectorInfo(connector, _) <-
-      IO(Http) ? Http.HostConnectorSetup(ES_URL, port = ES_HTTP_PORT)
+      IO(Http) ? Http.HostConnectorSetup(EsHost, port = EsHttpPort)
     ) yield sendReceive(connector)
 */
 
-  private val ES_FULL_URL = ES_URL + ":" + ES_HTTP_PORT
+  private val EsFullURL = s"$EsHost:$EsHttpPort"
 
-  private def route(url: String): String = ES_FULL_URL + url
+  private def route(url: String): String = EsFullURL + url
 
   private def historyIndex(store:String):String = {
     return store+"_history"
