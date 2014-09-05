@@ -8,15 +8,17 @@ object Settings {
 
   val config = ConfigFactory.load()
 
-  /*
-  val Interface    = config getString  "spray.interface"
-  val Port         = config getInt     "spray.port"*/
+  val Interface    = config getString  "spray.can.server.interface"
+  val Port         = config getInt     "spray.can.server.port"
+
   val ApplicationSecret = config getString "session.application.secret"
   val SessionFolder = new File(config getString "session.folder")
   val SessionCookieName = config getString "session.cookie.name"
   val SessionCookieMaxAge = config getLong "session.cookie.maxage"
   val RememberCookieName = config getString "session.remember.cookie.name"
   val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
+  val EsPort = config.getInt("elasticsearch.port")
+  val EsHost= config.getString("elasticsearch.host")
 
   object clickatell {
     val user = ""
@@ -32,7 +34,7 @@ object Settings {
   require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
   require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")
   require(RememberCookieName.nonEmpty, "session.remember.cookie.name must be non-empty")
-//  require(Interface.nonEmpty, "interface must be non-empty")
-//  require(0 < Port && Port < 65536, "illegal port")
+  //  require(Interface.nonEmpty, "interface must be non-empty")
+  //  require(0 < Port && Port < 65536, "illegal port")
 }
 

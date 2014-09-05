@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.event.Logging
 import akka.io.IO
 import akka.pattern.ask
+import com.mogobiz.config.Settings
 import com.typesafe.scalalogging.slf4j.Logger
 import org.slf4j.LoggerFactory
 import scala.concurrent._
@@ -47,8 +48,8 @@ class ElasticSearchClient /*extends Actor*/ {
   //private val logger = Logging(system,this)
   private val log = Logger(LoggerFactory.getLogger("ElasticSearchClient"))
 
-  private val ES_URL = "http://localhost"
-  private val ES_HTTP_PORT = 9200
+  private val ES_URL = Settings.EsHost
+  private val ES_HTTP_PORT = Settings.EsPort
 
   val rateService = RateBoService
 
