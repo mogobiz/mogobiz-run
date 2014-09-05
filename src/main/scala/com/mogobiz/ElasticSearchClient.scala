@@ -66,7 +66,7 @@ class ElasticSearchClient /*extends Actor*/ {
   private def route(url: String): String = EsFullURL + url
 
   private def historyIndex(store:String):String = {
-    return store+"_history"
+    return s"${store}_history"
   }
 
   /**
@@ -75,15 +75,15 @@ class ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   private def prefsIndex(store:String):String = {
-    return store+"_prefs"
+    return s"${store}_prefs"
   }
 
   private def cartIndex(store:String):String = {
-    return store+"_cart"
+    return s"${store}_cart"
   }
 
   private def commentIndex(store:String):String = {
-    return store+"_comment"
+    return s"${store}_comment"
   }
 
   /**
