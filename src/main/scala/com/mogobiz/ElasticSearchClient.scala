@@ -5,6 +5,8 @@ import akka.event.Logging
 import akka.io.IO
 import akka.pattern.ask
 import com.mogobiz.config.Settings
+import com.mogobiz.es.EsClient
+import com.sksamuel.elastic4s.ElasticDsl._
 import com.typesafe.scalalogging.slf4j.Logger
 import org.slf4j.LoggerFactory
 import scala.concurrent._
@@ -20,7 +22,7 @@ import java.text.{SimpleDateFormat, NumberFormat}
 import scala.List
 import com.mogobiz.vo.{Paging}
 import org.json4s.JsonAST.{JObject, JNothing}
-import scala.util.Failure
+import scala.util.{Failure, Try}
 import scala.Some
 import spray.http.HttpResponse
 import com.mogobiz.vo.Comment
@@ -157,7 +159,7 @@ class ElasticSearchClient /*extends Actor*/ {
           //println("subset.children="+subset.children)
           //Future{subset.children}
 
-          Future {
+    Future{
             subset match{
               case JObject(o) => List(subset)
               case _ => subset
@@ -172,14 +174,10 @@ class ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  def getCurrencies(store: String, lang: String): Future[List[Currency]] = {
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    val currencies = queryCurrencies(store, lang).flatMap {
-      json => Future{json.extract[List[Currency]]}
-    }
-
-    currencies
+  def getCurrencies(store: String, lang: String): Seq[Currency] = {
+    EsClient.searchAll[Currency](
+      select in store types "rate" query createESRequest(createExcludeLang(store, lang) :+ "imported")
+    )
   }
 
   /**
@@ -438,11 +436,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
           val json = parse(response.entity.asString)
           val subset = json \ "hits" \ "hits" \ "_source"
-          val currencies = Await.result(getCurrencies(store, req.lang), 1 second) //TODO parrallele for loop
-          val currency = currencies.filter {
-              cur => cur.code == req.currencyCode
-            }.headOption getOrElse (defaultCurrency)
-
+          val currency = getCurrencies(store, req.lang).find(_.code == req.currencyCode) getOrElse defaultCurrency
           val products: JValue = (subset match {
             case arr: JArray => arr.children
             case obj: JObject => List(obj)
@@ -661,23 +655,11 @@ class ElasticSearchClient /*extends Actor*/ {
     assert(!store.isEmpty)
     assert(!lang.isEmpty)
 
-    if(currencyCode.isEmpty){
-      log.warn(s"No currency code supplied: fallback to programmatic default currency: ${defaultCurrency.code}, ${defaultCurrency.rate}")
-      defaultCurrency
-    }else{
-      try{
-        val currencies = Await.result(getCurrencies(store, lang), 1 second)
-        val currency = currencies.filter {
-          cur => cur.code == currencyCode.get
-        }.headOption getOrElse (defaultCurrency)
-        currency
-      }catch{
-        case e:Throwable => {
-          //TODO logging
-          e.printStackTrace()
-          defaultCurrency
-        }
-      }
+    currencyCode match {
+      case Some(s) => Try(getCurrencies(store, lang).find(_.code == s) getOrElse defaultCurrency) getOrElse defaultCurrency
+      case None =>
+        log.warn(s"No currency code supplied: fallback to programmatic default currency: ${defaultCurrency.code}, ${defaultCurrency.rate}")
+        defaultCurrency
     }
   }
 
@@ -1443,7 +1425,7 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
   /**
-   * il lang == "_all" returns a empty list
+   * if lang == "_all" returns an empty list
    * else returns the list of all languages except the given language
    * @param store
    * @param lang
@@ -1458,7 +1440,7 @@ class ElasticSearchClient /*extends Actor*/ {
 
   /**
    * Extract not empty filters of the list and return :<br/>
-   * - a empty string if the list is empty<br/>
+   * - an empty string if the list is empty<br/>
    * - the filter if the list contains only one filter<br/>
    * - the "and" filter with the not empty given filters
    *
@@ -1512,7 +1494,7 @@ class ElasticSearchClient /*extends Actor*/ {
   }
 
   /**
-   * Create a "term" filter
+   * Create a numeric "term" filter
    * @param field
    * @param value
    * @return
