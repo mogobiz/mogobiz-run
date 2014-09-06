@@ -108,24 +108,10 @@ object ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  def getPreferences(store: String, uuid: String): Future[Prefs] = {
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    val response : Future[HttpResponse] = pipeline(Get(route("/" + prefsIndex(store) + "/prefs/" + uuid)))
-    response.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-          val json = parse(response.entity.asString)
-          val subset = json \ "_source"
-          val prefs : Future[JValue] = Future{subset}
-          prefs.flatMap { p =>
-            Future{p.extract[Prefs]}
-          }
-        }
-        else {
-          Future{Prefs(10)}
-        }
-      }
+  def getPreferences(store: String, uuid: String): Prefs = {
+    EsClient.load[Prefs](_store=prefsIndex(store), _uuid=uuid) match {
+      case Some(s) => s
+      case None => Prefs(10)
     }
   }
 
@@ -247,12 +233,11 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param lang
    * @return
    */
-  def queryTags(store: String, hidden:Boolean, inactive:Boolean, lang:String): JArray = {
+  def queryTags(store: String, hidden:Boolean, inactive:Boolean, lang:String): JValue = {
     EsClient.searchAllRaw(
       search4s in store -> "tag" sourceInclude("id", if (lang == "_all") "*.*" else s"$lang.*")
     )
   }
-
 
   /**
    *
@@ -260,10 +245,11 @@ object ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   def queryStoreLanguages(store: String): JValue = {
-    EsClient.searchRaw(search4s in store -> "i18n" sourceInclude "languages" ) match {
-      case Some(s) => s
+    val languages:JValue = EsClient.searchRaw(search4s in store -> "i18n" sourceInclude "languages" ) match {
+      case Some(s) => s.asInstanceOf[JValue]
       case None => JNothing
     }
+    languages  \ "languages"
   }
 
   def getStoreLanguagesAsList(store: String): List[String] = {

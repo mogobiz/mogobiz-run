@@ -39,22 +39,25 @@ object EsClient {
     res.getId
   }
 
-  def load[T: Manifest](uuid: String): Option[T] = {
-    val req = get id uuid from Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName
-    val res = client.sync.execute(req)
+  def load[T: Manifest](
+                         _store:String=Settings.DB.Index, 
+                         _type:String=manifest[T].runtimeClass.getSimpleName.toLowerCase, 
+                         _uuid: String): Option[T] = {
+    val req = get id _uuid from _store -> _type
+    val res = EsClient().execute(req)
     if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
   }
 
   def loadWithVersion[T: Manifest](uuid: String): Option[(T, Long)] = {
     val req = get id uuid from Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName
-    val res = client.sync.execute(req)
+    val res = EsClient().execute(req)
     val maybeT = if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
     maybeT map ((_, res.getVersion))
   }
 
   def delete[T: Manifest](uuid: String, refresh: Boolean = true): Boolean = {
     val req = esdelete4s id uuid from Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName refresh refresh
-    val res = client.sync.execute(req)
+    val res = EsClient().execute(req)
     res.isFound
   }
 
@@ -66,7 +69,7 @@ object EsClient {
       override def json: String = js
     }
     req.docAsUpsert(upsert)
-    val res = client.sync.execute(req)
+    val res = EsClient().execute(req)
     res.isCreated
   }
 
@@ -77,7 +80,7 @@ object EsClient {
     val req = esupdate4s id t.uuid in Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName version version doc new DocumentSource {
       override def json: String = js
     }
-    val res = client.sync.execute(req)
+    val res = EsClient().execute(req)
     true
   }
 
