@@ -133,31 +133,10 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param lang
    * @return
    */
-  def queryCurrencies(store: String, lang: String): Future[JValue] = {
-    val esRequest = createESRequest(createExcludeLang(store, lang) :+ "imported")
-    val response: Future[HttpResponse]  = search(store, "rate", esRequest)
-    response.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-          val json = parse(response.entity.asString)
-          val subset = json \ "hits" \ "hits" \ "_source"
-          //println("subset="+subset)
-          //println("subset.children="+subset.children)
-          //Future{subset.children}
-
-    Future{
-            subset match{
-              case JObject(o) => List(subset)
-              case _ => subset
-            }
-          }
-
-        }else{
-          println("WARNING: rates not found => returning empty list")
-          Future{List()}
-        }
-      }
-    }
+  def queryCurrencies(store: String, lang: String): JValue = {
+    EsClient.searchAllRaw(
+      search4s in store -> "rate" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
+    )
   }
 
   def getCurrencies(store: String, lang: String): Seq[Currency] = {

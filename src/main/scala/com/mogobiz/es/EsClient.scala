@@ -39,11 +39,8 @@ object EsClient {
     res.getId
   }
 
-  def load[T: Manifest](
-                         _store:String=Settings.DB.Index, 
-                         _type:String=manifest[T].runtimeClass.getSimpleName.toLowerCase, 
-                         _uuid: String): Option[T] = {
-    val req = get id _uuid from _store -> _type
+  def load[T: Manifest](_store:String=Settings.DB.Index, _uuid: String): Option[T] = {
+    val req = get id _uuid from _store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
     val res = EsClient().execute(req)
     if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
   }

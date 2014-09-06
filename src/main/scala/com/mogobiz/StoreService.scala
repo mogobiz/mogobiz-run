@@ -177,8 +177,11 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       get{
         parameters('lang?"_all").as(CurrencyRequest) { currencyReq =>
-          onSuccess(ElasticSearchClient.queryCurrencies(storeCode, currencyReq.lang)){ json =>
-            complete(json)
+          onSuccess(
+            Future{//TODO call ref to CurrencyActor
+              ElasticSearchClient.queryCurrencies(storeCode, currencyReq.lang)
+            }){countries =>
+            complete(countries)
           }
         }
       }
@@ -398,8 +401,12 @@ trait StoreService extends HttpService {
         }
       } ~
         get {
-          onComplete(ElasticSearchClient.getPreferences(store, uuid)) { prefs =>
-            complete(prefs)
+          onComplete(
+            Future{// TODO call ref to PreferenceActor
+              ElasticSearchClient.getPreferences(store, uuid)
+            }
+          ) { prefs =>
+              complete(prefs)
           }
         }
     }
