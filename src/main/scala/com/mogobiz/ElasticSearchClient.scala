@@ -152,66 +152,6 @@ object ElasticSearchClient /*extends Actor*/ {
     results \ "brand"
   }
 
-  private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition]) : SearchDefinition =
-    if(filters.nonEmpty){
-      if(filters.size > 1)
-        req filter {
-          and (filters:_*)
-        }
-      else
-        req filter{
-          filters(0)
-        }
-    }
-    else req
-
-  private def addTermFilter(field:String, value:Option[Any]) : Option[FilterDefinition] = {
-    value match{
-      case Some(s) => Some(termFilter(field, s))
-      case None => None
-    }
-  }
-
-  private def addRegexFilter(field:String, value:Option[String]) : Option[FilterDefinition] = {
-    value match{
-      case Some(s) => Some(regexFilter(field, s".*${s.toLowerCase}.*"))
-      case None => None
-    }
-  }
-
-  private def addRangeFilter(field:String, _gte:Option[String], _lte: Option[String]) : Option[FilterDefinition] = {
-    val req = _gte match{
-      case Some(s) => Some(rangeFilter(field) gte(s))
-      case None => None
-    }
-    _lte match {
-      case Some(s) => if(req.isDefined) Some(req.get lte(s)) else Some(rangeFilter(field) lte(s))
-      case None => None
-    }
-  }
-
-  private def addNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {
-    val req = _gte match{
-      case Some(s) => Some(numericRangeFilter(field) gte(s))
-      case None => None
-    }
-    _lte match {
-      case Some(s) => if(req.isDefined) Some(req.get lte(s)) else Some(numericRangeFilter(field) lte(s))
-      case None => None
-    }
-  }
-
-  private def addFeaturedRangeFilters(featured:Boolean) : List[Option[FilterDefinition]] = {
-    if(featured){
-      val today = sdf.format(Calendar.getInstance().getTime())
-      List(
-        addRangeFilter("startFeatureDate", None, Some(s"$today")),
-        addRangeFilter("stopFeatureDate", Some(s"$today"), None)
-      )
-    }
-    List.empty
-  }
-
   /**
    *
    * @param store
@@ -337,14 +277,14 @@ object ElasticSearchClient /*extends Actor*/ {
       case None => search4s in store -> "product"
     }
     val filters:List[FilterDefinition] = (List(
-      addTermFilter("code", req.code),
-      addTermFilter("xtype", req.xtype),
-      addRegexFilter("path", req.categoryPath),
-      addTermFilter("brand.id", req.brandId),
-      addTermFilter("tags.name", req.tagName),
-      addNumericRangeFilter("price", req.priceMin, req.priceMax),
-      addRangeFilter("creationDate", req.creationDateMin, None)
-    ) ::: addFeaturedRangeFilters(req.featured.getOrElse(false))).flatten
+      createTermFilter("code", req.code),
+      createTermFilter("xtype", req.xtype),
+      createRegexFilter("path", req.categoryPath),
+      createTermFilter("brand.id", req.brandId),
+      createTermFilter("tags.name", req.tagName),
+      createNumericRangeFilter("price", req.priceMin, req.priceMax),
+      createRangeFilter("creationDate", req.creationDateMin, None)
+    ) ::: createFeaturedRangeFilters(req.featured.getOrElse(false))).flatten
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(store, req.lang) ::: fieldsToRemoveForProductSearchRendering
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
@@ -437,46 +377,6 @@ object ElasticSearchClient /*extends Actor*/ {
 
   private val sdf = new SimpleDateFormat("yyyy-MM-dd") //THH:mm:ssZ
   private val hours = new SimpleDateFormat("HH:mm")
-
-  private def createFeaturedFilter(doFilter: Boolean): String = {
-    if (!doFilter) ""
-    else {
-      val today = sdf.format(Calendar.getInstance().getTime())
-      s"""
-       {"range": {"startFeatureDate": {"lte": "$today"}}},{"range": {"stopFeatureDate": { "gte": "$today"}}}
-       """.stripMargin
-    }
-  }
-
-
-  private def createRangeFilter(field: String, gte: Option[Long], lte: Option[Long]): String = {
-
-    if (gte.isEmpty && lte.isEmpty) ""
-    else {
-      val gteStr = if (gte.isEmpty) ""
-      else {
-        val gteVal = gte.get
-        s""" "gte":$gteVal """.stripMargin
-      }
-
-      val lteStr = if (lte.isEmpty) ""
-      else {
-        val lteVal = lte.get
-        s""" "lte":$lteVal """.stripMargin
-      }
-
-      val range = (gteStr :: lteStr :: Nil).filter {
-        str => !str.isEmpty
-      }
-      if (range.isEmpty) ""
-      val ranges = range.mkString(",")
-      s"""{
-        "range": {
-          "$field": { $ranges }
-        }
-      }""".stripMargin
-    }
-  }
 
   def queryProductDetails(store: String, params: ProductDetailsRequest, productId: Long, sessionId: String): JValue = {
 
@@ -1219,78 +1119,6 @@ object ElasticSearchClient /*extends Actor*/ {
     //shutdown()
   }
 
-  /*
-  implicit val system = ActorSystem()
-  import system.dispatcher // execution context for futures
-
-  val pipeline: HttpRequest => Future[OrderConfirmation] = (
-    addHeader("X-My-Special-Header", "fancy-value")
-      ~> addCredentials(BasicHttpCredentials("bob", "secret"))
-      ~> encode(Gzip)
-      ~> sendReceive
-      ~> decode(Deflate)
-      ~> unmarshal[OrderConfirmation]
-    )
-  val response: Future[OrderConfirmation] =
-    pipeline(Post("http://example.com/orders", Order(42)))
-    */
-
-  /**
-   * Create ESRequest with exclude
-   * @param exclude
-   * @return
-   */
-  private def createESRequest(exclude: List[String]): String = {
-    createESRequest(exclude, "")
-  }
-
-  private def createESRequest(exclude: List[String], queryFilter: String): String = {
-    createESRequest(exclude, queryFilter, List(), None, None, None, None)
-  }
-
-  private def createESRequest(exclude: List[String], queryFilter: String, filter: List[String], from: Option[Int], size: Option[Int], sort: Option[String], sortOrder: Option[String]): String = {
-    val excl = exclude.filter(s => !s.isEmpty).collect{case s:String => "\"" + s + "\""}.mkString(",")
-    val source = if (excl.isEmpty) ""
-                  else s""" |   "_source": {
-                            |      "exclude": [
-                            |         $excl
-                            |      ]
-                            |   }""".stripMargin
-
-    val query = if (queryFilter.isEmpty) s""" |   "query": {
-                                              |      "filtered" : {
-                                              |      }
-                                              |   }""".stripMargin
-                  else s""" |   "query": {
-                            |      "filtered" : {
-                            |         $queryFilter
-                            |      }
-                            |   }""".stripMargin
-
-    val filterPart = {
-      val notEmptyFilter = filter.filter{s => !s.isEmpty}.mkString(",")
-      if (notEmptyFilter.isEmpty) ""
-      else s""" |   "filter": {
-                |      "bool" : {
-                |         "must" :[
-                |            $notEmptyFilter
-                |         ]
-                |      }
-                |   }""".stripMargin
-    }
-
-    val sortPart = if (!sort.isDefined || !sortOrder.isDefined) ""
-    else s""""sort": {"${sort.get}": "${sortOrder.get}"}"""
-    val fromPart = if (!from.isDefined) ""
-    else s""""from": ${from.get}"""
-    val sizePart = if (!size.isDefined) ""
-    else s""""size": ${size.get}"""
-
-    s"""  |{
-          |${List(source, query, filterPart, sortPart, fromPart, sizePart).filter(s => !s.isEmpty).mkString(",\n")}
-          |}""".stripMargin
-  }
-
   /**
    * if lang == "_all" returns an empty list
    * else returns the list of all languages except the given language
@@ -1305,113 +1133,64 @@ object ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  /**
-   * Extract not empty filters of the list and return :<br/>
-   * - an empty string if the list is empty<br/>
-   * - the filter if the list contains only one filter<br/>
-   * - the "and" filter with the not empty given filters
-   *
-   * @param list
-   * @return
-   */
-  private def createAndFilter(list: List[String]): String = {
-    val nomEmptyList = list.filter { s => !s.isEmpty }
-    if (nomEmptyList.isEmpty) ""
-    else if (nomEmptyList.length == 0) nomEmptyList.head
-    else s"""{"and":[${nomEmptyList.mkString(",")}]}"""
-  }
+  private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition]) : SearchDefinition =
+    if(filters.nonEmpty){
+      if(filters.size > 1)
+        req filter {
+          and (filters:_*)
+        }
+      else
+        req filter{
+          filters(0)
+        }
+    }
+    else req
 
-  private def createFilter(filter: String): String = {
-    if (filter.isEmpty) ""
-    else s""""filter":$filter"""
-  }
-
-  /**
-   * Create a "regexp" filter for the given fied.<br/>
-   * the regexp is build using lower case of the given value
-   * @param field
-   * @param value
-   * @return
-   */
-  private def createExpRegFilter(field: String, value: Option[String]): String = {
-    if (value.isEmpty) ""
-    else s"""{"regexp": {"$field": ".*${value.get.toLowerCase()}.*"}}"""
-  }
-
-  /**
-   * Create a "missing" filter
-   * @param field
-   * @param existence
-   * @param nullValue
-   * @return
-   */
-  private def createMissingFilter(field: String, existence: Boolean, nullValue: Boolean): String = {
-    s"""{"missing": {"field": "$field", "existence": $existence, "null_value": $nullValue}}"""
-  }
-
-  /**
-   * Create a "term" filter
-   * @param field
-   * @param value
-   * @return
-   */
-  private def createTermFilterWithStr(field: String, value: Option[String]): String = {
-    if (value.isEmpty) ""
-    else s"""{"term": {"$field": "${value.get}"}}"""
-  }
-
-  /**
-   * Create a numeric "term" filter
-   * @param field
-   * @param value
-   * @return
-   */
-  private def createTermFilterWithNum(field: String, value: Option[Int]): String = {
-    if (value.isEmpty) ""
-    else s"""{"term": {"$field": "${value.get}"}}"""
-  }
-
-  private def createRangeFilterWithString(field: String, gte: Option[String], lte: Option[String]): String = {
-    if (gte.isEmpty && lte.isEmpty) ""
-    else {
-      val gteStr = if (gte.isEmpty) ""
-      else s""""gte":
-                "${gte.get}"
-            """
-
-      val lteStr = if (lte.isEmpty) ""
-      else s""""lte":
-                "${lte.get}"
-            """
-
-      val range = List(gteStr, lteStr).filter {str => !str.isEmpty }
-      if (range.isEmpty) ""
-      else s"""{"range": {"$field": { ${range.mkString(",")}}}}"""
+  private def createTermFilter(field:String, value:Option[Any]) : Option[FilterDefinition] = {
+    value match{
+      case Some(s) => Some(termFilter(field, s))
+      case None => None
     }
   }
 
-  private def createMatchQueryFilter(field: String, value: Option[String]): String = {
-    if (value.isEmpty) ""
-    else s""""query": {
-                "match": {
-                    "$field": {
-                      "query": "${value.get}",
-                      "operator": "and"
-                    }
-                }
-              }"""
+  private def createRegexFilter(field:String, value:Option[String]) : Option[FilterDefinition] = {
+    value match{
+      case Some(s) => Some(regexFilter(field, s".*${s.toLowerCase}.*"))
+      case None => None
+    }
   }
 
-  /**
-   * Run the url "/" + store + "/" + typeQuery + "/_search" with the given query
-   * @param store
-   * @param typeQuery
-   * @param query
-   * @return
-   */
-  private def search(store: String, typeQuery: String, query: String): Future[HttpResponse] = {
-    //TODO add log mechanisme INFO DEBUG etc.
-    //println(query)
-    pipeline(Post(route("/" + store + "/" + typeQuery + "/_search"), query))
+  private def createRangeFilter(field:String, _gte:Option[String], _lte: Option[String]) : Option[FilterDefinition] = {
+    val req = _gte match{
+      case Some(s) => Some(rangeFilter(field) gte(s))
+      case None => None
+    }
+    _lte match {
+      case Some(s) => if(req.isDefined) Some(req.get lte(s)) else Some(rangeFilter(field) lte(s))
+      case None => None
+    }
   }
+
+  private def createNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {
+    val req = _gte match{
+      case Some(s) => Some(numericRangeFilter(field) gte(s))
+      case None => None
+    }
+    _lte match {
+      case Some(s) => if(req.isDefined) Some(req.get lte(s)) else Some(numericRangeFilter(field) lte(s))
+      case None => None
+    }
+  }
+
+  private def createFeaturedRangeFilters(featured:Boolean) : List[Option[FilterDefinition]] = {
+    if(featured){
+      val today = sdf.format(Calendar.getInstance().getTime())
+      List(
+        createRangeFilter("startFeatureDate", None, Some(s"$today")),
+        createRangeFilter("stopFeatureDate", Some(s"$today"), None)
+      )
+    }
+    List.empty
+  }
+
 }
