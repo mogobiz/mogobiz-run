@@ -329,7 +329,6 @@ object ElasticSearchClient /*extends Actor*/ {
 
 
   def queryProductsByCriteria(store: String, req: ProductRequest): JValue = {
-
     val query = req.name match {
       case Some(s) =>
         search4s in store -> "product" query {
@@ -337,7 +336,6 @@ object ElasticSearchClient /*extends Actor*/ {
         }
       case None => search4s in store -> "product"
     }
-
     val filters:List[FilterDefinition] = (List(
       addTermFilter("code", req.code),
       addTermFilter("xtype", req.xtype),
@@ -347,16 +345,12 @@ object ElasticSearchClient /*extends Actor*/ {
       addNumericRangeFilter("price", req.priceMin, req.priceMax),
       addRangeFilter("creationDate", req.creationDateMin, None)
     ) ::: addFeaturedRangeFilters(req.featured.getOrElse(false))).flatten
-
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(store, req.lang) ::: fieldsToRemoveForProductSearchRendering
-
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
     val _sort = req.orderBy.getOrElse("name")
     val _sortOrder = req.orderDirection.getOrElse("asc")
-
     lazy val currency = getCurrencies(store, req.lang).find(_.code == req.currencyCode) getOrElse defaultCurrency
-
     val hits:JArray = EsClient.searchAllRaw(
       filterRequest(query, filters)
       sourceExclude(fieldsToExclude :_*)
@@ -366,13 +360,10 @@ object ElasticSearchClient /*extends Actor*/ {
         by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
       }
     )
-
     val products:JValue = hits.map{
       hit => renderProduct(hit, req.countryCode, req.currencyCode, req.lang, currency, fieldsToRemoveForProductSearchRendering)
     }
-
     Paging.wrap(hits, products, req)
-
   }
 
   private val defaultCurrency = Currency(currencyFractionDigits = 2, rate = 0.01d, name="Euro", code = "EUR") //FIXME trouvez autre chose
@@ -410,12 +401,10 @@ object ElasticSearchClient /*extends Actor*/ {
       val endPrice = price + (price * taxRate / 100d)
       val formatedPrice = rateService.format(price, currency.get, locale, cur.rate)
       val formatedEndPrice = rateService.format(endPrice, currency.get, locale, cur.rate)
-      val additionalFields = (
-        ("localTaxRate" -> taxRate) ~
-          ("endPrice" -> endPrice) ~
-          ("formatedPrice" -> formatedPrice) ~
-          ("formatedEndPrice" -> formatedEndPrice)
-        )
+      val additionalFields = ("localTaxRate" -> taxRate) ~
+        ("endPrice" -> endPrice) ~
+        ("formatedPrice" -> formatedPrice) ~
+        ("formatedEndPrice" -> formatedEndPrice)
 
       val renderedProduct = product merge additionalFields
       //removeFields(renderedProduct,fieldsToRemove)
@@ -489,7 +478,7 @@ object ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  def queryProductDetails(store: String, params: ProductDetailsRequest, productId: Long, sessionId: String): Future[JValue] = {
+  def queryProductDetails(store: String, params: ProductDetailsRequest, productId: Long, sessionId: String): JValue = {
 
     /*cookie("mogobiz_uuid") { cookie =>
     val uuid = cookie.content*/
@@ -539,26 +528,12 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param req
    * @return
    */
-  def queryProductById(store: String, id: Long, req: ProductDetailsRequest): Future[JValue] = {
-
-    val fresponse: Future[HttpResponse] = pipeline(Get(route("/" + store + "/product/" + id)))
-    fresponse.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-
-          val json = parse(response.entity.asString)
-          val subset = json \ "_source"
-
-          val currency = getCurrency(store,req.currency,req.lang)
-          val product = renderProduct(subset, req.country, req.currency, req.lang, currency, List())
-
-          Future{product}
-        } else {
-          //TODO log l'erreur
-          Future{parse(response.entity.asString)}
-          //throw new ElasticSearchClientException(resp.status.reason)
-        }
-      }
+  def queryProductById(store: String, id: Long, req: ProductDetailsRequest): JValue = {
+    lazy val currency = getCurrency(store, req.currency, req.lang)
+    val product:Option[JValue] = EsClient.load(_uuid=s"$id")
+    product match{
+      case Some(p) => renderProduct(p, req.country, req.currency, req.lang, currency, List())
+      case None => throw new ElasticSearchClientException
     }
   }
 
@@ -1065,37 +1040,18 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param req
    * @return
    */
-  def getProductsByIds(store: String, ids: List[Long], req: ProductDetailsRequest): Future[List[JValue]] = {
+  def getProductsByIds(store: String, ids: List[Long], req: ProductDetailsRequest): List[JValue] = {
     implicit def json4sFormats: Formats = DefaultFormats
 
     //TODO replace with _mget op http://www.elasticsearch.org/guide/en/elasticsearch/guide/current/_retrieving_multiple_documents.html
-
-    val fproducts:List[Future[JValue]] = for{
+    (for{
       id <- ids
-    } yield queryProductById(store, id, req)
-
-    //TODO to replace by RxScala Iterable
-    val f = Future.sequence(fproducts.toList)
-
-    //TODO try with a for-compr
-    f.flatMap {
-      list => {
-        val validResponses = list.filter {
-          json => {
-            (json \ "found") match {
-              case JBool(res) => res
-              case _ => true
-            }
-          }
+    } yield queryProductById(store, id, req)).filter {
+      json => {
+        json \ "found" match {
+          case JBool(res) => res
+          case _ => true
         }
-        /*
-        val jproducts = validResponses.map{
-          json => (json \ "_source")
-        }
-        jproducts
-        */
-
-        Future{validResponses}
       }
     }
 

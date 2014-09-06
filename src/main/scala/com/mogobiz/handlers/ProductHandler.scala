@@ -2,13 +2,11 @@ package com.mogobiz.handlers
 
 import com.mogobiz._
 import org.json4s.JsonAST.JValue
-import org.json4s._
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Await}
+import scala.concurrent.Await
 import com.mogobiz.ProductRequest
 import com.mogobiz.CompareProductParameters
 import com.mogobiz.FullTextSearchProductParameters
-import scala.util.{Failure, Success}
 import com.mogobiz.vo.{CommentGetRequest, Paging, CommentRequest, Comment}
 
 
@@ -31,9 +29,7 @@ class ProductHandler {
   }
 
   def getProductDetails(storeCode: String, params: ProductDetailsRequest, productId: Long, uuid: String): JValue = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.queryProductDetails(storeCode, params, productId, uuid)
-    Await.result(response, 10 seconds)
+    ElasticSearchClient.queryProductDetails(storeCode, params, productId, uuid)
   }
 
   def getProductDates(storeCode: String, params: ProductDatesRequest, productId: Long, uuid: String): JValue = {
@@ -73,10 +69,7 @@ class ProductHandler {
       if (ids.isEmpty) {
         List()
       } else {
-        val future = ElasticSearchClient.getProductsByIds(storeCode,ids,ProductDetailsRequest(false, None, req.currency, req.country, req.lang))
-        val products = Await.result(future, 10 seconds)
-        println("visitedProductsRoute returned results", products.length)
-        products
+        ElasticSearchClient.getProductsByIds(storeCode,ids,ProductDetailsRequest(historize = false, None, req.currency, req.country, req.lang))
       }
     
   }
