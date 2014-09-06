@@ -4,7 +4,6 @@ import com.mogobiz.cart._
 import com.mogobiz.cart.LinearUnit._
 import com.mogobiz.cart.ProductCalendar._
 import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
-import com.mogobiz.cart.ReductionRuleType._
 import com.mogobiz.cart.TransactionStatus._
 import com.mogobiz.cart.WeightUnit._
 import com.mogobiz.cart.ProductType._
