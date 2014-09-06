@@ -121,9 +121,10 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param lang
    * @return
    */
-  def queryCountries(store: String, lang: String): Future[HttpResponse] = {
-    val esRequest = createESRequest(createExcludeLang(store, lang) :+ "imported")
-    search(store, "country", esRequest)
+  def queryCountries(store: String, lang: String): JValue = {
+    EsClient.searchAllRaw(
+      search4s in store -> "country" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
+    )
   }
 
   /**

@@ -13,7 +13,7 @@ import spray.http.{StatusCodes, HttpCookie, DateTime}
 import spray.routing.{Directives, HttpService}
 import spray.http.MediaTypes._
 import org.json4s._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{Future, Await, ExecutionContext}
 import org.json4s.native.JsonMethods._
 import java.util.{Locale, UUID}
 import com.mogobiz.cart._
@@ -157,15 +157,11 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       get{
         parameters('lang?"_all").as(CountryRequest) { countryReq =>
-          onSuccess(ElasticSearchClient.queryCountries(storeCode, countryReq.lang)){ response =>
-            val json = parse(response.entity.asString)
-            val subset = json \ "hits" \ "hits" \ "_source"
-            val res = subset match{
-                case JObject(o) => List(subset)
-                case _ => subset
-              }
-
-            complete(res)
+          onSuccess(
+            Future{//TODO call ref to CountryActor
+              ElasticSearchClient.queryCountries(storeCode, countryReq.lang)
+            }){countries =>
+            complete(countries)
           }
         }
       }
