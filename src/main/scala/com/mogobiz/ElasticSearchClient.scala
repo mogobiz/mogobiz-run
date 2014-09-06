@@ -141,7 +141,7 @@ object ElasticSearchClient /*extends Actor*/ {
 
   def getCurrencies(store: String, lang: String): Seq[Currency] = {
     EsClient.searchAll[Currency](
-      select in store types "rate" query createESRequest(createExcludeLang(store, lang) :+ "imported")
+      search4s in store -> "rate" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
     )
   }
 
