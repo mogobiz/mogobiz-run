@@ -9,6 +9,7 @@ import EsClient._
 import com.sksamuel.elastic4s.ElasticDsl.{search => search4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
+import org.elasticsearch.search.sort.SortOrder
 import org.slf4j.LoggerFactory
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -151,7 +152,7 @@ object ElasticSearchClient /*extends Actor*/ {
     results \ "brand"
   }
 
-  def filterRequest(req:SearchDefinition, filters:List[FilterDefinition]) : SearchDefinition =
+  private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition]) : SearchDefinition =
     if(filters.nonEmpty){
       if(filters.size > 1)
         req filter {
@@ -163,6 +164,53 @@ object ElasticSearchClient /*extends Actor*/ {
         }
     }
     else req
+
+  private def addTermFilter(field:String, value:Option[Any]) : Option[FilterDefinition] = {
+    value match{
+      case Some(s) => Some(termFilter(field, s))
+      case None => None
+    }
+  }
+
+  private def addRegexFilter(field:String, value:Option[String]) : Option[FilterDefinition] = {
+    value match{
+      case Some(s) => Some(regexFilter(field, s".*${s.toLowerCase}.*"))
+      case None => None
+    }
+  }
+
+  private def addRangeFilter(field:String, _gte:Option[String], _lte: Option[String]) : Option[FilterDefinition] = {
+    val req = _gte match{
+      case Some(s) => Some(rangeFilter(field) gte(s))
+      case None => None
+    }
+    _lte match {
+      case Some(s) => if(req.isDefined) Some(req.get lte(s)) else Some(rangeFilter(field) lte(s))
+      case None => None
+    }
+  }
+
+  private def addNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {
+    val req = _gte match{
+      case Some(s) => Some(numericRangeFilter(field) gte(s))
+      case None => None
+    }
+    _lte match {
+      case Some(s) => if(req.isDefined) Some(req.get lte(s)) else Some(numericRangeFilter(field) lte(s))
+      case None => None
+    }
+  }
+
+  private def addFeaturedRangeFilters(featured:Boolean) : List[Option[FilterDefinition]] = {
+    if(featured){
+      val today = sdf.format(Calendar.getInstance().getTime())
+      List(
+        addRangeFilter("startFeatureDate", None, Some(s"$today")),
+        addRangeFilter("stopFeatureDate", Some(s"$today"), None)
+      )
+    }
+    List.empty
+  }
 
   /**
    *
@@ -280,66 +328,51 @@ object ElasticSearchClient /*extends Actor*/ {
   }
 
 
-  def queryProductsByCriteria(store: String, req: ProductRequest): Future[JValue] = {
+  def queryProductsByCriteria(store: String, req: ProductRequest): JValue = {
+
+    val query = req.name match {
+      case Some(s) =>
+        search4s in store -> "product" query {
+          matchQuery("name", s)
+        }
+      case None => search4s in store -> "product"
+    }
+
+    val filters:List[FilterDefinition] = (List(
+      addTermFilter("code", req.code),
+      addTermFilter("xtype", req.xtype),
+      addRegexFilter("path", req.categoryPath),
+      addTermFilter("brand.id", req.brandId),
+      addTermFilter("tags.name", req.tagName),
+      addNumericRangeFilter("price", req.priceMin, req.priceMax),
+      addRangeFilter("creationDate", req.creationDateMin, None)
+    ) ::: addFeaturedRangeFilters(req.featured.getOrElse(false))).flatten
 
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(store, req.lang) ::: fieldsToRemoveForProductSearchRendering
-    //TODO propose a way to request include / exclude fields         "include":["id","price","taxRate"],
 
-    val nameCriteria = createMatchQueryFilter("name", req.name)
+    val _size: Int = req.maxItemPerPage.getOrElse(100)
+    val _from: Int = req.pageOffset.getOrElse(0) * _size
+    val _sort = req.orderBy.getOrElse("name")
+    val _sortOrder = req.orderDirection.getOrElse("asc")
 
+    lazy val currency = getCurrencies(store, req.lang).find(_.code == req.currencyCode) getOrElse defaultCurrency
 
-    val codeFilter = createTermFilterWithStr("code", req.code)
-    val xtypeFilter = createTermFilterWithStr("xtype", req.xtype)
-    val categoryPathFilter = createExpRegFilter("path", req.categoryPath)
-    val brandFilter = createTermFilterWithNum("brand.id", req.brandId)
-    val tagsFilter = createTermFilterWithStr("tags.name", req.tagName)
-    val priceFilter = createRangeFilter("price", req.priceMin, req.priceMax)
-    val creationDateMinFilter = createRangeFilterWithString("creationDate", req.creationDateMin, None)
-
-    val featuredFilter = createFeaturedFilter(req.featured.getOrElse(false))
-
-    val filters = List(codeFilter, xtypeFilter, categoryPathFilter, brandFilter, tagsFilter, priceFilter, featuredFilter, creationDateMinFilter)
-
-    val size: Int = req.maxItemPerPage.getOrElse(100)
-    val from: Int = req.pageOffset.getOrElse(0) * size
-    val sort = req.orderBy.getOrElse("name")
-    val sortOrder = req.orderDirection.getOrElse("asc")
-
-    val query = createESRequest(fieldsToExclude, nameCriteria, filters, Option(from), Option(size), Option(sort), Option(sortOrder))
-
-    val fresponse: Future[HttpResponse] = search(store, "product", query)
-    fresponse.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-
-          val json = parse(response.entity.asString)
-          val subset = json \ "hits" \ "hits" \ "_source"
-          val currency = getCurrencies(store, req.lang).find(_.code == req.currencyCode) getOrElse defaultCurrency
-          val products: JValue = (subset match {
-            case arr: JArray => arr.children
-            case obj: JObject => List(obj)
-            case _ => List()
-          }).map {
-            p => renderProduct(p, req.countryCode, req.currencyCode, req.lang, currency, fieldsToRemoveForProductSearchRendering)
-          }
-
-//          println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-//          println(pretty(render(products)))
-
-          val res = Paging.wrap(json,products,req)
-
-          Future{
-            res
-          }
-        } else {
-          //TODO log l'erreur
-          Future{
-            parse(response.entity.asString)
-          }
-          //throw new ElasticSearchClientException(resp.status.reason)
-        }
+    val hits:JArray = EsClient.searchAllRaw(
+      filterRequest(query, filters)
+      sourceExclude(fieldsToExclude :_*)
+      from _from
+      size _size
+      sort {
+        by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
       }
+    )
+
+    val products:JValue = hits.map{
+      hit => renderProduct(hit, req.countryCode, req.currencyCode, req.lang, currency, fieldsToRemoveForProductSearchRendering)
     }
+
+    Paging.wrap(hits, products, req)
+
   }
 
   private val defaultCurrency = Currency(currencyFractionDigits = 2, rate = 0.01d, name="Euro", code = "EUR") //FIXME trouvez autre chose

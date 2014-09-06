@@ -15,9 +15,7 @@ import com.mogobiz.vo.{CommentGetRequest, Paging, CommentRequest, Comment}
 class ProductHandler {
 
   def queryProductsByCriteria(storeCode: String, productRequest: ProductRequest): JValue = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.queryProductsByCriteria(storeCode,productRequest)
-    Await.result(response, 10 seconds)
+    ElasticSearchClient.queryProductsByCriteria(storeCode,productRequest)
   }
   
   def queryProductsByFulltextCriteria(storeCode: String, params: FullTextSearchProductParameters): JValue = {
