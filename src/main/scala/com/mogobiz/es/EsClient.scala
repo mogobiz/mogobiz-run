@@ -9,6 +9,8 @@ import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.common.settings.ImmutableSettings
 import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, update => esupdate4s, _}
 import org.elasticsearch.search.SearchHit
+import org.json4s.JsonAST.JArray
+import org.json4s.native.JsonMethods._
 
 object EsClient {
   val settings = ImmutableSettings.settingsBuilder().put("cluster.name", Settings.DB.EsCluster).build()
@@ -104,4 +106,7 @@ object EsClient {
     else
       Some(res.getHits.getHits()(0))
   }
+
+  implicit def hits2JArray(hits:Array[SearchHit]) : JArray = JArray(hits.map(hit => parse(hit.getSourceAsString)).toList)
+
 }

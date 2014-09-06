@@ -1,12 +1,12 @@
 package com.mogobiz
 
 import akka.actor.ActorSystem
-import akka.event.Logging
 import akka.io.IO
 import akka.pattern.ask
 import com.mogobiz.config.Settings
 import com.mogobiz.es.EsClient
-import com.sksamuel.elastic4s.ElasticDsl._
+import EsClient._
+import com.sksamuel.elastic4s.ElasticDsl.{search => search4s, _}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.slf4j.LoggerFactory
 import scala.concurrent._
@@ -23,7 +23,6 @@ import scala.List
 import com.mogobiz.vo.{Paging}
 import org.json4s.JsonAST.{JObject, JNothing}
 import scala.util.{Failure, Try}
-import scala.Some
 import spray.http.HttpResponse
 import com.mogobiz.vo.Comment
 import scala.util.Success
@@ -248,25 +247,10 @@ class ElasticSearchClient /*extends Actor*/ {
    * @param lang
    * @return
    */
-  def queryTags(store: String, hidden:Boolean, inactive:Boolean, lang:String): Future[HttpResponse] = {
-
-    val template = (lang: String) =>
-      s"""
-        | {
-        |  "_source": {
-        |    "include": [
-        |      "id",
-        |      "$lang.*"
-        |    ]
-        |   }
-        | }
-        |
-      """.stripMargin
-    val plang = if (lang == "_all") "*" else lang
-    val query = template(plang)
-
-    val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/tag/_search"), query))
-    response
+  def queryTags(store: String, hidden:Boolean, inactive:Boolean, lang:String): JArray = {
+    EsClient.searchAllRaw(
+      search4s in store -> "tag" sourceInclude("id", if (lang == "_all") "*.*" else s"$lang.*")
+    )
   }
 
 
