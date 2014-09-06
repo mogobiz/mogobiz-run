@@ -7,6 +7,7 @@ import com.mogobiz.config.Settings
 import com.mogobiz.es.EsClient
 import EsClient._
 import com.sksamuel.elastic4s.ElasticDsl.{search => search4s, _}
+import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
 import org.slf4j.LoggerFactory
 import scala.concurrent._
@@ -151,59 +152,30 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param qr parameters
    * @return
    */
-  def queryBrands(store: String, qr: BrandRequest): Future[JValue] = {
-    if (qr.categoryPath.isDefined) {
-      val exclude = createExcludeLang(store, qr.lang) :+ "imported"
-
-      val hideFilter = if (!qr.hidden) createTermFilterWithStr("category.hide", Option("false")) else ""
-      val categoryPathFilter = createExpRegFilter("category.path", qr.categoryPath)
-
-      val query = createESRequest(exclude, createFilter(createAndFilter(List(hideFilter, categoryPathFilter))))
-      val response = search(store, "product", query)
-
-      response.flatMap {
-        resp => {
-          if (resp.status.isSuccess) {
-            val json = parse(resp.entity.asString)
-            val subset = json \ "hits" \ "hits" \ "_source" \ "brand"
-            val result = subset match {
-              case JNothing => JArray(List())
-              case o:JObject => JArray(List(o))
-              case a:JArray => JArray(a.children.distinct)
-              case _ => subset
-            }
-            Future{result}
-          } else {
-            //TODO log l'erreur
-            Future{parse(resp.entity.asString)}
-            //throw new ElasticSearchClientException(resp.status.reason)
-          }
-        }
-      }
+  def queryBrands(store: String, qr: BrandRequest): JValue = {
+    val req = search4s in store -> "product"
+    var filters:List[FilterDefinition] = if(!qr.hidden) List(termFilter("category.hide", "false")) else List.empty
+    qr.categoryPath match {
+      case Some(s) =>
+        filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
+      case None => // nothing to do
     }
-    else {
-      val exclude = createExcludeLang(store, qr.lang) :+ "imported"
-
-      val hideFilter = if (!qr.hidden) createTermFilterWithStr("hide", Option("false")) else ""
-
-      val query = createESRequest(exclude, createFilter(hideFilter))
-      val response = search(store, "brand", query)
-
-      response.flatMap {
-        resp => {
-          if (resp.status.isSuccess) {
-            val json = parse(resp.entity.asString)
-            val subset = json \ "hits" \ "hits" \ "_source"
-            Future{subset}
-          } else {
-            //TODO log l'erreur
-            Future{parse(resp.entity.asString)}
-            //throw new ElasticSearchClientException(resp.status.reason)
-          }
-        }
-      }
-    }
+    val results : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*))
+    results \ "brand"
   }
+
+  def filterRequest(req:SearchDefinition, filters:List[FilterDefinition]) : SearchDefinition =
+    if(filters.nonEmpty){
+      if(filters.size > 1)
+        req filter {
+          and (filters:_*)
+        }
+      else
+        req filter{
+          filters(0)
+        }
+    }
+    else req
 
   /**
    *
