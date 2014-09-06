@@ -259,40 +259,18 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param store
    * @return
    */
-  def queryStoreLanguages(store: String): Future[JValue] = {
-
-    val query =
-      s"""
-        {
-          "_source": {
-            "include": [
-              "languages"
-            ]
-          }
-        }
-      """.stripMargin
-
-    val response: Future[HttpResponse] = pipeline(Post(route("/" + store + "/i18n/_search"), query))
-    response.flatMap {
-      response => {
-        val json = parse(response.entity.asString)
-        val subset = json \ "hits" \ "hits" \ "_source" \ "languages"
-        Future{subset}
-      }
+  def queryStoreLanguages(store: String): JValue = {
+    EsClient.searchRaw(search4s in store -> "i18n" sourceInclude "languages" ) match {
+      case Some(s) => s
+      case None => JNothing
     }
   }
 
   def getStoreLanguagesAsList(store: String): List[String] = {
-
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    val languages = queryStoreLanguages(store).flatMap {
-      json => Future{
-        json.extract[List[String]]
-      }
+    EsClient.searchRaw(search4s in store -> "i18n" sourceInclude "languages" ) match {
+      case Some(s) => s.field("languages").value()
+      case None => List.empty
     }
-
-    Await.result(languages, 1 second)
   }
 
   def getAllExcludedLanguagesExcept(store: String, langRequested: String): List[String] = {
