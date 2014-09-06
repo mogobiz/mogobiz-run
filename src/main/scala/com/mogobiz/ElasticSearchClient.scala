@@ -44,24 +44,11 @@ object ElasticSearchClient /*extends Actor*/ {
 
   import Settings.DB._
 
-  // execution context for futures
-
-  //  def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
-  //  override def receive: Actor.Receive = execute
-
-  //private val logger = Logging(system,this)
   private val log = Logger(LoggerFactory.getLogger("ElasticSearchClient"))
 
   val rateService = RateBoService
 
   val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
-  /*
-  val pipeline: Future[SendReceive] =
-    for (
-      Http.HostConnectorInfo(connector, _) <-
-      IO(Http) ? Http.HostConnectorSetup(EsHost, port = EsHttpPort)
-    ) yield sendReceive(connector)
-*/
 
   private val EsFullURL = s"$EsHost:$EsHttpPort"
 
@@ -275,30 +262,21 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param qr
    * @return
    */
-  def queryCategories(store: String, qr: CategoryRequest): Future[HttpResponse] = {
-    if (qr.brandId.isDefined) {
-      val exclude = createExcludeLang(store, qr.lang) :+ "imported"
-
-      val brandIdFilter = createTermFilterWithStr("brand.id", qr.brandId)
-      val hideFilter = if (!qr.hidden) createTermFilterWithStr("category.hide", Option("false")) else ""
-      val parentIdFilter = createTermFilterWithStr("category.parentId", qr.parentId)
-      val categoryPathFilter = createExpRegFilter("category.path", qr.categoryPath)
-
-      val query = createESRequest(exclude, createFilter(createAndFilter(List(brandIdFilter, hideFilter, parentIdFilter, categoryPathFilter))))
-      search(store, "product", query)
+  def queryCategories(store: String, qr: CategoryRequest): JValue = {
+    var filters:List[FilterDefinition] = if(!qr.hidden) List(termFilter("category.hide", "false")) else List.empty
+    val req = qr.brandId match {
+      case Some(s) =>
+        filters +:= termFilter("brand.id", s)
+        if(qr.parentId.isDefined) filters +:= termFilter("category.parentId", qr.parentId.get)
+        if(qr.categoryPath.isDefined) filters +:= regexFilter("category.path", s".*${qr.categoryPath.get.toLowerCase}.*")
+        search4s in store -> "product"
+      case None =>
+        if(qr.parentId.isDefined) filters +:= termFilter("parentId", qr.parentId.get)
+        else if(qr.categoryPath.isEmpty) missingFilter("parentId") existence true includeNull true
+        if(qr.categoryPath.isDefined) filters +:= regexFilter("path", s".*${qr.categoryPath.get.toLowerCase}.*")
+        search4s in store -> "category"
     }
-    else {
-      val exclude = createExcludeLang(store, qr.lang) :+ "imported"
-
-      val hideFilter = if (!qr.hidden) createTermFilterWithStr("hide", Option("false")) else ""
-      val parentIdFilter = if (qr.parentId.isDefined) createTermFilterWithStr("parentId", qr.parentId)
-      else if (!qr.categoryPath.isDefined) createMissingFilter("parentId", true, true)
-      else ""
-      val categoryPathFilter = createExpRegFilter("path", qr.categoryPath)
-
-      val query = createESRequest(exclude, createFilter(createAndFilter(List(hideFilter, parentIdFilter, categoryPathFilter))))
-      search(store, "category", query)
-    }
+    EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*))
   }
 
 
