@@ -18,7 +18,6 @@ import com.mogobiz.vo.CommentGetRequest
  * Created by Christophe on 15/03/14.
  */
 class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
-  val esClient = new ElasticSearchClient
   val store = "mogobiz"
   val sdf = new SimpleDateFormat("yyyy-MM-dd")
 
@@ -26,20 +25,20 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
 
   "save preferences" in {
     var prefs = Prefs(5)
-    val res = Await.result(esClient.savePreferences(store, "UUID_TEST", prefs), 3 second)
+    val res = Await.result(ElasticSearchClient.savePreferences(store, "UUID_TEST", prefs), 3 second)
     res must beTrue
   }
 
   "get preferences" in {
     var prefs = Prefs(5)
-    Await.result(esClient.savePreferences(store, "UUID_TEST", prefs), 3 second)
-    val actuelPrefs = Await.result(esClient.getPreferences(store, "UUID_TEST"), 3 second)
+    Await.result(ElasticSearchClient.savePreferences(store, "UUID_TEST", prefs), 3 second)
+    val actuelPrefs = Await.result(ElasticSearchClient.getPreferences(store, "UUID_TEST"), 3 second)
     actuelPrefs must not beNull
   }
 
   /*{
  "listAllLanguages list all languages" in {
-   val langs = esClient.listAllLanguages()
+   val langs = ElasticSearchClient.listAllLanguages()
    langs must have size 4
    langs must contain("fr")
    langs must contain("en")
@@ -48,7 +47,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
  }
 
  "getAllExcludedLanguagesExcept" in {
-   val langs = esClient.getAllExcludedLanguagesExcept("fr")
+   val langs = ElasticSearchClient.getAllExcludedLanguagesExcept("fr")
    langs should not contain("fr")
    langs must have size 3
  }
@@ -56,7 +55,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
  "query product" in {
    val criteria = new ProductRequest("fr","EUR","FR")
 //    criteria.name=Some("pull")
-   val response = Await.result(esClient.queryProductsByCriteria(store,criteria), 3 second)
+   val response = Await.result(ElasticSearchClient.queryProductsByCriteria(store,criteria), 3 second)
 /*
    val json = parse(response.entity.asString)
    println(response.entity.asString)
@@ -92,7 +91,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
     val req = new ProductDatesRequest(Some(str),None,None)
 
 
-    val response = Await.result(esClient.queryProductDates(store,id,req), 3 second)
+    val response = Await.result(ElasticSearchClient.queryProductDates(store,id,req), 3 second)
     println("+++ queryProductDates Response +++")
     println(pretty(render(response)))
     response must not be null
@@ -102,20 +101,20 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
   "add product to history" in {
     val productId = 95
     val sessionId = "47d8952b-6b26-453e-b755-d846a182f227"
-    val res = Await.result(esClient.addToHistory(store,productId,sessionId), 3 second)
+    val res = Await.result(ElasticSearchClient.addToHistory(store,productId,sessionId), 3 second)
     res must beTrue
   }
 
   "get product history" in {
     val sessionId = "47d8952b-6b26-453e-b755-d846a182f227"
-    val res = Await.result(esClient.getProductHistory(store,sessionId), 3 second)
+    val res = Await.result(ElasticSearchClient.getProductHistory(store,sessionId), 3 second)
 
     res must beEmpty
   }
 
   "get products from ids" in {
     val req = ProductDetailsRequest(false,None,Some("EUR"),Some("FR"),"fr")
-    val res = Await.result(esClient.getProducts(store,List(1,2,3,94,95,47,61),req),3 second)
+    val res = Await.result(ElasticSearchClient.getProducts(store,List(1,2,3,94,95,47,61),req),3 second)
 //    println(res)
 //    println(res.length)
 
@@ -126,7 +125,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
   "get queryProductTimes " in {
     val id = 122
     val req = ProductTimesRequest(Some("2014-03-02"))
-    val res = Await.result(esClient.queryProductTimes(store,id,req), 3 second)
+    val res = Await.result(ElasticSearchClient.queryProductTimes(store,id,req), 3 second)
     val extractedValues = res.extract[List[String]]
 
     extractedValues.head mustEqual "15:00"
@@ -139,7 +138,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
     val pid = 94
     //TODO create a mock for mogopay query
     val req = new CommentRequest(userId,"toto",1,"bad product","it failed after 1 week")
-    val res = Await.result(esClient.createComment(store,pid,req), 3 second)
+    val res = Await.result(ElasticSearchClient.createComment(store,pid,req), 3 second)
     println(res)
     /*
     {"_index":"mogobiz_comment","_type":"comment","_id":"keyp-SeGSvCNB_6S7lvkAQ","_version":1,"created":true}
@@ -154,7 +153,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
     var i = 0
     for(i <- 1 to 5){
       val req = new CommentRequest("userId_"+i,"username_"+i,i,"comment ___ "+i,"it failed after "+i+" week")
-      val res = Await.result(esClient.createComment(store,pid,req), 3 second)
+      val res = Await.result(ElasticSearchClient.createComment(store,pid,req), 3 second)
       println(res)
     }
     /*
@@ -166,7 +165,7 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
 
   "get comments sorted by date desc" in {
     val req = new CommentGetRequest(Some(2),Some(0))
-    val res = Await.result(esClient.getComments(store,1, req), 3 second)
+    val res = Await.result(ElasticSearchClient.getComments(store,1, req), 3 second)
     println(res)
     true must beTrue
   }

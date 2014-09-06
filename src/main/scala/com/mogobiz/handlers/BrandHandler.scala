@@ -9,11 +9,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 
 class BrandHandler {
-  val esClient = new ElasticSearchClient
 
   def queryBrand(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String): JValue = {
     //TODO with Elastic4s
-    val response = esClient.queryBrands(storeCode, new BrandRequest(hidden, categoryPath, lang))
+    val response = ElasticSearchClient.queryBrands(storeCode, new BrandRequest(hidden, categoryPath, lang))
     Await.result(response, 10 seconds)
   }
 }

@@ -8,7 +8,6 @@ import org.json4s.JsonAST.JValue
 
 
 class CartHandler {
-  val esClient = new ElasticSearchClient
   val cartService = CartBoService
   val cartRenderService = CartRenderService
 
@@ -22,7 +21,7 @@ class CartHandler {
     val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
     val locale = new Locale(lang, country)
 
-    val currency = esClient.getCurrency(storeCode, params.currency, lang)
+    val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     cartRenderService.renderCart(cart, currency, locale)
   }
 
@@ -34,7 +33,7 @@ class CartHandler {
     val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
     val locale = new Locale(lang, country)
 
-    val currency = esClient.getCurrency(storeCode, params.currency, lang)
+    val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     val updatedCart = cartService.clear(locale, currency.code, cart)
     cartRenderService.renderCart(updatedCart, currency, locale)
   }
@@ -49,7 +48,7 @@ class CartHandler {
     val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
     val locale = new Locale(lang, country)
 
-    val currency = esClient.getCurrency(storeCode, params.currency, lang)
+    val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     try {
       val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.skuId, cmd.quantity, cmd.dateTime, cmd.registeredCartItems)
       val data = cartRenderService.renderCart(updatedCart, currency, locale)
@@ -82,7 +81,7 @@ class CartHandler {
     val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
     val locale = new Locale(lang, country)
 
-    val currency = esClient.getCurrency(storeCode, params.currency, lang)
+    val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     try {
       val updatedCart = cartService.updateItem(locale, currency.code, cart, cartItemId, cmd.quantity)
       val data = cartRenderService.renderCart(updatedCart, currency, locale)
@@ -112,7 +111,7 @@ class CartHandler {
     val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
     val locale = new Locale(lang, country)
 
-    val currency = esClient.getCurrency(storeCode, params.currency, lang)
+    val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     try {
       val updatedCart = cartService.removeItem(locale, currency.code, cart, cartItemId)
       val data = cartRenderService.renderCart(updatedCart, currency, locale)
@@ -143,7 +142,7 @@ class CartHandler {
     val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
     val locale = new Locale(lang, country)
 
-    val currency = esClient.getCurrency(storeCode, params.currency, lang)
+    val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     val cart = cartService.initCart(uuid)
 
     try {
@@ -174,7 +173,7 @@ class CartHandler {
     //val locale = Locale.forLanguageTag(lang)
     val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
     val locale = new Locale(lang, country)
-    val currency = esClient.getCurrency(storeCode, params.currency, lang)
+    val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     val cart = cartService.initCart(uuid)
 
     try {
@@ -215,7 +214,7 @@ class CartHandler {
     println(s"locale.getCountry=${locale.getCountry}")
     */
 
-    val currency = esClient.getCurrency(storeCode, params.currency, lang)
+    val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     val cart = cartService.initCart(uuid)
 
     try {
@@ -267,7 +266,7 @@ class CartHandler {
   def queryCartPaymentCancel(storeCode: String, uuid: String, params: CancelTransactionParameters): Map[String, Any] = {
     val lang: String = if (params.lang == "_all") "fr" else params.lang //FIX with default Lang
     val locale = Locale.forLanguageTag(lang)
-    val currency = esClient.getCurrency(storeCode, params.currency, lang)
+    val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     val cart = cartService.initCart(uuid)
     try {
       val updatedCart = cartService.cancel(cart)

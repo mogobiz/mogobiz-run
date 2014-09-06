@@ -7,11 +7,10 @@ import scala.concurrent.Await
 
 
 class LangHandler {
-  val esClient = new ElasticSearchClient
 
   def queryLang(storeCode: String): JValue = {
     //TODO with Elastic4s
-    val response = esClient.queryStoreLanguages(storeCode)
+    val response = ElasticSearchClient.queryStoreLanguages(storeCode)
     Await.result(response, 10 seconds)
   }
 }

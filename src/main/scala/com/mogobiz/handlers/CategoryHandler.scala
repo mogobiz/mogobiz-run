@@ -9,11 +9,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 
 class CategoryHandler {
-  val esClient = new ElasticSearchClient
 
   def queryCategories(storeCode: String, hidden: Boolean, parentId: Option[String], brandId: Option[String], categoryPath: Option[String], lang: String): JValue = {
     //TODO with Elastic4s
-    val response = esClient.queryCategories(storeCode, CategoryRequest(hidden, parentId, brandId, categoryPath, lang))
+    val response = ElasticSearchClient.queryCategories(storeCode, CategoryRequest(hidden, parentId, brandId, categoryPath, lang))
     val data = response map {
       responseBody =>
         val json = parse(responseBody.entity.asString)

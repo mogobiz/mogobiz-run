@@ -7,17 +7,16 @@ import scala.concurrent.duration._
 
 
 class PreferenceHandler {
-  val esClient = new ElasticSearchClient
 
   def getPreferences(storeCode: String, uuid: String): Prefs = {
     //TODO with Elastic4s
-    val response = esClient.getPreferences(storeCode, uuid)
+    val response = ElasticSearchClient.getPreferences(storeCode, uuid)
     Await.result(response, 10 seconds)
   }
 
   def savePreference(storeCode: String, uuid: String, params: Prefs): Boolean = {
     //TODO with Elastic4s
-    val response = esClient.savePreferences(storeCode, uuid, params)
+    val response = ElasticSearchClient.savePreferences(storeCode, uuid, params)
     Await.result(response, 10 seconds)
   }
 

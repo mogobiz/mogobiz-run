@@ -9,12 +9,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 
 class CountryHandler {
-  val esClient = new ElasticSearchClient
 
   def queryCountries(storeCode: String, lang: String): JValue = {
 
     //TODO with Elastic4s
-    val response = esClient.queryCountries(storeCode, lang)
+    val response = ElasticSearchClient.queryCountries(storeCode, lang)
 
     val data = response map {
       responseBody =>

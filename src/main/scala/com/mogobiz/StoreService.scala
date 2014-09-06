@@ -43,8 +43,6 @@ trait StoreService extends HttpService {
 
   //private val log = Logger(LoggerFactory.getLogger("StoreService"))
 
-  val esClient = new ElasticSearchClient
-
   def storeRoutes(storeCode: String, uuid:String) = {
         pathEnd {
           complete("the store code is " + storeCode)
@@ -119,7 +117,7 @@ trait StoreService extends HttpService {
         parameters('hidden ? false, 'categoryPath.?, 'lang ? "_all").as(BrandRequest) {
           brandRequest =>
 
-            onSuccess(esClient.queryBrands(storeCode, brandRequest)) {
+            onSuccess(ElasticSearchClient.queryBrands(storeCode, brandRequest)) {
               response =>
 
                 complete(response)
@@ -159,7 +157,7 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       get{
         parameters('lang?"_all").as(CountryRequest) { countryReq =>
-          onSuccess(esClient.queryCountries(storeCode, countryReq.lang)){ response =>
+          onSuccess(ElasticSearchClient.queryCountries(storeCode, countryReq.lang)){ response =>
             val json = parse(response.entity.asString)
             val subset = json \ "hits" \ "hits" \ "_source"
             val res = subset match{
@@ -183,7 +181,7 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       get{
         parameters('lang?"_all").as(CurrencyRequest) { currencyReq =>
-          onSuccess(esClient.queryCurrencies(storeCode, currencyReq.lang)){ json =>
+          onSuccess(ElasticSearchClient.queryCurrencies(storeCode, currencyReq.lang)){ json =>
             complete(json)
           }
         }
@@ -196,7 +194,7 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       get{
         parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang?"_all").as(CategoryRequest) { categoryReq: CategoryRequest =>
-          onSuccess(esClient.queryCategories(storeCode,categoryReq)){ response =>
+          onSuccess(ElasticSearchClient.queryCategories(storeCode,categoryReq)){ response =>
             val json = parse(response.entity.asString)
             //TODO renvoyer les fils directs si parentId renseigné
             val subset = if (categoryReq.brandId.isDefined) json \ "hits" \ "hits" \ "_source" \ "category" else json \ "hits" \ "hits" \ "_source"
@@ -249,7 +247,7 @@ trait StoreService extends HttpService {
 
           productRequest =>
 
-            val f = esClient.queryProductsByCriteria(storeCode, productRequest)
+            val f = ElasticSearchClient.queryProductsByCriteria(storeCode, productRequest)
 
             onComplete(f) {
               case Success(products) => complete(products)
@@ -276,7 +274,7 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       parameters('lang?"_all",'currency.?,'country.?, 'query, 'highlight ? false).as(FullTextSearchProductParameters) {
         req =>
-          onSuccess(esClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
+          onSuccess(ElasticSearchClient.queryProductsByFulltextCriteria(storeCode,req)){ products =>
             complete(products)
           }
       }
@@ -292,7 +290,7 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       parameters('lang?"_all",'currency.?,'country.?, 'ids).as(CompareProductParameters) {
         req =>
-          onSuccess(esClient.getProductsFeatures(storeCode, req)){ features =>
+          onSuccess(ElasticSearchClient.getProductsFeatures(storeCode, req)){ features =>
             complete(features)
           }
       }
@@ -316,7 +314,7 @@ trait StoreService extends HttpService {
             , 'country.?
             , 'lang ? "_all").as(ProductDetailsRequest) {
             pdr =>
-              onSuccess(esClient.queryProductDetails(storeCode, pdr, productId.toLong, uuid)) {
+              onSuccess(ElasticSearchClient.queryProductDetails(storeCode, pdr, productId.toLong, uuid)) {
                 details =>
                   complete(details)
               }
@@ -335,7 +333,7 @@ trait StoreService extends HttpService {
       get{
         parameters('date.?).as(ProductDatesRequest) {
           pdr =>
-            onSuccess(esClient.queryProductDates(storeCode,productId.toLong, pdr)){ response =>
+            onSuccess(ElasticSearchClient.queryProductDates(storeCode,productId.toLong, pdr)){ response =>
               complete(response)
             }
         }
@@ -348,7 +346,7 @@ trait StoreService extends HttpService {
       get{
         parameters('date.?).as(ProductTimesRequest) {
           pdr =>
-            onSuccess(esClient.queryProductTimes(storeCode,productId.toLong, pdr)){ response =>
+            onSuccess(ElasticSearchClient.queryProductTimes(storeCode,productId.toLong, pdr)){ response =>
               complete(response)
               //DateTime.fromIsoDateTimeString("2014-04-18T11:00:00Z") :: DateTime.fromIsoDateTimeString("2014-04-18T23:00:00Z") :: Nil
 
@@ -367,12 +365,12 @@ trait StoreService extends HttpService {
             val uuid = cookie.content
             */
             println(s"visitedProductsRoute with mogobiz_uuid=${uuid}")
-            onComplete(esClient.getProductHistory(storeCode,uuid)){
+            onComplete(ElasticSearchClient.getProductHistory(storeCode,uuid)){
               case Success(ids) => {
                 if(ids.isEmpty){
                   complete(List()) //return empty list
                 }else{
-                  onSuccess(esClient.getProductsByIds(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
+                  onSuccess(ElasticSearchClient.getProductsByIds(storeCode,ids,ProductDetailsRequest(false,None,req.currency,req.country,req.lang))){ products =>
                     println("visitedProductsRoute returned results",products.length)
                     complete(products)
                   }
@@ -397,14 +395,14 @@ trait StoreService extends HttpService {
     respondWithMediaType(`application/json`) {
       post {
         parameters('productsNumber ? 10).as(Prefs) { prefs =>
-          onComplete(esClient.savePreferences(store, uuid, prefs)) {
+          onComplete(ElasticSearchClient.savePreferences(store, uuid, prefs)) {
             case Success(result) => complete(Map("code" -> true))
             case Failure(result) => complete(Map("code" -> false))
           }
         }
       } ~
         get {
-          onComplete(esClient.getPreferences(store, uuid)) { prefs =>
+          onComplete(ElasticSearchClient.getPreferences(store, uuid)) { prefs =>
             complete(prefs)
           }
         }
@@ -417,7 +415,7 @@ trait StoreService extends HttpService {
         post{
           entity(as[CommentRequest]){ req =>
           //TODO check userId in mogopay before inserting
-            onComplete(esClient.createComment(storeCode, productId,req)){ //resp =>
+            onComplete(ElasticSearchClient.createComment(storeCode, productId,req)){ //resp =>
               case Success(resp) => complete(resp)
               case Failure(t) => t match {
                 case CommentException(code,message) => complete(StatusCodes.BadRequest,(MogoError(code,message)))
@@ -427,7 +425,7 @@ trait StoreService extends HttpService {
           }
         } ~ get{
           parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest){ req =>
-            onSuccess(esClient.getComments(storeCode,productId,req)){ comments =>
+            onSuccess(ElasticSearchClient.getComments(storeCode,productId,req)){ comments =>
               complete(comments)
             }
           }
@@ -437,7 +435,7 @@ trait StoreService extends HttpService {
           put {
             entity(as[CommentPutRequest]) {
               req =>
-                onSuccess(esClient.updateComment(storeCode, productId, id, req.note == 1)) { res =>
+                onSuccess(ElasticSearchClient.updateComment(storeCode, productId, id, req.note == 1)) { res =>
                   complete("")
                 }
             }
@@ -464,7 +462,7 @@ trait StoreService extends HttpService {
             val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
             val locale = new Locale(lang,country)
 
-            val currency = esClient.getCurrency(storeCode,params.currency,lang)
+            val currency = ElasticSearchClient.getCurrency(storeCode,params.currency,lang)
             complete(cartRenderService.renderCart(cart, currency,locale))
           }
         }~delete{
@@ -476,7 +474,7 @@ trait StoreService extends HttpService {
             val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
             val locale = new Locale(lang,country)
 
-            val currency = esClient.getCurrency(storeCode,params.currency,lang)
+            val currency = ElasticSearchClient.getCurrency(storeCode,params.currency,lang)
             val updatedCart = cartService.clear(locale,currency.code,cart)
             complete(cartRenderService.renderCart(updatedCart, currency,locale))
           }
@@ -494,7 +492,7 @@ trait StoreService extends HttpService {
                 val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
                 val locale = new Locale(lang,country)
 
-                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                val currency = ElasticSearchClient.getCurrency(storeCode,params.currency,lang)
                 try{
                   val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.skuId,cmd.quantity,cmd.dateTime,cmd.registeredCartItems )
                   val data = cartRenderService.renderCart(updatedCart, currency,locale)
@@ -534,7 +532,7 @@ trait StoreService extends HttpService {
                     val locale = new Locale(lang,country)
 
 
-                    val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                    val currency = ElasticSearchClient.getCurrency(storeCode,params.currency,lang)
                     try{
                       val updatedCart = cartService.updateItem(locale, currency.code, cart, cartItemId, cmd.quantity)
                       val data = cartRenderService.renderCart(updatedCart, currency,locale)
@@ -567,7 +565,7 @@ trait StoreService extends HttpService {
                     val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
                     val locale = new Locale(lang,country)
 
-                    val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                    val currency = ElasticSearchClient.getCurrency(storeCode,params.currency,lang)
                     try {
                       val updatedCart = cartService.removeItem(locale, currency.code, cart, cartItemId)
                       val data = cartRenderService.renderCart(updatedCart, currency,locale)
@@ -601,7 +599,7 @@ trait StoreService extends HttpService {
                 val country = params.country.getOrElse("FR") //FIXME trouver une autre valeur par défaut ou refuser l'appel
                 val locale = new Locale(lang,country)
 
-                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                val currency = ElasticSearchClient.getCurrency(storeCode,params.currency,lang)
                 val cart = cartService.initCart(uuid)
 
                 try{
@@ -636,7 +634,7 @@ trait StoreService extends HttpService {
                 val locale = new Locale(lang,country)
 
 
-                val currency = esClient.getCurrency(storeCode,params.currency,lang)
+                val currency = ElasticSearchClient.getCurrency(storeCode,params.currency,lang)
                 val cart = cartService.initCart(uuid)
 
                 try{
@@ -680,7 +678,7 @@ trait StoreService extends HttpService {
                 println(s"locale.getCountry=${locale.getCountry}")
                 */
 
-                val currency = esClient.getCurrency(storeCode, params.currency, lang)
+                val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
                 val cart = cartService.initCart(uuid)
 
                 try{
@@ -732,7 +730,7 @@ trait StoreService extends HttpService {
               parameters('currency.?, 'country.?, 'lang ? "_all").as(CancelTransactionParameters) { params =>
                 val lang: String = if (params.lang == "_all") "fr" else params.lang //FIX with default Lang
                 val locale = Locale.forLanguageTag(lang)
-                val currency = esClient.getCurrency(storeCode, params.currency, lang)
+                val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
                 val cart = cartService.initCart(uuid)
                 try {
                   val updatedCart = cartService.cancel(cart)

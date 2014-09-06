@@ -35,7 +35,7 @@ import com.mogobiz.vo.CommentGetRequest
  * Created by Christophe on 18/02/14.
  */
 
-class ElasticSearchClient /*extends Actor*/ {
+object ElasticSearchClient /*extends Actor*/ {
 
   implicit val system = ActorSystem("es-client")
 
