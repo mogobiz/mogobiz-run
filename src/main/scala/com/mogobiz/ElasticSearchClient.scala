@@ -7,7 +7,7 @@ import com.mogobiz.config.Settings
 import com.mogobiz.es.EsClient
 import EsClient._
 import com.mogobiz.utils.JacksonConverter
-import com.sksamuel.elastic4s.ElasticDsl.{search => search4s, update => update4s, _}
+import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.search.SearchHits
@@ -115,7 +115,7 @@ object ElasticSearchClient /*extends Actor*/ {
    */
   def queryCountries(store: String, lang: String): JValue = {
     EsClient.searchAllRaw(
-      search4s in store -> "country" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
+      esearch4s in store -> "country" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
     ).getHits
   }
 
@@ -127,13 +127,13 @@ object ElasticSearchClient /*extends Actor*/ {
    */
   def queryCurrencies(store: String, lang: String): JValue = {
     EsClient.searchAllRaw(
-      search4s in store -> "rate" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
+      esearch4s in store -> "rate" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
     ).getHits
   }
 
   def getCurrencies(store: String, lang: String): Seq[Currency] = {
     EsClient.searchAll[Currency](
-      search4s in store -> "rate" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
+      esearch4s in store -> "rate" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
     )
   }
 
@@ -144,7 +144,7 @@ object ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   def queryBrands(store: String, qr: BrandRequest): JValue = {
-    val req = search4s in store -> "product"
+    val req = esearch4s in store -> "product"
     var filters:List[FilterDefinition] = if(!qr.hidden) List(termFilter("category.hide", "false")) else List.empty
     qr.categoryPath match {
       case Some(s) =>
@@ -165,7 +165,7 @@ object ElasticSearchClient /*extends Actor*/ {
    */
   def queryTags(store: String, hidden:Boolean, inactive:Boolean, lang:String): JValue = {
     EsClient.searchAllRaw(
-      search4s in store -> "tag" sourceInclude("id", if (lang == "_all") "*.*" else s"$lang.*")
+      esearch4s in store -> "tag" sourceInclude("id", if (lang == "_all") "*.*" else s"$lang.*")
     ).getHits
   }
 
@@ -175,7 +175,7 @@ object ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   def queryStoreLanguages(store: String): JValue = {
-    val languages:JValue = EsClient.searchRaw(search4s in store -> "i18n" sourceInclude "languages" ) match {
+    val languages:JValue = EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
       case Some(s) => s.asInstanceOf[JValue]
       case None => JNothing
     }
@@ -183,7 +183,7 @@ object ElasticSearchClient /*extends Actor*/ {
   }
 
   def getStoreLanguagesAsList(store: String): List[String] = {
-    EsClient.searchRaw(search4s in store -> "i18n" sourceInclude "languages" ) match {
+    EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
       case Some(s) => s.field("languages").value()
       case None => List.empty
     }
@@ -197,53 +197,48 @@ object ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  def getAllExcludedLanguagesExceptAsList(store: String,lang: String): List[String] = {
-    val langs = getAllExcludedLanguagesExcept(store,lang)
-    val langsTokens = langs.flatMap {
+  def getAllExcludedLanguagesExceptAsList(store: String, lang: String): List[String] = {
+    getAllExcludedLanguagesExcept(store,lang).flatMap {
       l => l :: "*." + l :: Nil
     }
-
-    langsTokens
   }
 
-  def getAllExcludedLanguagesExceptAsString(store: String,lang: String): String = {
-    val langs = getAllExcludedLanguagesExcept(store,lang)
-    val langsTokens = langs.flatMap {
-      l => l :: "*." + l :: Nil
-    }
-
-    langsTokens.mkString("\"", "\",\"", "\"")
+  def getAllExcludedLanguagesExceptAsString(store: String, lang: String): String = {
+    getAllExcludedLanguagesExceptAsList(store, lang).mkString("\"", "\",\"", "\"")
   }
 
-  def getLangFieldsWithPrefix(store: String,preField: String, field: String): String = {
-    val langs = getStoreLanguagesAsList(store)
-    val langsTokens = langs.flatMap {
+  def getLangFieldsWithPrefixAsList(store: String, preField: String, field: String): List[String] = {
+    getStoreLanguagesAsList(store).flatMap {
       l => preField + l + "." + field :: Nil
     }
-    langsTokens.mkString("\"", "\", \"", "\"")
+  }
+
+  def getLangFieldsWithPrefix(store: String, preField: String, field: String): String = {
+    getLangFieldsWithPrefixAsList(store, preField, field).mkString("\"", "\", \"", "\"")
+  }
+
+  def getIncludedFieldWithPrefixAsList(store: String, preField:  String, field: String, lang: String) : List[String] = {
+    if ("_all".equals(lang)) {
+      getLangFieldsWithPrefixAsList(store, preField, field)
+    } else {
+      List(preField + lang + "." + field)
+    }
   }
 
   def getIncludedFieldWithPrefix(store: String, preField:  String, field: String, lang: String) : String = {
-    {
-      if ("_all".equals(lang)) {
-        getLangFieldsWithPrefix(store, preField, field)
-      } else {
-        "\"" + preField + lang + "." + field + "\""
+    getIncludedFieldWithPrefixAsList(store, preField, field, lang).mkString("\"", "\", \"", "\"")
+  }
+
+  def getHighlightedFieldsAsList(store: String, field: String, lang: String): List[String] = {
+    if ("_all".equals(lang))
+      getStoreLanguagesAsList(store).flatMap {
+        l => l + "." + field :: Nil
       }
-    }
+    else List(s"$lang.$field")
   }
 
-  def getIncludedFields(store: String, field: String, lang: String) : String = {
-    getIncludedFieldWithPrefix(store ,"",field,lang)
-  }
-
-  def getHighlightedFields(store: String, field: String): String = {
-    val langs = getStoreLanguagesAsList(store)
-    val langsTokens = langs.flatMap {
-      l => l + "." + field :: Nil
-    }
-
-    langsTokens.mkString("\"", "\": {}, \"", "\": {}")
+  def getHighlightedFields(store: String, field: String, lang: String): String = {
+    getHighlightedFieldsAsList(store, field, lang).mkString("\"", "\": {}, \"", "\": {}")
   }
 
   /**
@@ -260,12 +255,12 @@ object ElasticSearchClient /*extends Actor*/ {
         filters +:= termFilter("brand.id", s)
         if(qr.parentId.isDefined) filters +:= termFilter("category.parentId", qr.parentId.get)
         if(qr.categoryPath.isDefined) filters +:= regexFilter("category.path", s".*${qr.categoryPath.get.toLowerCase}.*")
-        search4s in store -> "product"
+        esearch4s in store -> "product"
       case None =>
         if(qr.parentId.isDefined) filters +:= termFilter("parentId", qr.parentId.get)
         else if(qr.categoryPath.isEmpty) missingFilter("parentId") existence true includeNull true
         if(qr.categoryPath.isDefined) filters +:= regexFilter("path", s".*${qr.categoryPath.get.toLowerCase}.*")
-        search4s in store -> "category"
+        esearch4s in store -> "category"
     }
     EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
   }
@@ -274,10 +269,10 @@ object ElasticSearchClient /*extends Actor*/ {
   def queryProductsByCriteria(store: String, req: ProductRequest): JValue = {
     val query = req.name match {
       case Some(s) =>
-        search4s in store -> "product" query {
+        esearch4s in store -> "product" query {
           matchQuery("name", s)
         }
-      case None => search4s in store -> "product"
+      case None => esearch4s in store -> "product"
     }
     val filters:List[FilterDefinition] = (List(
       createTermFilter("code", req.code),
@@ -465,7 +460,7 @@ object ElasticSearchClient /*extends Actor*/ {
     val idList = params.ids.split(",").toList
 
     def getFetchConfig(id: String, lang: String): String = {
-      val nameFields = getIncludedFields(store,"name", lang)
+      val nameFields = getIncludedFieldWithPrefix(store, "", "name", lang)
       val featuresNameField = getIncludedFieldWithPrefix(store, "features.", "name", lang)
       val featuresValueField = getIncludedFieldWithPrefix(store, "features.", "value", lang)
       s"""
@@ -615,99 +610,38 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param params
    * @return a list of products
    */
-  def queryProductsByFulltextCriteria(store: String, params: FullTextSearchProductParameters): Future[JValue] = {
-
-    val fields: String = getIncludedFields(store, "name", params._lang)
-    val includedFields = if (params.highlight) {
-      ""
-    }
-    else {
-      ", \"name\", " + fields
-    }
-
-    val source = s"""
-        "_source": {
-          "include": [
-           "id"$includedFields
-          ]
+  def queryProductsByFulltextCriteria(store: String, params: FullTextSearchProductParameters): JValue = {
+    val fields:List[String] = List("name") ::: getIncludedFieldWithPrefixAsList(store, "", "name", params._lang)
+    val includedFields:List[String] = (if(params.highlight) List.empty else List("name")) ::: fields
+    val highlightedFields = List("name") ::: getHighlightedFieldsAsList(store, "name", params.lang)
+    val req =
+      if(params.highlight){
+        esearch4s in store types(List("product", "category", "brand"):_*) highlighting{
+          highlightedFields.mkString(",")
         }
-      """.stripMargin
-
-    val textQuery = {
-      val text = params.query
-      val included = fields
-      s"""
-       "query": {
-          "query_string": {
-            "fields": [
-              "name",
-              $included
-            ],
-            "query": "$text"
-          }
-       }
-      """.stripMargin
-    }
-
-    val highlightedFields = if (params.highlight) if ("_all".equals(params.lang)) {
-      getHighlightedFields(store, "name")
-    } else {
-      "\"" + params.lang + ".name\" : {}"
-    }
-
-    val highlightConf = if (params.highlight) {
-      s"""
-        "highlight": {
-          "fields": {
-            "name": {},
-            $highlightedFields
-          }
-        }
-      """.stripMargin
-    } else ""
-
-    val query = List(source, textQuery, highlightConf).filter {
-      str => !str.isEmpty
-    }.mkString("{", ",", "}")
-
-    def httpResponseToFuture(response: HttpResponse, withHightLight: Boolean): Future[JValue] = {
-      if (response.status.isSuccess) {
-
-        val json = parse(response.entity.asString)
-        val subset = json \ "hits" \ "hits"
-
-        val rawResult = if (withHightLight) {
-          for {
-            JObject(result) <- subset.children.children
-            JField("_type", JString(_type)) <- result
-            JField("_source", JObject(_source)) <- result
-            JField("highlight", JObject(highlight)) <- result
-          } yield _type -> (_source ::: highlight)
-        } else {
-          for {
-            JObject(result) <- subset.children.children
-            JField("_type", JString(_type)) <- result
-            JField("_source", JObject(_source)) <- result
-          } yield _type -> _source
-        }
-
-        val result = rawResult.groupBy(_._1).map {
-          case (_cat, v) => (_cat, v.map(_._2))
-        }
-        //println(compact(render(result)))
-        Future{result}
-
-      } else {
-        //TODO log l'erreur
-        Future{parse(response.entity.asString)}
-        //throw new ElasticSearchClientException(resp.status.reason)
       }
+      else{
+        esearch4s in store types(List("product", "category", "brand"):_*)
+      }
+    val hits:JArray = EsClient.searchAllRaw(req sourceInclude(includedFields:_*)).getHits
+    val rawResult =
+      if (params.highlight) {
+        for {
+          JObject(result) <- hits.children.children
+          JField("_type", JString(_type)) <- result
+          JField("_source", JObject(_source)) <- result
+          JField("highlight", JObject(highlight)) <- result
+        } yield _type -> (_source ::: highlight)
+      } else {
+        for {
+          JObject(result) <- hits.children.children
+          JField("_type", JString(_type)) <- result
+          JField("_source", JObject(_source)) <- result
+        } yield _type -> _source
+      }
+    rawResult.groupBy(_._1).map {
+      case (_cat, v) => (_cat, v.map(_._2))
     }
-
-    //println(query)
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product,category,brand/_search"), query))
-    fresponse.flatMap(response => httpResponseToFuture(response, params.highlight))
-
   }
 
 
@@ -722,7 +656,7 @@ object ElasticSearchClient /*extends Actor*/ {
   def queryProductDates(store: String, id: Long, req: ProductDatesRequest): JValue = {
     val filters:List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
     val hits:SearchHits = EsClient.searchAllRaw(
-      filterRequest(search4s in store -> "product", filters) sourceInclude(List("datePeriods", "intraDayPeriods"):_*)
+      filterRequest(esearch4s in store -> "product", filters) sourceInclude(List("datePeriods", "intraDayPeriods"):_*)
     )
     val inPeriods:List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
     val outPeriods:List[EndPeriod] = hits.getHits.map(hit => hit.field("datePeriods").getValue[List[EndPeriod]]).flatten.toList
@@ -761,7 +695,7 @@ object ElasticSearchClient /*extends Actor*/ {
   def queryProductTimes(store:String , id:Long, req: ProductTimesRequest) : JValue = {
     val filters:List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
     val hits:SearchHits = EsClient.searchAllRaw(
-      filterRequest(search4s in store -> "product", filters) sourceInclude(List("intraDayPeriods"):_*)
+      filterRequest(esearch4s in store -> "product", filters) sourceInclude(List("intraDayPeriods"):_*)
     )
     val intraDayPeriods:List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
     //date or today
@@ -895,7 +829,7 @@ object ElasticSearchClient /*extends Actor*/ {
   }
 
   def updateComment(store:String, productId:Long, commentId:String, useful: Boolean) : Boolean = {
-    val req = update4s id commentId in s"${commentIndex(store)}/comment" script s"""{"script":"if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}","params":{"useful":$useful}}"""
+    val req = esupdate4s id commentId in s"${commentIndex(store)}/comment" script s"""{"script":"if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}","params":{"useful":$useful}}"""
     EsClient().execute(req).isCreated
   }
 
@@ -904,7 +838,7 @@ object ElasticSearchClient /*extends Actor*/ {
     val from = req.pageOffset.getOrElse(0) * size
     val filters:List[FilterDefinition] = List(createTermFilter("productId", Some(s"$productId"))).flatten
     val hits:SearchHits = EsClient.searchAllRaw(
-      filterRequest(search4s in commentIndex(store) -> "comment", filters)
+      filterRequest(esearch4s in commentIndex(store) -> "comment", filters)
         from from
         size size
         sort {

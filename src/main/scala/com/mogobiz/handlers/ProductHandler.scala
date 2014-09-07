@@ -17,9 +17,7 @@ class ProductHandler {
   }
   
   def queryProductsByFulltextCriteria(storeCode: String, params: FullTextSearchProductParameters): JValue = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.queryProductsByFulltextCriteria(storeCode,params)
-    Await.result(response, 10 seconds)
+    ElasticSearchClient.queryProductsByFulltextCriteria(storeCode,params)
   }
 
   def getProductsFeatures(storeCode: String, params: CompareProductParameters): JValue = {
