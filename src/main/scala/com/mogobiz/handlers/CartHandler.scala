@@ -53,22 +53,21 @@ class CartHandler {
       val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.skuId, cmd.quantity, cmd.dateTime, cmd.registeredCartItems)
       val data = cartRenderService.renderCart(updatedCart, currency, locale)
       val response = Map(
-        ("success" -> true),
-        ("data" -> data),
-        ("errors" -> List())
+        "success" -> true,
+        "data" -> data,
+        "errors" -> List()
       )
 
       response
 
     } catch {
-      case e: AddCartItemException => {
+      case e: AddCartItemException =>
         val response = Map(
-          ("success" -> false),
-          ("data" -> cart),
-          ("errors" -> e.getErrors(locale))
+          "success" -> false,
+          "data" -> cart,
+          "errors" -> e.getErrors(locale)
         )
         response
-      }
     }
   }
 
@@ -86,20 +85,19 @@ class CartHandler {
       val updatedCart = cartService.updateItem(locale, currency.code, cart, cartItemId, cmd.quantity)
       val data = cartRenderService.renderCart(updatedCart, currency, locale)
       val response = Map(
-        ("success" -> true),
-        ("data" -> data),
-        ("errors" -> List())
+        "success" -> true,
+        "data" -> data,
+        "errors" -> List()
       )
       response
     } catch {
-      case e: UpdateCartItemException => {
+      case e: UpdateCartItemException =>
         val response = Map(
-          ("success" -> false),
-          ("data" -> cart),
-          ("errors" -> e.getErrors(locale))
+          "success" -> false,
+          "data" -> cart,
+          "errors" -> e.getErrors(locale)
         )
         response
-      }
     }
   }
 
@@ -116,20 +114,19 @@ class CartHandler {
       val updatedCart = cartService.removeItem(locale, currency.code, cart, cartItemId)
       val data = cartRenderService.renderCart(updatedCart, currency, locale)
       val response = Map(
-        ("success" -> true),
-        ("data" -> data),
-        ("errors" -> List())
+        "success" -> true,
+        "data" -> data,
+        "errors" -> List()
       )
       response
     } catch {
-      case e: RemoveCartItemException => {
+      case e: RemoveCartItemException =>
         val response = Map(
-          ("success" -> false),
-          ("data" -> cart),
-          ("errors" -> e.getErrors(locale))
+          "success" -> false,
+          "data" -> cart,
+          "errors" -> e.getErrors(locale)
         )
         response
-      }
     }
   }
 
@@ -149,20 +146,19 @@ class CartHandler {
       val updatedCart = cartService.addCoupon(storeCode, couponCode, cart, locale, currency.code)
       val data = cartRenderService.renderCart(updatedCart, currency, locale)
       val response = Map(
-        ("success" -> true),
-        ("data" -> data),
-        ("errors" -> List())
+        "success" -> true,
+        "data" -> data,
+        "errors" -> List()
       )
       response
     } catch {
-      case e: AddCouponToCartException => {
+      case e: AddCouponToCartException =>
         val response = Map(
-          ("success" -> false),
-          ("data" -> cart),
-          ("errors" -> e.getErrors(locale))
+          "success" -> false,
+          "data" -> cart,
+          "errors" -> e.getErrors(locale)
         )
         response
-      }
     }
     //complete("add coupon")
   }
@@ -180,20 +176,19 @@ class CartHandler {
       val updatedCart = cartService.removeCoupon(storeCode, couponCode, cart, locale, currency.code)
       val data = cartRenderService.renderCart(updatedCart, currency, locale)
       val response = Map(
-        ("success" -> true),
-        ("data" -> data),
-        ("errors" -> List())
+        "success" -> true,
+        "data" -> data,
+        "errors" -> List()
       )
       response
     } catch {
-      case e: RemoveCouponFromCartException => {
+      case e: RemoveCouponFromCartException =>
         val response = Map(
-          ("success" -> false),
-          ("data" -> cart),
-          ("errors" -> e.getErrors(locale))
+          "success" -> false,
+          "data" -> cart,
+          "errors" -> e.getErrors(locale)
         )
         response
-      }
     }
     //complete("remove coupon")
   }
@@ -221,20 +216,19 @@ class CartHandler {
       val data = cartService.prepareBeforePayment(storeCode, country, params.state, currency.code, cart, currency)
 
       val response = Map(
-        ("success" -> true),
-        ("data" -> data),
-        ("errors" -> List())
+        "success" -> true,
+        "data" -> data,
+        "errors" -> List()
       )
       response
     } catch {
-      case e: CartException => {
+      case e: CartException =>
         val response = Map(
-          ("success" -> false),
-          ("data" -> cart),
-          ("errors" -> e.getErrors(locale))
+          "success" -> false,
+          "data" -> cart,
+          "errors" -> e.getErrors(locale)
         )
         response
-      }
     }
     //complete("prepare")
   }
@@ -245,20 +239,19 @@ class CartHandler {
     try {
       val emailingData = cartService.commit(cart, params.transactionUuid)
       val response = Map(
-        ("success" -> true),
-        ("data" -> emailingData),
-        ("errors" -> List())
+        "success" -> true,
+        "data" -> emailingData,
+        "errors" -> List()
       )
       response
     } catch {
-      case e: Exception => {
+      case e: Exception =>
         val response = Map(
-          ("success" -> false),
-          ("data" -> cart),
-          ("errors" -> e.getMessage)
+          "success" -> false,
+          "data" -> cart,
+          "errors" -> e.getMessage
         )
         response
-      }
     }
     //complete("commit")
   }
@@ -272,20 +265,19 @@ class CartHandler {
       val updatedCart = cartService.cancel(cart)
       val data = cartRenderService.renderCart(updatedCart, currency, locale)
       val response = Map(
-        ("success" -> true),
-        ("data" -> data),
-        ("errors" -> List())
+        "success" -> true,
+        "data" -> data,
+        "errors" -> List()
       )
       response
     } catch {
-      case e: CartException => {
+      case e: CartException =>
         val response = Map(
-          ("success" -> false),
-          ("data" -> cart),
-          ("errors" -> e.getErrors(locale))
+          "success" -> false,
+          "data" -> cart,
+          "errors" -> e.getErrors(locale)
         )
         response
-      }
     }
   }
 
