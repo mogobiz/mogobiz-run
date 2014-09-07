@@ -20,17 +20,15 @@ trait MogobizRoutes extends Directives {
     pathPrefix("store" / Segment) {
       storeCode => {
         optionalCookie("mogobiz_uuid") {
-          case Some(mogoCookie) => {
+          case Some(mogoCookie) =>
             println(s"mogoCookie=${mogoCookie.content}")
             storeRoutes(storeCode, mogoCookie.content)
-          }
-          case None => {
+          case None =>
             val id = UUID.randomUUID.toString
-            println(s"new uuid=${id}")
+            println(s"new uuid=$id")
             setCookie(HttpCookie("mogobiz_uuid", content = id, path = Some("/store/" + storeCode))) {
               storeRoutes(storeCode, id)
             }
-          }
         }
       }
     }

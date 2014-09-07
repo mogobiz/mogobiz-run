@@ -201,7 +201,7 @@ import scala.concurrent.duration._
             (actor ? request) map {
               case Success(r) =>  r
               case Failure(t) => t match {
-                case CommentException(code, message) => complete(StatusCodes.BadRequest, (MogoError(code, message)))
+                case CommentException(code, message) => complete(StatusCodes.BadRequest, MogoError(code, message))
                 case _ => complete(StatusCodes.InternalServerError, t.getMessage)
               }
               //TODO check userId in mogopay before inserting

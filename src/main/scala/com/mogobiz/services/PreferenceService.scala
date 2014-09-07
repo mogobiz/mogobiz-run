@@ -41,7 +41,7 @@ import scala.concurrent.duration._
   lazy val savePrefs = post {
     parameters('productsNumber ? 10).as(Prefs) { params =>
       val request = QuerySavePreferenceRequest(storeCode, uuid, params)
-      onComplete((actor ? request)) {
+      onComplete(actor ? request) {
         case Success(result) => complete(StatusCodes.OK -> Map("code" -> true))
         case Failure(result) => complete(StatusCodes.OK -> Map("code" -> false))
       }
