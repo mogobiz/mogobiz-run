@@ -4,6 +4,7 @@ import java.util.Locale
 
 import com.mogobiz._
 import com.mogobiz.cart._
+import com.mogobiz.es.ElasticSearchClient
 import com.mogobiz.model._
 
 

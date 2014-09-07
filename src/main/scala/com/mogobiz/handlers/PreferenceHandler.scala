@@ -1,6 +1,6 @@
 package com.mogobiz.handlers
 
-import com.mogobiz.ElasticSearchClient
+import com.mogobiz.es.ElasticSearchClient
 import com.mogobiz.model.Prefs
 
 class PreferenceHandler {

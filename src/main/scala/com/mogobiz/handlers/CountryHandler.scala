@@ -1,6 +1,6 @@
 package com.mogobiz.handlers
 
-import com.mogobiz.ElasticSearchClient
+import com.mogobiz.es.ElasticSearchClient
 import org.json4s.JsonAST.JValue
 
 

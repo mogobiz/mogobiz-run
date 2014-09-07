@@ -1,5 +1,6 @@
 package com.mogobiz
 
+import com.mogobiz.es.ElasticSearchClient
 import com.mogobiz.model.{Prefs, CommentGetRequest}
 import org.specs2.mutable.Specification
 import org.specs2.time.NoTimeConversions

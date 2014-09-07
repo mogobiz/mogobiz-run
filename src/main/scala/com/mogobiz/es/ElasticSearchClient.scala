@@ -1,10 +1,10 @@
-package com.mogobiz
+package com.mogobiz.es
 
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date, Locale}
 
-import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
+import com.mogobiz.model
 import com.mogobiz.model._
 import com.mogobiz.services.RateBoService
 import com.mogobiz.utils.JacksonConverter

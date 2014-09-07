@@ -1,6 +1,7 @@
 package com.mogobiz.handlers
 
 import com.mogobiz._
+import com.mogobiz.es.ElasticSearchClient
 import com.mogobiz.model._
 import com.mogobiz.vo.Paging
 import org.json4s.JsonAST.JValue
