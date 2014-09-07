@@ -3,6 +3,7 @@ package com.mogobiz.mail
 import akka.actor._
 import akka.actor.SupervisorStrategy._
 import akka.routing.SmallestMailboxPool
+import com.mogobiz.mail.EmailService.EmailServiceActor
 import org.apache.commons.mail.{EmailException, DefaultAuthenticator, HtmlEmail}
 
 /**
@@ -11,20 +12,26 @@ import org.apache.commons.mail.{EmailException, DefaultAuthenticator, HtmlEmail}
  */
 object EmailService {
 
+  var system:ActorSystem=null
+  var actorName:String =null
+
+  def apply(as: ActorSystem, name:String): Unit ={
+    if(system == null && actorName == null){
+      system = as
+      actorName = name
+    }
+  }
+
   /**
    * Uses the smallest inbox strategy to keep 20 instances alive ready to send out email
    * @see SmallestMailboxRouter
    */
-
-  val emailServiceActor = akka.actor.ActorSystem("system").actorOf(
+  lazy val emailServiceActor = system.actorOf( //akka.actor.ActorSystem("system").actorOf(
     Props[EmailServiceActor].withRouter(
       SmallestMailboxPool(nrOfInstances = 50)
       //SmallestMailboxRouter(nrOfInstances = 50)
-    ), name = "emailService"
+    ), name = actorName
   )
-
-//  def emailServiceActor
-
 
   /**
    * public interface to send out emails that dispatch the message to the listening actors

@@ -1,6 +1,7 @@
 package com.mogobiz.actors
 
 import akka.actor.{ActorSystem, Props}
+import com.mogobiz.mail.EmailService
 
 /**
   * Core is type containing the ``system: ActorSystem`` member. This enables us to use it in our
@@ -43,5 +44,7 @@ trait MogobizActors {
   val preferenceActor = system.actorOf(Props[PreferenceActor])
   val cartActor = system.actorOf(Props[CartActor])
 
+  //init the email service with the sytem Actor
+  EmailService(system,"emailService")
 }
 
