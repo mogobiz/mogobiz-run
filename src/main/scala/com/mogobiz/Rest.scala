@@ -1,7 +1,7 @@
 package com.mogobiz
 
-import com.mogobiz.actors.{MogobizActors, BootedMogobizSystem}
 import akka.io.IO
+import com.mogobiz.actors.{BootedMogobizSystem, MogobizActors}
 import com.mogobiz.config.Settings
 import com.mogobiz.services.MogobizRoutes
 import spray.can.Http

@@ -737,7 +737,7 @@ object ElasticSearchClient {
         }
     )
     val comments:List[Comment] = hits.getHits.map(JacksonConverter.deserializeComment).toList
-    Paging.add(hits.getTotalHits, comments, req)
+    Paging.add(hits.getTotalHits.toInt, comments, req)
   }
 
   private def isDateExcluded(periods:List[EndPeriod] , day:Calendar ) : Boolean  = {

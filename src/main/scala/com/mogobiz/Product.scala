@@ -4,6 +4,7 @@ import java.util.Date
 import com.mogobiz.vo.PagingParams
 
 /**
+ *
  * Created by Christophe on 17/02/14.
  */
 /*
@@ -58,14 +59,14 @@ case class FullTextSearchProductParameters(
                                             _lang: String
                                             , _currency: Option[String]
                                             , _country: Option[String]
-                                            , val query: String
-                                            , val highlight: Boolean) extends CommonProductParameters(_lang, _currency, _country)
+                                            , query: String
+                                            , highlight: Boolean) extends CommonProductParameters(_lang, _currency, _country)
 
 case class CompareProductParameters(
                                      _lang: String
                                      , _currency: Option[String]
                                      , _country: Option[String]
-                                     , val ids: String) extends CommonProductParameters(_lang, _currency, _country)
+                                     , ids: String) extends CommonProductParameters(_lang, _currency, _country)
 case class FeatureValue(value: String)
 case class Feature(indicator: String, label: String, values: List[FeatureValue])
 case class ComparisonResult(ids: List[String],result:List[Feature])
@@ -105,13 +106,13 @@ case class ProductTimesRequest(date: Option[String])
 class DatePeriod(val startDate:Date,val endDate:Date)
 case class EndPeriod(start:Date,end:Date) extends DatePeriod(start,end)
 case class IntraDayPeriod(override val startDate:Date,override val endDate:Date,
-                          val weekday1:Boolean,
-                          val weekday2:Boolean,
-                          val weekday3:Boolean,
-                          val weekday4:Boolean,
-                          val weekday5:Boolean,
-                          val weekday6:Boolean,
-                          val weekday7:Boolean
+                          weekday1:Boolean,
+                          weekday2:Boolean,
+                          weekday3:Boolean,
+                          weekday4:Boolean,
+                          weekday5:Boolean,
+                          weekday6:Boolean,
+                          weekday7:Boolean
                            ) extends DatePeriod(startDate,endDate)
 
 

@@ -1,6 +1,7 @@
 package com.mogobiz
 
 /**
+ *
  * Created by dach on 18/02/2014.
  */
 

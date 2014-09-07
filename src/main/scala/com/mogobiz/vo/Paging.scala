@@ -1,60 +1,18 @@
 package com.mogobiz.vo
 
-import org.elasticsearch.search.SearchHits
 import org.json4s.JsonAST.JValue
 import org.json4s._
 
 /**
+ *
  * Created by Christophe on 24/04/2014.
  */
 
 object Paging {
 
-  /* waiting an answer
-  def addPaging[T](json:JValue,paging:PagingParams):Paging[T] = {
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    val size = paging.maxItemPerPage.getOrElse(100)
-    val from = paging.pageOffset.getOrElse(0) * size
-
-    val hits = (json \"hits")
-    val total : Int =  (hits \ "total").extract[Int]
-    val subset = hits \ "hits" \ "_source"
-    val results = subset.extract[List[T]]
-
-    val pageCount = (size / total) +1
-    val hasPrevious = from > size
-    val hasNext = (from + size) < total
-
-    val pagedResults = new Paging(results,results.size,total,size,from,pageCount,hasPrevious,hasNext)
-    pagedResults
-  }
-  */
-
   def add[T](total:Int, results:List[T],pagingParams:PagingParams):Paging[T] = {
     val paging = get(total, pagingParams)
     val pagedResults = new Paging(results, results.size, paging.totalCount, paging.maxItemsPerPage, paging.pageOffset, paging.pageCount, paging.hasPrevious, paging.hasNext)
-    pagedResults
-  }
-
-  /**
-   * add paging to a results list
-   * @param json
-   * @param results
-   * @param pagingParams
-   * @tparam T
-   * @return
-   */
-  def add[T](json:JValue,results:List[T],pagingParams:PagingParams):Paging[T] = {
-
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    val hits = json \"hits"
-    val total : Int =  (hits \ "total").extract[Int]
-
-    val paging = get(total, pagingParams)
-
-    val pagedResults = new Paging(results,results.size,paging.totalCount,paging.maxItemsPerPage,paging.pageOffset,paging.pageCount,paging.hasPrevious,paging.hasNext)
     pagedResults
   }
 

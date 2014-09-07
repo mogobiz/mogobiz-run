@@ -1,6 +1,7 @@
 package com.mogobiz
 
 /**
+ *
  * Created by Christophe on 27/04/2014.
  */
 object CommentException{
@@ -21,6 +22,4 @@ object CommentException{
   }
 
 }
-case class CommentException(val code:Int,val message:String) extends Exception {
-
-}
+case class CommentException(code:Int, message:String) extends Exception {}
