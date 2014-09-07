@@ -2,7 +2,6 @@ package com.mogobiz.es
 
 import java.io.File
 
-import com.mogobiz.config.Settings
 import com.mogobiz.config.Settings._
 import com.sksamuel.elastic4s.ElasticDsl._
 import spray.client.pipelining._

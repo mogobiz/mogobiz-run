@@ -2,7 +2,6 @@ package com.mogobiz.es
 
 import java.util.{Calendar, Date}
 
-import com.mogobiz.config.Settings
 import com.mogobiz.config.Settings._
 import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, index => esindex4s, update => esupdate4s, _}
