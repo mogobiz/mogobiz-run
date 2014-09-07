@@ -57,6 +57,8 @@ class CartActor extends Actor {
     case q: QueryCartPaymentCommitRequest => {
       val res: Map[String,Any] = cartHandler.queryCartPaymentCommit(q.storeCode,q.uuid, q.params)
 
+      sender ! res
+
       val emailingData = res("data").asInstanceOf[List[Map[String,Any]]]
 
       val smtpConfig = SmtpConfig(
@@ -94,7 +96,6 @@ class CartActor extends Actor {
         }
       }
 
-      sender ! res
     }
     case q: QueryCartPaymentCancelRequest => {
       sender ! cartHandler.queryCartPaymentCancel(q.storeCode,q.uuid, q.params)
