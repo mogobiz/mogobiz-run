@@ -19,7 +19,6 @@ import scala.concurrent.duration._
 import spray.can.Http
 import spray.client.pipelining._
 import spray.util._
-import org.json4s.native.JsonMethods._
 import org.json4s._
 import org.json4s.JsonDSL._
 import java.util._
@@ -204,18 +203,10 @@ object ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  def getAllExcludedLanguagesExceptAsString(store: String, lang: String): String = {
-    getAllExcludedLanguagesExceptAsList(store, lang).mkString("\"", "\",\"", "\"")
-  }
-
   def getLangFieldsWithPrefixAsList(store: String, preField: String, field: String): List[String] = {
     getStoreLanguagesAsList(store).flatMap {
       l => preField + l + "." + field :: Nil
     }
-  }
-
-  def getLangFieldsWithPrefix(store: String, preField: String, field: String): String = {
-    getLangFieldsWithPrefixAsList(store, preField, field).mkString("\"", "\", \"", "\"")
   }
 
   def getIncludedFieldWithPrefixAsList(store: String, preField:  String, field: String, lang: String) : List[String] = {
@@ -226,20 +217,12 @@ object ElasticSearchClient /*extends Actor*/ {
     }
   }
 
-  def getIncludedFieldWithPrefix(store: String, preField:  String, field: String, lang: String) : String = {
-    getIncludedFieldWithPrefixAsList(store, preField, field, lang).mkString("\"", "\", \"", "\"")
-  }
-
   def getHighlightedFieldsAsList(store: String, field: String, lang: String): List[String] = {
     if ("_all".equals(lang))
       getStoreLanguagesAsList(store).flatMap {
         l => l + "." + field :: Nil
       }
     else List(s"$lang.$field")
-  }
-
-  def getHighlightedFields(store: String, field: String, lang: String): String = {
-    getHighlightedFieldsAsList(store, field, lang).mkString("\"", "\": {}, \"", "\": {}")
   }
 
   /**
