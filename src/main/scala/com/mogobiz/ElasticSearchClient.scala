@@ -1,29 +1,26 @@
 package com.mogobiz
 
+import java.text.SimpleDateFormat
+import java.util._
+
 import com.mogobiz.config.Settings
 import com.mogobiz.es.EsClient
-import EsClient._
+import com.mogobiz.es.EsClient._
 import com.mogobiz.utils.JacksonConverter
+import com.mogobiz.vo.{Comment, CommentGetRequest, CommentRequest, Paging}
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
-import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
+import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
-import org.slf4j.LoggerFactory
-import org.json4s._
+import org.json4s.JsonAST.{JArray, JNothing, JObject}
 import org.json4s.JsonDSL._
-import java.util._
-import java.text.SimpleDateFormat
+import org.json4s._
+import org.slf4j.LoggerFactory
+
 import scala.List
-import com.mogobiz.vo.Paging
-import org.json4s.JsonAST.{JObject, JNothing}
-import scala.util.{Failure, Try}
-import com.mogobiz.vo.Comment
-import scala.util.Success
-import com.mogobiz.vo.CommentRequest
-import org.json4s.JsonAST.JArray
-import com.mogobiz.vo.CommentGetRequest
+import scala.util.{Failure, Success, Try}
 
 /**
  *
