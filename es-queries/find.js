@@ -1,11 +1,11 @@
 // Statut OK
 // StoreController
-restpath = "/api/store/{storeCode}/products?lang=fr&currency={curCode}&country={countryCode}"
-method = "POST" // et/ou "GET"
+restpath = "/api/store/{storeCode}/products?lang=fr&currency={curCode}&country={countryCode}";
+method = "POST"; // et/ou "GET"
 
 var payload = {
     "query":"pull tv"
-}
+};
 
 /* TODO dans StoreController
  si historize==true alors la méthode déclenche l'appel à la méthode addToHistory avec visitorId en paramètre
@@ -14,8 +14,8 @@ var payload = {
  */
 
 //requete ES
-method="POST"
-curl = "http://localhost:9200/mogobiz/product/_search"
+method="POST";
+curl = "http://localhost:9200/mogobiz/product/_search";
 
 var esquery={
     "_source": {
@@ -30,4 +30,4 @@ var esquery={
         "query": "pull tv"
     }
 }
-}
+};

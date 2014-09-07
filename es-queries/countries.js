@@ -1,14 +1,14 @@
 // STATUS : OK
 // StoreController
-restpath = "/api/store/{storeCode}/countries?lang=fr"
+restpath = "/api/store/{storeCode}/countries?lang=fr";
 
 /* TODO dans StoreController
  récuperer le _source
  */
 
 //Requete ES
-method = "POST"
-curl = "http://localhost:9200/mogobiz/country/_search" //en GET rajouter ?fields=code,name,fr.*
+method = "POST";
+curl = "http://localhost:9200/mogobiz/country/_search"; //en GET rajouter ?fields=code,name,fr.*
 esquery = {
     "_source": {
         "include": [
@@ -17,4 +17,4 @@ esquery = {
             "<lang_prefix>.*"
         ]
     }
-}
+};
