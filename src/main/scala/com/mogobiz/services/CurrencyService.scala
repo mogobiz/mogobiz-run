@@ -1,7 +1,8 @@
 package com.mogobiz.services
 
 import akka.actor.ActorRef
-import com.mogobiz.Json4sProtocol._
+import com.mogobiz.json.Json4sProtocol
+import Json4sProtocol._
 import com.mogobiz.actors.CurrencyActor.QueryCurrencyRequest
 import org.json4s._
 import spray.routing.Directives

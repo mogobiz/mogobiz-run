@@ -2,6 +2,7 @@ package com.mogobiz.cart
 
 import java.util.Locale
 
+import com.mogobiz.json.Json4sProtocol
 import com.mogobiz.model.Currency
 import com.mogobiz.services.RateBoService
 import com.typesafe.scalalogging.slf4j.Logger
@@ -144,7 +145,7 @@ object CartRenderService {
     import org.json4s.native.JsonMethods._
     import org.json4s.native.Serialization.write
     //implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
-    import com.mogobiz.Json4sProtocol._
+    import Json4sProtocol._
     val jsonItem = parse(write(item))
 
     val price = rateService.calculateAmount(item.price, rate)

@@ -3,7 +3,8 @@ package com.mogobiz.services
 import akka.actor.ActorRef
 import com.mogobiz.actors.CartActor._
 import com.mogobiz.cart.{AddToCartCommand, UpdateCartItemCommand}
-import com.mogobiz.config.JsonSupport._
+import com.mogobiz.json.JsonSupport
+import JsonSupport._
 import com.mogobiz.model._
 import spray.routing.Directives
 

@@ -1,7 +1,8 @@
 package com.mogobiz.services
 
 import akka.actor.ActorRef
-import com.mogobiz.Json4sProtocol._
+import com.mogobiz.json.Json4sProtocol
+import Json4sProtocol._
 import com.mogobiz.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductRequest, _}
 import com.mogobiz.model._
 import com.mogobiz.vo.MogoError

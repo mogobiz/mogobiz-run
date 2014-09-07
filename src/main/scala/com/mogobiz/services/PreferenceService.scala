@@ -2,7 +2,8 @@ package com.mogobiz.services
 
 import akka.actor.ActorRef
 import com.mogobiz.actors.PreferenceActor.{QueryGetPreferenceRequest, QuerySavePreferenceRequest}
-import com.mogobiz.config.JsonSupport._
+import com.mogobiz.json.JsonSupport
+import JsonSupport._
 import com.mogobiz.model.Prefs
 import spray.http.StatusCodes
 import spray.routing.Directives
