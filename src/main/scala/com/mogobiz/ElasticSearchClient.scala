@@ -1,8 +1,5 @@
 package com.mogobiz
 
-import akka.actor.ActorSystem
-import akka.io.IO
-import akka.pattern.ask
 import com.mogobiz.config.Settings
 import com.mogobiz.es.EsClient
 import EsClient._
@@ -14,9 +11,6 @@ import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.slf4j.LoggerFactory
-import scala.concurrent.duration._
-import spray.can.Http
-import spray.util._
 import org.json4s._
 import org.json4s.JsonDSL._
 import java.util._
@@ -36,11 +30,7 @@ import com.mogobiz.vo.CommentGetRequest
  * Created by Christophe on 18/02/14.
  */
 
-object ElasticSearchClient /*extends Actor*/ {
-
-  implicit val system = ActorSystem("es-client")
-
-  import system.dispatcher
+object ElasticSearchClient {
 
   import Settings.DB._
 
@@ -757,11 +747,6 @@ object ElasticSearchClient /*extends Actor*/ {
     periods.exists(period => {
       day.getTime.compareTo(period.startDate) >= 0 && day.getTime.compareTo(period.endDate) <= 0
     })
-  }
-
-  private def shutdown(): Unit = {
-    IO(Http).ask(Http.CloseAll)(1.second).await
-    system.shutdown()
   }
 
   /**
