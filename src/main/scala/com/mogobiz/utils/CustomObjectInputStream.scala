@@ -1,6 +1,7 @@
 package com.mogobiz.utils
 
 /**
+ *
  * Created by hayssams on 04/03/14.
  */
 import java.io.{InputStream, ObjectInputStream, ObjectStreamClass}
@@ -13,7 +14,7 @@ import scala.Array.canBuildFrom
 class CustomObjectInputStream(in: InputStream, cl: ClassLoader) extends ObjectInputStream(in) {
   override def resolveClass(cd: ObjectStreamClass): Class[_] =
     try {
-      cl.loadClass(cd.getName())
+      cl.loadClass(cd.getName)
     } catch {
       case cnf: ClassNotFoundException =>
         super.resolveClass(cd)

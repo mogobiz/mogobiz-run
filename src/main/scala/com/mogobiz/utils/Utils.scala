@@ -5,6 +5,7 @@ import org.joda.time.{DateTime, LocalTime}
 import scalikejdbc._
 
 /**
+ *
  * Created by Christophe on 24/04/2014.
  */
 object Utils {
@@ -54,7 +55,7 @@ object Utils {
       // On controle maintenant la date avec le calendrier du produit
       product.calendarType match {
         case ProductCalendar.NO_DATE => emptyResult  // Pas de calendrier donc pas de date
-        case ProductCalendar.DATE_ONLY => {
+        case ProductCalendar.DATE_ONLY =>
 
           // Calendrier jour seulement, la date doit être comprise entres les dates du produits
           val dateonly = date.toLocalDate
@@ -66,9 +67,7 @@ object Utils {
           else {
             emptyResult
           }
-
-        }
-        case ProductCalendar.DATE_TIME => {
+        case ProductCalendar.DATE_TIME =>
 
           // on récupère le créneau horraire qui correspond à l'interval pour la date/heure donnée
           val listIncluded:Seq[IntraDayPeriod] = DB readOnly { implicit session =>
@@ -87,17 +86,16 @@ object Utils {
             }
           }
           // et on renvoie le créneau horaire
-            res.headOption match{
-              case Some(idp) => {
-                //DateTime(int year, int monthOfYear, int dayOfMonth, int hourOfDay, int minuteOfHour)
-                val startDate = new DateTime(date.getYear, date.getMonthOfYear, date.dayOfMonth().get(), idp.startDate.hourOfDay().get(), idp.startDate.minuteOfHour().get())
-                val endDate = new DateTime(date.getYear, date.getMonthOfYear, date.dayOfMonth().get(), idp.endDate.hourOfDay().get(), idp.endDate.minuteOfHour().get())
+          res.headOption match{
+            case Some(idp) => {
+              //DateTime(int year, int monthOfYear, int dayOfMonth, int hourOfDay, int minuteOfHour)
+              val startDate = new DateTime(date.getYear, date.getMonthOfYear, date.dayOfMonth().get(), idp.startDate.hourOfDay().get(), idp.startDate.minuteOfHour().get())
+              val endDate = new DateTime(date.getYear, date.getMonthOfYear, date.dayOfMonth().get(), idp.endDate.hourOfDay().get(), idp.endDate.minuteOfHour().get())
 
-                (Some(startDate),Some(endDate))
-              }
-              case _ => emptyResult
+              (Some(startDate),Some(endDate))
             }
-        }
+            case _ => emptyResult
+          }
       }
     }
   }
@@ -119,10 +117,9 @@ trait Copying[T] {
       val fieldName = fields(i).getName
       changes.find(_._1 == fieldName) match {
         case Some(change) => change._2
-        case None => {
+        case None =>
           val getter = clas.getMethod(fieldName)
           getter.invoke(this)
-        }
       }
     }
     constructor.newInstance(arguments: _*).asInstanceOf[T]

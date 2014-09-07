@@ -278,7 +278,7 @@ object ElasticSearchClient {
 
       val lrt = for {
         localTaxRate@JObject(x) <- product \ "taxRate" \ "localTaxRates"
-        if x contains JField("country", JString(country.get.toUpperCase())) //WARNING toUpperCase ??
+        if x contains JField("country", JString(country.get.toUpperCase)) //WARNING toUpperCase ??
         JField("rate", value) <- x} yield value
 
       val taxRate = lrt.headOption match {
@@ -478,9 +478,8 @@ object ElasticSearchClient {
 
   private def extractJSonProperty(source: JValue, property: String, defaultValue: JValue): JValue = {
     source match {
-      case o: JObject => {
+      case o: JObject =>
         o.obj.find {p: JField => p._1 == property}.getOrElse(JField(property, defaultValue))._2
-      }
       case _ => defaultValue
     }
   }
@@ -624,7 +623,7 @@ object ElasticSearchClient {
    * @return
    */
   private def getFixedDate(d: Date):Calendar = {
-    val fixeddate = Calendar.getInstance();
+    val fixeddate = Calendar.getInstance()
     fixeddate.setTime(new Date(d.getTime - fixeddate.getTimeZone.getRawOffset))
     fixeddate
   }

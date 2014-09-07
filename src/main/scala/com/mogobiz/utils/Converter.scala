@@ -29,13 +29,13 @@ trait BinaryConverter[T] extends Converter[T] {
   def fromDomain[T: Manifest](value: T): Array[Byte] = {
     val bos = new ByteArrayOutputStream()
     val out = new ObjectOutputStream(new BufferedOutputStream(bos))
-    out writeObject (value)
+    out writeObject value
     out close ()
     bos toByteArray ()
   }
 
   def safeDecode[T: Manifest](bytes: Array[Byte]) = {
-    val cl = Option(this.getClass().getClassLoader())
+    val cl = Option(this.getClass.getClassLoader)
     val cin = cl match {
       case Some(cls) =>
         new CustomObjectInputStream(new ByteArrayInputStream(bytes), cls)
@@ -43,7 +43,7 @@ trait BinaryConverter[T] extends Converter[T] {
         new ObjectInputStream(new ByteArrayInputStream(bytes))
     }
     val obj = cin.readObject
-    cin.close
+    cin.close()
     obj.asInstanceOf[T]
   }
 }
