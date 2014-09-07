@@ -25,13 +25,13 @@ class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {
 
   "save preferences" in {
     var prefs = Prefs(5)
-    val res = Await.result(ElasticSearchClient.savePreferences(store, "UUID_TEST", prefs), 3 second)
+    val res = ElasticSearchClient.savePreferences(store, "UUID_TEST", prefs)
     res must beTrue
   }
 
   "get preferences" in {
     var prefs = Prefs(5)
-    Await.result(ElasticSearchClient.savePreferences(store, "UUID_TEST", prefs), 3 second)
+    ElasticSearchClient.savePreferences(store, "UUID_TEST", prefs)
     ElasticSearchClient.getPreferences(store, "UUID_TEST") must not beNull
   }
 

@@ -14,10 +14,8 @@ import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.slf4j.LoggerFactory
-import scala.concurrent._
 import scala.concurrent.duration._
 import spray.can.Http
-import spray.client.pipelining._
 import spray.util._
 import org.json4s._
 import org.json4s.JsonDSL._
@@ -27,10 +25,8 @@ import scala.List
 import com.mogobiz.vo.Paging
 import org.json4s.JsonAST.{JObject, JNothing}
 import scala.util.{Failure, Try}
-import spray.http.HttpResponse
 import com.mogobiz.vo.Comment
 import scala.util.Success
-import spray.http.HttpRequest
 import com.mogobiz.vo.CommentRequest
 import org.json4s.JsonAST.JArray
 import com.mogobiz.vo.CommentGetRequest
@@ -51,8 +47,6 @@ object ElasticSearchClient /*extends Actor*/ {
   private val log = Logger(LoggerFactory.getLogger("ElasticSearchClient"))
 
   val rateService = RateBoService
-
-  val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
 
   private val EsFullURL = s"$EsHost:$EsHttpPort"
 
@@ -86,18 +80,11 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param prefs : preferences of the user
    * @return
    */
-  def savePreferences(store: String, uuid: String, prefs: Prefs): Future[Boolean] = {
-    val query = s"""
-            | {
-            |   "productsNumber": ${prefs.productsNumber}
-            | }
-            """.stripMargin
-
-    val response: Future[HttpResponse] = pipeline(Put(route("/" + prefsIndex(store) + "/prefs/" + uuid), query))
-    response.flatMap { response => {
-      Future{response.status.isSuccess}
-    }
-    }
+  def savePreferences(store: String, uuid: String, prefs: Prefs): Boolean = {
+    EsClient.updateRaw(esupdate4s id uuid in s"${prefsIndex(store)}/prefs" docAsUpsert{
+      "productsNumber" -> prefs.productsNumber
+    })
+    true
   }
 
   def getPreferences(store: String, uuid: String): Prefs = {
@@ -362,18 +349,10 @@ object ElasticSearchClient /*extends Actor*/ {
   private val hours = new SimpleDateFormat("HH:mm")
 
   def queryProductDetails(store: String, params: ProductDetailsRequest, productId: Long, sessionId: String): JValue = {
-
     /*cookie("mogobiz_uuid") { cookie =>
     val uuid = cookie.content*/
     if (params.historize) {
-      val f = addToHistory(store, productId.toLong, sessionId)
-      f onComplete {
-        case Success(res) => if (res) println("addToHistory ok") else println("addToHistory failed")
-        case Failure(t) => {
-          println("addToHistory future failure")
-          t.printStackTrace()
-        }
-      }
+      addToHistory(store, productId.toLong, sessionId)
     }
     queryProductById(store, productId.toLong, params)
   }
@@ -385,23 +364,10 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param sessionId
    * @return
    */
-  def addToHistory(store:String,productId:Long,sessionId:String) : Future[Boolean] = {
-
+  def addToHistory(store:String,productId:Long,sessionId:String) : Boolean = {
     val query = s"""{"script":"ctx._source.productIds.contains(pid) ? (ctx.op = \\"none\\") : ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
-
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + historyIndex(store) + "/history/"+sessionId+"/_update"), query))
-
-    fresponse.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-          Future{true}
-        } else {
-          //TODO log l'erreur
-          //println(response.entity.asString)
-          Future{false}
-        }
-      }
-    }
+    EsClient.updateRaw(esupdate4s id sessionId in s"${historyIndex(store)}/history" script query)
+    true
   }
 
   /**
@@ -765,8 +731,10 @@ object ElasticSearchClient /*extends Actor*/ {
   }
 
   def updateComment(store:String, productId:Long, commentId:String, useful: Boolean) : Boolean = {
-    val req = esupdate4s id commentId in s"${commentIndex(store)}/comment" script s"""{"script":"if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}","params":{"useful":$useful}}"""
-    EsClient().execute(req).isCreated
+    val query = s"""{"script":"if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}","params":{"useful":$useful}}"""
+    val req = esupdate4s id commentId in s"${commentIndex(store)}/comment" script query
+    EsClient.updateRaw(req)
+    true
   }
 
   def getComments(store:String, productId:Long , req:CommentGetRequest) : Paging[Comment] = {

@@ -9,9 +9,12 @@ import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
 import org.elasticsearch.common.settings.ImmutableSettings
 import com.sksamuel.elastic4s.ElasticDsl.{index => esindex4s, delete => esdelete4s, update => esupdate4s, _}
+import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.search.{SearchHits, SearchHit}
 import org.json4s.JsonAST.{JValue, JArray}
 import org.json4s.native.JsonMethods._
+import scala.language.implicitConversions
+import scala.language.reflectiveCalls
 
 object EsClient {
   val settings = ImmutableSettings.settingsBuilder().put("cluster.name", Settings.DB.EsCluster).build()
@@ -85,6 +88,10 @@ object EsClient {
     }
     val res = EsClient().execute(req)
     true
+  }
+
+  def updateRaw(req:UpdateDefinition) : GetResult = {
+    EsClient().execute(req).getGetResult
   }
 
   def searchAll[T: Manifest](req: SearchDefinition): Seq[T] = {
