@@ -1,10 +1,11 @@
 package com.mogobiz.cart
 
 import java.util.Calendar
-import com.mogobiz.cart.ProductType.ProductType
+
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
-import scalikejdbc._, SQLInterpolation._
+import com.mogobiz.cart.ProductType.ProductType
 import org.joda.time.DateTime
+import scalikejdbc._
 
 /**
  * Created by Christophe on 06/05/2014.
@@ -179,7 +180,7 @@ object ProductBoService extends BoService {
 
 class InsufficientStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
 class UnavailableStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
-import scalikejdbc._, SQLInterpolation._
+import scalikejdbc._
 
 case class Stock(stock:Long=0,stockUnlimited:Boolean = true,stockOutSelling:Boolean = false)
 object Stock  extends SQLSyntaxSupport[Stock]{

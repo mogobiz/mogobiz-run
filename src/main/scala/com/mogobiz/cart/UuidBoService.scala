@@ -1,11 +1,7 @@
 package com.mogobiz.cart
 
-import org.json4s.{FieldSerializer, DefaultFormats, Formats}
-import scalikejdbc._, SQLInterpolation._
-
 import org.joda.time.DateTime
-import scalikejdbc.WrappedResultSet
-import scala.Some
+import scalikejdbc.{WrappedResultSet, _}
 
 /**
  * Created by Christophe on 05/05/2014.
@@ -37,8 +33,8 @@ object UuidBoService extends BoService {
   }
 
   def getCart(uuid:String): Option[CartVO] = {
-    import org.json4s.native.JsonMethods._
     import com.mogobiz.Json4sProtocol._
+    import org.json4s.native.JsonMethods._
 
     UuidDataDao.findByUuidAndXtype(uuid, QUEUE_XTYPE_CART) match {
       case Some(data) => {
@@ -51,8 +47,8 @@ object UuidBoService extends BoService {
   }
 
   def setCart(cart: CartVO): Unit = {
-    import org.json4s.native.Serialization.{write}
     import com.mogobiz.Json4sProtocol._
+    import org.json4s.native.Serialization.write
 
     val payload = write(cart)
     createAndSave(cart.uuid,payload,QUEUE_XTYPE_CART)

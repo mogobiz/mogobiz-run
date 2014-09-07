@@ -1,8 +1,8 @@
 package com.mogobiz.utils
 
 import java.security.NoSuchAlgorithmException
-import javax.crypto.{NoSuchPaddingException, Cipher}
 import javax.crypto.spec.SecretKeySpec
+import javax.crypto.{Cipher, NoSuchPaddingException}
 
 /**
  * Created by Christophe on 09/07/2014.

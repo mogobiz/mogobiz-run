@@ -1,8 +1,7 @@
 package com.mogobiz.utils
 
 import com.mogobiz.cart.{ProductCalendar, TicketType}
-import org.joda.time.{LocalTime, DateTime}
-import scalikejdbc.SQLInterpolation._
+import org.joda.time.{DateTime, LocalTime}
 import scalikejdbc._
 
 /**
@@ -11,10 +10,10 @@ import scalikejdbc._
 object Utils {
 
   def printJSON(o:Object)={
-    import org.json4s.{DefaultFormats, Formats}
-    import org.json4s.native.Serialization._
-    import org.json4s.native.JsonMethods._
     import org.json4s.JsonDSL._
+    import org.json4s.native.JsonMethods._
+    import org.json4s.native.Serialization._
+    import org.json4s.{DefaultFormats, Formats}
 
     implicit def json4sFormats: Formats = DefaultFormats
     println("-----------------------------------------------------------------------------------------------")

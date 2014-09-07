@@ -1,9 +1,11 @@
 package com.mogobiz.session
 
-import spray.http.DateTime
 import java.util.UUID
-import scala.collection.mutable.Map
+
 import com.mogobiz.config.Settings
+import spray.http.DateTime
+
+import scala.collection.mutable.Map
 
 case class Session(data: Session.Data = Map((Settings.SessionCookieName, UUID.randomUUID.toString)),
                    expires: Option[DateTime] = Some(DateTime.now + (Settings.SessionCookieMaxAge * 1000)),

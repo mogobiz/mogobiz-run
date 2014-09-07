@@ -2,27 +2,24 @@ package com.mogobiz.cart
 
 import java.io.ByteArrayOutputStream
 import java.util.{Date, Locale}
+
 import com.mogobiz.cart.CartBoService._
 import com.mogobiz.cart.CustomTypes.CartErrors
-import com.mogobiz.cart.ProductType.ProductType
-import com.mogobiz.cart.ProductCalendar.ProductCalendar
-import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
+import com.mogobiz.cart.ProductCalendar.ProductCalendar
+import com.mogobiz.cart.ProductType.ProductType
+import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
+import com.mogobiz.cart.TransactionStatus.TransactionStatus
+import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.model.Currency
-import com.mogobiz.services.RateBoService
-import com.mogobiz.utils.{ResourceBundle, Utils, QRCodeUtils, SecureCodec}
+import com.mogobiz.utils.{QRCodeUtils, ResourceBundle, SecureCodec, Utils}
 import com.sun.org.apache.xml.internal.security.utils.Base64
 import com.typesafe.scalalogging.slf4j.Logger
-import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
-import org.json4s.{DefaultFormats, Formats}
 import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import org.slf4j.LoggerFactory
-import scalikejdbc.config.DBs
-import com.mogobiz.cart.TransactionStatus.TransactionStatus
 import scalikejdbc._
-import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
-import org.json4s.native.Serialization._
-import scala.Some
+import scalikejdbc.config.DBs
 
 /**
  * Created by Christophe on 05/05/2014.

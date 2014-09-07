@@ -1,9 +1,8 @@
 package com.mogobiz.actors
 
 import akka.actor.Actor
-import com.mogobiz._
 import com.mogobiz.actors.CartActor._
-import com.mogobiz.cart.{UpdateCartItemCommand, AddToCartCommand}
+import com.mogobiz.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.config.HandlersConfig._
 import com.mogobiz.model._
 

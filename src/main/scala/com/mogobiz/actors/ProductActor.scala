@@ -1,17 +1,8 @@
 package com.mogobiz.actors
 
 import akka.actor.Actor
-import com.mogobiz.actors.ProductActor._
+import com.mogobiz.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductDetailsRequest, QueryProductRequest, _}
 import com.mogobiz.config.HandlersConfig._
-import com.mogobiz._
-import com.mogobiz.actors.ProductActor.QueryFindProductRequest
-import com.mogobiz.actors.ProductActor.QueryProductRequest
-import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
-import com.mogobiz.actors.ProductActor.QueryProductDetailsRequest
-import com.mogobiz.actors.ProductActor.QueryFindProductRequest
-import com.mogobiz.actors.ProductActor.QueryProductRequest
-import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
-import com.mogobiz.actors.ProductActor.QueryProductDetailsRequest
 import com.mogobiz.model._
 
 object ProductActor {

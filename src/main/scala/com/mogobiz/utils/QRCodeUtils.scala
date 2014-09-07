@@ -1,15 +1,13 @@
 package com.mogobiz.utils
 
-import java.io.OutputStream
-
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType
-import com.google.zxing.qrcode.QRCodeWriter;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
-
-import java.awt.Color;
+import java.awt.Color
 import java.awt.image.BufferedImage
-import javax.imageio.ImageIO;
+import java.io.OutputStream
+import javax.imageio.ImageIO
+
+import com.google.zxing.{BarcodeFormat, EncodeHintType}
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 /**
  * Created by Christophe on 09/07/2014.
  */

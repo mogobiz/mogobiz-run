@@ -9,7 +9,7 @@ import shapeless.{::, _}
 import spray.http.HttpCookie
 import spray.http.HttpHeaders.Cookie
 import spray.routing._
-import spray.routing.directives._
+import scala.language.implicitConversions
 
 import scala.collection.mutable.Map
 

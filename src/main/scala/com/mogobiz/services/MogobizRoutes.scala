@@ -2,14 +2,14 @@ package com.mogobiz.services
 
 import java.util.UUID
 
+import akka.actor.{Actor, ActorLogging, Props}
 import com.mogobiz.actors.{MogobizActors, MogobizSystem}
-import spray.routing._
-import akka.actor.{ActorLogging, Actor, Props}
-import scala.util.control.NonFatal
 import spray.http.StatusCodes._
 import spray.http.{HttpCookie, HttpEntity, StatusCode}
+import spray.routing.{Directives, _}
 import spray.util.LoggingContext
-import spray.routing.Directives
+
+import scala.util.control.NonFatal
 
 trait MogobizRoutes extends Directives {
   this: MogobizActors with MogobizSystem =>

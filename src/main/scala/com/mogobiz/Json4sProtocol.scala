@@ -1,12 +1,12 @@
 package com.mogobiz
 
-import com.mogobiz.cart._
 import com.mogobiz.cart.LinearUnit._
 import com.mogobiz.cart.ProductCalendar._
+import com.mogobiz.cart.ProductType._
 import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
 import com.mogobiz.cart.TransactionStatus._
 import com.mogobiz.cart.WeightUnit._
-import com.mogobiz.cart.ProductType._
+import com.mogobiz.cart._
 import org.json4s._
 import org.json4s.ext.JodaTimeSerializers
 import spray.httpx.Json4sSupport

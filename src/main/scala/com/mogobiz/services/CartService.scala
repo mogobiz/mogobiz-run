@@ -1,13 +1,10 @@
 package com.mogobiz.services
 
 import akka.actor.ActorRef
-import com.mogobiz._
-import com.mogobiz.config.JsonSupport._
 import com.mogobiz.actors.CartActor._
 import com.mogobiz.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.config.JsonSupport._
 import com.mogobiz.model._
-import org.json4s.JsonAST.JValue
 import spray.routing.Directives
 
 import scala.concurrent.ExecutionContext
@@ -18,7 +15,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   import akka.pattern.ask
   import akka.util.Timeout
 
-  import scala.concurrent.duration._
+import scala.concurrent.duration._
 
   implicit val timeout = Timeout(2.seconds)
 

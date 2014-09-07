@@ -1,7 +1,7 @@
 package com.mogobiz
 
 import java.text.SimpleDateFormat
-import java.util.{Locale, Calendar, Date}
+import java.util.{Calendar, Date, Locale}
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._

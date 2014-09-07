@@ -1,7 +1,8 @@
 package com.mogobiz.config
 
-import com.typesafe.config.ConfigFactory
 import java.io.File
+
+import com.typesafe.config.ConfigFactory
 import scalikejdbc.config._
 
 object Settings {
