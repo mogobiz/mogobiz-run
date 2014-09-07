@@ -45,21 +45,15 @@ class ProductHandler {
   }
 
   def updateComment(storeCode: String, productId: Long, commentId: String, useful: Boolean): Boolean = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.updateComment(storeCode, productId,commentId,useful)
-    Await.result(response, 10 seconds)
+    ElasticSearchClient.updateComment(storeCode, productId,commentId,useful)
   }
 
   def createComment(storeCode: String, productId: Long, req: CommentRequest): Comment = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.createComment(storeCode, productId, req)
-    Await.result(response, 10 seconds)
+    ElasticSearchClient.createComment(storeCode, productId, req)
   }
 
   def getComment(storeCode: String, productId: Long, req: CommentGetRequest): Paging[Comment] = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.getComments(storeCode, productId, req)
-    Await.result(response, 10 seconds)
+    ElasticSearchClient.getComments(storeCode, productId, req)
   }
 
   def getProductHistory(storeCode: String, req: VisitorHistoryRequest, uuid: String): List[JValue] = {

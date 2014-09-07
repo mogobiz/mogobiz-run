@@ -6,9 +6,12 @@ import akka.pattern.ask
 import com.mogobiz.config.Settings
 import com.mogobiz.es.EsClient
 import EsClient._
-import com.sksamuel.elastic4s.ElasticDsl.{search => search4s, _}
+import com.mogobiz.utils.JacksonConverter
+import com.sksamuel.elastic4s.ElasticDsl.{search => search4s, update => update4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
+import org.elasticsearch.action.search.SearchResponse
+import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.slf4j.LoggerFactory
 import scala.concurrent._
@@ -20,9 +23,9 @@ import org.json4s.native.JsonMethods._
 import org.json4s._
 import org.json4s.JsonDSL._
 import java.util._
-import java.text.{SimpleDateFormat, NumberFormat}
+import java.text.SimpleDateFormat
 import scala.List
-import com.mogobiz.vo.{Paging}
+import com.mogobiz.vo.Paging
 import org.json4s.JsonAST.{JObject, JNothing}
 import scala.util.{Failure, Try}
 import spray.http.HttpResponse
@@ -34,6 +37,7 @@ import org.json4s.JsonAST.JArray
 import com.mogobiz.vo.CommentGetRequest
 
 /**
+ *
  * Created by Christophe on 18/02/14.
  */
 
@@ -56,7 +60,7 @@ object ElasticSearchClient /*extends Actor*/ {
   private def route(url: String): String = EsFullURL + url
 
   private def historyIndex(store:String):String = {
-    return s"${store}_history"
+    s"${store}_history"
   }
 
   /**
@@ -65,15 +69,15 @@ object ElasticSearchClient /*extends Actor*/ {
    * @return
    */
   private def prefsIndex(store:String):String = {
-    return s"${store}_prefs"
+    s"${store}_prefs"
   }
 
   private def cartIndex(store:String):String = {
-    return s"${store}_cart"
+    s"${store}_cart"
   }
 
   private def commentIndex(store:String):String = {
-    return s"${store}_comment"
+    s"${store}_comment"
   }
 
   /**
@@ -113,7 +117,7 @@ object ElasticSearchClient /*extends Actor*/ {
   def queryCountries(store: String, lang: String): JValue = {
     EsClient.searchAllRaw(
       search4s in store -> "country" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
-    )
+    ).getHits
   }
 
   /**
@@ -125,7 +129,7 @@ object ElasticSearchClient /*extends Actor*/ {
   def queryCurrencies(store: String, lang: String): JValue = {
     EsClient.searchAllRaw(
       search4s in store -> "rate" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
-    )
+    ).getHits
   }
 
   def getCurrencies(store: String, lang: String): Seq[Currency] = {
@@ -148,7 +152,7 @@ object ElasticSearchClient /*extends Actor*/ {
         filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
       case None => // nothing to do
     }
-    val results : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*))
+    val results : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
     results \ "brand"
   }
 
@@ -163,7 +167,7 @@ object ElasticSearchClient /*extends Actor*/ {
   def queryTags(store: String, hidden:Boolean, inactive:Boolean, lang:String): JValue = {
     EsClient.searchAllRaw(
       search4s in store -> "tag" sourceInclude("id", if (lang == "_all") "*.*" else s"$lang.*")
-    )
+    ).getHits
   }
 
   /**
@@ -264,7 +268,7 @@ object ElasticSearchClient /*extends Actor*/ {
         if(qr.categoryPath.isDefined) filters +:= regexFilter("path", s".*${qr.categoryPath.get.toLowerCase}.*")
         search4s in store -> "category"
     }
-    EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*))
+    EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
   }
 
 
@@ -291,7 +295,7 @@ object ElasticSearchClient /*extends Actor*/ {
     val _sort = req.orderBy.getOrElse("name")
     val _sortOrder = req.orderDirection.getOrElse("asc")
     lazy val currency = getCurrencies(store, req.lang).find(_.code == req.currencyCode) getOrElse defaultCurrency
-    val hits:JArray = EsClient.searchAllRaw(
+    val response:SearchHits = EsClient.searchAllRaw(
       filterRequest(query, filters)
       sourceExclude(fieldsToExclude :_*)
       from _from
@@ -300,10 +304,11 @@ object ElasticSearchClient /*extends Actor*/ {
         by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
       }
     )
+    val hits:JArray = response.getHits
     val products:JValue = hits.map{
       hit => renderProduct(hit, req.countryCode, req.currencyCode, req.lang, currency, fieldsToRemoveForProductSearchRendering)
     }
-    Paging.wrap(hits, products, req)
+    Paging.wrap(response.getTotalHits, products, req)
   }
 
   private val defaultCurrency = Currency(currencyFractionDigits = 2, rate = 0.01d, name="Euro", code = "EUR") //FIXME trouvez autre chose
@@ -316,7 +321,7 @@ object ElasticSearchClient /*extends Actor*/ {
     } else {
       implicit def json4sFormats: Formats = DefaultFormats
 
-      val jprice = (product \ "price")
+      val jprice = product \ "price"
       /*
       println(jprice)
       val price = jprice match {
@@ -327,7 +332,7 @@ object ElasticSearchClient /*extends Actor*/ {
 
       val lrt = for {
         localTaxRate@JObject(x) <- product \ "taxRate" \ "localTaxRates"
-        if (x contains JField("country", JString(country.get.toUpperCase()))) //WARNING toUpperCase ??
+        if x contains JField("country", JString(country.get.toUpperCase())) //WARNING toUpperCase ??
         JField("rate", value) <- x} yield value
 
       val taxRate = lrt.headOption match {
@@ -524,11 +529,11 @@ object ElasticSearchClient /*extends Actor*/ {
 
       if (response.status.isSuccess) {
         val json = parse(response.entity.asString)
-        val docsArray = (json \ "docs")
+        val docsArray = json \ "docs"
 
 
         val featuresByNameAndIds : List[(BigInt, List[(String, JValue, List[JField])])] = for {
-          JObject(result) <- (docsArray \ "_source")
+          JObject(result) <- docsArray \ "_source"
           JField("id", JInt(id)) <- result
         } yield {
           val featuresByName : List[(String, JValue, List[JField])] = for {
@@ -678,13 +683,13 @@ object ElasticSearchClient /*extends Actor*/ {
             JField("_type", JString(_type)) <- result
             JField("_source", JObject(_source)) <- result
             JField("highlight", JObject(highlight)) <- result
-          } yield (_type -> (_source ::: highlight))
+          } yield _type -> (_source ::: highlight)
         } else {
           for {
             JObject(result) <- subset.children.children
             JField("_type", JString(_type)) <- result
             JField("_source", JObject(_source)) <- result
-          } yield (_type -> _source)
+          } yield _type -> _source
         }
 
         val result = rawResult.groupBy(_._1).map {
@@ -841,9 +846,9 @@ object ElasticSearchClient /*extends Actor*/ {
               }
 
               //println("included?=" + included)
-              val cond = (included &&
-                day.getTime().compareTo(period.startDate) >= 0 &&
-                day.getTime().compareTo(period.endDate) <= 0)
+              val cond = included &&
+                day.getTime.compareTo(period.startDate) >= 0 &&
+                day.getTime.compareTo(period.endDate) <= 0
               //println("cond=" + cond)
               cond
             }
@@ -994,129 +999,41 @@ object ElasticSearchClient /*extends Actor*/ {
   //TODO private def translate(json:JValue):JValue = { }
 
 
-  def createComment(store:String,productId:Long,c:CommentRequest): Future[Comment] = {
+  def createComment(store:String,productId:Long,c:CommentRequest): Comment = {
     require(!store.isEmpty)
-    require(productId>0)
-
-    //TODO no better solution than this (try/catch) ????
-    try{
-      c.validate()
-
-      import org.json4s.native.Serialization.write
-      implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Comment]()
-
-      val comment = Comment(None,c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)
-      val jsoncomment = write(comment)
-      val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment"),jsoncomment))
-
-      fresponse onFailure { // TODO a revoir, car la route Spray ne recoit pas cette failure
-        case e => {println("fresponse failed:"+e.getMessage);Future.failed(new CommentException(CommentException.UNEXPECTED_ERROR,e.getMessage))}
-      }
-      fresponse.flatMap {
-        response => {
-          //println(response.entity.asString)
-          if (response.status.isSuccess) {
-            val json = parse(response.entity.asString)
-            val id = (json \"_id").extract[String]
-
-            Future{Comment(Some(id),c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)}
-          } else {
-            //TODO log l'erreur
-            //("new ElasticSearchClientException createComment error")
-            Future.failed(new ElasticSearchClientException("createComment error"))
-          }
-        }
-      }
-    } catch {
-      case e:Throwable => Future.failed(e)
+    require(productId > 0)
+    val comment = Try(Comment(None,c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId))
+    comment match {
+      case Success(s) =>
+        Comment(Some(EsClient.index[Comment](commentIndex(store), s)),c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)
+      case Failure(f) => throw f
     }
   }
 
-  def updateComment(store:String, productId:Long,commentId:String,useful : Boolean) : Future[Boolean] = {
-
-    val query = s"""{"script":"if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}","params":{"useful":$useful}}"""
-
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/"+commentId+"/_update?retry_on_conflict=5"),query))
-
-    fresponse.flatMap {
-      response => {
-        //println(response.entity.asString)
-        if (response.status.isSuccess) {
-          Future{useful}
-        } else {
-          Future.failed(CommentException(CommentException.UPDATE_ERROR))
-        }
-      }
-    }
+  def updateComment(store:String, productId:Long, commentId:String, useful: Boolean) : Boolean = {
+    val req = update4s id commentId in s"${commentIndex(store)}/comment" script s"""{"script":"if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}","params":{"useful":$useful}}"""
+    EsClient().execute(req).isCreated
   }
 
-  def getComments(store:String, productId:Long , req:CommentGetRequest) : Future[Paging[Comment]] = {
-    implicit def json4sFormats: Formats = DefaultFormats
-
+  def getComments(store:String, productId:Long , req:CommentGetRequest) : Paging[Comment] = {
     val size = req.maxItemPerPage.getOrElse(100)
     val from = req.pageOffset.getOrElse(0) * size
-
-    val query = s"""{
-      "sort": {"created": "desc"},"from": $from,"size": $size,
-      "query": {"filtered": {"filter": {"term": {"productId": $productId}}}}
-    }"""
-
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + commentIndex(store) + "/comment/_search"),query))
-    fresponse.flatMap {
-      response => {
-        //println(response.entity.asString)
-        if (response.status.isSuccess) {
-          val json = parse(response.entity.asString)
-          val hits = (json \"hits" \ "hits")
-
-          val transformedJson = for {
-            JObject(hit) <- hits.children
-            JField("_id",JString(id)) <- hit
-            JField("_source",source) <- hit
-          } yield {
-            val idField = parse(s"""{"id":"$id"}""")
-            val merged = source merge idField
-            merged
-          }
-
-          val results = JArray(transformedJson).extract[List[Comment]]
-          val pagedResults = Paging.add[Comment](json,results,req)
-          //val pagedResults = Utils.addPaging[Comment](json,req)
-          Future{pagedResults}
-        } else {
-          Future.failed(new ElasticSearchClientException("getComments error"))
+    val filters:List[FilterDefinition] = List(createTermFilter("productId", Some(s"$productId"))).flatten
+    val hits:SearchHits = EsClient.searchAllRaw(
+      filterRequest(search4s in commentIndex(store) -> "comment", filters)
+        from from
+        size size
+        sort {
+          by field "created" order SortOrder.DESC
         }
-      }
-    }
-
-  }
-
-  def queryRoot(): Future[HttpResponse] = pipeline(Get(route("/")))
-
-
-  def execute(){
-
-    /*
-    val request = Get("/")
-    val response: Future[HttpResponse] = pipeline.flatMap(_(request))
-    */
-
-
-    val response: Future[HttpResponse] = pipeline(Get(route("/")))
-
-    response onComplete{
-      case Success(response) => println(response.entity.asString)
-        shutdown()
-
-      case Failure(error) => println(error)
-        shutdown()
-    }
+    )
+    val comments:List[Comment] = hits.getHits.map(JacksonConverter.deserializeComment).toList
+    Paging.add(hits.getTotalHits, comments, req)
   }
 
   private def shutdown(): Unit = {
     IO(Http).ask(Http.CloseAll)(1.second).await
     system.shutdown()
-    //shutdown()
   }
 
   /**
@@ -1162,29 +1079,29 @@ object ElasticSearchClient /*extends Actor*/ {
 
   private def createRangeFilter(field:String, _gte:Option[String], _lte: Option[String]) : Option[FilterDefinition] = {
     val req = _gte match{
-      case Some(s) => Some(rangeFilter(field) gte(s))
+      case Some(s) => Some(rangeFilter(field) gte s)
       case None => None
     }
     _lte match {
-      case Some(s) => if(req.isDefined) Some(req.get lte(s)) else Some(rangeFilter(field) lte(s))
+      case Some(s) => if(req.isDefined) Some(req.get lte s) else Some(rangeFilter(field) lte s)
       case None => None
     }
   }
 
   private def createNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {
     val req = _gte match{
-      case Some(s) => Some(numericRangeFilter(field) gte(s))
+      case Some(s) => Some(numericRangeFilter(field) gte s)
       case None => None
     }
     _lte match {
-      case Some(s) => if(req.isDefined) Some(req.get lte(s)) else Some(numericRangeFilter(field) lte(s))
+      case Some(s) => if(req.isDefined) Some(req.get lte s) else Some(numericRangeFilter(field) lte s)
       case None => None
     }
   }
 
   private def createFeaturedRangeFilters(featured:Boolean) : List[Option[FilterDefinition]] = {
     if(featured){
-      val today = sdf.format(Calendar.getInstance().getTime())
+      val today = sdf.format(Calendar.getInstance().getTime)
       List(
         createRangeFilter("startFeatureDate", None, Some(s"$today")),
         createRangeFilter("stopFeatureDate", Some(s"$today"), None)

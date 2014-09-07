@@ -6,6 +6,9 @@ import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 
+import com.mogobiz.vo.Comment
+import org.elasticsearch.search.SearchHit
+
 import scala.Array.canBuildFrom
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -68,6 +71,11 @@ object JacksonConverter {
   }
 
   def deserialize[T: Manifest](json: String): T = mapper.readValue(json, typeReference[T])
+
+  def deserializeComment(hit: SearchHit): Comment = {
+    val c:Comment = mapper.readValue(hit.getSourceAsString, typeReference[Comment])
+    Comment(Some(hit.getId), c.userId, c.surname, c.notation, c.subject, c.comment, c.created, c.productId, c.useful, c.notuseful)
+  }
 
   private[this] def typeReference[T: Manifest] = new TypeReference[T] {
     override def getType: Type = typeFromManifest(manifest[T])

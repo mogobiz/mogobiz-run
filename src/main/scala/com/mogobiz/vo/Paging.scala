@@ -1,5 +1,6 @@
 package com.mogobiz.vo
 
+import org.elasticsearch.search.SearchHits
 import org.json4s.JsonAST.JValue
 import org.json4s._
 
@@ -30,6 +31,12 @@ object Paging {
   }
   */
 
+  def add[T](total:Int, results:List[T],pagingParams:PagingParams):Paging[T] = {
+    val paging = get(total, pagingParams)
+    val pagedResults = new Paging(results, results.size, paging.totalCount, paging.maxItemsPerPage, paging.pageOffset, paging.pageCount, paging.hasPrevious, paging.hasNext)
+    pagedResults
+  }
+
   /**
    * add paging to a results list
    * @param json
@@ -40,7 +47,12 @@ object Paging {
    */
   def add[T](json:JValue,results:List[T],pagingParams:PagingParams):Paging[T] = {
 
-    val paging = get(json,pagingParams)
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val hits = json \"hits"
+    val total : Int =  (hits \ "total").extract[Int]
+
+    val paging = get(total, pagingParams)
 
     val pagedResults = new Paging(results,results.size,paging.totalCount,paging.maxItemsPerPage,paging.pageOffset,paging.pageCount,paging.hasPrevious,paging.hasNext)
     pagedResults
@@ -48,18 +60,14 @@ object Paging {
 
   /**
    * Get the paging object without the results and the pageSize
-   * @param json
+   * @param total
    * @param paging
    * @return
    */
-  def get(json:JValue,paging:PagingParams) : Paging[Any] = {
-    implicit def json4sFormats: Formats = DefaultFormats
+  def get(total:Int,paging:PagingParams) : Paging[Any] = {
 
     val size = paging.maxItemPerPage.getOrElse(100)
     val from = paging.pageOffset.getOrElse(0) * size
-
-    val hits = (json \"hits")
-    val total : Int =  (hits \ "total").extract[Int]
 
     val pageCount = Math.rint(((total * 1d) / size) + 0.5)
 
@@ -77,12 +85,14 @@ object Paging {
    * @param pagingParams
    * @return
    */
-  def getWrapper(json:JValue,pagingParams:PagingParams) : JValue = {
+  def getWrapper(json:JValue, pagingParams:PagingParams) : JValue = {
     import org.json4s.native.Serialization.{read, write}
     import org.json4s.native.JsonMethods._
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Paging[Any]]()
 
-    val paging = get(json,pagingParams)
+    val hits = json \"hits"
+    val total : Int =  (hits \ "total").extract[Int]
+    val paging = get(total, pagingParams)
 
     val pagingObj = parse(write(paging))
 //    println(pretty(render(pagingObj )))

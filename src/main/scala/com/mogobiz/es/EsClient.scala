@@ -7,8 +7,8 @@ import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticClient
 import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.common.settings.ImmutableSettings
-import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, update => esupdate4s, _}
-import org.elasticsearch.search.SearchHit
+import com.sksamuel.elastic4s.ElasticDsl.{index => esindex4s, delete => esdelete4s, update => esupdate4s, _}
+import org.elasticsearch.search.{SearchHits, SearchHit}
 import org.json4s.JsonAST.{JValue, JArray}
 import org.json4s.native.JsonMethods._
 
@@ -26,16 +26,12 @@ object EsClient {
     var dateCreated: Date
   }
 
-  def index[T <: Timestamped : Manifest](t: T, refresh: Boolean = true): String = {
-    val now = Calendar.getInstance().getTime
-    t.dateCreated = now
-    t.lastUpdated = now
-    val json = JacksonConverter.serialize(t)
-    val res = client.client.prepareIndex(Settings.DB.Index, manifest[T].runtimeClass.getSimpleName, t.uuid)
-      .setSource(json)
-      .setRefresh(refresh)
-      .execute()
-      .actionGet()
+  def index[T: Manifest](_store:String=Settings.DB.Index, t: T): String = {
+    val js = JacksonConverter.serialize(t)
+    val req = esindex4s into(_store, manifest[T].runtimeClass.getSimpleName.toLowerCase) doc new DocumentSource {
+      override val json: String = js
+    }
+    val res = EsClient().execute(req)
     res.getId
   }
 
@@ -52,18 +48,18 @@ object EsClient {
     maybeT map ((_, res.getVersion))
   }
 
-  def delete[T: Manifest](uuid: String, refresh: Boolean = true): Boolean = {
+  def delete[T: Manifest](uuid: String, refresh: Boolean = false): Boolean = {
     val req = esdelete4s id uuid from Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName refresh refresh
     val res = EsClient().execute(req)
     res.isFound
   }
 
-  def update[T <: Timestamped : Manifest](t: T, upsert: Boolean = true, refresh: Boolean = true): Boolean = {
+  def update[T <: Timestamped : Manifest](t: T, upsert: Boolean = true, refresh: Boolean = false): Boolean = {
     val now = Calendar.getInstance().getTime
     t.lastUpdated = now
     val js = JacksonConverter.serialize(t)
     val req = esupdate4s id t.uuid in Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName refresh refresh doc new DocumentSource {
-      override def json: String = js
+      override val json: String = js
     }
     req.docAsUpsert(upsert)
     val res = EsClient().execute(req)
@@ -94,9 +90,9 @@ object EsClient {
       Some(JacksonConverter.deserialize[T](res.getHits.getHits()(0).getSourceAsString))
   }
 
-  def searchAllRaw(req: SearchDefinition): Array[SearchHit] = {
+  def searchAllRaw(req: SearchDefinition): SearchHits = {
     val res = EsClient().execute(req)
-    res.getHits.getHits
+    res.getHits
   }
 
   def searchRaw(req: SearchDefinition): Option[SearchHit] = {
