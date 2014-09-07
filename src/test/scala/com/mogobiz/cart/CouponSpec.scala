@@ -6,6 +6,7 @@ import scalikejdbc.config.DBs
 import scalikejdbc.DB
 
 /**
+ *
  * Created by Christophe on 06/05/2014.
  */
 class CouponSpec extends Specification {

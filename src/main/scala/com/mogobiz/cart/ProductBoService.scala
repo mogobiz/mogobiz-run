@@ -52,19 +52,19 @@ object ProductBoService extends BoService {
   */
 
   private def updateProductSales(id:Long,quantity:Long,now:DateTime)(implicit session:DBSession) = {
-        val nbSales = sql"select nb_sales from product where id=${id}".map(rs => rs.long("nb_sales")).single().apply().get
-        sql"update product set nb_sales = ${nbSales+quantity},last_updated = ${now} where id=${id}".update().apply()
+        val nbSales = sql"select nb_sales from product where id=$id".map(rs => rs.long("nb_sales")).single().apply().get
+        sql"update product set nb_sales = ${nbSales+quantity},last_updated = $now where id=$id".update().apply()
   }
 
   private def updateTicketTypeSales(id:Long,quantity:Long,now:DateTime)(implicit session:DBSession) = {
-      val nbSales = sql"select nb_sales from ticket_type where id=${id}".map(rs => rs.long("nb_sales")).single().apply().get
-      sql"update ticket_type set nb_sales = ${nbSales+quantity},last_updated = ${now}  where id=${id}".update().apply()
+      val nbSales = sql"select nb_sales from ticket_type where id=$id".map(rs => rs.long("nb_sales")).single().apply().get
+      sql"update ticket_type set nb_sales = ${nbSales+quantity},last_updated = $now where id=$id".update().apply()
   }
 
 
   private def updateStockCalendarSales(id:Long,quantity:Long,now:DateTime)(implicit session:DBSession) = {
-      val sold = sql"select sold from stock_calendar where id=${id}".map(rs => rs.long("sold")).single().apply().get
-      sql"update stock_calendar  set sold = ${sold+quantity},last_updated = ${now}  where id=${id}".update().apply()
+      val sold = sql"select sold from stock_calendar where id=$id".map(rs => rs.long("sold")).single().apply().get
+      sql"update stock_calendar  set sold = ${sold+quantity},last_updated = $now where id=$id".update().apply()
   }
 
 
@@ -79,7 +79,7 @@ object ProductBoService extends BoService {
   def decrement(ticketType: TicketType, quantity: Long , date:Option[DateTime] ):Unit = {
     val product = ticketType.product.get
     ticketType.stock match {
-      case Some(stock) => {
+      case Some(stock) =>
         // Search the corresponding StockCalendar
         val stockCalendar = retrieveStockCalendar(product, ticketType, date, stock)
 
@@ -97,9 +97,8 @@ object ProductBoService extends BoService {
             updateStockCalendarSales(stockCalendar.id, quantity, now)
         }
 
-      //TODO update ES
-      //upsertProduct(product)
-    }
+        //TODO update ES
+        //upsertProduct(product)
       case None => throw new UnavailableStockException("decrement stock error : stock does not exist")
   }
  }
@@ -127,7 +126,7 @@ object ProductBoService extends BoService {
         val str = product.calendarType match {
           case ProductCalendar.NO_DATE => sql"select * from stock_calendar where ticket_type_fk=${ticketType.id}"
           case _ =>
-            sql"select * from stock_calendar where ticket_type_fk=${ticketType.id} and start_date=${date}"
+            sql"select * from stock_calendar where ticket_type_fk=${ticketType.id} and start_date=$date"
         }
 
         val cal:Calendar = Calendar.getInstance()
@@ -154,7 +153,7 @@ object ProductBoService extends BoService {
         val str = product.calendarType match {
           case ProductCalendar.NO_DATE => sql"select * from stock_calendar where ticket_type_fk=${ticketType.id}"
           case _ =>
-            sql"select * from stock_calendar where ticket_type_fk=${ticketType.id} and start_date=${date}"
+            sql"select * from stock_calendar where ticket_type_fk=${ticketType.id} and start_date=$date"
         }
 
         val cal:Calendar = Calendar.getInstance()
@@ -237,7 +236,7 @@ case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCa
   }
 
   def poi = poiFk match {
-    case Some(id) => Poi.get(id)
+    case Some(s) => Poi.get(s)
     case None => None
   }
 }
@@ -295,7 +294,7 @@ object Product extends SQLSyntaxSupport[Product]{
    */
   def getShipping(id:Long):Option[ShippingVO] = {
     DB readOnly { implicit session =>
-        sql"select * from shipping where id=${id}".
+        sql"select * from shipping where id=$id".
           map(rs => ShippingVO(id = rs.long("id"),weight = rs.long("weight"), weightUnit = WeightUnit(rs.string("weight_unit")),linearUnit = LinearUnit(rs.string("linear_unit")),width = rs.long("width"), height = rs.long("height"), depth = rs.long("depth"), amount = rs.long("amount"), free = rs.boolean("free") )).single().apply()
     }
   }
@@ -334,7 +333,7 @@ object TicketType extends SQLSyntaxSupport[TicketType] {
 
     val res = DB readOnly {
       implicit session =>
-        sql"select tt.*,p.* from ticket_type tt inner join product p on tt.product_fk=p.id where tt.id=${id}".map(rs => TicketType(rs)).single().apply()
+        sql"select tt.*,p.* from ticket_type tt inner join product p on tt.product_fk=p.id where tt.id=$id".map(rs => TicketType(rs)).single().apply()
     }
 
     /* standalone with product missing

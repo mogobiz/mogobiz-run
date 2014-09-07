@@ -38,11 +38,10 @@ object UuidBoService extends BoService {
     import org.json4s.native.JsonMethods._
 
     UuidDataDao.findByUuidAndXtype(uuid, QUEUE_XTYPE_CART) match {
-      case Some(data) => {
+      case Some(data) =>
         val parsed = parse(data.payload)
         val cart = parsed.extract[CartVO]
         Some(cart)
-      }
       case _ => None
     }
   }
@@ -56,7 +55,7 @@ object UuidBoService extends BoService {
   }
 }
 
-case class UuidData(id:Option[Int],uuid:String, xtype:String, payload:String, createdDate: DateTime, expireDate: DateTime);
+case class UuidData(id:Option[Int],uuid:String, xtype:String, payload:String, createdDate: DateTime, expireDate: DateTime)
 
 object UuidDataDao extends SQLSyntaxSupport[UuidData] {
 
@@ -71,7 +70,7 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
 
   def findByUuidAndXtype(uuid: String, xtype: String): Option[UuidData] = {
     DB readOnly { implicit session =>
-      sql"""select * from uuid_data where uuid=${uuid} and xtype=${xtype}""".map(rs => UuidDataDao(rs)).single().apply()
+      sql"""select * from uuid_data where uuid=$uuid and xtype=$xtype""".map(rs => UuidDataDao(rs)).single().apply()
     }
   }
 

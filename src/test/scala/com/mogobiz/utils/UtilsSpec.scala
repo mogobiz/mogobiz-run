@@ -6,6 +6,7 @@ import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs
 
 /**
+ *
  * Created by Christophe on 15/07/2014.
  */
 class UtilsSpec  extends Specification  {

@@ -5,6 +5,7 @@ import scalikejdbc.config._
 import scala.Some
 
 /**
+ *
  * Created by Christophe on 07/05/2014.
  */
 class TaxRateBoServiceSpec  extends Specification {

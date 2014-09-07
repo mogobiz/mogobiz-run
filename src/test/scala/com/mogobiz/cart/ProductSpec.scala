@@ -4,6 +4,7 @@ import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs
 
 /**
+ *
  * Created by Christophe on 07/07/2014.
  */
 class ProductSpec extends Specification {

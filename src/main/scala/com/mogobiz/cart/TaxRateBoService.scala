@@ -31,8 +31,8 @@ object TaxRateBoService {
         */
         val rate = DB readOnly { implicit session =>
           val str = state match {
-            case Some(s) => sql"select l.rate from tax_rate_local_tax_rate ass inner join local_tax_rate l on ass.local_tax_rate_id = l.id where ass.local_tax_rates_fk = ${taxRateId} and l.country_code = ${country} and l.active is true and l.state_code=${s}"
-            case None => sql"select l.rate from tax_rate_local_tax_rate ass inner join local_tax_rate l on ass.local_tax_rate_id = l.id where ass.local_tax_rates_fk = ${taxRateId} and l.country_code = ${country} and l.state_code is null"
+            case Some(s) => sql"select l.rate from tax_rate_local_tax_rate ass inner join local_tax_rate l on ass.local_tax_rate_id = l.id where ass.local_tax_rates_fk = $taxRateId and l.country_code = $country and l.active is true and l.state_code=$s"
+            case None => sql"select l.rate from tax_rate_local_tax_rate ass inner join local_tax_rate l on ass.local_tax_rate_id = l.id where ass.local_tax_rates_fk = $taxRateId and l.country_code = $country and l.state_code is null"
           }
           str.map(rs => rs.float("rate")).single().apply()
         }

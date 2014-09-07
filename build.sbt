@@ -85,7 +85,7 @@ libraryDependencies ++= Seq(
 //    "commons-codec" % "commons-codec" % "1.9",
 //    "com.google.gdata" % "core" % "1.0",
 
-seq(Revolver.settings: _*)
+Seq(Revolver.settings: _*)
 
 mainClass in Revolver.reStart := Some("com.mogobiz.Rest")
 

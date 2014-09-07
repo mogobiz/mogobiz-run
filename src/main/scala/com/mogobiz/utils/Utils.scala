@@ -87,13 +87,12 @@ object Utils {
           }
           // et on renvoie le créneau horaire
           res.headOption match{
-            case Some(idp) => {
+            case Some(idp) =>
               //DateTime(int year, int monthOfYear, int dayOfMonth, int hourOfDay, int minuteOfHour)
               val startDate = new DateTime(date.getYear, date.getMonthOfYear, date.dayOfMonth().get(), idp.startDate.hourOfDay().get(), idp.startDate.minuteOfHour().get())
               val endDate = new DateTime(date.getYear, date.getMonthOfYear, date.dayOfMonth().get(), idp.endDate.hourOfDay().get(), idp.endDate.minuteOfHour().get())
 
               (Some(startDate),Some(endDate))
-            }
             case _ => emptyResult
           }
       }

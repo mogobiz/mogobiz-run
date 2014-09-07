@@ -12,6 +12,7 @@ import scalikejdbc.config.DBs
 import org.json4s.{DefaultFormats, Formats}
 
 /**
+ *
  * Created by Christophe on 06/05/2014.
  */
 class CartBoServiceSpec extends Specification {
@@ -26,7 +27,7 @@ class CartBoServiceSpec extends Specification {
 
   private def generateUuid = {
     val uuid = UUID.randomUUID.toString
-    println(s"uuid=${uuid}")
+    println(s"uuid=$uuid")
     uuid
   }
 
@@ -38,7 +39,7 @@ class CartBoServiceSpec extends Specification {
     val cart = service.initCart(uuid)
 
     //assertions
-    cart.uuid must_== (uuid)
+    cart.uuid must_== uuid
     cart.finalPrice must_== 0
     cart.count must_== 0
     cart.cartItemVOs.length must_== 0
@@ -67,10 +68,10 @@ class CartBoServiceSpec extends Specification {
     resCart.cartItemVOs.size must be_==(1)
     item.shipping must beSome[ShippingVO]
     val shipping = item.shipping.get
-    shipping.id must_== (expectedShipping.id)
-    shipping.weight must_== (expectedShipping.weight)
+    shipping.id must_== expectedShipping.id
+    shipping.weight must_== expectedShipping.weight
     shipping.free must beFalse
-    shipping.amount must_== (0)
+    shipping.amount must_== 0
 
   }
 
@@ -174,7 +175,7 @@ class CartBoServiceSpec extends Specification {
 
     val itemId = resCart.cartItemVOs(0).id
 
-    val resCart2 = service.updateItem(Locale.getDefault(), cur, resCart, itemId, 1)
+    val resCart2 = service.updateItem(Locale.getDefault, cur, resCart, itemId, 1)
     println("2. cart.price=" + resCart2.price)
     println("2. item: " + resCart2.cartItemVOs(0))
     resCart2.price must be_==(tt58.price * 1)
@@ -205,7 +206,7 @@ class CartBoServiceSpec extends Specification {
 
     val uuid = generateUuid
 
-    var locale = Locale.getDefault()
+    var locale = Locale.getDefault
     val cart = service.initCart(uuid)
     val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
@@ -245,7 +246,7 @@ class CartBoServiceSpec extends Specification {
 
     val uuid = generateUuid
 
-    var locale = Locale.getDefault()
+    var locale = Locale.getDefault
     val cart = service.initCart(uuid)
     val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
@@ -563,7 +564,7 @@ class CartBoServiceSpec extends Specification {
     val cart = cartService.initCart(preparedCart.uuid)
     cart.inTransaction must beTrue
 
-    var locale = Locale.getDefault()
+    var locale = Locale.getDefault
     val canceledCart = service.cancel(cart)
 
     canceledCart.inTransaction must beFalse

@@ -15,6 +15,7 @@ import java.text.SimpleDateFormat
 import org.json4s.{DefaultFormats, Formats}
 
 /**
+ *
  * Created by Christophe on 15/03/14.
  */
 class ElasticSearchClientSpec  extends Specification with NoTimeConversions  {

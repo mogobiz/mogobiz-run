@@ -94,7 +94,7 @@ object CartRenderService {
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
     val jsonCoupon = parse(write(coupon))
 
-    val price = rateService.calculateAmount(coupon.price, rate);
+    val price = rateService.calculateAmount(coupon.price, rate)
     val updatedData = parse(write(Map("price" -> price)))
 
     val renderedCoupon = jsonCoupon merge updatedData
@@ -147,10 +147,10 @@ object CartRenderService {
     import com.mogobiz.Json4sProtocol._
     val jsonItem = parse(write(item))
 
-    val price = rateService.calculateAmount(item.price, rate);
-    val endPrice = rateService.calculateAmount(item.endPrice.getOrElse(0l), rate);
-    val totalPrice = rateService.calculateAmount(item.totalPrice, rate);
-    val totalEndPrice = rateService.calculateAmount(item.totalEndPrice.getOrElse(0l), rate);
+    val price = rateService.calculateAmount(item.price, rate)
+    val endPrice = rateService.calculateAmount(item.endPrice.getOrElse(0l), rate)
+    val totalPrice = rateService.calculateAmount(item.totalPrice, rate)
+    val totalEndPrice = rateService.calculateAmount(item.totalEndPrice.getOrElse(0l), rate)
 
     val updatedData = parse(write(Map(
       "price" -> price,

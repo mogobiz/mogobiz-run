@@ -70,16 +70,16 @@ object CartBoService extends BoService {
     assert(!currencyCode.isEmpty,"currencyCode should not be empty")
     assert(!locale.getCountry.isEmpty,"locale.getCountry should not be empty")
 
-    logger.info(s"addItem dateTime : ${dateTime}")
+    logger.info(s"addItem dateTime : $dateTime")
     println("+++++++++++++++++++++++++++++++++++++++++")
-    println(s"dateTime=${dateTime}")
+    println(s"dateTime=$dateTime")
     println("+++++++++++++++++++++++++++++++++++++++++")
 
     // init local vars
     val ticketType:TicketType = TicketType.get(ticketTypeId) //TODO error management
 
-    val product = ticketType.product.get;
-    val startEndDate = Utils.verifyAndExtractStartEndDate(Some(ticketType), dateTime);
+    val product = ticketType.product.get
+    val startEndDate = Utils.verifyAndExtractStartEndDate(Some(ticketType), dateTime)
 
     var errors:CartErrors = Map()
 
@@ -140,7 +140,7 @@ object CartBoService extends BoService {
     val itemPrice = ticketType.price
     val tax = taxRateService.findTaxRateByProduct(product, locale.getCountry) //TODO revoir la validité de ce dernier paramètre par rapports aux appels
     val endPrice = taxRateService.calculateEndPrix(itemPrice, tax)
-    val totalPrice = quantity * itemPrice;
+    val totalPrice = quantity * itemPrice
     val totalEndPrice = endPrice match {
       case Some(p) => Some(quantity * endPrice.get)
       case _ => None
@@ -343,7 +343,7 @@ object CartBoService extends BoService {
       //TODO ??? uuidDataService.removeCart(); not implemented in iper
 
     val updatedCart = new CartVO(uuid=cartVO.uuid)
-    uuidService.setCart(updatedCart);
+    uuidService.setCart(updatedCart)
     updatedCart
   }
 
@@ -364,9 +364,9 @@ object CartBoService extends BoService {
         }
         else {
 
-          val coupons = CouponVO(coupon)::(cartVO.coupons.toList)
+          val coupons = CouponVO(coupon):: cartVO.coupons.toList
           val cart = cartVO.copy( coupons = coupons.toArray)
-          uuidService.setCart(cart);
+          uuidService.setCart(cart)
           cart
         }
       case None =>
@@ -406,7 +406,7 @@ object CartBoService extends BoService {
           // reprise des items existants sauf celui à supprimer
           val coupons = cartVO.coupons.filter{ c => couponCode != c.code }
           val cart = cartVO.copy( coupons = coupons.toArray)
-          uuidService.setCart(cart);
+          uuidService.setCart(cart)
           cart
         }
     }
@@ -538,7 +538,7 @@ object CartBoService extends BoService {
               val product = Product.get(cartItem.productId).get
 
               val boTicket = product.xtype match{
-                case ProductType.SERVICE => {
+                case ProductType.SERVICE =>
                   val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
 
                   val shortCode = "P" + boProductId + "T" + boTicketId
@@ -547,13 +547,12 @@ object CartBoService extends BoService {
                     boTicketTmp.firstname + ";LastName:" + boTicketTmp.lastname + ";Phone:" + boTicketTmp.phone +
                     ";TicketType:" + boTicketTmp.ticketType + ";shortCode:" + shortCode
 
-                  val encryptedQrCodeContent = SecureCodec.encrypt(qrCodeContent, product.company.get.aesPassword);
+                  val encryptedQrCodeContent = SecureCodec.encrypt(qrCodeContent, product.company.get.aesPassword)
                   val output = new ByteArrayOutputStream()
                   QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
                   val qrCodeBase64 = Base64.encode(output.toByteArray)
 
                   boTicketTmp.copy(id = boTicketId, shortCode = Some(shortCode), qrcode = Some(qrCodeBase64), qrcodeContent = Some(encryptedQrCodeContent))
-                }
                 case _ => boTicketTmp.copy(id=boTicketId)
               }
 
@@ -609,7 +608,7 @@ object CartBoService extends BoService {
           )
         }.update.apply()
 
-        sql"insert into b_o_cart_item_b_o_product(b_o_products_fk,boproduct_id) values(${saleId},${boProductId})".update.apply()
+        sql"insert into b_o_cart_item_b_o_product(b_o_products_fk,boproduct_id) values($saleId,$boProductId)".update.apply()
       }
       }
     }
@@ -643,7 +642,7 @@ object CartBoService extends BoService {
     assert(!transactionUuid.isEmpty,"transactionUuid should not be empty")
 
     BOCart.findByTransactionUuid(cartVO.uuid) match {
-      case Some(boCart) => {
+      case Some(boCart) =>
 
         val emailingData = BOCartItem.findByBOCart(boCart).map { boCartItem =>
           BOCartItem.bOProducts(boCartItem).map { boProduct =>
@@ -695,7 +694,6 @@ object CartBoService extends BoService {
         uuidService.setCart(updatedCart)
         //TODO sendEmails(emailingData) faire un Actor
         emailingData
-      }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
     }
   }
@@ -743,7 +741,7 @@ object CartBoService extends BoService {
         }
 
         val updatedCart = cartVO.copy(inTransaction = false) //cartVO.uuid = null;
-        uuidService.setCart(updatedCart);
+        uuidService.setCart(updatedCart)
         updatedCart
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
       }
@@ -971,7 +969,7 @@ object Coupon extends SQLSyntaxSupport[Coupon]{
 
   def getRules(couponId:Long):List[ReductionRule]= DB readOnly {
     implicit session => {
-      sql"""select rr.* from reduction_rule rr inner join coupon_reduction_rule crr on crr.reduction_rule_id = rr.id and rules_fk = ${couponId}"""
+      sql"""select rr.* from reduction_rule rr inner join coupon_reduction_rule crr on crr.reduction_rule_id = rr.id and rules_fk = $couponId"""
         .map(rs => ReductionRule(rs)).list().apply()
     }
   }
@@ -1101,8 +1099,8 @@ object CouponService extends BoService {
     implicit session => {
       sql"""
          select id from ticket_type tt
-         where tt.product_fk in(select product_id from coupon_product where products_fk=${couponId})
-         or tt.product_fk in (select id from product where category_fk in (select category_id from coupon_category where categories_fk=${couponId}))
+         where tt.product_fk in(select product_id from coupon_product where products_fk=$couponId)
+         or tt.product_fk in (select id from product where category_fk in (select category_id from coupon_category where categories_fk=$couponId))
        """.map(rs => rs.long("id")).list.apply()
     }
   }
