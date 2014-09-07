@@ -1,35 +1,22 @@
 package com.mogobiz
-/*
-import com.mogobiz.session.SessionCookieDirectives._
-import com.mogobiz.session.Session
-*/
 
-import com.mogobiz.actors.TagActor
+
 import com.mogobiz.actors.TagActor.QueryTagRequest
-import com.mogobiz.handlers.TagHandler
-import com.typesafe.scalalogging.slf4j.Logger
-import org.slf4j.LoggerFactory
-import spray.http.{StatusCodes, HttpCookie, DateTime}
-import spray.routing.{Directives, HttpService}
+import spray.http.{StatusCodes, HttpCookie}
+import spray.routing.HttpService
 import spray.http.MediaTypes._
 import org.json4s._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.ExecutionContext
 import org.json4s.native.JsonMethods._
 import java.util.{Locale, UUID}
 import com.mogobiz.cart._
-import scala.util.Failure
+import scala.util.{Success,Failure}
 import com.mogobiz.vo.CommentPutRequest
 import com.mogobiz.vo.MogoError
-import scala.util.Success
-import com.mogobiz.cart.AddToCartCommand
 import com.mogobiz.vo.CommentRequest
 import com.mogobiz.vo.CommentGetRequest
-
-import akka.actor.{ActorSystem, Props, ActorRef}
-import akka.pattern.ask
 import akka.util.Timeout
 import scala.concurrent.duration._
-import com.mogobiz.actors.TagActor
 
 trait StoreService extends HttpService {
   /// This section to moved elsewhere
