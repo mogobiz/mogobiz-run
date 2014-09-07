@@ -433,12 +433,12 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param req
    * @return
    */
-  def queryProductById(store: String, id: Long, req: ProductDetailsRequest): JValue = {
+  def queryProductById(store: String, id: Long, req: ProductDetailsRequest): Option[JValue] = {
     lazy val currency = getCurrency(store, req.currency, req.lang)
     val product:Option[JValue] = EsClient.load(_uuid=s"$id")
     product match{
-      case Some(p) => renderProduct(p, req.country, req.currency, req.lang, currency, List())
-      case None => throw new ElasticSearchClientException
+      case Some(p) => Some(renderProduct(p, req.country, req.currency, req.lang, currency, List()))
+      case None => None
     }
   }
 
@@ -830,11 +830,7 @@ object ElasticSearchClient /*extends Actor*/ {
             //get the matching periods
             period => {
               val dow = day.get(Calendar.DAY_OF_WEEK)
-              //println("dow="+dow)
-              //french definication of day of week where MONDAY is = 1
-              //val fr_dow = if (dow == 1) 7 else dow - 1
               //TODO rework weekday definition !!!
-              //println("fr_dow=" + fr_dow)
               val included = dow match {
                 case Calendar.MONDAY => period.weekday1
                 case Calendar.TUESDAY => period.weekday2
@@ -845,11 +841,9 @@ object ElasticSearchClient /*extends Actor*/ {
                 case Calendar.SUNDAY => period.weekday7
               }
 
-              //println("included?=" + included)
               val cond = included &&
                 day.getTime.compareTo(period.startDate) >= 0 &&
                 day.getTime.compareTo(period.endDate) <= 0
-              //println("cond=" + cond)
               cond
             }
           }.map{
@@ -873,14 +867,14 @@ object ElasticSearchClient /*extends Actor*/ {
   }
 
   private def getCalendar(d: Date): Calendar = {
-    val cal = Calendar.getInstance();
-    cal.setTime(d);
-    cal;
+    val cal = Calendar.getInstance()
+    cal.setTime(d)
+    cal
   }
 
   /**
    * Fix the date according to the timezone
-   * @param d
+   * @param d - date
    * @return
    */
   private def getFixedDate(d: Date):Calendar = {
@@ -889,61 +883,54 @@ object ElasticSearchClient /*extends Actor*/ {
     fixeddate
   }
 
-  /*http://tutorials.jenkov.com/java-date-time/java-util-timezone.html
-  *http://stackoverflow.com/questions/19330564/scala-how-to-customize-date-format-using-simpledateformat-using-json4s
-  *
-  */
+  /**
+   *
+   * http://tutorials.jenkov.com/java-date-time/java-util-timezone.html
+   * http://stackoverflow.com/questions/19330564/scala-how-to-customize-date-format-using-simpledateformat-using-json4s
+   *
+   */
+
   /**
    * Fix the date according to the timezone
-   * @param cal
+   * @param cal - calendar
    * @return
    */
   private def getFixedDate(cal: Calendar):Calendar = {
-    val fixeddate = Calendar.getInstance();
+    val fixeddate = Calendar.getInstance
     fixeddate.setTime(new Date(cal.getTime.getTime - fixeddate.getTimeZone.getRawOffset))
     fixeddate
   }
 
   private def isDateIncluded(periods: List[IntraDayPeriod], day: Calendar): Boolean = {
-    //    println("isDateIncluded date : " + sdf.format(day.getTime))
 
-    periods.find {
-      period => {
-        val dow = day.get(Calendar.DAY_OF_WEEK)
-        //french definication of day of week where MONDAY is = 1
-        //val fr_dow = if (dow == 1) 7 else dow - 1
-        //TODO rework weekday definition !!!
-        //println("fr_dow=" + fr_dow)
-        val included = dow match {
-          case Calendar.MONDAY => period.weekday1
-          case Calendar.TUESDAY => period.weekday2
-          case Calendar.WEDNESDAY => period.weekday3
-          case Calendar.THURSDAY => period.weekday4
-          case Calendar.FRIDAY => period.weekday5
-          case Calendar.SATURDAY => period.weekday6
-          case Calendar.SUNDAY => period.weekday7
-        }
-
-        //println("included?=" + included)
-        val cond = (included &&
-          day.getTime().compareTo(period.startDate) >= 0 &&
-          day.getTime().compareTo(period.endDate) <= 0)
-        //println("cond=" + cond)
-        cond
+    periods.exists(period => {
+      val dow = day.get(Calendar.DAY_OF_WEEK)
+      //TODO rework weekday definition !!!
+      val included = dow match {
+        case Calendar.MONDAY => period.weekday1
+        case Calendar.TUESDAY => period.weekday2
+        case Calendar.WEDNESDAY => period.weekday3
+        case Calendar.THURSDAY => period.weekday4
+        case Calendar.FRIDAY => period.weekday5
+        case Calendar.SATURDAY => period.weekday6
+        case Calendar.SUNDAY => period.weekday7
       }
-    }.isDefined
+
+      val cond = included &&
+        day.getTime.compareTo(period.startDate) >= 0 &&
+        day.getTime.compareTo(period.endDate) <= 0
+      cond
+    })
 
   }
 
-
-
   /**
-   * Query for products in paralle according to a list of product ids
+   * Query for products given a list of product ids
    *
-   * @param store
-   * @param ids
-   * @param req
-   * @return
+   * @param store - store
+   * @param ids - product ids
+   * @param req - product request
+   * @return products
    */
   def getProductsByIds(store: String, ids: List[Long], req: ProductDetailsRequest): List[JValue] = {
     implicit def json4sFormats: Formats = DefaultFormats
@@ -951,22 +938,15 @@ object ElasticSearchClient /*extends Actor*/ {
     //TODO replace with _mget op http://www.elasticsearch.org/guide/en/elasticsearch/guide/current/_retrieving_multiple_documents.html
     (for{
       id <- ids
-    } yield queryProductById(store, id, req)).filter {
-      json => {
-        json \ "found" match {
-          case JBool(res) => res
-          case _ => true
-        }
-      }
-    }
+    } yield queryProductById(store, id, req)).flatten
 
   }
 
   /**
    * Get the list of products visited by a user (sessionId)
-   * @param store
-   * @param sessionId
-   * @return
+   * @param store - store
+   * @param sessionId - user session id
+   * @return - products
    */
   def getProductHistory(store:String, sessionId:String) : Future[List[Long]] = {
     implicit def json4sFormats: Formats = DefaultFormats
@@ -986,18 +966,6 @@ object ElasticSearchClient /*extends Actor*/ {
       }
     }
   }
-
-  private def isDateExcluded(periods:List[EndPeriod] , day:Calendar ) : Boolean  = {
-    periods.find {
-      period => {
-        day.getTime().compareTo(period.startDate) >= 0 && day.getTime().compareTo(period.endDate) <= 0
-      }
-    }.isDefined
-  }
-
-
-  //TODO private def translate(json:JValue):JValue = { }
-
 
   def createComment(store:String,productId:Long,c:CommentRequest): Comment = {
     require(!store.isEmpty)
@@ -1031,6 +999,12 @@ object ElasticSearchClient /*extends Actor*/ {
     Paging.add(hits.getTotalHits, comments, req)
   }
 
+  private def isDateExcluded(periods:List[EndPeriod] , day:Calendar ) : Boolean  = {
+    periods.exists(period => {
+      day.getTime.compareTo(period.startDate) >= 0 && day.getTime.compareTo(period.endDate) <= 0
+    })
+  }
+
   private def shutdown(): Unit = {
     IO(Http).ask(Http.CloseAll)(1.second).await
     system.shutdown()
@@ -1039,9 +1013,9 @@ object ElasticSearchClient /*extends Actor*/ {
   /**
    * if lang == "_all" returns an empty list
    * else returns the list of all languages except the given language
-   * @param store
-   * @param lang
-   * @return
+   * @param store - store
+   * @param lang - language
+   * @return excluded languages
    */
   private def createExcludeLang(store: String, lang: String): List[String] = {
     if (lang == "_all") List()
