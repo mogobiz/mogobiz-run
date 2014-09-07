@@ -4,11 +4,10 @@ import java.util.{Calendar, Date}
 
 import com.mogobiz.config.Settings
 import com.mogobiz.utils.JacksonConverter
-import com.sksamuel.elastic4s.ElasticClient
+import com.sksamuel.elastic4s.{MultiGetDefinition, ElasticClient, GetDefinition}
 import com.sksamuel.elastic4s.source.DocumentSource
-import org.elasticsearch.action.get.GetResponse
+import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
 import org.elasticsearch.common.settings.ImmutableSettings
-import com.sksamuel.elastic4s.GetDefinition
 import com.sksamuel.elastic4s.ElasticDsl.{index => esindex4s, delete => esdelete4s, update => esupdate4s, _}
 import org.elasticsearch.search.{SearchHits, SearchHit}
 import org.json4s.JsonAST.{JValue, JArray}
@@ -46,6 +45,10 @@ object EsClient {
   def loadRaw(req:GetDefinition): Option[GetResponse] = {
     val res = EsClient().execute(req)
     if (res.isExists) Some(res) else None
+  }
+
+  def loadRaw(req:MultiGetDefinition): Array[MultiGetItemResponse] = {
+    EsClient().execute(req).getResponses
   }
 
   def loadWithVersion[T: Manifest](uuid: String): Option[(T, Long)] = {
@@ -113,4 +116,6 @@ object EsClient {
   implicit def hits2JArray(hits:Array[SearchHit]) : JArray = JArray(hits.map(hit => parse(hit.getSourceAsString)).toList)
 
   implicit def hit2JValue(hit:SearchHit) : JValue = parse(hit.getSourceAsString)
+
+  implicit def response2JValue(response:GetResponse) : JValue = parse(response.getSourceAsString)
 }

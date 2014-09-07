@@ -10,6 +10,7 @@ import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
+import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.slf4j.LoggerFactory
@@ -336,7 +337,7 @@ object ElasticSearchClient /*extends Actor*/ {
         case _ => 0.toDouble
       }
 
-      val locale = new Locale(lang);
+      val locale = new Locale(lang)
       val endPrice = price + (price * taxRate / 100d)
       val formatedPrice = rateService.format(price, currency.get, locale, cur.rate)
       val formatedEndPrice = rateService.format(endPrice, currency.get, locale, cur.rate)
@@ -429,7 +430,7 @@ object ElasticSearchClient /*extends Actor*/ {
    */
   def queryProductById(store: String, id: Long, req: ProductDetailsRequest): Option[JValue] = {
     lazy val currency = getCurrency(store, req.currency, req.lang)
-    val product:Option[JValue] = EsClient.load(_uuid=s"$id")
+    val product:Option[GetResponse] = EsClient.loadRaw(get id id from store -> "product")
     product match{
       case Some(p) => Some(renderProduct(p, req.country, req.currency, req.lang, currency, List()))
       case None => None
@@ -798,10 +799,12 @@ object ElasticSearchClient /*extends Actor*/ {
    * @return products
    */
   def getProductsByIds(store: String, ids: List[Long], req: ProductDetailsRequest): List[JValue] = {
-    //TODO replace with _mget op http://www.elasticsearch.org/guide/en/elasticsearch/guide/current/_retrieving_multiple_documents.html
-    (for{
-      id <- ids
-    } yield queryProductById(store, id, req)).flatten
+    lazy val currency = getCurrency(store, req.currency, req.lang)
+    val products:List[MultiGetItemResponse] = EsClient.loadRaw(multiget(ids.map(id => get id id from store -> "product"):_*)).toList
+    for(product <- products if !product.isFailed) yield {
+      val p:JValue = product.getResponse
+      renderProduct(p, req.country, req.currency, req.lang, currency, List())
+    }
   }
 
   /**
