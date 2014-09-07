@@ -57,14 +57,10 @@ class ProductHandler {
   }
 
   def getProductHistory(storeCode: String, req: VisitorHistoryRequest, uuid: String): List[JValue] = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.getProductHistory(storeCode, uuid)
-    val ids = Await.result(response, 10 seconds)
-      if (ids.isEmpty) {
-        List()
-      } else {
-        ElasticSearchClient.getProductsByIds(storeCode,ids,ProductDetailsRequest(historize = false, None, req.currency, req.country, req.lang))
-      }
-    
+    val ids = ElasticSearchClient.getProductHistory(storeCode, uuid)
+    if (ids.isEmpty) List() else ElasticSearchClient.getProductsByIds(
+      storeCode, ids, ProductDetailsRequest(historize = false, None, req.currency, req.country, req.lang)
+    )
   }
+
 }

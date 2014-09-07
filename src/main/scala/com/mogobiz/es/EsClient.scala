@@ -6,7 +6,9 @@ import com.mogobiz.config.Settings
 import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticClient
 import com.sksamuel.elastic4s.source.DocumentSource
+import org.elasticsearch.action.get.GetResponse
 import org.elasticsearch.common.settings.ImmutableSettings
+import com.sksamuel.elastic4s.GetDefinition
 import com.sksamuel.elastic4s.ElasticDsl.{index => esindex4s, delete => esdelete4s, update => esupdate4s, _}
 import org.elasticsearch.search.{SearchHits, SearchHit}
 import org.json4s.JsonAST.{JValue, JArray}
@@ -39,6 +41,11 @@ object EsClient {
     val req = get id _uuid from _store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
     val res = EsClient().execute(req)
     if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
+  }
+
+  def loadRaw(req:GetDefinition): Option[GetResponse] = {
+    val res = EsClient().execute(req)
+    if (res.isExists) Some(res) else None
   }
 
   def loadWithVersion[T: Manifest](uuid: String): Option[(T, Long)] = {

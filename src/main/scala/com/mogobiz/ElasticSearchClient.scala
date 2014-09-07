@@ -10,7 +10,6 @@ import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticDsl.{search => search4s, update => update4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
-import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.slf4j.LoggerFactory
@@ -933,13 +932,10 @@ object ElasticSearchClient /*extends Actor*/ {
    * @return products
    */
   def getProductsByIds(store: String, ids: List[Long], req: ProductDetailsRequest): List[JValue] = {
-    implicit def json4sFormats: Formats = DefaultFormats
-
     //TODO replace with _mget op http://www.elasticsearch.org/guide/en/elasticsearch/guide/current/_retrieving_multiple_documents.html
     (for{
       id <- ids
     } yield queryProductById(store, id, req)).flatten
-
   }
 
   /**
@@ -948,23 +944,11 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param sessionId - user session id
    * @return - products
    */
-  def getProductHistory(store:String, sessionId:String) : Future[List[Long]] = {
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    val fresponse: Future[HttpResponse] = pipeline(Get(route("/" + historyIndex(store) + "/history/"+sessionId)))
-    fresponse.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-          val json = parse(response.entity.asString)
-          val subset = json \ "_source"
-          val productIds = subset \ "productIds"
-          Future{productIds.extract[List[Long]]}
-        } else {
-          //no sessionId available, EmptyList products returned
-          Future{List()}
-        }
-      }
-    }
+  def getProductHistory(store:String, sessionId:String) : List[Long] = {
+   EsClient.loadRaw(get id sessionId from(historyIndex(store), "history")) match {
+     case Some(s) => s.getField("productIds").getValues.asInstanceOf[List[Long]]
+     case None => List.empty
+   }
   }
 
   def createComment(store:String,productId:Long,c:CommentRequest): Comment = {
