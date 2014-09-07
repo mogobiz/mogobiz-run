@@ -4,7 +4,6 @@ import java.io.File
 
 import com.mogobiz.config.Settings
 import com.sksamuel.elastic4s.ElasticDsl._
-import mogopay.config.Settings
 import spray.client.pipelining._
 import spray.http._
 
