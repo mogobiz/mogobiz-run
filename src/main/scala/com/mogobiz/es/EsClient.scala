@@ -4,17 +4,17 @@ import java.util.{Calendar, Date}
 
 import com.mogobiz.config.Settings
 import com.mogobiz.utils.JacksonConverter
-import com.sksamuel.elastic4s.{MultiGetDefinition, ElasticClient, GetDefinition}
+import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, index => esindex4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.source.DocumentSource
-import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
+import com.sksamuel.elastic4s.{ElasticClient, GetDefinition, MultiGetDefinition}
+import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.common.settings.ImmutableSettings
-import com.sksamuel.elastic4s.ElasticDsl.{index => esindex4s, delete => esdelete4s, update => esupdate4s, _}
 import org.elasticsearch.index.get.GetResult
-import org.elasticsearch.search.{SearchHits, SearchHit}
-import org.json4s.JsonAST.{JValue, JArray}
+import org.elasticsearch.search.{SearchHit, SearchHits}
+import org.json4s.JsonAST.{JArray, JValue}
 import org.json4s.native.JsonMethods._
-import scala.language.implicitConversions
-import scala.language.reflectiveCalls
+
+import scala.language.{implicitConversions, reflectiveCalls}
 
 object EsClient {
   val settings = ImmutableSettings.settingsBuilder().put("cluster.name", Settings.DB.EsCluster).build()
