@@ -33,15 +33,11 @@ class ProductHandler {
   }
 
   def getProductDates(storeCode: String, params: ProductDatesRequest, productId: Long, uuid: String): JValue = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.queryProductDates(storeCode, productId, params)
-    Await.result(response, 10 seconds)
+    ElasticSearchClient.queryProductDates(storeCode, productId, params)
   }
 
   def getProductTimes(storeCode: String, params: ProductTimesRequest, productId: Long, uuid: String): JValue = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.queryProductTimes(storeCode, productId, params)
-    Await.result(response, 10 seconds)
+    ElasticSearchClient.queryProductTimes(storeCode, productId, params)
   }
 
   def updateComment(storeCode: String, productId: Long, commentId: String, useful: Boolean): Boolean = {

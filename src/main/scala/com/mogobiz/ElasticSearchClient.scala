@@ -719,75 +719,36 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param req
    * @return
    */
-  def queryProductDates(store: String, id: Long, req: ProductDatesRequest): Future[JValue] = {
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    val query = s"""{"_source": {"include": ["datePeriods","intraDayPeriods"]},
-      "query": {"filtered": {"filter": {"term": {"id": $id}}}}}"""
-
-
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product/_search"), query))
-    fresponse.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-
-          val json = parse(response.entity.asString)
-          val subset = json \ "hits" \ "hits" \ "_source"
-
-
-          val datePeriods = subset \ "datePeriods"
-          val outPeriods = datePeriods.extract[List[EndPeriod]]
-
-          /*match {
-            case JNothing => Nil
-            case o:JValue =>
-          }*/
-
-          val intraDayPeriods = subset \ "intraDayPeriods"
-          //TODO test exist or send empty
-          //println(pretty(render(intraDayPeriods)))
-          val inPeriods = intraDayPeriods.extract[List[IntraDayPeriod]]
-
-          //date or today
-          val now = Calendar.getInstance().getTime
-          val today = getCalendar(sdf.parse(sdf.format(now)))
-          val d = sdf.parse(req.date.getOrElse(sdf.format(now)))
-          var startCalendar = getCalendar(d)
-
-
-          if (startCalendar.compareTo(today) < 0) {
-            startCalendar = today
-          }
-
-          val endCalendar = getCalendar(startCalendar.getTime())
-          endCalendar.add(Calendar.MONTH, 1)
-
-          def checkDate(currentDate:Calendar,endCalendar: Calendar, acc: List[String]) : List[String] = {
-            //println("checkDateAcc acc="+acc)
-            if(!currentDate.before(endCalendar)) acc
-            else{
-              currentDate.add(Calendar.DAY_OF_YEAR, 1)
-
-              if (isDateIncluded(inPeriods, currentDate) && !isDateExcluded(outPeriods, currentDate)) {
-                val date = sdf.format(currentDate.getTime)
-                //println(date)
-                checkDate(currentDate,endCalendar,date::acc)
-              }else{
-                checkDate(currentDate,endCalendar,acc)
-              }
-            }
-          }
-          val currentDate = getCalendar(startCalendar.getTime())
-          val dates = checkDate(currentDate,endCalendar,List())
-
-          Future{dates.reverse}
-        } else {
-          //TODO log l'erreur
-          Future{parse(response.entity.asString)}
-          //throw new ElasticSearchClientException(resp.status.reason)
+  def queryProductDates(store: String, id: Long, req: ProductDatesRequest): JValue = {
+    val filters:List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
+    val hits:SearchHits = EsClient.searchAllRaw(
+      filterRequest(search4s in store -> "product", filters) sourceInclude(List("datePeriods", "intraDayPeriods"):_*)
+    )
+    val inPeriods:List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
+    val outPeriods:List[EndPeriod] = hits.getHits.map(hit => hit.field("datePeriods").getValue[List[EndPeriod]]).flatten.toList
+    //date or today
+    val now = Calendar.getInstance().getTime
+    val today = getCalendar(sdf.parse(sdf.format(now)))
+    var startCalendar = getCalendar(sdf.parse(req.date.getOrElse(sdf.format(now))))
+    if (startCalendar.compareTo(today) < 0) {
+      startCalendar = today
+    }
+    val endCalendar = getCalendar(startCalendar.getTime)
+    endCalendar.add(Calendar.MONTH, 1)
+    def checkDate(currentDate:Calendar,endCalendar: Calendar, acc: List[String]) : List[String] = {
+      if(!currentDate.before(endCalendar)) acc
+      else{
+        currentDate.add(Calendar.DAY_OF_YEAR, 1)
+        if (isDateIncluded(inPeriods, currentDate) && !isDateExcluded(outPeriods, currentDate)) {
+          val date = sdf.format(currentDate.getTime)
+          checkDate(currentDate, endCalendar, date::acc)
+        }else{
+          checkDate(currentDate, endCalendar, acc)
         }
       }
     }
+    implicit def json4sFormats: Formats = DefaultFormats
+    checkDate(getCalendar(startCalendar.getTime), endCalendar, List()).reverse
   }
 
   /**
@@ -797,70 +758,41 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param req
    * @return
    */
-  def queryProductTimes(store:String , id:Long, req: ProductTimesRequest) : Future[JValue]={
-
+  def queryProductTimes(store:String , id:Long, req: ProductTimesRequest) : JValue = {
+    val filters:List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
+    val hits:SearchHits = EsClient.searchAllRaw(
+      filterRequest(search4s in store -> "product", filters) sourceInclude(List("intraDayPeriods"):_*)
+    )
+    val intraDayPeriods:List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
+    //date or today
+    val day = getCalendar(sdf.parse(req.date.getOrElse(sdf.format(Calendar.getInstance().getTime))))
     implicit def json4sFormats: Formats = DefaultFormats
-
-    val query = s"""{"_source": {"include": ["datePeriods","intraDayPeriods"]},
-      "query": {"filtered": {"filter": {"term": {"id": $id}}}}}"""
-
-
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/product/_search"), query))
-    fresponse.flatMap {
-      response => {
-        if (response.status.isSuccess) {
-
-          val json = parse(response.entity.asString)
-          val subset = json \ "hits" \ "hits" \ "_source"
-
-          val intraDayPeriods = subset \ "intraDayPeriods"
-          //TODO test exist or send empty
-          //println(pretty(render(intraDayPeriods)))
-          val inPeriods = intraDayPeriods.extract[List[IntraDayPeriod]]
-          //date or today
-          val now = Calendar.getInstance().getTime
-          val today = getCalendar(sdf.parse(sdf.format(now)))
-          val d = sdf.parse(req.date.getOrElse(sdf.format(now)))
-          val dateToEval = getCalendar(d)
-
-          val day = dateToEval
-          //TODO refacto this part with the one is in isIncluded method
-          val startingHours = inPeriods.filter {
-            //get the matching periods
-            period => {
-              val dow = day.get(Calendar.DAY_OF_WEEK)
-              //TODO rework weekday definition !!!
-              val included = dow match {
-                case Calendar.MONDAY => period.weekday1
-                case Calendar.TUESDAY => period.weekday2
-                case Calendar.WEDNESDAY => period.weekday3
-                case Calendar.THURSDAY => period.weekday4
-                case Calendar.FRIDAY => period.weekday5
-                case Calendar.SATURDAY => period.weekday6
-                case Calendar.SUNDAY => period.weekday7
-              }
-
-              val cond = included &&
-                day.getTime.compareTo(period.startDate) >= 0 &&
-                day.getTime.compareTo(period.endDate) <= 0
-              cond
-            }
-          }.map{
-            //get the start date hours value only
-            period => {
-              // the parsed date returned by ES is parsed according to the serveur Timezone and so it returns 16 (parsed value) instead of 15 (ES value)
-              // because the my current timezone is GMT+1
-              // but what it must return is the value from ES
-              hours.format(getFixedDate(period.startDate).getTime)
-            }
-          }
-
-          Future{startingHours}
-        } else {
-          //TODO log l'erreur
-          Future{parse(response.entity.asString)}
-          //throw new ElasticSearchClientException(resp.status.reason)
+    //TODO refacto this part with the one is in isIncluded method
+    intraDayPeriods.filter {
+      //get the matching periods
+      period => {
+        val dow = day.get(Calendar.DAY_OF_WEEK)
+        //TODO rework weekday definition !!!
+        val included = dow match {
+          case Calendar.MONDAY => period.weekday1
+          case Calendar.TUESDAY => period.weekday2
+          case Calendar.WEDNESDAY => period.weekday3
+          case Calendar.THURSDAY => period.weekday4
+          case Calendar.FRIDAY => period.weekday5
+          case Calendar.SATURDAY => period.weekday6
+          case Calendar.SUNDAY => period.weekday7
         }
+        val cond = included &&
+          day.getTime.compareTo(period.startDate) >= 0 &&
+          day.getTime.compareTo(period.endDate) <= 0
+        cond
+      }
+    }.map{
+      //get the start date hours value only
+      period => {
+        // the parsed date returned by ES is parsed according to the server Timezone and so it returns 16 (parsed value) instead of 15 (ES value)
+        // but what it must return is the value from ES
+        hours.format(getFixedDate(period.startDate).getTime)
       }
     }
   }
