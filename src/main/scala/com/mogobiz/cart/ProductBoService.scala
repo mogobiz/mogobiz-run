@@ -8,6 +8,7 @@ import org.joda.time.DateTime
 import scalikejdbc._
 
 /**
+ *
  * Created by Christophe on 06/05/2014.
  */
 object ProductBoService extends BoService {
@@ -18,7 +19,7 @@ object ProductBoService extends BoService {
   def increment(ticketType:TicketType , quantity:Long, date:Option[DateTime]):Unit = {
     val product = ticketType.product.get
     ticketType.stock match {
-      case Some(stock) => {
+      case Some(stock) =>
         // Search the corresponding StockCalendar
         val stockCalendar = retrieveStockCalendar(product, ticketType, date, stock)
 
@@ -30,7 +31,6 @@ object ProductBoService extends BoService {
             updateStockCalendarSales(stockCalendar.id, -quantity, now)
         }
         //TODO ES upsertProduct(product)
-      }
       case None => throw new UnavailableStockException("increment stock error : stock does not exist")
     }
   }
@@ -126,9 +126,8 @@ object ProductBoService extends BoService {
       implicit session =>
         val str = product.calendarType match {
           case ProductCalendar.NO_DATE => sql"select * from stock_calendar where ticket_type_fk=${ticketType.id}"
-          case _ =>{
+          case _ =>
             sql"select * from stock_calendar where ticket_type_fk=${ticketType.id} and start_date=${date}"
-          }
         }
 
         val cal:Calendar = Calendar.getInstance()
@@ -154,9 +153,8 @@ object ProductBoService extends BoService {
     DB localTx { implicit session =>
         val str = product.calendarType match {
           case ProductCalendar.NO_DATE => sql"select * from stock_calendar where ticket_type_fk=${ticketType.id}"
-          case _ =>{
+          case _ =>
             sql"select * from stock_calendar where ticket_type_fk=${ticketType.id} and start_date=${date}"
-          }
         }
 
         val cal:Calendar = Calendar.getInstance()
@@ -164,14 +162,13 @@ object ProductBoService extends BoService {
 
       stockCal match {
         case Some(s) => s
-        case None => {
+        case None =>
           val now = new DateTime()
           val newid = newId()
           val defaultStockCal = StockCalendar(newid, stock.stock, 0, date, product, ticketType, now, now)
 
           StockCalendar.insert(defaultStockCal).update().apply() //TODO find a way to include .update().apply() into the insert method
           defaultStockCal
-        }
       }
     }
   }
@@ -369,5 +366,5 @@ trait DateAware {
 }
 
 trait Entity {
-  val uuid : String  = java.util.UUID.randomUUID().toString()
+  val uuid : String  = java.util.UUID.randomUUID().toString
 }

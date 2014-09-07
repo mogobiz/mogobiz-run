@@ -4,6 +4,7 @@ import org.joda.time.DateTime
 import scalikejdbc.{WrappedResultSet, _}
 
 /**
+ *
  * Created by Christophe on 05/05/2014.
  */
 object UuidBoService extends BoService {
