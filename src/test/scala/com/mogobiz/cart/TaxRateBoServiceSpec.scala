@@ -1,8 +1,8 @@
 package com.mogobiz.cart
 
+import com.mogobiz.cart.domain._
 import org.specs2.mutable.Specification
 import scalikejdbc.config._
-import scala.Some
 
 /**
  * Created by Christophe on 07/05/2014.

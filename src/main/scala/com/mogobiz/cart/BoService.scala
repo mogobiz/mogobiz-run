@@ -9,3 +9,4 @@ trait BoService {
     res.get
   }
 }
+

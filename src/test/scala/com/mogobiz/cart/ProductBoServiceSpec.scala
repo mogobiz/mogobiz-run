@@ -1,5 +1,6 @@
 package com.mogobiz.cart
 
+import com.mogobiz.cart.domain._
 import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs
 
