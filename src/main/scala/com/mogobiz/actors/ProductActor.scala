@@ -30,45 +30,35 @@ object ProductActor {
 
 class ProductActor extends Actor {
   def receive = {
-    case q: QueryProductRequest => {
+    case q: QueryProductRequest =>
       sender ! productHandler.queryProductsByCriteria(q.storeCode, q.params)
-    }
 
-    case q: QueryFindProductRequest => {
+    case q: QueryFindProductRequest =>
       sender ! productHandler.queryProductsByFulltextCriteria(q.storeCode, q.params)
-    }
 
-    case q: QueryCompareProductRequest => {
+    case q: QueryCompareProductRequest =>
       sender ! productHandler.getProductsFeatures(q.storeCode, q.params)
-    }
 
-    case q: QueryProductDetailsRequest => {
+    case q: QueryProductDetailsRequest =>
       sender ! productHandler.getProductDetails(q.storeCode, q.params, q.productId, q.uuid)
-    }
 
-    case q: QueryProductDatesRequest => {
+    case q: QueryProductDatesRequest =>
       sender ! productHandler.getProductDates(q.storeCode, q.params, q.productId, q.uuid)
-    }
 
-    case q: QueryProductTimesRequest => {
+    case q: QueryProductTimesRequest =>
       sender ! productHandler.getProductTimes(q.storeCode, q.params, q.productId, q.uuid)
-    }
 
-    case q: QueryCreateCommentRequest => {
+    case q: QueryCreateCommentRequest =>
       sender ! productHandler.createComment(q.storeCode, q.productId, q.req)
-    }
 
-    case q: QueryGetCommentRequest => {
+    case q: QueryGetCommentRequest =>
       sender ! productHandler.getComment(q.storeCode, q.productId, q.req)
-    }
 
-    case q: QueryUpdateCommentRequest => {
+    case q: QueryUpdateCommentRequest =>
       sender ! productHandler.updateComment(q.storeCode, q.productId, q.commentId, q.useful)
-    }
 
-    case q: QueryVisitedProductRequest => {
-        sender ! productHandler.getProductHistory(q.storeCode, q.req, q.uuid)
-    }
+    case q: QueryVisitedProductRequest =>
+      sender ! productHandler.getProductHistory(q.storeCode, q.req, q.uuid)
 
   }
 }

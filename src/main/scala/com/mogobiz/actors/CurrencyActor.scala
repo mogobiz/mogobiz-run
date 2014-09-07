@@ -10,8 +10,7 @@ object CurrencyActor {
 
 class CurrencyActor extends Actor {
   def receive = {
-    case q: QueryCurrencyRequest => {
+    case q: QueryCurrencyRequest =>
       sender ! currencyHandler.queryCurrency(q.storeCode, q.lang)
-    }
   }
 }

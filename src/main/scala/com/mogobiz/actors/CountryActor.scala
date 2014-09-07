@@ -12,8 +12,7 @@ object CountryActor {
 
 class CountryActor extends Actor {
   def receive = {
-    case q: QueryCountryRequest => {
+    case q: QueryCountryRequest =>
       sender ! countryHandler.queryCountries(q.storeCode, q.lang)
-    }
   }
 }

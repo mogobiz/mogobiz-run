@@ -15,14 +15,11 @@ object PreferenceActor {
 
 class PreferenceActor extends Actor {
   def receive = {
-    case q: QuerySavePreferenceRequest => {
+    case q: QuerySavePreferenceRequest =>
       sender ! preferenceHandler.savePreference(q.storeCode, q.uuid, q.params)
-    }
 
-      case q: QueryGetPreferenceRequest => {
+    case q: QueryGetPreferenceRequest =>
       sender ! preferenceHandler.getPreferences(q.storeCode, q.uuid)
-    }
-
 
 
   }

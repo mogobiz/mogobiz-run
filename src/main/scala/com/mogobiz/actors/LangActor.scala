@@ -10,8 +10,7 @@ object LangActor {
 
 class LangActor extends Actor {
   def receive = {
-    case q: QueryLangRequest => {
+    case q: QueryLangRequest =>
       sender ! langHandler.queryLang(q.storeCode)
-    }
   }
 }
