@@ -1,13 +1,11 @@
 package com.mogobiz.handlers
 
 import com.mogobiz._
+import com.mogobiz.model._
 import org.json4s.JsonAST.JValue
 import scala.concurrent.duration._
 import scala.concurrent.Await
-import com.mogobiz.ProductRequest
-import com.mogobiz.CompareProductParameters
-import com.mogobiz.FullTextSearchProductParameters
-import com.mogobiz.vo.{CommentGetRequest, Paging, CommentRequest, Comment}
+import com.mogobiz.vo.Paging
 
 
 class ProductHandler {

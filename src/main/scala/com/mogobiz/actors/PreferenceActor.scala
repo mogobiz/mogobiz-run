@@ -1,9 +1,9 @@
 package com.mogobiz.actors
 
 import akka.actor.Actor
-import com.mogobiz.Prefs
 import com.mogobiz.config.HandlersConfig._
 import com.mogobiz.actors.PreferenceActor.{QueryGetPreferenceRequest, QuerySavePreferenceRequest}
+import com.mogobiz.model.Prefs
 
 object PreferenceActor {
 

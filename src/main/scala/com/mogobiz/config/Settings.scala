@@ -28,16 +28,12 @@ object Settings {
   DBs.setupAll()
   //DBsWithEnv("development").setupAll()
 
-  object DB {
-    val EsHost = "localhost"
-    val EsHttpPort = 9200
-    val EsPort = 9300
-    val Index = "mogopay"
-    val EsCluster = "elasticsearch"
-    val EsFullUrl = EsHost + ":" + EsHttpPort
-  }
-
-
+  val EsHost     = config getString "elastic.host"
+  val EsHttpPort = config getInt "elastic.httpPort"
+  val EsPort     = config getInt "elastic.port"
+  val EsIndex    = config getString "elastic.index"
+  val EsCluster  = config getString "elastic.cluster"
+  val EsFullUrl  = EsHost + ":" + EsHttpPort
 
   require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
   require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")

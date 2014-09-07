@@ -1,6 +1,7 @@
-package com.mogobiz
+package com.mogobiz.model
 
 import java.util.Date
+
 import com.mogobiz.vo.PagingParams
 
 /**

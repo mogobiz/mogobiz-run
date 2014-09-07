@@ -1,13 +1,14 @@
 package com.mogobiz
 
 import java.text.SimpleDateFormat
-import java.util._
+import java.util.{Locale, Calendar, Date}
 
-import com.mogobiz.config.Settings
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
+import com.mogobiz.model._
+import com.mogobiz.services.RateBoService
 import com.mogobiz.utils.JacksonConverter
-import com.mogobiz.vo.{Comment, CommentGetRequest, CommentRequest, Paging}
+import com.mogobiz.vo.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
@@ -19,7 +20,6 @@ import org.json4s.JsonDSL._
 import org.json4s._
 import org.slf4j.LoggerFactory
 
-import scala.List
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -29,15 +29,9 @@ import scala.util.{Failure, Success, Try}
 
 object ElasticSearchClient {
 
-  import Settings.DB._
-
   private val log = Logger(LoggerFactory.getLogger("ElasticSearchClient"))
 
   val rateService = RateBoService
-
-  private val EsFullURL = s"$EsHost:$EsHttpPort"
-
-  private def route(url: String): String = EsFullURL + url
 
   private def historyIndex(store:String):String = {
     s"${store}_history"
@@ -105,8 +99,8 @@ object ElasticSearchClient {
     ).getHits
   }
 
-  def getCurrencies(store: String, lang: String): Seq[Currency] = {
-    EsClient.searchAll[Currency](
+  def getCurrencies(store: String, lang: String): Seq[model.Currency] = {
+    EsClient.searchAll[model.Currency](
       esearch4s in store -> "rate" sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)
     )
   }
@@ -267,7 +261,7 @@ object ElasticSearchClient {
 
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
 
-  def renderProduct(product: JsonAST.JValue, country: Option[String], currency: Option[String], lang: String, cur: Currency, fieldsToRemove: List[String]): JsonAST.JValue = {
+  def renderProduct(product: JsonAST.JValue, country: Option[String], currency: Option[String], lang: String, cur: model.Currency, fieldsToRemove: List[String]): JsonAST.JValue = {
     if (country.isEmpty || currency.isEmpty) {
       product
     } else {
@@ -373,7 +367,7 @@ object ElasticSearchClient {
     }
   }
 
-  def getCurrency(store:String,currencyCode:Option[String],lang:String):Currency = {
+  def getCurrency(store:String,currencyCode:Option[String],lang:String):model.Currency = {
     assert(!store.isEmpty)
     assert(!lang.isEmpty)
 

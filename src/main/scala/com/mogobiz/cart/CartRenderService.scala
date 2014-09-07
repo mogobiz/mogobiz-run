@@ -3,6 +3,8 @@ package com.mogobiz.cart
 import java.util.Locale
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz._
+import com.mogobiz.model.Currency
+import com.mogobiz.services.RateBoService
 import com.typesafe.scalalogging.slf4j.Logger
 import org.joda.time.DateTime
 import org.json4s.ext.JodaTimeSerializers

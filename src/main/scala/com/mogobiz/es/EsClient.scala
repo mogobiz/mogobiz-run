@@ -3,6 +3,7 @@ package com.mogobiz.es
 import java.util.{Calendar, Date}
 
 import com.mogobiz.config.Settings
+import Settings._
 import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, index => esindex4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.source.DocumentSource
@@ -17,8 +18,8 @@ import org.json4s.native.JsonMethods._
 import scala.language.{implicitConversions, reflectiveCalls}
 
 object EsClient {
-  val settings = ImmutableSettings.settingsBuilder().put("cluster.name", Settings.DB.EsCluster).build()
-  val client = ElasticClient.remote(settings, (Settings.DB.EsHost, Settings.DB.EsPort))
+  val settings = ImmutableSettings.settingsBuilder().put("cluster.name", EsCluster).build()
+  val client = ElasticClient.remote(settings, (EsHost, EsPort))
 
   def apply() = {
     client.sync
@@ -30,7 +31,7 @@ object EsClient {
     var dateCreated: Date
   }
 
-  def index[T: Manifest](_store:String=Settings.DB.Index, t: T): String = {
+  def index[T: Manifest](_store: String = EsIndex, t: T): String = {
     val js = JacksonConverter.serialize(t)
     val req = esindex4s into(_store, manifest[T].runtimeClass.getSimpleName.toLowerCase) doc new DocumentSource {
       override val json: String = js
@@ -39,7 +40,7 @@ object EsClient {
     res.getId
   }
 
-  def load[T: Manifest](_store:String=Settings.DB.Index, _uuid: String): Option[T] = {
+  def load[T: Manifest](_store: String = EsIndex, _uuid: String): Option[T] = {
     val req = get id _uuid from _store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
     val res = EsClient().execute(req)
     if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
@@ -55,14 +56,14 @@ object EsClient {
   }
 
   def loadWithVersion[T: Manifest](uuid: String): Option[(T, Long)] = {
-    val req = get id uuid from Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName
+    val req = get id uuid from EsIndex -> manifest[T].runtimeClass.getSimpleName
     val res = EsClient().execute(req)
     val maybeT = if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
     maybeT map ((_, res.getVersion))
   }
 
   def delete[T: Manifest](uuid: String, refresh: Boolean = false): Boolean = {
-    val req = esdelete4s id uuid from Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName refresh refresh
+    val req = esdelete4s id uuid from EsIndex -> manifest[T].runtimeClass.getSimpleName refresh refresh
     val res = EsClient().execute(req)
     res.isFound
   }
@@ -71,7 +72,7 @@ object EsClient {
     val now = Calendar.getInstance().getTime
     t.lastUpdated = now
     val js = JacksonConverter.serialize(t)
-    val req = esupdate4s id t.uuid in Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName refresh refresh doc new DocumentSource {
+    val req = esupdate4s id t.uuid in EsIndex -> manifest[T].runtimeClass.getSimpleName refresh refresh doc new DocumentSource {
       override val json: String = js
     }
     req.docAsUpsert(upsert)
@@ -83,7 +84,7 @@ object EsClient {
     val now = Calendar.getInstance().getTime
     t.lastUpdated = now
     val js = JacksonConverter.serialize(t)
-    val req = esupdate4s id t.uuid in Settings.DB.Index -> manifest[T].runtimeClass.getSimpleName version version doc new DocumentSource {
+    val req = esupdate4s id t.uuid in EsIndex -> manifest[T].runtimeClass.getSimpleName version version doc new DocumentSource {
       override def json: String = js
     }
     val res = EsClient().execute(req)

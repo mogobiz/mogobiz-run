@@ -3,24 +3,15 @@ package com.mogobiz.services
 import akka.actor.ActorRef
 import com.mogobiz.Json4sProtocol._
 import com.mogobiz.actors.ProductActor._
+import com.mogobiz.model._
 import spray.routing.Directives
-import org.json4s._
 
-import scala.concurrent.{Await, ExecutionContext}
-import com.mogobiz._
-import spray.http.MediaTypes._
-import com.mogobiz.ProductRequest
-import com.mogobiz.CompareProductParameters
-import com.mogobiz.FullTextSearchProductParameters
-import scala.util.{Try, Failure, Success}
+import scala.concurrent.{ExecutionContext}
+import scala.util.{Failure, Success}
 import com.mogobiz.actors.ProductActor.QueryFindProductRequest
-import com.mogobiz.ProductRequest
-import com.mogobiz.CompareProductParameters
-import com.mogobiz.FullTextSearchProductParameters
-import com.mogobiz.ProductDetailsRequest
 import com.mogobiz.actors.ProductActor.QueryProductRequest
 import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
-import com.mogobiz.vo.{CommentPutRequest, CommentGetRequest, MogoError, CommentRequest}
+import com.mogobiz.vo.MogoError
 import spray.http.StatusCodes
 
 class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {

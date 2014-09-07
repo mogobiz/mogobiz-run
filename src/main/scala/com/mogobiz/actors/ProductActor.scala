@@ -8,15 +8,11 @@ import com.mogobiz.actors.ProductActor.QueryFindProductRequest
 import com.mogobiz.actors.ProductActor.QueryProductRequest
 import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
 import com.mogobiz.actors.ProductActor.QueryProductDetailsRequest
-import com.mogobiz.ProductDetailsRequest
 import com.mogobiz.actors.ProductActor.QueryFindProductRequest
 import com.mogobiz.actors.ProductActor.QueryProductRequest
-import com.mogobiz.ProductRequest
 import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
-import com.mogobiz.CompareProductParameters
 import com.mogobiz.actors.ProductActor.QueryProductDetailsRequest
-import com.mogobiz.FullTextSearchProductParameters
-import com.mogobiz.vo.{CommentGetRequest, CommentRequest, CommentPutRequest}
+import com.mogobiz.model._
 
 object ProductActor {
 

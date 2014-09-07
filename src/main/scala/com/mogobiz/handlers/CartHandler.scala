@@ -4,6 +4,7 @@ import java.util.Locale
 
 import com.mogobiz.cart._
 import com.mogobiz._
+import com.mogobiz.model._
 import org.json4s.JsonAST.JValue
 
 

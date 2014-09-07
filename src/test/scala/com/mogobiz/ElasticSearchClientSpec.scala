@@ -1,5 +1,6 @@
 package com.mogobiz
 
+import com.mogobiz.model.{Prefs, CommentGetRequest}
 import org.specs2.mutable.Specification
 import org.specs2.time.NoTimeConversions
 import scala.concurrent._
@@ -12,7 +13,6 @@ import scala.Some
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import org.json4s.{DefaultFormats, Formats}
-import com.mogobiz.vo.CommentGetRequest
 
 /**
  * Created by Christophe on 15/03/14.

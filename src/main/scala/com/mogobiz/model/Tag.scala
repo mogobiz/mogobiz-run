@@ -1,4 +1,4 @@
-package com.mogobiz
+package com.mogobiz.model
 
 /**
  *

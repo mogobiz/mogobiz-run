@@ -6,6 +6,7 @@ import com.mogobiz.config.JsonSupport._
 import com.mogobiz.actors.CartActor._
 import com.mogobiz.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.config.JsonSupport._
+import com.mogobiz.model._
 import org.json4s.JsonAST.JValue
 import spray.routing.Directives
 

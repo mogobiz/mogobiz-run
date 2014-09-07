@@ -5,8 +5,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
-
-import com.mogobiz.vo.Comment
+import com.mogobiz.model.Comment
 import org.elasticsearch.search.SearchHit
 
 import scala.Array.canBuildFrom

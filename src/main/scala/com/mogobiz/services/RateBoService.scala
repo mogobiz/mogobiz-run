@@ -1,7 +1,9 @@
-package com.mogobiz
+package com.mogobiz.services
 
-import java.util.Locale
 import java.text.NumberFormat
+import java.util.Locale
+
+import com.mogobiz.model.Currency
 
 /**
  *

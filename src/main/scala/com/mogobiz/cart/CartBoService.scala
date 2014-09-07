@@ -8,12 +8,13 @@ import com.mogobiz.cart.ProductType.ProductType
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
+import com.mogobiz.model.Currency
+import com.mogobiz.services.RateBoService
 import com.mogobiz.utils.{ResourceBundle, Utils, QRCodeUtils, SecureCodec}
 import com.sun.org.apache.xml.internal.security.utils.Base64
 import com.typesafe.scalalogging.slf4j.Logger
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 import org.json4s.{DefaultFormats, Formats}
-import com.mogobiz.{RateBoService, Currency}
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import scalikejdbc.config.DBs
