@@ -456,51 +456,24 @@ object ElasticSearchClient /*extends Actor*/ {
    * @param params
    * @return a list of products
    */
-  def getProductsFeatures(store: String, params: CompareProductParameters): Future[JValue] = {
-    var allLangues: List[String] = getStoreLanguagesAsList(store)
+  def getProductsFeatures(store: String, params: CompareProductParameters): JValue = {
     val idList = params.ids.split(",").toList
 
-    def getFetchConfig(id: String, lang: String): String = {
-      val nameFields = getIncludedFieldWithPrefix(store, "", "name", lang)
-      val featuresNameField = getIncludedFieldWithPrefix(store, "features.", "name", lang)
-      val featuresValueField = getIncludedFieldWithPrefix(store, "features.", "value", lang)
-      s"""
-        {
-          "_type": "product",
-          "_id": "$id",
-          "_source": {
-            "include": [
-              "id",
-              "name",
-              $nameFields,
-              "features.name",
-              "features.value",
-              $featuresNameField,
-              $featuresValueField
-            ]
-          }
-        }
-        """.stripMargin
-    }
+    val includedFields:List[String] = List("id", "name", "features.name", "features.value") :::
+      getIncludedFieldWithPrefixAsList(store, "", "name", params.lang) :::
+      getIncludedFieldWithPrefixAsList(store, "features.", "name", params.lang) :::
+      getIncludedFieldWithPrefixAsList(store, "features.", "value", params.lang)
 
-    val fetchConfigs = idList.map(id => getFetchConfig(id, params._lang)).filter {
-      str => !str.isEmpty
-    }.mkString("[", ",", "]")
+    val products:JArray = EsClient.loadRaw(multiget(idList.map(id => get id id from store -> "product" fields(includedFields:_*)):_*))
 
-    val multipleGetQueryTemplate = s"""
-      {
-        "docs": $fetchConfigs
-      }
-      """.stripMargin
-
-    //println(multipleGetQueryTemplate)
+    var allLanguages: List[String] = getStoreLanguagesAsList(store)
 
     // Permet de traduire la value ou le name d'une feature
     def translateFeature(feature: JValue, esProperty: String, targetPropery: String): List[JField] = {
       val value = extractJSonProperty(feature, esProperty)
 
       if (params._lang.equals("_all")) {
-        allLangues.map { lang: String => {
+        allLanguages.map { lang: String => {
           val v = extractJSonProperty(extractJSonProperty(feature, lang), esProperty)
           if (v == JNothing) JField("-", "-")
           else JField(lang, v)
@@ -513,83 +486,60 @@ object ElasticSearchClient /*extends Actor*/ {
       }
     }
 
-    /**
-     * Fonction internet qui transforme le résultat d'ES dans le résultat de la méthode de comparaison
-     * @param response
-     * @param params
-     * @return
-     */
-    def httpResponseToFuture(response: HttpResponse, params: CompareProductParameters): Future[JValue] = {
-      implicit def formats = DefaultFormats
-
-      if (response.status.isSuccess) {
-        val json = parse(response.entity.asString)
-        val docsArray = json \ "docs"
-
-
-        val featuresByNameAndIds : List[(BigInt, List[(String, JValue, List[JField])])] = for {
-          JObject(result) <- docsArray \ "_source"
-          JField("id", JInt(id)) <- result
-        } yield {
-          val featuresByName : List[(String, JValue, List[JField])] = for {
-            JField("features", JArray(features)) <- result
-            JObject(feature) <- features
-            JField("name", JString(name)) <- feature
-          } yield (name, JObject(feature), translateFeature(feature, "value", "value"))
-          (id, featuresByName)
-        }
-
-        // Liste des ids des produits comparés
-        val ids: List[BigInt] = featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1}.distinct
-
-        // Liste des noms des features (avec traduction des noms des features)
-        val featuresName : List[(String, List[JField])] = {for {feature: (String, JValue, List[JField]) <-
-                                                                featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._2}.
-                                                                  flatMap {featuresByName: List[(String, JValue, List[JField])] => featuresByName}
-        } yield (feature._1, translateFeature(feature._2, "name", "label"))}.distinct
-
-        // List de JObject correspond au contenu de la propriété "result" du résultat de la méthode
-        // On construit pour chaque nom de feature et pour chaque id de produit
-        // la résultat de la comparaison en gérant les traductions et en mettant "-"
-        // si une feature n'existe pas pour un produit
-        val resultContent: List[JObject] = featuresName.map { featureName: (String, List[JField]) =>
-
-        // Contenu pour la future propriété "values" du résultat
-          val valuesList = ids.map { id: BigInt =>
-            val featuresByName: Option[(BigInt, List[(String, JValue, List[JField])])] = featuresByNameAndIds.find{ idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1 == id }
-            if (featuresByName.isDefined) {
-              val feature: Option[(String, JValue, List[JField])] = featuresByName.get._2.find { nameAndFeature: (String, JValue, List[JField]) => nameAndFeature._1 == featureName._1}
-              if (feature.isDefined) {
-                JObject(feature.get._3)
-              }
-              else JObject(List(JField("value", "-")))
-            }
-            else JObject(List(JField("value", "-")))
-          }
-
-          // Récupération des valeurs différents pour le calcul de l'indicateur
-          val uniqueValue = valuesList.map {valueObject: JValue =>
-            extractJSonProperty(valueObject, "value") match {
-              case s: JString => s.s
-              case _ => "-"
-            }
-          }.distinct
-
-          JObject(featureName._2 :+ JField("values", valuesList) :+ JField("indicator", if (uniqueValue.size == 1) "0" else "1"))
-        }
-
-        val jFieldIds = JField("ids", JArray(ids.map {id: BigInt => JString(String.valueOf(id))}))
-        var jFieldResult = JField("result", JArray(resultContent))
-        Future{JObject(List(jFieldIds, jFieldResult))}
-      } else {
-        //TODO log l'erreur
-        Future{parse(response.entity.asString)}
-        //throw new ElasticSearchClientException(resp.status.reason)
-      }
+    val featuresByNameAndIds : List[(BigInt, List[(String, JValue, List[JField])])] = for {
+      JObject(result) <- products
+      JField("id", JInt(id)) <- result
+    } yield {
+      val featuresByName : List[(String, JValue, List[JField])] = for {
+        JField("features", JArray(features)) <- result
+        JObject(feature) <- features
+        JField("name", JString(name)) <- feature
+      } yield (name, JObject(feature), translateFeature(feature, "value", "value"))
+      (id, featuresByName)
     }
 
-    val fresponse: Future[HttpResponse] = pipeline(Post(route("/" + store + "/_mget"), multipleGetQueryTemplate))
-    fresponse.flatMap (response => httpResponseToFuture(response,params))
+    // Liste des ids des produits comparés
+    val ids: List[BigInt] = featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1}.distinct
+
+    // Liste des noms des features (avec traduction des noms des features)
+    val featuresName : List[(String, List[JField])] = {for {feature: (String, JValue, List[JField]) <-
+                                                            featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._2}.
+                                                              flatMap {featuresByName: List[(String, JValue, List[JField])] => featuresByName}
+    } yield (feature._1, translateFeature(feature._2, "name", "label"))}.distinct
+
+    // List de JObject correspond au contenu de la propriété "result" du résultat de la méthode
+    // On construit pour chaque nom de feature et pour chaque id de produit
+    // la résultat de la comparaison en gérant les traductions et en mettant "-"
+    // si une feature n'existe pas pour un produit
+    val resultContent: List[JObject] = featuresName.map { featureName: (String, List[JField]) =>
+
+      // Contenu pour la future propriété "values" du résultat
+      val valuesList = ids.map { id: BigInt =>
+        val featuresByName: Option[(BigInt, List[(String, JValue, List[JField])])] = featuresByNameAndIds.find{ idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1 == id }
+        if (featuresByName.isDefined) {
+          val feature: Option[(String, JValue, List[JField])] = featuresByName.get._2.find { nameAndFeature: (String, JValue, List[JField]) => nameAndFeature._1 == featureName._1}
+          if (feature.isDefined) {
+            JObject(feature.get._3)
+          }
+          else JObject(List(JField("value", "-")))
+        }
+        else JObject(List(JField("value", "-")))
+      }
+
+      // Récupération des valeurs différents pour le calcul de l'indicateur
+      val uniqueValue = valuesList.map {valueObject: JValue =>
+        extractJSonProperty(valueObject, "value") match {
+          case s: JString => s.s
+          case _ => "-"
+        }
+      }.distinct
+
+      JObject(featureName._2 :+ JField("values", valuesList) :+ JField("indicator", if (uniqueValue.size == 1) "0" else "1"))
+    }
+
+    val jFieldIds = JField("ids", JArray(ids.map {id: BigInt => JString(String.valueOf(id))}))
+    var jFieldResult = JField("result", JArray(resultContent))
+    JObject(List(jFieldIds, jFieldResult))
   }
 
   private def extractJSonProperty(source: JValue, property: String): JValue = {

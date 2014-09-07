@@ -118,4 +118,7 @@ object EsClient {
   implicit def hit2JValue(hit:SearchHit) : JValue = parse(hit.getSourceAsString)
 
   implicit def response2JValue(response:GetResponse) : JValue = parse(response.getSourceAsString)
+
+  implicit def responses2JArray(hits:Array[MultiGetItemResponse]) : JArray = JArray(hits.map(hit => parse(hit.getResponse.getSourceAsString)).toList)
+
 }

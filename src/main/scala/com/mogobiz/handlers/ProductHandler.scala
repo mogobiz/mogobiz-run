@@ -21,9 +21,7 @@ class ProductHandler {
   }
 
   def getProductsFeatures(storeCode: String, params: CompareProductParameters): JValue = {
-    //TODO with Elastic4s
-    val response = ElasticSearchClient.getProductsFeatures(storeCode, params)
-    Await.result(response, 10 seconds)
+    ElasticSearchClient.getProductsFeatures(storeCode, params)
   }
 
   def getProductDetails(storeCode: String, params: ProductDetailsRequest, productId: Long, uuid: String): JValue = {
