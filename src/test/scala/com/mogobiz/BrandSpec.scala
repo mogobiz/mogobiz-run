@@ -6,11 +6,13 @@ import spray.routing.HttpService
 import com.mogobiz.services.MogobizRoutes
 import com.mogobiz.actors.{MogobizActors, MogobizSystem}
 import scala.concurrent.duration._
+import org.specs2.matcher.JsonMatchers
+
 
 /**
  * Created by yoannbaudy on 07/09/14.
  */
-class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem {
+class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers {
   def actorRefFactory = system // connect the DSL to the test ActorSystem
   val STORE = "mogobiz"
 
@@ -19,11 +21,9 @@ class BrandSpec extends Specification with Specs2RouteTest with HttpService with
 
   "The Brand service" should {
     "return all brands" in {
-      //implicit val customTimeout = RouteTestTimeout(60 seconds)
-      Get("/store/" + STORE + "/brands") ~> sealRoute(routes) ~> check {
-        val r = response;
-        val s = responseAs[String]
-        s must beNull
+      Get("/store/" + STORE + "/brands") ~> routes ~> check {
+        val r : String = responseAs[String]
+        r must /#(0) / ("id" -> 40)
       }
     }
   }

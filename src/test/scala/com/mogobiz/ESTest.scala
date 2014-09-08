@@ -43,13 +43,15 @@ object ESTest {
 
     val esNode: Node = NodeBuilder.nodeBuilder().local(false).clusterName(com.mogobiz.config.Settings.EsCluster).settings(settings).node();
     esNode.start()
-/*
+
     Runtime.getRuntime().addShutdownHook(new Thread() {
       override def run : Unit = {
+        println("ES is stopped.")
         esNode.close();
       }
     });
-*/
+
+    println("ES is starting...")
     esNode
   }
 }
