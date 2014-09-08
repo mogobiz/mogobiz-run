@@ -6,17 +6,21 @@ import com.mogobiz.config.Settings._
 import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, index => esindex4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.source.DocumentSource
-import com.sksamuel.elastic4s.{ElasticClient, GetDefinition, MultiGetDefinition}
+import com.sksamuel.elastic4s.{ElasticDsl, ElasticClient, GetDefinition, MultiGetDefinition}
+import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.common.settings.ImmutableSettings
 import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.search.{SearchHit, SearchHits}
 import org.json4s.JsonAST.{JArray, JValue}
 import org.json4s.native.JsonMethods._
+import org.slf4j.LoggerFactory
 
 import scala.language.{implicitConversions, reflectiveCalls}
 
 object EsClient {
+  private val logger = Logger(LoggerFactory.getLogger("esClient"))
+
   val settings = ImmutableSettings.settingsBuilder().put("cluster.name", EsCluster).build()
   val client = ElasticClient.remote(settings, (EsHost, EsPort))
 
@@ -100,6 +104,7 @@ object EsClient {
   }
 
   def search[T: Manifest](req: SearchDefinition): Option[T] = {
+    debug(req)
     val res = EsClient().execute(req)
     if (res.getHits.getTotalHits == 0)
       None
@@ -108,11 +113,13 @@ object EsClient {
   }
 
   def searchAllRaw(req: SearchDefinition): SearchHits = {
+    debug(req)
     val res = EsClient().execute(req)
     res.getHits
   }
 
   def searchRaw(req: SearchDefinition): Option[SearchHit] = {
+    debug(req)
     val res = EsClient().execute(req)
     if (res.getHits.getTotalHits == 0)
       None
@@ -127,5 +134,11 @@ object EsClient {
   implicit def response2JValue(response:GetResponse) : JValue = parse(response.getSourceAsString)
 
   implicit def responses2JArray(hits:Array[MultiGetItemResponse]) : JArray = JArray(hits.map(hit => parse(hit.getResponse.getSourceAsString)).toList)
+
+  private def debug(req: ElasticDsl.SearchDefinition) {
+    if (EsDebug) {
+      logger.info(req._builder.toString)
+    }
+  }
 
 }
