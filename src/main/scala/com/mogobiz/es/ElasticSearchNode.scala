@@ -27,7 +27,7 @@ trait ElasticSearchNode {
 
 trait EmbeddedElasticSearchNode extends ElasticSearchNode {
 
-  private val logger = Logger(LoggerFactory.getLogger("ElasticSearchClient"))
+  private val logger = Logger(LoggerFactory.getLogger("esNode"))
 
   val esHeadPlugin = "mobz/elasticsearch-head"
 
@@ -60,13 +60,13 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       }
     })
 
-    logger.info("ES is starting...")
     esNode
   }
 
   override def start() : Unit = {
     if(node.isClosed){
       node.start()
+      logger.info("ES is starting...")
     }
   }
 }

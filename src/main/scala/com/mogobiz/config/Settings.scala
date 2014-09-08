@@ -73,6 +73,7 @@ object Settings {
   val EsIndex    = config getString "elastic.index"
   val EsCluster  = config getString "elastic.cluster"
   val EsFullUrl  = s"$EsHost:$EsHttpPort"
+  val EsDebug    = config getBoolean "elastic.debug"
 
   require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
   require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")
