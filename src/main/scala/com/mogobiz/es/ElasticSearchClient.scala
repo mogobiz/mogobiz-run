@@ -151,6 +151,7 @@ object ElasticSearchClient {
   }
 
   def getStoreLanguagesAsList(store: String): List[String] = {
+    implicit def json4sFormats: Formats = DefaultFormats
     queryStoreLanguages(store).extract[List[String]]
   }
 
