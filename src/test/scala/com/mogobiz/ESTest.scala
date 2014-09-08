@@ -1,7 +1,7 @@
 package com.mogobiz
 
 import org.elasticsearch.node.{NodeBuilder, Node}
-import org.elasticsearch.common.collect.Tuple;
+import org.elasticsearch.common.collect.Tuple
 import org.elasticsearch.common.settings.{ImmutableSettings, Settings}
 import org.elasticsearch.env.Environment
 import org.elasticsearch.node.internal.InternalSettingsPreparer
@@ -12,6 +12,7 @@ import org.elasticsearch.common.unit.TimeValue
 import java.io.IOException
 
 /**
+ *
  * Created by yoannbaudy on 04/09/14.
  */
 object ESTest {
@@ -31,18 +32,17 @@ object ESTest {
       pluginManager.downloadAndExtract(esHeadPlugin);
     }
     catch {
-      case e: IOException  => {
+      case e: IOException  =>
         // ignore if exists
-        e.printStackTrace();
-      }
+        e.printStackTrace()
     }
 
     var settings : ImmutableSettings.Builder = ImmutableSettings.settingsBuilder()
-    val t =  getClass.getResource("/es/data").getPath;
-    settings = settings.put("path.data", t);
+    val t =  getClass.getResource("/es/data").getPath
+    settings = settings.put("path.data", t)
 
-    val esNode: Node = NodeBuilder.nodeBuilder().local(true).settings(settings).node();
-    esNode.start();
+    val esNode: Node = NodeBuilder.nodeBuilder().local(false).clusterName(com.mogobiz.config.Settings.EsCluster).settings(settings).node();
+    esNode.start()
 /*
     Runtime.getRuntime().addShutdownHook(new Thread() {
       override def run : Unit = {
