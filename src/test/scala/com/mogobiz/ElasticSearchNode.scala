@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory
  */
 trait ElasticSearchNode {
 
-  def start:Unit
+  def start():Unit
 
 }
 
@@ -64,7 +64,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
     esNode
   }
 
-  override def start : Unit = {
+  override def start() : Unit = {
     if(node.isClosed){
       node.start()
     }
