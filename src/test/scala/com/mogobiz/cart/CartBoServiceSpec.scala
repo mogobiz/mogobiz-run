@@ -1,15 +1,11 @@
 package com.mogobiz.cart
 
-import com.mogobiz.model.Currency
-import com.mogobiz.utils.Utils
-import org.joda.time.DateTime
-import org.json4s.JsonAST.JValue
-import org.json4s.native.JsonMethods._
-import org.json4s.native.Serialization._
-import org.specs2.mutable.Specification
 import java.util.{Locale, UUID}
+
+import com.mogobiz.model.Currency
+import com.mogobiz.cart.domain._
+import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs
-import org.json4s.{DefaultFormats, Formats}
 
 /**
  *
@@ -124,35 +120,35 @@ class CartBoServiceSpec extends Specification {
     resCart2.cartItemVOs.size must be_==(2)
 
   }
-/*
-  "addToCart the same product twice" in {
-    //FIXME fail("ne gere pas l'ajout du mm produit au panier")
-    val cur = "EUR"
-    val uuid = UUID.randomUUID.toString
-    println(s"uuid=${uuid}")
-    val cart = service.initCart(uuid)
-    val ttid = 58
-    val tt58 = TicketType.get(ttid)
-    val quantity = 1
-    val dateTime = None
-    val resCart = service.addItem(Locale.getDefault, cur, cart, ttid, quantity, dateTime, List())
+  /*
+    "addToCart the same product twice" in {
+      //FIXME fail("ne gere pas l'ajout du mm produit au panier")
+      val cur = "EUR"
+      val uuid = UUID.randomUUID.toString
+      println(s"uuid=${uuid}")
+      val cart = service.initCart(uuid)
+      val ttid = 58
+      val tt58 = TicketType.get(ttid)
+      val quantity = 1
+      val dateTime = None
+      val resCart = service.addItem(Locale.getDefault, cur, cart, ttid, quantity, dateTime, List())
 
-    println("1. cart.price=" + resCart.price)
-    resCart.price must be_==(tt58.price)
-    resCart.price must be_==(35000)
-    resCart.count must be_==(1)
-    resCart.cartItemVOs.size must be_==(1)
+      println("1. cart.price=" + resCart.price)
+      resCart.price must be_==(tt58.price)
+      resCart.price must be_==(35000)
+      resCart.count must be_==(1)
+      resCart.cartItemVOs.size must be_==(1)
 
-    val resCart2 = service.addItem(Locale.getDefault, cur, resCart, ttid, quantity, dateTime, List())
-    println("2. cart.price=" + resCart2.price)
-    resCart2.price must be_==(tt58.price * 2)
-    resCart2.price must be_==(35000 * 2)
+      val resCart2 = service.addItem(Locale.getDefault, cur, resCart, ttid, quantity, dateTime, List())
+      println("2. cart.price=" + resCart2.price)
+      resCart2.price must be_==(tt58.price * 2)
+      resCart2.price must be_==(35000 * 2)
 
-    resCart2.count must be_==(1) //TODO fail here
-    resCart2.cartItemVOs.size must be_==(1)
+      resCart2.count must be_==(1) //TODO fail here
+      resCart2.cartItemVOs.size must be_==(1)
 
-  }
-*/
+    }
+  */
 
 
   "updateCart change the quantity" in {

@@ -1,7 +1,7 @@
 package com.mogobiz.cart
 import scalikejdbc._
 /**
- *
+ * 
  * Created by Christophe on 07/05/2014.
  */
 trait BoService {

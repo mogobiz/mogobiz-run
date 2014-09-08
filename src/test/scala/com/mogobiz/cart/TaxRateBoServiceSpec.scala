@@ -2,7 +2,7 @@ package com.mogobiz.cart
 
 import org.specs2.mutable.Specification
 import scalikejdbc.config._
-import scala.Some
+import com.mogobiz.cart.domain.{TaxRate,Product}
 
 /**
  *

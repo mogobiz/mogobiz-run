@@ -2,6 +2,8 @@ package com.mogobiz.cart
 
 import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs
+import com.mogobiz.cart.domain._
+
 
 /**
  *

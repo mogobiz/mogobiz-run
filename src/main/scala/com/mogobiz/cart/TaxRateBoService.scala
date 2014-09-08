@@ -1,5 +1,6 @@
 package com.mogobiz.cart
 
+import com.mogobiz.cart.domain.{TaxRate,Product}
 import scalikejdbc._
 
 /**
@@ -20,9 +21,9 @@ object TaxRateBoService {
     taxRate match {
 
 
-      case Some(s) =>
+      case Some(_taxRate) =>
 
-        val taxRateId = s.id
+        val taxRateId = _taxRate.id
         /*
         val whereStateCond:String = state match {
           case Some(s) => s"and l.state_code=${s}"
@@ -36,7 +37,7 @@ object TaxRateBoService {
           }
           str.map(rs => rs.float("rate")).single().apply()
         }
-        if (rate.isDefined) rate else if (state.isDefined) findTaxRate(Some(s), country, None) else None
+        if (rate.isDefined) rate else if (state.isDefined) findTaxRate(Some(_taxRate), country, None) else None
 
         /*val query = new StringBuffer("SELECT DISTINCT localTaxRate FROM TaxRate taxRate RIGHT JOIN taxRate.localTaxRates AS localTaxRate WHERE taxRate.id = :taxRateId AND localTaxRate.active = true AND localTaxRate.countryCode = :country")
         def params = [taxRateId: taxRate.id, country: country]

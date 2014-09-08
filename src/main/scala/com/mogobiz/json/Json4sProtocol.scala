@@ -3,8 +3,10 @@ package com.mogobiz.json
 import com.mogobiz.cart.LinearUnit._
 import com.mogobiz.cart.ProductCalendar._
 import com.mogobiz.cart.ProductType._
-import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
-import com.mogobiz.cart.TransactionStatus._
+import com.mogobiz.cart.domain.ReductionRuleType
+import com.mogobiz.cart.domain.ReductionRuleType.ReductionRuleType
+import com.mogobiz.cart.transaction._
+import com.mogobiz.cart.transaction.TransactionStatus._
 import com.mogobiz.cart.WeightUnit._
 import com.mogobiz.cart._
 import org.json4s._
