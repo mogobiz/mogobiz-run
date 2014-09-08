@@ -79,6 +79,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-testkit" % akkaV,
   "com.sksamuel.elastic4s" %% "elastic4s" % elastic4sV,
   "com.google.zxing" % "core" % "1.7",
+  "org.apache.commons" % "commons-email" % "1.3.3",
   "org.specs2" %% "specs2" % "2.3.13" % "test",
   "org.scala-lang.modules" %% "scala-async" % "0.9.2" % "test"
 )
