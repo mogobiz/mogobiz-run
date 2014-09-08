@@ -151,8 +151,7 @@ object ElasticSearchClient {
   }
 
   def getStoreLanguagesAsList(store: String): List[String] = {
-    val languages:JValue = queryStoreLanguages(store)
-    languages.extract[List[String]]
+    queryStoreLanguages(store).extract[List[String]]
   }
 
   def getAllExcludedLanguagesExcept(store: String, langRequested: String): List[String] = {
