@@ -113,11 +113,13 @@ object ElasticSearchClient {
    */
   def queryBrands(store: String, qr: BrandRequest): JValue = {
     val req = esearch4s in store -> "product"
-    var filters:List[FilterDefinition] = if(!qr.hidden) List(termFilter("category.hide", "false")) else List.empty
+    var filters:List[FilterDefinition] = List.empty
     qr.categoryPath match {
       case Some(s) =>
         filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
-      case None => // nothing to do
+        if(!qr.hidden) filters :+= termFilter("category.hide", "false")
+      case None =>
+        if(!qr.hidden) filters :+= termFilter("hide", "false")
     }
     val results : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
     results \ "brand"
@@ -754,13 +756,9 @@ object ElasticSearchClient {
   private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition]) : SearchDefinition =
     if(filters.nonEmpty){
       if(filters.size > 1)
-        req filter {
-          and (filters:_*)
-        }
+        req query {filteredQuery query matchall filter {and(filters: _*)}}
       else
-        req filter{
-          filters(0)
-        }
+        req query {filteredQuery query matchall filter filters(0)}
     }
     else req
 
