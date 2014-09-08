@@ -202,19 +202,19 @@ object ElasticSearchClient {
    */
   def queryCategories(store: String, qr: CategoryRequest): JValue = {
     var filters:List[FilterDefinition] = if(!qr.hidden) List(termFilter("category.hide", "false")) else List.empty
-    val req = qr.brandId match {
+    def results(req:SearchDefinition):JValue = EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
+    qr.brandId match {
       case Some(s) =>
         filters +:= termFilter("brand.id", s)
         if(qr.parentId.isDefined) filters +:= termFilter("category.parentId", qr.parentId.get)
         if(qr.categoryPath.isDefined) filters +:= regexFilter("category.path", s".*${qr.categoryPath.get.toLowerCase}.*")
-        esearch4s in store -> "product"
+        results(esearch4s in store -> "product") \ "category"
       case None =>
         if(qr.parentId.isDefined) filters +:= termFilter("parentId", qr.parentId.get)
         else if(qr.categoryPath.isEmpty) missingFilter("parentId") existence true includeNull true
         if(qr.categoryPath.isDefined) filters +:= regexFilter("path", s".*${qr.categoryPath.get.toLowerCase}.*")
-        esearch4s in store -> "category"
+        results(esearch4s in store -> "category")
     }
-    EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
   }
 
 
