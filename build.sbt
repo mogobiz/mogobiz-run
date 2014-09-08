@@ -35,6 +35,8 @@ resolvers += "scribe-java-mvn-repo" at "https://raw.github.com/fernandezpablo85/
 
 resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 
+resolvers += "Grep code" at "http://grepcode.com/snapshot/repo1.maven.org/maven2/"
+
 
 val akkaV = "2.3.3"
 
@@ -68,6 +70,7 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-http" % sprayV,
   "io.spray" %% "spray-httpx" % sprayV,
   "io.spray" %% "spray-util" % sprayV,
+  "io.spray" %% "spray-testkit" % sprayV % "test",
   "org.json4s" %% "json4s-native" % json4sV,
   "org.json4s" %% "json4s-jackson" % json4sV,
   "org.json4s"          %%  "json4s-ext" % json4sV,
@@ -81,7 +84,8 @@ libraryDependencies ++= Seq(
   "com.google.zxing" % "core" % "1.7",
   "org.apache.commons" % "commons-email" % "1.3.3",
   "org.specs2" %% "specs2" % "2.3.13" % "test",
-  "org.scala-lang.modules" %% "scala-async" % "0.9.2" % "test"
+  "org.scala-lang.modules" %% "scala-async" % "0.9.2" % "test",
+  "org.elasticsearch" % "elasticsearch-analysis-icu" % "2.2.0" % "test"
 )
 //    "commons-codec" % "commons-codec" % "1.9",
 //    "com.google.gdata" % "core" % "1.0",
