@@ -49,7 +49,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
 
     var settings : ImmutableSettings.Builder = ImmutableSettings.settingsBuilder()
     val t =  getClass.getResource("/es/data").getPath
-    settings = settings.put("path.data", t)
+    settings = settings.put("path.data", t).put("script.disable_dynamic", false)
 
     val esNode: Node = NodeBuilder.nodeBuilder().local(false).clusterName(EsCluster).settings(settings).node()
 

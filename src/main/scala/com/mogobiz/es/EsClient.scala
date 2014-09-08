@@ -6,7 +6,7 @@ import com.mogobiz.config.Settings._
 import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, index => esindex4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.source.DocumentSource
-import com.sksamuel.elastic4s.{ElasticDsl, ElasticClient, GetDefinition, MultiGetDefinition}
+import com.sksamuel.elastic4s.{ElasticClient, GetDefinition, MultiGetDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.common.settings.ImmutableSettings
@@ -99,6 +99,7 @@ object EsClient {
   }
 
   def searchAll[T: Manifest](req: SearchDefinition): Seq[T] = {
+    debug(req)
     val res = EsClient().execute(req)
     res.getHits.getHits.map { hit => JacksonConverter.deserialize[T](hit.getSourceAsString)}
   }
@@ -135,7 +136,7 @@ object EsClient {
 
   implicit def responses2JArray(hits:Array[MultiGetItemResponse]) : JArray = JArray(hits.map(hit => parse(hit.getResponse.getSourceAsString)).toList)
 
-  private def debug(req: ElasticDsl.SearchDefinition) {
+  private def debug(req: SearchDefinition) {
     if (EsDebug) {
       logger.info(req._builder.toString)
     }

@@ -346,8 +346,16 @@ object ElasticSearchClient {
    * @return
    */
   def addToHistory(store:String,productId:Long,sessionId:String) : Boolean = {
-    val query = s"""{"script":"ctx._source.productIds.contains(pid) ? (ctx.op = \\"none\\") : ctx._source.productIds += pid","params":{"pid":$productId},"upsert":{"productIds":[$productId]}}"""
-    EsClient.updateRaw(esupdate4s id sessionId in s"${historyIndex(store)}/history" script query)
+    val script = """ctx._source.productIds.contains(pid) ? (ctx.op = \\"none\\") : ctx._source.productIds += pid"""
+    EsClient.updateRaw(
+      esupdate4s id sessionId in s"${historyIndex(store)}/history" script
+        script
+      params {
+        "pid" -> productId
+      } upsert {
+        "productIds" -> Seq(productId)
+      } retryOnConflict 4
+    )
     true
   }
 
