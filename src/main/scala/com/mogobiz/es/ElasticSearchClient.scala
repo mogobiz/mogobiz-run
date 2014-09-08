@@ -62,9 +62,9 @@ object ElasticSearchClient {
    * @return
    */
   def savePreferences(store: String, uuid: String, prefs: Prefs): Boolean = {
-    EsClient.updateRaw(esupdate4s id uuid in s"${prefsIndex(store)}/prefs" docAsUpsert{
+    EsClient.updateRaw(esupdate4s id uuid in s"${prefsIndex(store)}/prefs" docAsUpsert true docAsUpsert{
       "productsNumber" -> prefs.productsNumber
-    })
+    } retryOnConflict 4)
     true
   }
 
