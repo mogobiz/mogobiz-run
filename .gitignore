@@ -8,3 +8,5 @@ target
 libraries
 project/rebel.xml
 src/main/resources/rebel.xml
+
+plugins/*
