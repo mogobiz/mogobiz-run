@@ -39,17 +39,15 @@ object Paging {
 
   /**
    * Get the paging Structure as JSON
-   * @param json
+   * @param total
    * @param pagingParams
    * @return
    */
-  def getWrapper(json:JValue, pagingParams:PagingParams) : JValue = {
+  def getWrapper(total:Int, pagingParams:PagingParams) : JValue = {
     import org.json4s.native.JsonMethods._
     import org.json4s.native.Serialization.write
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Paging[Any]]()
 
-    val hits = json \"hits"
-    val total : Int =  (hits \ "total").extract[Int]
     val paging = get(total, pagingParams)
 
     val pagingObj = parse(write(paging))
@@ -58,18 +56,18 @@ object Paging {
   }
 
   /**
-   * Wrap the JSON results with in a Paging SJON structure
-   * @param json
+   * Wrap the JSON results with in a Paging JSON structure
+   * @param total
    * @param results
    * @param pagingParams
    * @return
    */
-  def wrap(json:JValue,results:JValue,pagingParams:PagingParams):JValue = {
+  def wrap(total:Int,results:JValue,pagingParams:PagingParams):JValue = {
     import org.json4s.JsonDSL._
     import org.json4s._
     implicit def json4sFormats: Formats = DefaultFormats
 
-    val pagingWrapper = getWrapper(json,pagingParams)
+    val pagingWrapper = getWrapper(total, pagingParams)
     val resultWrapper = JObject(List(JField("list",results))) //parse("""{"list":$results"") //(("list"->results))
     val pageSizeWrapper = JObject(List(JField("pageSize",results.children.size)))
 

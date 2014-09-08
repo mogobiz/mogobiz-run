@@ -1,18 +1,18 @@
-package com.mogobiz
+package com.mogobiz.es
 
-import com.typesafe.scalalogging.slf4j.Logger
-import org.elasticsearch.node.{NodeBuilder, Node}
-import org.elasticsearch.common.collect.Tuple
-import org.elasticsearch.common.settings.{ImmutableSettings, Settings}
-import org.elasticsearch.env.Environment
-import org.elasticsearch.node.internal.InternalSettingsPreparer
-import org.elasticsearch.common.settings.ImmutableSettings.Builder.EMPTY_SETTINGS
-import org.elasticsearch.common.io.FileSystemUtils
-import org.elasticsearch.plugins.PluginManager
-import org.elasticsearch.common.unit.TimeValue
 import java.io.IOException
 
 import com.mogobiz.config.Settings._
+import com.typesafe.scalalogging.slf4j.Logger
+import org.elasticsearch.common.collect.Tuple
+import org.elasticsearch.common.io.FileSystemUtils
+import org.elasticsearch.common.settings.ImmutableSettings.Builder.EMPTY_SETTINGS
+import org.elasticsearch.common.settings.{ImmutableSettings, Settings}
+import org.elasticsearch.common.unit.TimeValue
+import org.elasticsearch.env.Environment
+import org.elasticsearch.node.internal.InternalSettingsPreparer
+import org.elasticsearch.node.{Node, NodeBuilder}
+import org.elasticsearch.plugins.PluginManager
 import org.slf4j.LoggerFactory
 
 /**

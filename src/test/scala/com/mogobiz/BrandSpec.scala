@@ -1,5 +1,6 @@
 package com.mogobiz
 
+import com.mogobiz.es.EmbeddedElasticSearchNode
 import org.specs2.mutable.Specification
 import spray.testkit.Specs2RouteTest
 import spray.routing.HttpService

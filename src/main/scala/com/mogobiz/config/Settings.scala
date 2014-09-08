@@ -7,7 +7,9 @@ import scalikejdbc.config._
 
 object Settings {
 
-  val config = ConfigFactory.load()
+  val default = ConfigFactory.load()
+
+  val config  = ConfigFactory.load("mogobiz").withFallback(default)
 
   val Interface    = config getString  "spray.can.server.interface"
   val Port         = config getInt     "spray.can.server.port"
@@ -70,7 +72,7 @@ object Settings {
   val EsPort     = config getInt "elastic.port"
   val EsIndex    = config getString "elastic.index"
   val EsCluster  = config getString "elastic.cluster"
-  val EsFullUrl  = EsHost + ":" + EsHttpPort
+  val EsFullUrl  = s"$EsHost:$EsHttpPort"
 
   require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
   require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")

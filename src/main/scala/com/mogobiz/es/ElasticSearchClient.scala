@@ -252,7 +252,7 @@ object ElasticSearchClient {
     val products:JValue = hits.map{
       hit => renderProduct(hit, req.countryCode, req.currencyCode, req.lang, currency, fieldsToRemoveForProductSearchRendering)
     }
-    Paging.wrap(response.getTotalHits, products, req)
+    Paging.wrap(response.getTotalHits.toInt, products, req)
   }
 
   private val defaultCurrency = Currency(currencyFractionDigits = 2, rate = 0.01d, name="Euro", code = "EUR") //FIXME trouvez autre chose
