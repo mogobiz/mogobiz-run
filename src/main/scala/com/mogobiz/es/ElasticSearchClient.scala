@@ -13,7 +13,7 @@ import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdat
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
-import org.elasticsearch.search.SearchHits
+import org.elasticsearch.search.{SearchHits, SearchHit}
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JArray, JNothing, JObject}
 import org.json4s.JsonDSL._
@@ -499,35 +499,29 @@ object ElasticSearchClient {
    * @return a list of products
    */
   def queryProductsByFulltextCriteria(store: String, params: FullTextSearchProductParameters): JValue = {
-    val fields:List[String] = List("name") ::: getIncludedFieldWithPrefixAsList(store, "", "name", params._lang)
-    val includedFields:List[String] = (if(params.highlight) List.empty else List("name")) ::: fields
-    val highlightedFields = List("name") ::: getHighlightedFieldsAsList(store, "name", params.lang)
+    val fieldNames = List("name", "description", "descriptionAsText", "keywords")
+    val fields:List[String] = fieldNames.foldLeft(List[String]())((A,B) => A ::: getIncludedFieldWithPrefixAsList(store, "", B, params._lang))
+    val includedFields:List[String] = List("id") ::: (if(params.highlight) List.empty else {fieldNames:::fields})
+    val highlightedFields = fieldNames.foldLeft(List[String]())((A,B) => A ::: getHighlightedFieldsAsList(store, B, params.lang))
     val req =
       if(params.highlight){
         esearch4s in store types(List("product", "category", "brand"):_*) highlighting{
-          highlightedFields.mkString(",")
+          (fieldNames ::: highlightedFields).mkString(",")
         }
       }
       else{
         esearch4s in store types(List("product", "category", "brand"):_*)
       }
-    val hits:JArray = EsClient.searchAllRaw(req sourceInclude(includedFields:_*)).getHits
-    val rawResult =
-      if (params.highlight) {
-        for {
-          JObject(result) <- hits.children.children
-          JField("_type", JString(_type)) <- result
-          JField("_source", JObject(_source)) <- result
-          JField("highlight", JObject(highlight)) <- result
-        } yield _type -> (_source ::: highlight)
-      } else {
-        for {
-          JObject(result) <- hits.children.children
-          JField("_type", JString(_type)) <- result
-          JField("_source", JObject(_source)) <- result
-        } yield _type -> _source
-      }
-    rawResult.groupBy(_._1).map {
+    val hits:Array[SearchHit] = EsClient.searchAllRaw(req query {params.query} fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*)).hits
+
+    import org.json4s.native.JsonMethods._
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val results : List[(String, JObject)] = hits.map(
+      hit => hit.getType -> parse(hit.getSourceAsString).extract[JObject]
+    ).toList // FIXME highlight
+
+    results.groupBy(_._1).map {
       case (_cat, v) => (_cat, v.map(_._2))
     }
   }
