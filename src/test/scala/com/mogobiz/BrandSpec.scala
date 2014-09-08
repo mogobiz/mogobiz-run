@@ -10,14 +10,16 @@ import org.specs2.matcher.JsonMatchers
 
 
 /**
+ *
  * Created by yoannbaudy on 07/09/14.
  */
-class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers {
+class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode {
   def actorRefFactory = system // connect the DSL to the test ActorSystem
   val STORE = "mogobiz"
 
   implicit val routeTestTimeout = RouteTestTimeout(FiniteDuration(5, SECONDS))
-  val node  = ESTest.startIfNecessary
+
+  step(start)
 
   "The Brand service" should {
     "return all brands" in {
