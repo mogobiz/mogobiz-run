@@ -46,19 +46,20 @@ object Settings {
      */
 
     object SMTP {
-      val Hostname = "localhost"
-      val Port = 25
-      val Username = ""
-      val Password = ""
-      val IsSSLEnabled = false
+      val Hostname     = config getString "mail.smtp.hostname"
+      val Port         = config getInt "mail.smtp.port"
+      val Username     = config getString "mail.smtp.username"
+      val Password     = config getString "mail.smtp.password"
+      val IsSSLEnabled = config getBoolean "mail.smtp.sslEnabled"
     }
-    val defaultFrom = "mogobiz@gmail.com"
-    val MaxAge = 24 * 3600
+
+    val defaultFrom = config getString "mail.defaultFrom"
+    val MaxAge      = (config getInt "mail.maxAgeInHours") * 3600
   }
 
   object MogobizAdmin {
 
-    val QrCodeAccessUrl = "http://localhost:8080/event/getQRCode?content="
+    val QrCodeAccessUrl = config getString "mogobiz.admin.qrCodeAccessUrl"
   }
 
   DBs.setupAll()
