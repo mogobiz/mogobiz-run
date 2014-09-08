@@ -144,17 +144,15 @@ object ElasticSearchClient {
    */
   def queryStoreLanguages(store: String): JValue = {
     val languages:JValue = EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
-      case Some(s) => s.asInstanceOf[JValue]
+      case Some(s) => s
       case None => JNothing
     }
     languages  \ "languages"
   }
 
   def getStoreLanguagesAsList(store: String): List[String] = {
-    EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
-      case Some(s) => s.field("languages").value()
-      case None => List.empty
-    }
+    val languages:JValue = queryStoreLanguages(store)
+    languages.extract[List[String]]
   }
 
   def getAllExcludedLanguagesExcept(store: String, langRequested: String): List[String] = {
