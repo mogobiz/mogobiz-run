@@ -1,5 +1,6 @@
 package com.mogobiz.mail
 
+import com.mogobiz.actors.BootedMogobizSystem
 import com.mogobiz.config.Settings
 import com.mogobiz.utils.MailTemplateUtils
 import org.specs2.mutable.Specification
@@ -7,11 +8,12 @@ import org.specs2.time.NoTimeConversions
 import scala.concurrent.duration._
 
 /**
+ *
  * Created by Christophe on 27/08/2014.
  */
-class EmailServiceSpec extends Specification with NoTimeConversions {
+class EmailServiceSpec extends Specification with NoTimeConversions with BootedMogobizSystem {
 
-  val emailService = EmailService
+  val emailService = EmailService(system, "emailService")
 
   "should send email" in {
 
