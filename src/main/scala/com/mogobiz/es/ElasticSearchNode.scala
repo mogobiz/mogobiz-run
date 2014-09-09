@@ -30,6 +30,8 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
   private val logger = Logger(LoggerFactory.getLogger("esNode"))
 
   val esHeadPlugin = "mobz/elasticsearch-head"
+  val icuPlugin = "elasticsearch/elasticsearch-analysis-icu/2.2.0"
+  val plugins = Seq(esHeadPlugin, icuPlugin)
 
   lazy val node:Node = {
     val initialSettings : Tuple[Settings, Environment]= InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true)
@@ -38,14 +40,16 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
     }
 
     val pluginManager : PluginManager = new PluginManager(initialSettings.v2(), null, PluginManager.OutputMode.VERBOSE, TimeValue.timeValueMillis(0))
-    pluginManager.removePlugin(esHeadPlugin)
-    try {
-      pluginManager.downloadAndExtract(esHeadPlugin)
-    }
-    catch {
-      case e: IOException  =>
-        logger.error(e.getMessage)
-    }
+    plugins.foreach(plugin => {
+      pluginManager.removePlugin(plugin)
+      try {
+        pluginManager.downloadAndExtract(plugin)
+      }
+      catch {
+        case e: IOException  =>
+          logger.error(e.getMessage)
+      }
+    })
 
     var settings : ImmutableSettings.Builder = ImmutableSettings.settingsBuilder()
     val t =  getClass.getResource("/es/data").getPath
