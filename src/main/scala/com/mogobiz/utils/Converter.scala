@@ -1,15 +1,14 @@
 package com.mogobiz.utils
 
-import java.io.BufferedOutputStream
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
+import java.io.{BufferedOutputStream, ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
+
+import com.fasterxml.jackson.core.`type`.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.mogobiz.model.Comment
+import org.elasticsearch.search.SearchHit
 
 import scala.Array.canBuildFrom
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.core.`type`.TypeReference
 
 /**
  * Generic Object Converter
@@ -30,13 +29,13 @@ trait BinaryConverter[T] extends Converter[T] {
   def fromDomain[T: Manifest](value: T): Array[Byte] = {
     val bos = new ByteArrayOutputStream()
     val out = new ObjectOutputStream(new BufferedOutputStream(bos))
-    out writeObject (value)
+    out writeObject value
     out close ()
     bos toByteArray ()
   }
 
   def safeDecode[T: Manifest](bytes: Array[Byte]) = {
-    val cl = Option(this.getClass().getClassLoader())
+    val cl = Option(this.getClass.getClassLoader)
     val cin = cl match {
       case Some(cls) =>
         new CustomObjectInputStream(new ByteArrayInputStream(bytes), cls)
@@ -44,7 +43,7 @@ trait BinaryConverter[T] extends Converter[T] {
         new ObjectInputStream(new ByteArrayInputStream(bytes))
     }
     val obj = cin.readObject
-    cin.close
+    cin.close()
     obj.asInstanceOf[T]
   }
 }
@@ -68,6 +67,11 @@ object JacksonConverter {
   }
 
   def deserialize[T: Manifest](json: String): T = mapper.readValue(json, typeReference[T])
+
+  def deserializeComment(hit: SearchHit): Comment = {
+    val c:Comment = mapper.readValue(hit.getSourceAsString, typeReference[Comment])
+    Comment(Some(hit.getId), c.userId, c.surname, c.notation, c.subject, c.comment, c.created, c.productId, c.useful, c.notuseful)
+  }
 
   private[this] def typeReference[T: Manifest] = new TypeReference[T] {
     override def getType: Type = typeFromManifest(manifest[T])

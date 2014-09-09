@@ -1,8 +1,10 @@
 package com.mogobiz.cart
 
-import scalikejdbc._, SQLInterpolation._
+import com.mogobiz.cart.domain.{TaxRate,Product}
+import scalikejdbc._
 
 /**
+ *
  * Created by Christophe on 06/05/2014.
  */
 object TaxRateBoService {
@@ -10,7 +12,7 @@ object TaxRateBoService {
   def findTaxRateByProduct(product: Product, country: String, state: Option[String] = None): Option[Float] = {
     assert(!country.isEmpty,"country should not be empty")
     val taxRate = product.taxRate
-    return findTaxRate(taxRate, country, state)
+    findTaxRate(taxRate, country, state)
   }
 
   def findTaxRate(taxRate: Option[TaxRate], country: String, state: Option[String]): Option[Float] = {
@@ -19,9 +21,9 @@ object TaxRateBoService {
     taxRate match {
 
 
-      case Some(taxRate) => {
+      case Some(_taxRate) =>
 
-        val taxRateId = taxRate.id
+        val taxRateId = _taxRate.id
         /*
         val whereStateCond:String = state match {
           case Some(s) => s"and l.state_code=${s}"
@@ -30,12 +32,12 @@ object TaxRateBoService {
         */
         val rate = DB readOnly { implicit session =>
           val str = state match {
-            case Some(s) => sql"select l.rate from tax_rate_local_tax_rate ass inner join local_tax_rate l on ass.local_tax_rate_id = l.id where ass.local_tax_rates_fk = ${taxRateId} and l.country_code = ${country} and l.active is true and l.state_code=${s}"
-            case None => sql"select l.rate from tax_rate_local_tax_rate ass inner join local_tax_rate l on ass.local_tax_rate_id = l.id where ass.local_tax_rates_fk = ${taxRateId} and l.country_code = ${country} and l.state_code is null"
+            case Some(s) => sql"select l.rate from tax_rate_local_tax_rate ass inner join local_tax_rate l on ass.local_tax_rate_id = l.id where ass.local_tax_rates_fk = $taxRateId and l.country_code = $country and l.active is true and l.state_code=$s"
+            case None => sql"select l.rate from tax_rate_local_tax_rate ass inner join local_tax_rate l on ass.local_tax_rate_id = l.id where ass.local_tax_rates_fk = $taxRateId and l.country_code = $country and l.state_code is null"
           }
           str.map(rs => rs.float("rate")).single().apply()
         }
-        if (rate.isDefined) rate else if (state.isDefined) findTaxRate(Some(taxRate), country, None) else None
+        if (rate.isDefined) rate else if (state.isDefined) findTaxRate(Some(_taxRate), country, None) else None
 
         /*val query = new StringBuffer("SELECT DISTINCT localTaxRate FROM TaxRate taxRate RIGHT JOIN taxRate.localTaxRates AS localTaxRate WHERE taxRate.id = :taxRateId AND localTaxRate.active = true AND localTaxRate.countryCode = :country")
         def params = [taxRateId: taxRate.id, country: country]
@@ -53,17 +55,14 @@ object TaxRateBoService {
         else if (!StringUtils.isEmpty(state)) {
           return findTaxRate(taxRate, country, null);
         }*/
-
-      }
       case None => None
     }
   }
 
 
   def calculateEndPrix(price:Long, taxRate:Option[Float]):Option[Long] = taxRate match {
-    case Some(taxRate)=>{
-      return Some(price + (price * taxRate / 100f).toLong)
-    }
+    case Some(s)=>
+      Some(price + (price * s / 100f).toLong)
     case None => None
   }
 }

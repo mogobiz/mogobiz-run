@@ -1,10 +1,11 @@
 package com.mogobiz.utils
 
 import java.security.NoSuchAlgorithmException
-import javax.crypto.{NoSuchPaddingException, Cipher}
 import javax.crypto.spec.SecretKeySpec
+import javax.crypto.{Cipher, NoSuchPaddingException}
 
 /**
+ *
  * Created by Christophe on 09/07/2014.
  */
 object SecureCodec {
@@ -21,14 +22,12 @@ object SecureCodec {
       return bytesToHex(encrypted)
     }
     catch {
-      case e: NoSuchAlgorithmException => {
-        e.printStackTrace
-      }
-      case e: NoSuchPaddingException => {
-        e.printStackTrace
-      }
+      case e: NoSuchAlgorithmException =>
+        e.printStackTrace()
+      case e: NoSuchPaddingException =>
+        e.printStackTrace()
     }
-    return null
+    null
   }
 
   def bytesToHex(data: Array[Byte]): String = {
@@ -44,15 +43,15 @@ object SecureCodec {
       else str = str + java.lang.Integer.toHexString(data(i) & 0xFF)
     }
 
-    return str
+    str
   }
 
   def hexToBytes(str: String): Array[Byte] = {
     if (str == null) {
-      return null
+      null
     }
     else if (str.length < 2) {
-      return null
+      null
     }
     else {
       val len: Int = str.length / 2
@@ -64,7 +63,7 @@ object SecureCodec {
         buffer(i) = Integer.parseInt(str.substring(i * 2, i * 2 + 2), 16).asInstanceOf[Byte]
       }
 
-      return buffer
+      buffer
     }
   }
 }

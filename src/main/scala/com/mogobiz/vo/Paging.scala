@@ -4,62 +4,28 @@ import org.json4s.JsonAST.JValue
 import org.json4s._
 
 /**
+ *
  * Created by Christophe on 24/04/2014.
  */
 
 object Paging {
 
-  /* waiting an answer
-  def addPaging[T](json:JValue,paging:PagingParams):Paging[T] = {
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    val size = paging.maxItemPerPage.getOrElse(100)
-    val from = paging.pageOffset.getOrElse(0) * size
-
-    val hits = (json \"hits")
-    val total : Int =  (hits \ "total").extract[Int]
-    val subset = hits \ "hits" \ "_source"
-    val results = subset.extract[List[T]]
-
-    val pageCount = (size / total) +1
-    val hasPrevious = from > size
-    val hasNext = (from + size) < total
-
-    val pagedResults = new Paging(results,results.size,total,size,from,pageCount,hasPrevious,hasNext)
-    pagedResults
-  }
-  */
-
-  /**
-   * add paging to a results list
-   * @param json
-   * @param results
-   * @param pagingParams
-   * @tparam T
-   * @return
-   */
-  def add[T](json:JValue,results:List[T],pagingParams:PagingParams):Paging[T] = {
-
-    val paging = get(json,pagingParams)
-
-    val pagedResults = new Paging(results,results.size,paging.totalCount,paging.maxItemsPerPage,paging.pageOffset,paging.pageCount,paging.hasPrevious,paging.hasNext)
+  def add[T](total:Int, results:List[T],pagingParams:PagingParams):Paging[T] = {
+    val paging = get(total, pagingParams)
+    val pagedResults = new Paging(results, results.size, paging.totalCount, paging.maxItemsPerPage, paging.pageOffset, paging.pageCount, paging.hasPrevious, paging.hasNext)
     pagedResults
   }
 
   /**
    * Get the paging object without the results and the pageSize
-   * @param json
+   * @param total
    * @param paging
    * @return
    */
-  def get(json:JValue,paging:PagingParams) : Paging[Any] = {
-    implicit def json4sFormats: Formats = DefaultFormats
+  def get(total:Int,paging:PagingParams) : Paging[Any] = {
 
     val size = paging.maxItemPerPage.getOrElse(100)
     val from = paging.pageOffset.getOrElse(0) * size
-
-    val hits = (json \"hits")
-    val total : Int =  (hits \ "total").extract[Int]
 
     val pageCount = Math.rint(((total * 1d) / size) + 0.5)
 
@@ -73,16 +39,16 @@ object Paging {
 
   /**
    * Get the paging Structure as JSON
-   * @param json
+   * @param total
    * @param pagingParams
    * @return
    */
-  def getWrapper(json:JValue,pagingParams:PagingParams) : JValue = {
-    import org.json4s.native.Serialization.{read, write}
+  def getWrapper(total:Int, pagingParams:PagingParams) : JValue = {
     import org.json4s.native.JsonMethods._
+    import org.json4s.native.Serialization.write
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Paging[Any]]()
 
-    val paging = get(json,pagingParams)
+    val paging = get(total, pagingParams)
 
     val pagingObj = parse(write(paging))
 //    println(pretty(render(pagingObj )))
@@ -90,19 +56,18 @@ object Paging {
   }
 
   /**
-   * Wrap the JSON results with in a Paging SJON structure
-   * @param json
+   * Wrap the JSON results with in a Paging JSON structure
+   * @param total
    * @param results
    * @param pagingParams
    * @return
    */
-  def wrap(json:JValue,results:JValue,pagingParams:PagingParams):JValue = {
-    import org.json4s._
+  def wrap(total:Int,results:JValue,pagingParams:PagingParams):JValue = {
     import org.json4s.JsonDSL._
-    import org.json4s.native.JsonMethods._
+    import org.json4s._
     implicit def json4sFormats: Formats = DefaultFormats
 
-    val pagingWrapper = getWrapper(json,pagingParams)
+    val pagingWrapper = getWrapper(total, pagingParams)
     val resultWrapper = JObject(List(JField("list",results))) //parse("""{"list":$results"") //(("list"->results))
     val pageSizeWrapper = JObject(List(JField("pageSize",results.children.size)))
 

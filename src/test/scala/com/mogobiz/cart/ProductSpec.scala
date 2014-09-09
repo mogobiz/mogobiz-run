@@ -2,8 +2,10 @@ package com.mogobiz.cart
 
 import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs
+import com.mogobiz.cart.domain._
 
 /**
+ *
  * Created by Christophe on 07/07/2014.
  */
 class ProductSpec extends Specification {

@@ -2,9 +2,10 @@ package com.mogobiz.cart
 
 import org.specs2.mutable.Specification
 import scalikejdbc.config._
-import scala.Some
+import com.mogobiz.cart.domain.{TaxRate,Product}
 
 /**
+ *
  * Created by Christophe on 07/05/2014.
  */
 class TaxRateBoServiceSpec  extends Specification {

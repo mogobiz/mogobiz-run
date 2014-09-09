@@ -2,14 +2,14 @@ package com.mogobiz.services
 
 import java.util.UUID
 
+import akka.actor.{Actor, ActorLogging, Props}
 import com.mogobiz.actors.{MogobizActors, MogobizSystem}
-import spray.routing._
-import akka.actor.{ActorLogging, Actor, Props}
-import scala.util.control.NonFatal
 import spray.http.StatusCodes._
 import spray.http.{HttpCookie, HttpEntity, StatusCode}
+import spray.routing.{Directives, _}
 import spray.util.LoggingContext
-import spray.routing.Directives
+
+import scala.util.control.NonFatal
 
 trait MogobizRoutes extends Directives {
   this: MogobizActors with MogobizSystem =>
@@ -20,17 +20,15 @@ trait MogobizRoutes extends Directives {
     pathPrefix("store" / Segment) {
       storeCode => {
         optionalCookie("mogobiz_uuid") {
-          case Some(mogoCookie) => {
+          case Some(mogoCookie) =>
             println(s"mogoCookie=${mogoCookie.content}")
             storeRoutes(storeCode, mogoCookie.content)
-          }
-          case None => {
+          case None =>
             val id = UUID.randomUUID.toString
-            println(s"new uuid=${id}")
+            println(s"new uuid=$id")
             setCookie(HttpCookie("mogobiz_uuid", content = id, path = Some("/store/" + storeCode))) {
               storeRoutes(storeCode, id)
             }
-          }
         }
       }
     }

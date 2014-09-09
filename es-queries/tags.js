@@ -1,14 +1,14 @@
 //STATUS : OK
 // StoreController
-restpath = "/api/store/{storeCode}/tags?lang=fr"
+restpath = "/api/store/{storeCode}/tags?lang=fr";
 
 /* TODO dans StoreController
  ne récupérer que la source
  */
 
 //Requete ES
-method = "POST"
-curl = "http://localhost:9200/mogobiz/tag/_search"
+method = "POST";
+curl = "http://localhost:9200/mogobiz/tag/_search";
 //si lang=_all alors lang_prefix=* sinon =fr
 esquery = {
     "_source": {
@@ -17,4 +17,4 @@ esquery = {
             "<lang_prefix>.*"
         ]
     }
-}
+};

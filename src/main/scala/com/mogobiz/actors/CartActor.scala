@@ -1,10 +1,10 @@
 package com.mogobiz.actors
 
 import akka.actor.Actor
-import com.mogobiz._
 import com.mogobiz.actors.CartActor._
-import com.mogobiz.cart.{UpdateCartItemCommand, AddToCartCommand}
+import com.mogobiz.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.config.HandlersConfig._
+import com.mogobiz.model._
 
 object CartActor {
 
@@ -23,36 +23,34 @@ object CartActor {
 
 class CartActor extends Actor {
   def receive = {
-
-    case q: QueryCartInitRequest => {
+    case q: QueryCartInitRequest =>
       sender ! cartHandler.queryCartInit(q.storeCode,q.uuid, q.params)
-    }
-    case q: QueryCartClearRequest => {
+
+    case q: QueryCartClearRequest =>
       sender ! cartHandler.queryCartClear(q.storeCode,q.uuid, q.params)
-    }
-    case q: QueryCartItemAddRequest => {
+
+    case q: QueryCartItemAddRequest =>
       sender ! cartHandler.queryCartItemAdd(q.storeCode,q.uuid, q.params, q.cmd)
-    }
-    case q: QueryCartItemUpdateRequest => {
+
+    case q: QueryCartItemUpdateRequest =>
       sender ! cartHandler.queryCartItemUpdate(q.storeCode,q.uuid, q.cartItemId, q.params, q.cmd)
-    }
-    case q: QueryCartItemRemoveRequest => {
+
+    case q: QueryCartItemRemoveRequest =>
       sender ! cartHandler.queryCartItemRemove(q.storeCode,q.uuid, q.cartItemId, q.params)
-    }
-    case q: QueryCartCouponAddRequest => {
+
+    case q: QueryCartCouponAddRequest =>
       sender ! cartHandler.queryCartCouponAdd(q.storeCode,q.uuid, q.couponCode, q.params)
-    }
-    case q: QueryCartCouponDeleteRequest => {
+
+    case q: QueryCartCouponDeleteRequest =>
       sender ! cartHandler.queryCartCouponDelete(q.storeCode,q.uuid, q.couponCode, q.params)
-    }
-    case q: QueryCartPaymentPrepareRequest => {
+
+    case q: QueryCartPaymentPrepareRequest =>
       sender ! cartHandler.queryCartPaymentPrepare(q.storeCode,q.uuid, q.params)
-    }
-    case q: QueryCartPaymentCommitRequest => {
+
+    case q: QueryCartPaymentCommitRequest =>
       sender ! cartHandler.queryCartPaymentCommit(q.storeCode,q.uuid, q.params)
-    }
-    case q: QueryCartPaymentCancelRequest => {
+
+    case q: QueryCartPaymentCancelRequest =>
       sender ! cartHandler.queryCartPaymentCancel(q.storeCode,q.uuid, q.params)
-    }
   }
 }

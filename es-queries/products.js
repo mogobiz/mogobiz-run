@@ -1,7 +1,7 @@
 //Statut OK
 // StoreController
-restpath = "/api/store/{storeCode}/products?lang=fr&currency={curCode}&country={countryCode}"
-method = "POST" // et/ou "GET"
+restpath = "/api/store/{storeCode}/products?lang=fr&currency={curCode}&country={countryCode}";
+method = "POST"; // et/ou "GET"
 
 /* les post-params sont:
  maxItemsPerPage => valeur pour size
@@ -14,8 +14,8 @@ method = "POST" // et/ou "GET"
  calcul des prix
  */
 
-method="POST"
-curl = "http://localhost:9200/mogobiz/product/_search"
+method="POST";
+curl = "http://localhost:9200/mogobiz/product/_search";
 
 // remarque sur le exclude:
 // permet de virer toute les langues non voulu mais il faut les lister dans la query => donc connaitre la liste des lang sur le store
@@ -102,4 +102,4 @@ esquery={
     "sort": {"name": "desc"},
     "from": 0, //pageOffset * maxItemsPerPage
     "size": 3 //maxItemsPerPage
-}
+};

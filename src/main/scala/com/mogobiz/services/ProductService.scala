@@ -1,34 +1,24 @@
 package com.mogobiz.services
 
 import akka.actor.ActorRef
-import com.mogobiz.Json4sProtocol._
-import com.mogobiz.actors.ProductActor._
-import spray.routing.Directives
-import org.json4s._
-
-import scala.concurrent.{Await, ExecutionContext}
-import com.mogobiz._
-import spray.http.MediaTypes._
-import com.mogobiz.ProductRequest
-import com.mogobiz.CompareProductParameters
-import com.mogobiz.FullTextSearchProductParameters
-import scala.util.{Try, Failure, Success}
-import com.mogobiz.actors.ProductActor.QueryFindProductRequest
-import com.mogobiz.ProductRequest
-import com.mogobiz.CompareProductParameters
-import com.mogobiz.FullTextSearchProductParameters
-import com.mogobiz.ProductDetailsRequest
-import com.mogobiz.actors.ProductActor.QueryProductRequest
-import com.mogobiz.actors.ProductActor.QueryCompareProductRequest
-import com.mogobiz.vo.{CommentPutRequest, CommentGetRequest, MogoError, CommentRequest}
+import com.mogobiz.json.Json4sProtocol
+import Json4sProtocol._
+import com.mogobiz.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductRequest, _}
+import com.mogobiz.model._
+import com.mogobiz.vo.MogoError
 import spray.http.StatusCodes
+import spray.routing.Directives
+
+import scala.concurrent.ExecutionContext
+import scala.util.{Failure, Success}
 
 class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
 
   import akka.pattern.ask
   import akka.util.Timeout
   import org.json4s._
-  import scala.concurrent.duration._
+
+import scala.concurrent.duration._
 
   implicit val timeout = Timeout(2.seconds)
 
@@ -120,10 +110,10 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
 
   lazy val product = pathPrefix(Segment) {
     productId =>
+      comments(productId.toLong) ~
       details(productId.toLong) ~
-        dates(productId.toLong) ~
-        times(productId.toLong) ~
-        comments(productId.toLong)
+      dates(productId.toLong) ~
+      times(productId.toLong)
   }
 
   def details (productId: Long) = get {
@@ -212,7 +202,7 @@ class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit 
             (actor ? request) map {
               case Success(r) =>  r
               case Failure(t) => t match {
-                case CommentException(code, message) => complete(StatusCodes.BadRequest, (MogoError(code, message)))
+                case CommentException(code, message) => complete(StatusCodes.BadRequest, MogoError(code, message))
                 case _ => complete(StatusCodes.InternalServerError, t.getMessage)
               }
               //TODO check userId in mogopay before inserting

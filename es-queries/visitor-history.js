@@ -1,7 +1,7 @@
 // Statut : comme add-to-history, en attente mapping ES parent/enfant + jeux de données pour tester requete
 // StoreController
-restpath = "/api/store/{storeCode}/history/{visitorId}?lang={lang}&currency={curCode}&country={countryCode}"
-method="GET"
+restpath = "/api/store/{storeCode}/history/{visitorId}?lang={lang}&currency={curCode}&country={countryCode}";
+method="GET";
 
 /* TODO dans StoreController
 calcul des montants
@@ -11,11 +11,11 @@ Remarque doc YBA : quel cookie ??
  */
 
 //Requete ES
-method = "PUT"
-curl = "http://localhost:9200/mogobiz/history"
+method = "PUT";
+curl = "http://localhost:9200/mogobiz/history";
 query = {
 
-}
+};
 /* TODO ES : renvoyer la liste des produits via les enfants
 
 

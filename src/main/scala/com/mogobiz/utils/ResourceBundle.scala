@@ -1,8 +1,9 @@
 package com.mogobiz.utils
 
-import java.util.{ResourceBundle => JResourceBundle, Locale}
-import scala.util.Try
+import java.util.{Locale, ResourceBundle => JResourceBundle}
+
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 
 class ResourceBundle(baseName: String) {

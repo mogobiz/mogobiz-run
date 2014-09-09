@@ -1,13 +1,11 @@
 package com.mogobiz.cart
 
-import org.json4s.{FieldSerializer, DefaultFormats, Formats}
-import scalikejdbc._, SQLInterpolation._
-
+import com.mogobiz.json.Json4sProtocol
 import org.joda.time.DateTime
-import scalikejdbc.WrappedResultSet
-import scala.Some
+import scalikejdbc.{WrappedResultSet, _}
 
 /**
+ *
  * Created by Christophe on 05/05/2014.
  */
 object UuidBoService extends BoService {
@@ -37,29 +35,28 @@ object UuidBoService extends BoService {
   }
 
   def getCart(uuid:String): Option[CartVO] = {
+    import Json4sProtocol._
     import org.json4s.native.JsonMethods._
-    import com.mogobiz.Json4sProtocol._
 
     UuidDataDao.findByUuidAndXtype(uuid, QUEUE_XTYPE_CART) match {
-      case Some(data) => {
+      case Some(data) =>
         val parsed = parse(data.payload)
         val cart = parsed.extract[CartVO]
         Some(cart)
-      }
       case _ => None
     }
   }
 
   def setCart(cart: CartVO): Unit = {
-    import org.json4s.native.Serialization.{write}
-    import com.mogobiz.Json4sProtocol._
+    import Json4sProtocol._
+    import org.json4s.native.Serialization.write
 
     val payload = write(cart)
     createAndSave(cart.uuid,payload,QUEUE_XTYPE_CART)
   }
 }
 
-case class UuidData(id:Option[Int],uuid:String, xtype:String, payload:String, createdDate: DateTime, expireDate: DateTime);
+case class UuidData(id:Option[Int],uuid:String, xtype:String, payload:String, createdDate: DateTime, expireDate: DateTime)
 
 object UuidDataDao extends SQLSyntaxSupport[UuidData] {
 
@@ -74,7 +71,7 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
 
   def findByUuidAndXtype(uuid: String, xtype: String): Option[UuidData] = {
     DB readOnly { implicit session =>
-      sql"""select * from uuid_data where uuid=${uuid} and xtype=${xtype}""".map(rs => UuidDataDao(rs)).single().apply()
+      sql"""select * from uuid_data where uuid=$uuid and xtype=$xtype""".map(rs => UuidDataDao(rs)).single().apply()
     }
   }
 

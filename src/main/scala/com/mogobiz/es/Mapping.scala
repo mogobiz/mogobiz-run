@@ -2,29 +2,30 @@ package com.mogobiz.es
 
 import java.io.File
 
-import com.mogobiz.config.Settings
+import com.mogobiz.config.Settings._
 import com.sksamuel.elastic4s.ElasticDsl._
 import spray.client.pipelining._
 import spray.http._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
 
 object Mapping {
-  def clear = Await.result(EsClient.client.execute(delete index Settings.DB.Index), Duration.Inf)
+  def clear = Await.result(EsClient.client.execute(delete index EsIndex), Duration.Inf)
 
   def set() {
-    def route(url: String) = "http://" + Settings.DB.EsFullUrl + url
+    def route(url: String) = "http://" + EsFullUrl + url
     def mappingFor(name: String) = new File(this.getClass.getClassLoader.getResource(s"es/mappings/$name.json").toURI)
 
     implicit val system = akka.actor.ActorSystem("mogopay-boot")
     val pipeline: HttpRequest => scala.concurrent.Future[HttpResponse] = sendReceive
 
-    Await.result(EsClient.client.execute(create index Settings.DB.Index), 1 second)
+    Await.result(EsClient.client.execute(create index EsIndex), 1 second)
 
     mappingFiles foreach { name =>
-      val url = s"/${Settings.DB.Index}/$name/_mapping"
+      val url = s"/$EsIndex/$name/_mapping"
       val mapping = scala.io.Source.fromFile(mappingFor(name)).mkString
       val x: Future[Any] = pipeline(Post(route(url), mapping)) map { response: HttpResponse =>
         response.status match {

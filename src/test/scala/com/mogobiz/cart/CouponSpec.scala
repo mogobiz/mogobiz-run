@@ -1,11 +1,12 @@
 package com.mogobiz.cart
 
+import com.mogobiz.cart.domain.Coupon
 import org.specs2.mutable.Specification
-import java.util.{Locale, UUID}
-import scalikejdbc.config.DBs
 import scalikejdbc.DB
+import scalikejdbc.config.DBs
 
 /**
+ *
  * Created by Christophe on 06/05/2014.
  */
 class CouponSpec extends Specification {

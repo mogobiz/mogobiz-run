@@ -2,26 +2,23 @@ package com.mogobiz.cart
 
 import java.io.ByteArrayOutputStream
 import java.util.{Date, Locale}
-import com.mogobiz.cart.CartBoService._
+import com.mogobiz.model.Currency
 import com.mogobiz.cart.CustomTypes.CartErrors
 import com.mogobiz.cart.ProductType.ProductType
 import com.mogobiz.cart.ProductCalendar.ProductCalendar
 import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
+import com.mogobiz.cart.transaction._
+import com.mogobiz.cart.domain._
 import com.mogobiz.utils.{ResourceBundle, Utils, QRCodeUtils, SecureCodec}
 import com.sun.org.apache.xml.internal.security.utils.Base64
 import com.typesafe.scalalogging.slf4j.Logger
-import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
-import org.json4s.{DefaultFormats, Formats}
-import com.mogobiz.{RateBoService, Currency}
 import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import org.slf4j.LoggerFactory
 import scalikejdbc.config.DBs
-import com.mogobiz.cart.TransactionStatus.TransactionStatus
 import scalikejdbc._
-import com.mogobiz.cart.ReductionRuleType.ReductionRuleType
-import org.json4s.native.Serialization._
-import scala.Some
+import com.mogobiz.cart.domain.ReductionRuleType.ReductionRuleType
 
 /**
  * Created by Christophe on 05/05/2014.
@@ -44,13 +41,12 @@ object CartBoService extends BoService {
     val cartVO = uuidService.getCart(uuid)
     cartVO match {
       case Some(c) => c
-      case None => {
+      case None =>
         val c = CartVO(uuid = uuid)
         uuidService.setCart(c)
         c
       }
     }
-  }
 
   def addError(errors:CartErrors,key:String,msg:String,parameters:Seq[Any],locale:Locale):CartErrors={
     errors+(key+"."+msg -> parameters)
@@ -73,16 +69,16 @@ object CartBoService extends BoService {
     assert(!currencyCode.isEmpty,"currencyCode should not be empty")
     assert(!locale.getCountry.isEmpty,"locale.getCountry should not be empty")
 
-    logger.info(s"addItem dateTime : ${dateTime}")
+    logger.info(s"addItem dateTime : $dateTime")
     println("+++++++++++++++++++++++++++++++++++++++++")
-    println(s"dateTime=${dateTime}")
+    println(s"dateTime=$dateTime")
     println("+++++++++++++++++++++++++++++++++++++++++")
 
     // init local vars
     val ticketType:TicketType = TicketType.get(ticketTypeId) //TODO error management
 
-    val product = ticketType.product.get;
-    val startEndDate = Utils.verifyAndExtractStartEndDate(Some(ticketType), dateTime);
+    val product = ticketType.product.get
+    val startEndDate = Utils.verifyAndExtractStartEndDate(Some(ticketType), dateTime)
 
     var errors:CartErrors = Map()
 
@@ -112,9 +108,9 @@ object CartBoService extends BoService {
       else {
         val emptyMails = for {
           item <- registeredCartItems
-          if (item.email.isEmpty)
+          if item.email.isEmpty
         }yield item
-        if(!emptyMails.isEmpty)
+        if(emptyMails.nonEmpty)
           errors = addError(errors, "registeredCartItems", "email.error", null, locale)
       }
     }
@@ -126,14 +122,13 @@ object CartBoService extends BoService {
     productService.decrement(ticketType,quantity,startEndDate._1)
 
     //resume existing items
-    var oldCartPrice = 0l;
-    var oldCartEndPrice: Option[Long] = Some(0l);
+    var oldCartPrice = 0l
+    var oldCartEndPrice: Option[Long] = Some(0l)
     cartVO.cartItemVOs.foreach{
       item => {
         (oldCartEndPrice,item.totalEndPrice) match{
-          case (Some(o),Some(t)) => {
+          case (Some(o),Some(t)) =>
             oldCartEndPrice = Some(o+t)
-          }
           case _ => oldCartEndPrice = None
         }
         oldCartPrice += item.totalPrice
@@ -144,13 +139,13 @@ object CartBoService extends BoService {
     val itemPrice = ticketType.price
     val tax = taxRateService.findTaxRateByProduct(product, locale.getCountry) //TODO revoir la validité de ce dernier paramètre par rapports aux appels
     val endPrice = taxRateService.calculateEndPrix(itemPrice, tax)
-    val totalPrice = quantity * itemPrice;
+    val totalPrice = quantity * itemPrice
     val totalEndPrice = endPrice match {
       case Some(p) => Some(quantity * endPrice.get)
       case _ => None
     }
 
-    val newItemId = (new Date()).getTime.toString
+    val newItemId = new Date().getTime.toString
     val registeredItems = registeredCartItems.map{
       item => new RegisteredCartItemVO(newItemId, item.id,item.email,item.firstname,item.lastname,item.phone,item.birthdate)
     }
@@ -169,10 +164,10 @@ object CartBoService extends BoService {
       case _ => None
     }
     val newcart = cartVO.copy(
-        price = oldCartPrice + item.totalPrice,//(cartVO.price + item.totalPrice),
-        endPrice = newEndPrice,
-        count = items.size,
-        cartItemVOs = items.toArray)
+      price = oldCartPrice + item.totalPrice,//(cartVO.price + item.totalPrice),
+      endPrice = newEndPrice,
+      count = items.size,
+      cartItemVOs = items.toArray)
 
     uuidService.setCart(newcart)
     newcart
@@ -198,7 +193,7 @@ object CartBoService extends BoService {
       throw new UpdateCartItemException(errors)
     }
 
-//    if (result.success) {
+    //    if (result.success) {
     //TODO ou faire un map et qd id == renvoyé l'item modifié
     val optCartItem = cartVO.cartItemVOs.find{ item => item.id == cartItemId }
 
@@ -214,7 +209,7 @@ object CartBoService extends BoService {
           throw new UpdateCartItemException(errors)
         }
 
-        val oldQuantity = cartItem.quantity;
+        val oldQuantity = cartItem.quantity
         val oldTotalPrice = cartItem.totalPrice
         val oldTotalEndPrice = cartItem.totalEndPrice
         if (oldQuantity < quantity) {
@@ -225,19 +220,17 @@ object CartBoService extends BoService {
           }
           catch {
             case ex:InsufficientStockException =>
-              {
-                addError(errors, "quantity", "stock.error", null, locale)
-                throw new UpdateCartItemException(errors)
-              }
+              addError(errors, "quantity", "stock.error", null, locale)
+              throw new UpdateCartItemException(errors)
+            }
           }
-        }
         else
         {
           // On incrémente le stock
           productService.increment(sku, oldQuantity - quantity, cartItem.startDate)
         }
 
-         val item = cartItem
+        val item = cartItem
         /*
          val updatedItem = CartItemVO(
            id=item.id,productId=item.productId,productName = item.productName, xtype = item.xtype, calendarType = item.calendarType, skuId = item.skuId, skuName = item.skuName,
@@ -251,7 +244,7 @@ object CartBoService extends BoService {
         }
         val updatedItem = item.copy(
           quantity = quantity,
-          totalPrice = (quantity * item.price),
+          totalPrice = quantity * item.price,
           totalEndPrice = newTotalEndPrice)
 
 
@@ -274,7 +267,7 @@ object CartBoService extends BoService {
         }
 
         val updatedCart = cartVO.copy(
-          price = (cartVO.price - oldTotalPrice + updatedItem.totalPrice),
+          price = cartVO.price - oldTotalPrice + updatedItem.totalPrice,
           endPrice = newEndPrice,
           cartItemVOs = updatedItems
         )
@@ -325,8 +318,8 @@ object CartBoService extends BoService {
       case (Some(cartendprice),Some(itemtotalendprice)) => Some(cartendprice - itemtotalendprice)
       case _ => None
     }
-    val updatedCart = cartVO.copy(cartItemVOs = items, price = (cartVO.price - cartItem.totalPrice), endPrice = newEndPrice, count = (cartVO.count - 1))
-    uuidService.setCart(updatedCart);
+    val updatedCart = cartVO.copy(cartItemVOs = items, price = cartVO.price - cartItem.totalPrice, endPrice = newEndPrice, count = cartVO.count - 1)
+    uuidService.setCart(updatedCart)
 
     updatedCart
   }
@@ -342,14 +335,14 @@ object CartBoService extends BoService {
     }
 
 
-      cartVO.cartItemVOs.foreach { cartItem =>
-        val sku = TicketType.get(cartItem.skuId)
-        productService.increment(sku, cartItem.quantity, cartItem.startDate)
-      }
-      //TODO ??? uuidDataService.removeCart(); not implemented in iper
+    cartVO.cartItemVOs.foreach { cartItem =>
+      val sku = TicketType.get(cartItem.skuId)
+      productService.increment(sku, cartItem.quantity, cartItem.startDate)
+    }
+    //TODO ??? uuidDataService.removeCart(); not implemented in iper
 
     val updatedCart = new CartVO(uuid=cartVO.uuid)
-    uuidService.setCart(updatedCart);
+    uuidService.setCart(updatedCart)
     updatedCart
   }
 
@@ -360,7 +353,7 @@ object CartBoService extends BoService {
     val optCoupon = Coupon.findByCode(companyCode, couponCode)
 
     val updatedCart = optCoupon match {
-      case Some(coupon) => {
+      case Some(coupon) =>
         if(cartVO.coupons.exists{ c => couponCode == c.code }){
           addError(errors, "coupon", "already.exist", null, locale)
           throw new AddCouponToCartException(errors)
@@ -370,17 +363,15 @@ object CartBoService extends BoService {
         }
         else {
 
-          val coupons = CouponVO(coupon)::(cartVO.coupons.toList)
+          val coupons = CouponVO(coupon):: cartVO.coupons.toList
           val cart = cartVO.copy( coupons = coupons.toArray)
-          uuidService.setCart(cart);
+          uuidService.setCart(cart)
           cart
         }
-      }
-      case None => {
+      case None =>
         addError(errors, "coupon", "unknown.error", null, locale)
         throw new AddCouponToCartException(errors)
       }
-    }
 
     updatedCart
   }
@@ -401,11 +392,10 @@ object CartBoService extends BoService {
 
     val optCoupon = Coupon.findByCode(companyCode, couponCode)
     val updatedCart = optCoupon match {
-      case None => {
+      case None =>
         addError(errors, "coupon", "unknown.error", null, locale)
         throw new RemoveCouponFromCartException(errors)
-      }
-      case Some(coupon) => {
+      case Some(coupon) =>
         if(!cartVO.coupons.exists{ c => couponCode == c.code }){
           addError(errors, "coupon", "unknown.error", null, locale)
           throw new RemoveCouponFromCartException(errors)
@@ -415,11 +405,10 @@ object CartBoService extends BoService {
           // reprise des items existants sauf celui à supprimer
           val coupons = cartVO.coupons.filter{ c => couponCode != c.code }
           val cart = cartVO.copy( coupons = coupons.toArray)
-          uuidService.setCart(cart);
+          uuidService.setCart(cart)
           cart
         }
       }
-    }
 
     updatedCart
 
@@ -476,27 +465,27 @@ object CartBoService extends BoService {
         val boCart = BOCart.findByTransactionUuidAndStatus(cartTTC.uuid, TransactionStatus.PENDING)
         if (boCart.isDefined) {
 
-        BOCartItem.findByBOCart(boCart.get).foreach { boCartItem =>
-          BOCartItem.bOProducts(boCartItem).foreach { boProduct =>
+          BOCartItem.findByBOCart(boCart.get).foreach { boCartItem =>
+            BOCartItem.bOProducts(boCartItem).foreach { boProduct =>
 
-            //b_o_cart_item_b_o_product (b_o_products_fk,boproduct_id) values(${saleId},${boProductId})
-            sql"delete from b_o_cart_item_b_o_product where boproduct_id=${boProduct.id}".update.apply()
+              //b_o_cart_item_b_o_product (b_o_products_fk,boproduct_id) values(${saleId},${boProductId})
+              sql"delete from b_o_cart_item_b_o_product where boproduct_id=${boProduct.id}".update.apply()
 
-            //Product product = boProduct.product;
-            BOTicketType.findByBOProduct(boProduct.id).foreach {  boTicketType =>
-              boTicketType.delete()
+              //Product product = boProduct.product;
+              BOTicketType.findByBOProduct(boProduct.id).foreach {  boTicketType =>
+                boTicketType.delete()
+              }
+              boProduct.delete()
             }
-            boProduct.delete()
+            boCartItem.delete()
           }
-          boCartItem.delete()
-        }
-        boCart.get.delete()
+          boCart.get.delete()
         }
       }
     }
 
-//    if (result.success) {
-      //cartTTC.uuid = UUID.randomUUID();
+    //    if (result.success) {
+    //cartTTC.uuid = UUID.randomUUID();
 
     val updatedCart = cartTTC.copy(inTransaction = true)
 
@@ -525,7 +514,7 @@ object CartBoService extends BoService {
         val boProduct = BOProduct.insert2(boProductTmp)
         val boProductId = boProduct.id
 
-          cartItem.registeredCartItemVOs.foreach {
+        cartItem.registeredCartItemVOs.foreach {
           registeredCartItem => {
             // Création des BOTicketType (SKU)
             var boTicketId = 0
@@ -548,7 +537,7 @@ object CartBoService extends BoService {
               val product = Product.get(cartItem.productId).get
 
               val boTicket = product.xtype match{
-                case ProductType.SERVICE => {
+                case ProductType.SERVICE =>
                   val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
 
                   val shortCode = "P" + boProductId + "T" + boTicketId
@@ -557,13 +546,12 @@ object CartBoService extends BoService {
                     boTicketTmp.firstname + ";LastName:" + boTicketTmp.lastname + ";Phone:" + boTicketTmp.phone +
                     ";TicketType:" + boTicketTmp.ticketType + ";shortCode:" + shortCode
 
-                  val encryptedQrCodeContent = SecureCodec.encrypt(qrCodeContent, product.company.get.aesPassword);
+                  val encryptedQrCodeContent = SecureCodec.encrypt(qrCodeContent, product.company.get.aesPassword)
                   val output = new ByteArrayOutputStream()
                   QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
-                  val qrCodeBase64 = Base64.encode(output.toByteArray())
+                  val qrCodeBase64 = Base64.encode(output.toByteArray)
 
                   boTicketTmp.copy(id = boTicketId, shortCode = Some(shortCode), qrcode = Some(qrCodeBase64), qrcodeContent = Some(encryptedQrCodeContent))
-                }
                 case _ => boTicketTmp.copy(id=boTicketId)
               }
 
@@ -619,7 +607,7 @@ object CartBoService extends BoService {
           )
         }.update.apply()
 
-        sql"insert into b_o_cart_item_b_o_product(b_o_products_fk,boproduct_id) values(${saleId},${boProductId})".update.apply()
+        sql"insert into b_o_cart_item_b_o_product(b_o_products_fk,boproduct_id) values($saleId,$boProductId)".update.apply()
       }
       }
     }
@@ -653,7 +641,7 @@ object CartBoService extends BoService {
     assert(!transactionUuid.isEmpty,"transactionUuid should not be empty")
 
     BOCart.findByTransactionUuid(cartVO.uuid) match {
-      case Some(boCart) => {
+      case Some(boCart) =>
 
         val emailingData = BOCartItem.findByBOCart(boCart).map { boCartItem =>
           BOCartItem.bOProducts(boCartItem).map { boProduct =>
@@ -662,8 +650,8 @@ object CartBoService extends BoService {
               var map :Map[String,Any]= Map()
               map+=("email" -> boTicketType.email)
               map+=("eventName" -> product.name)
-              map+=("startDate" -> (boTicketType.startDate))
-              map+=("stopDate" -> (boTicketType.endDate))
+              map+=("startDate" -> boTicketType.startDate)
+              map+=("stopDate" -> boTicketType.endDate)
               map+=("location" -> toEventLocationVO(product.poi))
               map+=("type" -> boTicketType.ticketType)
               map+=("price" ->boTicketType.price)
@@ -705,7 +693,6 @@ object CartBoService extends BoService {
         uuidService.setCart(updatedCart)
         //TODO sendEmails(emailingData) faire un Actor
         emailingData
-      }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
     }
   }
@@ -715,30 +702,29 @@ object CartBoService extends BoService {
    * @return formated location
    */
   private def toEventLocationVO(poiOpt:Option[Poi]) = poiOpt match{
-    case Some(poi) => {
+    case Some(poi) =>
       poi.road1.getOrElse("")+" "+
-      poi.road2.getOrElse("")+" "+
-      poi.city.getOrElse("")+" "+
-      poi.postalCode.getOrElse("")+" "+
-      poi.state.getOrElse("")+" "+
-      poi.city.getOrElse("")+" "+
-      poi.countryCode.getOrElse("")+" "
-    }
+        poi.road2.getOrElse("")+" "+
+        poi.city.getOrElse("")+" "+
+        poi.postalCode.getOrElse("")+" "+
+        poi.state.getOrElse("")+" "+
+        poi.city.getOrElse("")+" "+
+        poi.countryCode.getOrElse("")+" "
     case None => ""
-      /*
-    if (poi){
-      strLocation = poi.road1?poi.road1 + ", ":""
-      strLocation += poi.road2?poi.road2 + ", ":""
-      strLocation += poi.city?poi.city + " ":""
-      strLocation += poi.postalCode?poi.postalCode + " ":""
-      strLocation += poi.state?poi.state + ". " :""
-      strLocation += poi.countryCode?poi.countryCode+".":""
-    }*/
+    /*
+  if (poi){
+    strLocation = poi.road1?poi.road1 + ", ":""
+    strLocation += poi.road2?poi.road2 + ", ":""
+    strLocation += poi.city?poi.city + " ":""
+    strLocation += poi.postalCode?poi.postalCode + " ":""
+    strLocation += poi.state?poi.state + ". " :""
+    strLocation += poi.countryCode?poi.countryCode+".":""
+  }*/
   }
 
   def cancel(cartVO:CartVO ):CartVO = {
     BOCart.findByTransactionUuid(cartVO.uuid) match {
-      case Some(boCart) => {
+      case Some(boCart) =>
         DB localTx { implicit session =>
           // Mise à jour du statut et du transactionUUID
           /* code iper
@@ -754,11 +740,10 @@ object CartBoService extends BoService {
         }
 
         val updatedCart = cartVO.copy(inTransaction = false) //cartVO.uuid = null;
-        uuidService.setCart(updatedCart);
+        uuidService.setCart(updatedCart)
         updatedCart
-      }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
-      }
+    }
   }
 }
 
@@ -878,7 +863,7 @@ case class ShippingVO
 (id:Long, weight: Long, weightUnit: WeightUnit, width: Long, height: Long, depth: Long, linearUnit: LinearUnit, amount: Long, free: Boolean)
 
 case class ReductionSold(id:Long,sold:Long=0,dateCreated:DateTime = DateTime.now, lastUpdated:DateTime = DateTime.now
-                         , override val uuid : String  = java.util.UUID.randomUUID().toString()) extends Entity with DateAware
+                         , override val uuid : String  = java.util.UUID.randomUUID().toString) extends Entity with DateAware
 //TODO find a way to avoid repeating the uuid here and compliant with ScalikeJDBC SQLSyntaxSupport
 
 object ReductionSold extends SQLSyntaxSupport[ReductionSold] {
@@ -889,9 +874,9 @@ object ReductionSold extends SQLSyntaxSupport[ReductionSold] {
   def get(id:Long)(implicit session: DBSession):Option[ReductionSold]={
     val c = ReductionSold.syntax("c")
     //DB readOnly { implicit session =>
-        withSQL {
-          select.from(ReductionSold as c).where.eq(c.id, id)
-        }.map(ReductionSold(c.resultName)).single().apply()
+    withSQL {
+      select.from(ReductionSold as c).where.eq(c.id, id)
+    }.map(ReductionSold(c.resultName)).single().apply()
     //}
   }
   /*
@@ -912,127 +897,7 @@ object CouponVO {
   }
 }
 
-case class Coupon
-(id: Long, name: String, code: String, companyFk: Long,startDate: Option[DateTime]=None, endDate: Option[DateTime]=None, //price: Long,
-  numberOfUses:Option[Long]=None, reductionSoldFk:Option[Long]=None,active: Boolean = true,catalogWise:Boolean = false,
-  dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
 
-  def rules = Coupon.getRules(this.id)
-}
-
-case class Company(id: Long, name: String, code: String,aesPassword:String,dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
-}
-
-object Company extends SQLSyntaxSupport[Company]{
-  def apply(rn: ResultName[Company])(rs:WrappedResultSet): Company = Company(
-    id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code),aesPassword = rs.get(rn.aesPassword),
-    dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
-
-  def get(id:Long):Option[Company] = {
-
-    val c = Company.syntax("c")
-
-    val res = DB readOnly { implicit session =>
-      withSQL {
-        select.from(Company as c).where.eq(c.id, id)
-      }.map(Company(c.resultName)).single().apply()
-    }
-    res
-  }
-
-  def findByCode(code:String):Option[Company]={
-    val c = Company.syntax("c")
-    DB readOnly {
-      implicit session =>
-        withSQL {
-          select.from(Company as c).where.eq(c.code, code)
-        }.map(Company(c.resultName)).single().apply()
-    }
-  }
-
-}
-
-object Coupon extends SQLSyntaxSupport[Coupon]{
-  def apply(rn: ResultName[Coupon])(rs:WrappedResultSet): Coupon = Coupon(
-    id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code), startDate=rs.get(rn.startDate),endDate=rs.get(rn.endDate),
-    numberOfUses = rs.get(rn.numberOfUses),companyFk = rs.get(rn.companyFk),reductionSoldFk=rs.get(rn.reductionSoldFk),
-    dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
-
-  def findByCode(companyCode:String, couponCode:String):Option[Coupon]={
-    val compagny = Company.findByCode(companyCode)
-    if (compagny.isEmpty) None
-    else {
-      val c = Coupon.syntax("c")
-      DB readOnly {
-        implicit session =>
-          withSQL {
-            select.from(Coupon as c).where.eq(c.code, couponCode).and.eq(c.companyFk,compagny.get.id)
-          }.map(Coupon(c.resultName)).single().apply()
-      }
-    }
-  }
-
-  def get(id: Long)/*(implicit session: DBSession)*/:Option[Coupon]={
-    val c = Coupon.syntax("c")
-    DB readOnly { implicit session =>
-      withSQL {
-        select.from(Coupon as c).where.eq(c.id, id)
-      }.map(Coupon(c.resultName)).single().apply()
-    }
-  }
-
-  def getRules(couponId:Long):List[ReductionRule]= DB readOnly {
-    implicit session => {
-      sql"""select rr.* from reduction_rule rr inner join coupon_reduction_rule crr on crr.reduction_rule_id = rr.id and rules_fk = ${couponId}"""
-        .map(rs => ReductionRule(rs)).list().apply()
-    }
-  }
-
-  /*
-  def getRules(couponId:Long):List[ReductionRule]={
-    val c = ReductionRule.syntax("c")
-    DB readOnly { implicit session =>
-      withSQL {
-        select.from(ReductionRule as c).where.eq(c.id, couponId)
-      }.map(ReductionRule(c.resultName)).list().apply()
-    }
-  }*/
-}
-
-object ReductionRuleType extends Enumeration {
-  class ReductionRuleTypeType(s: String) extends Val(s)
-  type ReductionRuleType = ReductionRuleTypeType
-  val DISCOUNT = new ReductionRuleTypeType("DISCOUNT")
-  val X_PURCHASED_Y_OFFERED = new ReductionRuleTypeType("X_PURCHASED_Y_OFFERED")
-
-  def apply(name:String) = name match{
-    case "DISCOUNT" => DISCOUNT
-    case "X_PURCHASED_Y_OFFERED" => X_PURCHASED_Y_OFFERED
-    case _ => throw new Exception("Not expected ReductionRuleType")
-  }
-}
-
-case class ReductionRule(
-                          id:Long,
-                          xtype: ReductionRuleType,
-                          quantityMin:Option[Long],
-                          quantityMax:Option[Long],
-                          discount:Option[String], //discount (or percent) if type is DISCOUNT (example : -1000 or * 10%)
-                          xPurchased:Option[Long], yOffered:Option[Long],
-  dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware
-
-object ReductionRule extends SQLSyntaxSupport[ReductionRule] {
-  def apply(rn: ResultName[ReductionRule])(rs: WrappedResultSet): ReductionRule = ReductionRule(
-    id = rs.get(rn.id), xtype = ReductionRuleType(rs.string("xtype")), quantityMin = rs.get(rn.quantityMin), quantityMax = rs.get(rn.quantityMax),
-    discount = rs.get(rn.discount), xPurchased = rs.get(rn.xPurchased), yOffered = rs.get(rn.yOffered),
-    dateCreated = rs.get(rn.dateCreated), lastUpdated = rs.get(rn.lastUpdated))
-
-  def apply(rs: WrappedResultSet):ReductionRule = ReductionRule(
-    id = rs.long("id"), xtype = ReductionRuleType(rs.string("xtype")),quantityMin = rs.longOpt("quantity_min"), quantityMax = rs.longOpt("quantity_max"),
-    discount = rs.stringOpt("discount"), xPurchased = rs.longOpt("x_purchased"), yOffered = rs.longOpt("y_offered"),
-    dateCreated = rs.get("date_created"), lastUpdated = rs.get("last_updated")
-  )
-}
 object CouponService extends BoService {
 
   private val logger = Logger(LoggerFactory.getLogger("CouponService"))
@@ -1077,9 +942,8 @@ object CouponService extends BoService {
       }
       val reduc = ReductionSold.get(reducId).get
       val canConsume = coupon.numberOfUses match {
-        case Some(nb) => {
+        case Some(nb) =>
           nb > reduc.sold
-        }
         case _ => true
       }
 
@@ -1114,8 +978,8 @@ object CouponService extends BoService {
     implicit session => {
       sql"""
          select id from ticket_type tt
-         where tt.product_fk in(select product_id from coupon_product where products_fk=${couponId})
-         or tt.product_fk in (select id from product where category_fk in (select category_id from coupon_category where categories_fk=${couponId}))
+         where tt.product_fk in(select product_id from coupon_product where products_fk=$couponId)
+         or tt.product_fk in (select id from product where category_fk in (select category_id from coupon_category where categories_fk=$couponId))
        """.map(rs => rs.long("id")).list.apply()
     }
   }
@@ -1131,10 +995,10 @@ object CouponService extends BoService {
   def updateCoupon(c: CouponVO, cart: CartVO): CouponVO = {
     logger.info(s"updateCoupon1 couponId=${c.id}")
     val coupon = Coupon.get(c.id).get
-    logger.info(s"updateCoupon2: ${coupon}")
+    logger.info(s"updateCoupon2: $coupon")
 
     val couponVO = CouponVO(coupon)
-    logger.info(s"updateCoupon3: ${couponVO}")
+    logger.info(s"updateCoupon3: $couponVO")
 
     logger.info(s"updateCoupon: (${coupon.active} ${coupon.startDate} ${coupon.endDate})")
 
@@ -1142,19 +1006,17 @@ object CouponService extends BoService {
     if ( (coupon.startDate.isEmpty && coupon.endDate.isEmpty) ||
       ((coupon.startDate.get.isBeforeNow || coupon.startDate.get.isEqualNow) && (coupon.endDate.get.isAfterNow || coupon.endDate.get.isEqualNow))) {
       val listTicketTypeIds = getTicketTypesIdsWhereCouponApply(c.id)
-      logger.info(s"updateCoupon(${c.id}) listTicketTypeIds:${listTicketTypeIds}")
+      logger.info(s"updateCoupon(${c.id}) listTicketTypeIds:$listTicketTypeIds")
 
       if (listTicketTypeIds.size > 0) {
         var quantity = 0l
         var xPurchasedPrice = java.lang.Long.MAX_VALUE
         cart.cartItemVOs.foreach { cartItem =>
-          if (listTicketTypeIds.exists {
-            _ == cartItem.skuId
-          }) {
+          if (listTicketTypeIds.contains(cartItem.skuId)) {
             quantity += cartItem.quantity
             if (cartItem.endPrice.getOrElse(0l) > 0) {
               xPurchasedPrice = Math.min(xPurchasedPrice, cartItem.endPrice.get)
-              logger.info(s"updateCoupon(${c.id}) xPurchasedPrice:${xPurchasedPrice}")
+              logger.info(s"updateCoupon(${c.id}) xPurchasedPrice:$xPurchasedPrice")
             }
           }
         }
@@ -1164,32 +1026,30 @@ object CouponService extends BoService {
 
         if (quantity > 0) {
           var couponVOprice = couponVO.price
-          logger.info(s"updateCoupon(${c.id}) initialPrice:${couponVOprice}")
+          logger.info(s"updateCoupon(${c.id}) initialPrice:$couponVOprice")
           val rules = coupon.rules
-          logger.info(s"updateCoupon(${c.id}) rules:${rules}")
+          logger.info(s"updateCoupon(${c.id}) rules:$rules")
           rules.foreach {
             //TODO foldLeft later
             rule => {
               logger.info(s"updateCoupon(${c.id}) rule.xtype:${rule.xtype}")
 
               couponVOprice = rule.xtype match {
-                case ReductionRuleType.DISCOUNT => {
+                case ReductionRuleType.DISCOUNT =>
                   cart.endPrice match {
                     case Some(endprice) => couponVOprice + computeDiscount(rule.discount, endprice)
                     case None => couponVOprice + computeDiscount(rule.discount, cart.price)
                   }
-                }
-                case ReductionRuleType.X_PURCHASED_Y_OFFERED => {
+                case ReductionRuleType.X_PURCHASED_Y_OFFERED =>
                   val multiple = quantity / rule.xPurchased.get //FIXME None.get possible
-                  (couponVO.price + (xPurchasedPrice * rule.yOffered.get * multiple)) //FIXME None.get possible
-                }
+                  couponVO.price + (xPurchasedPrice * rule.yOffered.get * multiple) //FIXME None.get possible
                 case _ => couponVOprice
               }
-              logger.info(s"updateCoupon(${c.id}) couponVOprice:${couponVOprice}")
+              logger.info(s"updateCoupon(${c.id}) couponVOprice:$couponVOprice")
               couponVOprice
             }
           }
-          logger.info(s"updateCoupon(${c.id}) finalPrice:${couponVOprice}")
+          logger.info(s"updateCoupon(${c.id}) finalPrice:$couponVOprice")
           couponVO.copy(active = true, price = couponVOprice)
 
         } else {
@@ -1223,12 +1083,12 @@ object CouponService extends BoService {
         {
 
           val increment = java.lang.Long.parseLong(regle.substring(1))
-          prixDeBase + increment;
+          prixDeBase + increment
         }
         else if (regle.startsWith ("-"))
         {
           val decrement = java.lang.Long.parseLong (regle.substring(1))
-          prixDeBase - decrement;
+          prixDeBase - decrement
         }
         else
         {
@@ -1241,253 +1101,3 @@ object CouponService extends BoService {
 }
 
 
-object TransactionStatus extends Enumeration {
-  class TransactionStatusType(s: String) extends Val(s)
-  type TransactionStatus = TransactionStatusType
-  val PENDING = new TransactionStatusType("PENDING")
-  val PAYMENT_NOT_INITIATED = new TransactionStatusType("PAYMENT_NOT_INITIATED")
-  val FAILED = new TransactionStatusType("FAILED")
-  val COMPLETE = new TransactionStatusType("COMPLETE")
-
-  def valueOf(str:String):TransactionStatus = str match {
-    case "PENDING"=> PENDING
-    case "PAYMENT_NOT_INITIATED"=> PAYMENT_NOT_INITIATED
-    case "FAILED"=> FAILED
-    case "COMPLETE"=> COMPLETE
-  }
-
-  override def toString = this match {
-    case PENDING => "PENDING"
-    case PAYMENT_NOT_INITIATED => "PAYMENT_NOT_INITIATED"
-    case FAILED => "FAILED"
-    case COMPLETE => "COMPLETE"
-    case _ => "Invalid value"
-  }
-}
-
-case class BOProduct(id:Long,acquittement:Boolean=false,price:Long=0,principal:Boolean=false,productFk:Long,
-                     dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now
-                      , override val uuid : String = java.util.UUID.randomUUID().toString()
-                      ) extends Entity with DateAware {
-
-  def product : Product = {
-    Product.get(this.productFk).get
-  }
-  def delete()(implicit session: DBSession) {
-    BOProduct.delete(this.id)
-  }
-}
-object BOProduct extends SQLSyntaxSupport[BOProduct]{
-
-  override val tableName = "b_o_product"
-
-  def apply(rn: ResultName[BOProduct])(rs:WrappedResultSet): BOProduct = new BOProduct(id=rs.get(rn.id),acquittement=rs.get(rn.acquittement),price=rs.get(rn.price),principal=rs.get(rn.principal),productFk=rs.get(rn.productFk),dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
-
-  def insert2(boProduct: BOProduct)(implicit session: DBSession) : BOProduct = {
-    var boProductId = 0
-    applyUpdate {
-      boProductId = newId()
-
-      val b = BOProduct.column
-      insert.into(BOProduct).namedValues(
-        b.uuid -> boProduct.uuid,
-        b.id -> boProductId,
-        b.acquittement -> boProduct.acquittement,
-        b.price -> boProduct.price,
-        b.principal -> boProduct.principal,
-        b.productFk -> boProduct.productFk,
-        b.dateCreated -> boProduct.dateCreated,
-        b.lastUpdated -> boProduct.lastUpdated)
-    }
-
-    boProduct.copy(id = boProductId)
-
-  }
-
-  def delete(id:Long)(implicit session: DBSession) {
-    withSQL {
-      deleteFrom(BOProduct).where.eq(BOProduct.column.id,  id)
-    }.update.apply()
-  }
-}
-case class BOTicketType(id:Long,quantity : Int = 1, price:Long,shortCode:Option[String],
-                        ticketType : Option[String],firstname : Option[String], lastname : Option[String],
-                        email : Option[String],phone : Option[String],age:Int,
-                        birthdate : Option[DateTime],startDate : Option[DateTime],endDate : Option[DateTime],
-                        qrcode:Option[String]=None, qrcodeContent:Option[String]=None,
-                        //bOProduct : BOProduct,
-                        bOProductFk : Long,
-                        dateCreated:DateTime,lastUpdated:DateTime
-                        , override val uuid : String = java.util.UUID.randomUUID().toString() //TODO
-                         ) extends Entity with  DateAware {
-
-  /* TODO if possible
-  def insert2(boTicketType : BOTicketType)(implicit session: DBSession) : BOTicketType = {
-
-  }*/
-
-  def delete()(implicit session: DBSession){
-    BOTicketType.delete(this.id)
-  }
-}
-
-object BOTicketType extends SQLSyntaxSupport[BOTicketType]{
-
-  override val tableName = "b_o_ticket_type"
-
-  def apply(rn: ResultName[BOTicketType])(rs:WrappedResultSet): BOTicketType = new BOTicketType(id=rs.get(rn.id),quantity=rs.get(rn.quantity),price=rs.get(rn.price),
-    shortCode = rs.get(rn.shortCode),ticketType=rs.get(rn.ticketType),firstname=rs.get(rn.firstname),lastname=rs.get(rn.lastname),email=rs.get(rn.email),phone=rs.get(rn.phone),
-    age = rs.get(rn.age), birthdate=rs.get(rn.birthdate),startDate=rs.get(rn.endDate),endDate=rs.get(rn.endDate),bOProductFk=rs.get(rn.bOProductFk),
-    qrcode = rs.get(rn.qrcode), qrcodeContent = rs.get(rn.qrcodeContent),
-    dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
-
-  def findByBOProduct(boProductId:Long):List[BOTicketType]={
-    val t = BOTicketType.syntax("t")
-    DB readOnly {
-      implicit session =>
-        withSQL {
-          select.from(BOTicketType as t).where.eq(t.bOProductFk, boProductId)
-        }.map(BOTicketType(t.resultName)).list().apply()
-    }
-  }
-
-
-  def delete(id:Long)(implicit session: DBSession) {
-    //sql"delete from b_o_ticket_type where b_o_product_fk=${boProductId}"
-    withSQL {
-      deleteFrom(BOTicketType).where.eq(BOTicketType.column.id,  id)
-    }.update.apply()
-  }
-}
-
-case class BOCart(id:Long, transactionUuid:String,date:DateTime, price:Long,status : TransactionStatus, currencyCode:String,currencyRate:Double,companyFk:Long,buyer:String = "christophe.galant@ebiznext.com",
-                  dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now
-                  , override val uuid : String = java.util.UUID.randomUUID().toString() //TODO
-                   ) extends Entity with DateAware {
-
-  def delete()(implicit session: DBSession){
-    BOCart.delete(this.id)
-  }
-}
-
-object BOCart extends SQLSyntaxSupport[BOCart]{
-
-  override val tableName = "b_o_cart"
-
-  def apply(rn: ResultName[BOCart])(rs:WrappedResultSet): BOCart = BOCart(
-    id=rs.get(rn.id),transactionUuid=rs.get(rn.transactionUuid),price=rs.get(rn.price),
-    date=rs.get(rn.date),status=TransactionStatus.valueOf(rs.string("s_on_t")), //FIXME
-    currencyCode = rs.get(rn.currencyCode),currencyRate = rs.get(rn.currencyRate),
-    companyFk=rs.get(rn.companyFk),dateCreated=rs.get(rn.dateCreated),lastUpdated=rs.get(rn.lastUpdated))
-
-  def findByTransactionUuidAndStatus(uuid:String, status:TransactionStatus):Option[BOCart] = {
-
-    val t = BOCart.syntax("t")
-    val res: Option[BOCart] = DB readOnly {
-      implicit session =>
-        withSQL {
-          select.from(BOCart as t).where.eq(t.transactionUuid, uuid).and.eq(t.status, status.toString) //"PENDING"
-        }.map(BOCart(t.resultName)).single().apply()
-    }
-    res
-  }
-
-  def findByTransactionUuid(uuid:String):Option[BOCart] = {
-    val t = BOCart.syntax("t")
-    DB readOnly {
-      implicit session =>
-        withSQL {
-          select.from(BOCart as t).where.eq(t.transactionUuid, uuid)
-        }.map(BOCart(t.resultName)).single().apply()
-    }
-  }
-
-  def insertTo(boCart: BOCart)(implicit session: DBSession):BOCart = {
-    var boCartId = 0
-    applyUpdate {
-      boCartId = newId()
-      val b = BOCart.column
-      insert.into(BOCart).namedValues(
-        b.uuid -> boCart.uuid,
-        b.id -> boCartId,
-        b.buyer -> boCart.buyer,
-        b.companyFk -> boCart.companyFk,
-        b.currencyCode -> boCart.currencyCode,
-        b.currencyRate -> boCart.currencyRate,
-        b.date -> DateTime.now,
-        b.dateCreated -> DateTime.now,
-        b.lastUpdated -> DateTime.now,
-        b.price -> boCart.price,
-        b.status -> TransactionStatus.PENDING.toString,
-        b.transactionUuid -> boCart.transactionUuid
-      )
-    } //.update.apply()
-
-    boCart.copy(id = boCartId)
-  }
-
-  def delete(id:Long)(implicit session: DBSession) {
-    withSQL {
-      deleteFrom(BOCart).where.eq(BOCart.column.id,  id)
-    }.update.apply()
-  }
-}
-
-
-//"SALE_" + boCart.id + "_" + boProduct.id
-case class BOCartItem(id:Long,code : String,
-                      price: Long,
-                      tax: Double,
-                      endPrice: Long,
-                      totalPrice: Long,
-                      totalEndPrice: Long,
-                      hidden : Boolean = false,
-                      quantity : Int = 1,
-                      startDate : Option[DateTime],
-                      endDate : Option[DateTime],
-                      //bOCart : BOCart,
-                      bOCartFk : Long,
-                      dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now
-                      , override val uuid : String = java.util.UUID.randomUUID().toString() //TODO
-                       ) extends Entity with  DateAware {
-
-  def delete()(implicit session: DBSession){
-    BOCartItem.delete(this.id)
-  }
-}
-
-object BOCartItem extends SQLSyntaxSupport[BOCartItem]{
-
-  override val tableName = "b_o_cart_item"
-
-  def apply(rn: ResultName[BOCartItem])(rs:WrappedResultSet): BOCartItem = new BOCartItem(id=rs.get(rn.id),code=rs.get(rn.code),price=rs.get(rn.price),tax=rs.get(rn.tax),
-    endPrice=rs.get(rn.endPrice),totalPrice=rs.get(rn.totalPrice),totalEndPrice=rs.get(rn.totalEndPrice),quantity=rs.get(rn.quantity),hidden=rs.get(rn.hidden),
-    startDate = rs.get(rn.startDate),endDate = rs.get(rn.endDate),dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated),bOCartFk=rs.get(rn.bOCartFk))
-
-  def findByBOCart(boCart:BOCart):List[BOCartItem] = {
-
-    val t = BOCartItem.syntax("t")
-    val res: List[BOCartItem] = DB readOnly {
-      implicit session =>
-        withSQL {
-          select.from(BOCartItem as t).where.eq(t.bOCartFk, boCart.id)
-        }.map(BOCartItem(t.resultName)).list().apply()
-    }
-    res
-  }
-
-  def bOProducts(boCartItem: BOCartItem) : List[BOProduct] = {
-
-    DB readOnly {
-      implicit session =>
-        sql"select p.* from b_o_cart_item_b_o_product ass inner join b_o_product p on ass.boproduct_id=p.id where b_o_products_fk=${boCartItem.id}"
-          .map(rs => new BOProduct(id=rs.long("id"),acquittement=rs.boolean("acquittement"),price=rs.long("price"),principal=rs.boolean("principal"),productFk=rs.long("product_fk"),dateCreated = rs.get("date_created"),lastUpdated = rs.get("last_updated"))).list().apply()
-    }
-  }
-
-  def delete(id:Long)(implicit session: DBSession) {
-    withSQL {
-      deleteFrom(BOCartItem).where.eq(BOCartItem.column.id,  id)
-    }.update.apply()
-  }
-}

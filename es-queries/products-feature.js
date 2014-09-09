@@ -1,13 +1,13 @@
 // Statut : OK
 // StoreController
 //REMARQUE : idem que products avec un query parameter featured supplémentaire
-restpath = "/api/store/{storeCode}/products?lang=fr&currency={curCode}&country={countryCode}&featured=true"
-method = "POST" // et/ou "GET"
+restpath = "/api/store/{storeCode}/products?lang=fr&currency={curCode}&country={countryCode}&featured=true";
+method = "POST"; // et/ou "GET"
 
 
 
-method="POST"
-curl = "http://localhost:9200/mogobiz/product/_search"
+method="POST";
+curl = "http://localhost:9200/mogobiz/product/_search";
 
 esquery={
     "_source": {
@@ -96,4 +96,4 @@ esquery={
     "sort": {"name": "desc"},
     "from": 0, //pageOffset * maxItemsPerPage
     "size": 3 //maxItemsPerPage
-}
+};

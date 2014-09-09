@@ -1,10 +1,11 @@
 package com.mogobiz.services
 
 import akka.actor.ActorRef
-import com.mogobiz.Json4sProtocol._
+import com.mogobiz.json.Json4sProtocol
+import Json4sProtocol._
 import com.mogobiz.actors.CountryActor.QueryCountryRequest
-import spray.routing.Directives
 import org.json4s._
+import spray.routing.Directives
 
 import scala.concurrent.ExecutionContext
 
@@ -12,7 +13,8 @@ class CountryService(storeCode: String, actor: ActorRef)(implicit executionConte
 
   import akka.pattern.ask
   import akka.util.Timeout
-  import scala.concurrent.duration._
+
+import scala.concurrent.duration._
 
   implicit val timeout = Timeout(2.seconds)
 

@@ -1,17 +1,14 @@
 package com.mogobiz.cart
 
-import com.mogobiz.utils.Utils
-import org.joda.time.DateTime
-import org.json4s.JsonAST.JValue
-import org.json4s.native.JsonMethods._
-import org.json4s.native.Serialization._
-import org.specs2.mutable.Specification
 import java.util.{Locale, UUID}
+
+import com.mogobiz.model.Currency
+import com.mogobiz.cart.domain._
+import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs
-import com.mogobiz.Currency
-import org.json4s.{DefaultFormats, Formats}
 
 /**
+ *
  * Created by Christophe on 06/05/2014.
  */
 class CartBoServiceSpec extends Specification {
@@ -26,7 +23,7 @@ class CartBoServiceSpec extends Specification {
 
   private def generateUuid = {
     val uuid = UUID.randomUUID.toString
-    println(s"uuid=${uuid}")
+    println(s"uuid=$uuid")
     uuid
   }
 
@@ -38,7 +35,7 @@ class CartBoServiceSpec extends Specification {
     val cart = service.initCart(uuid)
 
     //assertions
-    cart.uuid must_== (uuid)
+    cart.uuid must_== uuid
     cart.finalPrice must_== 0
     cart.count must_== 0
     cart.cartItemVOs.length must_== 0
@@ -67,10 +64,10 @@ class CartBoServiceSpec extends Specification {
     resCart.cartItemVOs.size must be_==(1)
     item.shipping must beSome[ShippingVO]
     val shipping = item.shipping.get
-    shipping.id must_== (expectedShipping.id)
-    shipping.weight must_== (expectedShipping.weight)
+    shipping.id must_== expectedShipping.id
+    shipping.weight must_== expectedShipping.weight
     shipping.free must beFalse
-    shipping.amount must_== (0)
+    shipping.amount must_== 0
 
   }
 
@@ -123,35 +120,35 @@ class CartBoServiceSpec extends Specification {
     resCart2.cartItemVOs.size must be_==(2)
 
   }
-/*
-  "addToCart the same product twice" in {
-    //FIXME fail("ne gere pas l'ajout du mm produit au panier")
-    val cur = "EUR"
-    val uuid = UUID.randomUUID.toString
-    println(s"uuid=${uuid}")
-    val cart = service.initCart(uuid)
-    val ttid = 58
-    val tt58 = TicketType.get(ttid)
-    val quantity = 1
-    val dateTime = None
-    val resCart = service.addItem(Locale.getDefault, cur, cart, ttid, quantity, dateTime, List())
+  /*
+    "addToCart the same product twice" in {
+      //FIXME fail("ne gere pas l'ajout du mm produit au panier")
+      val cur = "EUR"
+      val uuid = UUID.randomUUID.toString
+      println(s"uuid=${uuid}")
+      val cart = service.initCart(uuid)
+      val ttid = 58
+      val tt58 = TicketType.get(ttid)
+      val quantity = 1
+      val dateTime = None
+      val resCart = service.addItem(Locale.getDefault, cur, cart, ttid, quantity, dateTime, List())
 
-    println("1. cart.price=" + resCart.price)
-    resCart.price must be_==(tt58.price)
-    resCart.price must be_==(35000)
-    resCart.count must be_==(1)
-    resCart.cartItemVOs.size must be_==(1)
+      println("1. cart.price=" + resCart.price)
+      resCart.price must be_==(tt58.price)
+      resCart.price must be_==(35000)
+      resCart.count must be_==(1)
+      resCart.cartItemVOs.size must be_==(1)
 
-    val resCart2 = service.addItem(Locale.getDefault, cur, resCart, ttid, quantity, dateTime, List())
-    println("2. cart.price=" + resCart2.price)
-    resCart2.price must be_==(tt58.price * 2)
-    resCart2.price must be_==(35000 * 2)
+      val resCart2 = service.addItem(Locale.getDefault, cur, resCart, ttid, quantity, dateTime, List())
+      println("2. cart.price=" + resCart2.price)
+      resCart2.price must be_==(tt58.price * 2)
+      resCart2.price must be_==(35000 * 2)
 
-    resCart2.count must be_==(1) //TODO fail here
-    resCart2.cartItemVOs.size must be_==(1)
+      resCart2.count must be_==(1) //TODO fail here
+      resCart2.cartItemVOs.size must be_==(1)
 
-  }
-*/
+    }
+  */
 
 
   "updateCart change the quantity" in {
@@ -174,7 +171,7 @@ class CartBoServiceSpec extends Specification {
 
     val itemId = resCart.cartItemVOs(0).id
 
-    val resCart2 = service.updateItem(Locale.getDefault(), cur, resCart, itemId, 1)
+    val resCart2 = service.updateItem(Locale.getDefault, cur, resCart, itemId, 1)
     println("2. cart.price=" + resCart2.price)
     println("2. item: " + resCart2.cartItemVOs(0))
     resCart2.price must be_==(tt58.price * 1)
@@ -205,7 +202,7 @@ class CartBoServiceSpec extends Specification {
 
     val uuid = generateUuid
 
-    var locale = Locale.getDefault()
+    var locale = Locale.getDefault
     val cart = service.initCart(uuid)
     val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
@@ -245,7 +242,7 @@ class CartBoServiceSpec extends Specification {
 
     val uuid = generateUuid
 
-    var locale = Locale.getDefault()
+    var locale = Locale.getDefault
     val cart = service.initCart(uuid)
     val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
@@ -563,7 +560,7 @@ class CartBoServiceSpec extends Specification {
     val cart = cartService.initCart(preparedCart.uuid)
     cart.inTransaction must beTrue
 
-    var locale = Locale.getDefault()
+    var locale = Locale.getDefault
     val canceledCart = service.cancel(cart)
 
     canceledCart.inTransaction must beFalse

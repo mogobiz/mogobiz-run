@@ -13,8 +13,7 @@ object CategoryActor {
 
 class CategoryActor extends Actor {
   def receive = {
-    case q: QueryCategoryRequest => {
+    case q: QueryCategoryRequest =>
       sender ! categoryHandler.queryCategories(q.storeCode, q.hidden, q.parentId, q.brandId, q.categoryPath, q.lang)
-    }
   }
 }

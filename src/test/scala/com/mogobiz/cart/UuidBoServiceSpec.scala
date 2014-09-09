@@ -5,6 +5,7 @@ import java.util.UUID
 import scalikejdbc.config.DBs
 
 /**
+ *
  * Created by Christophe on 06/05/2014.
  */
 class UuidBoServiceSpec extends Specification {
