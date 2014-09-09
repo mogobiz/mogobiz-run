@@ -730,8 +730,8 @@ object ElasticSearchClient {
   }
 
   def updateComment(store:String, productId:Long, commentId:String, useful: Boolean) : Boolean = {
-    val query = s"""{"script":"if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}","params":{"useful":$useful}}"""
-    val req = esupdate4s id commentId in s"${commentIndex(store)}/comment" script query
+    val script = """if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}"""
+    val req = esupdate4s id commentId in s"${commentIndex(store)}/comment" script script params {"useful" -> s"$useful"}
     EsClient.updateRaw(req)
     true
   }
