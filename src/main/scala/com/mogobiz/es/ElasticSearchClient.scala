@@ -13,6 +13,7 @@ import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdat
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
+import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
 import org.elasticsearch.search.{SearchHits, SearchHit}
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JArray, JNothing, JObject}
@@ -505,25 +506,43 @@ object ElasticSearchClient {
     val highlightedFields = fieldNames.foldLeft(List[String]())((A,B) => A ::: getHighlightedFieldsAsList(store, B, params.lang))
     val req =
       if(params.highlight){
-        esearch4s in store types(List("product", "category", "brand"):_*) highlighting{
-          (fieldNames ::: highlightedFields).mkString(",")
+        esearch4s in store types(List("product", "category", "brand"):_*) highlighting {
+          (fieldNames ::: highlightedFields).map(highlight):_*
         }
       }
       else{
         esearch4s in store types(List("product", "category", "brand"):_*)
       }
-    val hits:Array[SearchHit] = EsClient.searchAllRaw(req query {params.query} fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*)).hits
+
+    val searchHits:SearchHits = EsClient.searchAllRaw(req query {params.query} fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*))
+
+    val hitsAsString = searchHits.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string().substring("hits".length + 2)
 
     import org.json4s.native.JsonMethods._
     implicit def json4sFormats: Formats = DefaultFormats
 
-    val results : List[(String, JObject)] = hits.map(
-      hit => hit.getType -> parse(hit.getSourceAsString).extract[JObject]
-    ).toList // FIXME highlight
+    val json = parse(hitsAsString)
+    val hits = json \ "hits"
 
-    results.groupBy(_._1).map {
+    val rawResult = if (params.highlight) {
+      for {
+        JObject(result) <- hits.children.children
+        JField("_type", JString(_type)) <- result
+        JField("_source", JObject(_source)) <- result
+        JField("highlight", JObject(highlight)) <- result
+      } yield _type -> (_source ::: highlight)
+    } else {
+      for {
+        JObject(result) <- hits.children.children
+        JField("_type", JString(_type)) <- result
+        JField("_source", JObject(_source)) <- result
+      } yield _type -> _source
+    }
+
+    rawResult.groupBy(_._1).map {
       case (_cat, v) => (_cat, v.map(_._2))
     }
+
   }
 
 
