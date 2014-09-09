@@ -110,10 +110,10 @@ import scala.concurrent.duration._
 
   lazy val product = pathPrefix(Segment) {
     productId =>
+      comments(productId.toLong) ~
       details(productId.toLong) ~
-        dates(productId.toLong) ~
-        times(productId.toLong) ~
-        comments(productId.toLong)
+      dates(productId.toLong) ~
+      times(productId.toLong)
   }
 
   def details (productId: Long) = get {

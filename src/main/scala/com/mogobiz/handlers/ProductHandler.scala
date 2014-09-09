@@ -41,7 +41,7 @@ class ProductHandler {
     ElasticSearchClient.createComment(storeCode, productId, req)
   }
 
-  def getComment(storeCode: String, productId: Long, req: CommentGetRequest): Paging[Comment] = {
+  def getComment(storeCode: String, productId: Long, req: CommentGetRequest): JValue = {
     ElasticSearchClient.getComments(storeCode, productId, req)
   }
 

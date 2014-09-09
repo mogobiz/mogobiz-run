@@ -718,13 +718,13 @@ object ElasticSearchClient {
     }
   }
 
-  def createComment(store:String,productId:Long,c:CommentRequest): Comment = {
+  def createComment(store:String, productId:Long, c:CommentRequest): Comment = {
     require(!store.isEmpty)
     require(productId > 0)
-    val comment = Try(Comment(None,c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId))
+    val comment = Try(Comment(None, c.userId , c.surname, c.notation, c.subject, c.comment, c.created,productId))
     comment match {
       case Success(s) =>
-        Comment(Some(EsClient.index[Comment](commentIndex(store), s)),c.userId,c.surname,c.notation,c.subject,c.comment,c.created,productId)
+        Comment(Some(EsClient.index[Comment](commentIndex(store), s)), c.userId, c.surname, c.notation, c.subject, c.comment, c.created,productId)
       case Failure(f) => throw f
     }
   }
@@ -736,7 +736,7 @@ object ElasticSearchClient {
     true
   }
 
-  def getComments(store:String, productId:Long , req:CommentGetRequest) : Paging[Comment] = {
+  def getComments(store:String, productId:Long , req:CommentGetRequest) : JValue = {
     val size = req.maxItemPerPage.getOrElse(100)
     val from = req.pageOffset.getOrElse(0) * size
     val filters:List[FilterDefinition] = List(createTermFilter("productId", Some(s"$productId"))).flatten
@@ -749,7 +749,11 @@ object ElasticSearchClient {
         }
     )
     val comments:List[Comment] = hits.getHits.map(JacksonConverter.deserializeComment).toList
-    Paging.add(hits.getTotalHits.toInt, comments, req)
+    val paging = Paging.add(hits.getTotalHits.toInt, comments, req)
+    import org.json4s._
+    import org.json4s.jackson.Serialization
+    implicit val formats = Serialization.formats(NoTypeHints)
+    Extraction.decompose(paging)
   }
 
   private def isDateExcluded(periods:List[EndPeriod] , day:Calendar ) : Boolean  = {
