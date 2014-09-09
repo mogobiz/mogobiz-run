@@ -15,7 +15,7 @@ import org.json4s.JsonAST._
  *
  * Created by yoannbaudy on 07/09/14.
  */
-class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode {
+class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode with JSonTest {
   def actorRefFactory = system // connect the DSL to the test ActorSystem
   val STORE = "mogobiz"
 
@@ -23,18 +23,9 @@ class BrandSpec extends Specification with Specs2RouteTest with HttpService with
 
   step(start)
 
-  def sortById(j: JValue): List[JValue] = {
-    j match {
-      case JArray(a) => a.sortWith((v1: JValue, v2: JValue) => {
-                          (v1 \ "id", v2 \ "id") match {case (JInt(id1), JInt(id2)) => id1 < id2}
-                        })
-      case JObject(v) => List(JObject(v))
-    }
-  }
-
   "The Brand service" should {
     "return not hidden brands" in {
-      Get("/store/" + STORE + "/brands") ~> routes ~> check {
+      Get("/store/" + STORE + "/brands") ~> sealRoute(routes) ~> check {
         val brands = sortById(JsonParser.parse(responseAs[String]))
         brands must have size(5)
         checkBrandSamsung(brands(0))
@@ -46,7 +37,7 @@ class BrandSpec extends Specification with Specs2RouteTest with HttpService with
     }
 
     "return not hidden brands" in {
-      Get("/store/" + STORE + "/brands?hidden=true") ~> routes ~> check {
+      Get("/store/" + STORE + "/brands?hidden=true") ~> sealRoute(routes) ~> check {
         val brands = sortById(JsonParser.parse(responseAs[String]))
         brands must have size(6)
         checkBrandSamsung(brands(0))
