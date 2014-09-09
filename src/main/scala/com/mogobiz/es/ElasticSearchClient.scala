@@ -711,10 +711,11 @@ object ElasticSearchClient {
    * @return - products
    */
   def getProductHistory(store:String, sessionId:String) : List[Long] = {
-   EsClient.loadRaw(get id sessionId from(historyIndex(store), "history")) match {
-     case Some(s) => s.getField("productIds").getValues.asInstanceOf[List[Long]]
-     case None => List.empty
-   }
+    implicit def json4sFormats: Formats = DefaultFormats
+    EsClient.loadRaw(get id sessionId from(historyIndex(store), "history")) match {
+      case Some(s) => (response2JValue(s) \ "productIds").extract[List[Long]]
+      case None => List.empty
+    }
   }
 
   def createComment(store:String,productId:Long,c:CommentRequest): Comment = {
