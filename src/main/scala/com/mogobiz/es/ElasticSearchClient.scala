@@ -13,8 +13,7 @@ import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdat
 import com.sksamuel.elastic4s.FilterDefinition
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
-import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
-import org.elasticsearch.search.{SearchHits, SearchHit}
+import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JArray, JNothing, JObject}
 import org.json4s.JsonDSL._
@@ -403,7 +402,7 @@ object ElasticSearchClient {
       getIncludedFieldWithPrefixAsList(store, "features.", "name", params.lang) :::
       getIncludedFieldWithPrefixAsList(store, "features.", "value", params.lang)
 
-    val products:JArray = EsClient.loadRaw(multiget(idList.map(id => get id id from store -> "product" fields(includedFields:_*)):_*))
+    val docs:Array[MultiGetItemResponse] = EsClient.loadRaw(multiget(idList.map(id => get id id from store -> "product" fields(includedFields:_*)):_*))
 
     var allLanguages: List[String] = getStoreLanguagesAsList(store)
 
@@ -425,24 +424,28 @@ object ElasticSearchClient {
       }
     }
 
-    val featuresByNameAndIds : List[(BigInt, List[(String, JValue, List[JField])])] = for {
-      JObject(result) <- products
-      JField("id", JInt(id)) <- result
+    import org.json4s.native.JsonMethods._
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val featuresByNameAndIds : List[(Long, List[(String, JValue, List[JField])])] = (for {
+      doc <- docs
+      id = doc.getId.toLong
+      result:JObject = parse(doc.getResponse.getSourceAsString).extract[JObject]
     } yield {
       val featuresByName : List[(String, JValue, List[JField])] = for {
-        JField("features", JArray(features)) <- result
+        JArray(features) <- result \ "features"
         JObject(feature) <- features
         JField("name", JString(name)) <- feature
       } yield (name, JObject(feature), translateFeature(feature, "value", "value"))
       (id, featuresByName)
-    }
+    }).toList
 
     // Liste des ids des produits comparés
-    val ids: List[BigInt] = featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1}.distinct
+    val ids: List[Long] = featuresByNameAndIds.map { idAndFeaturesByName: (Long, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1}.distinct
 
     // Liste des noms des features (avec traduction des noms des features)
     val featuresName : List[(String, List[JField])] = {for {feature: (String, JValue, List[JField]) <-
-                                                            featuresByNameAndIds.map { idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._2}.
+                                                            featuresByNameAndIds.map { idAndFeaturesByName: (Long, List[(String, JValue, List[JField])]) => idAndFeaturesByName._2}.
                                                               flatMap {featuresByName: List[(String, JValue, List[JField])] => featuresByName}
     } yield (feature._1, translateFeature(feature._2, "name", "label"))}.distinct
 
@@ -453,8 +456,8 @@ object ElasticSearchClient {
     val resultContent: List[JObject] = featuresName.map { featureName: (String, List[JField]) =>
 
       // Contenu pour la future propriété "values" du résultat
-      val valuesList = ids.map { id: BigInt =>
-        val featuresByName: Option[(BigInt, List[(String, JValue, List[JField])])] = featuresByNameAndIds.find{ idAndFeaturesByName: (BigInt, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1 == id }
+      val valuesList = ids.map { id: Long =>
+        val featuresByName: Option[(Long, List[(String, JValue, List[JField])])] = featuresByNameAndIds.find{ idAndFeaturesByName: (Long, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1 == id }
         if (featuresByName.isDefined) {
           val feature: Option[(String, JValue, List[JField])] = featuresByName.get._2.find { nameAndFeature: (String, JValue, List[JField]) => nameAndFeature._1 == featureName._1}
           if (feature.isDefined) {
@@ -476,7 +479,7 @@ object ElasticSearchClient {
       JObject(featureName._2 :+ JField("values", valuesList) :+ JField("indicator", if (uniqueValue.size == 1) "0" else "1"))
     }
 
-    val jFieldIds = JField("ids", JArray(ids.map {id: BigInt => JString(String.valueOf(id))}))
+    val jFieldIds = JField("ids", JArray(ids.map {id: Long => JString(String.valueOf(id))}))
     var jFieldResult = JField("result", JArray(resultContent))
     JObject(List(jFieldIds, jFieldResult))
   }
@@ -514,14 +517,8 @@ object ElasticSearchClient {
         esearch4s in store types(List("product", "category", "brand"):_*)
       }
 
-    val searchHits:SearchHits = EsClient.searchAllRaw(req query {params.query} fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*))
+    val json:JValue = EsClient.searchAllRaw(req query {params.query} fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*))
 
-    val hitsAsString = searchHits.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string().substring("hits".length + 2)
-
-    import org.json4s.native.JsonMethods._
-    implicit def json4sFormats: Formats = DefaultFormats
-
-    val json = parse(hitsAsString)
     val hits = json \ "hits"
 
     val rawResult = if (params.highlight) {

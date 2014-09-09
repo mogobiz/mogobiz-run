@@ -10,6 +10,7 @@ import com.sksamuel.elastic4s.{ElasticClient, GetDefinition, MultiGetDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.common.settings.ImmutableSettings
+import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
 import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.search.{SearchHit, SearchHits}
 import org.json4s.JsonAST.{JArray, JValue}
@@ -126,6 +127,10 @@ object EsClient {
       None
     else
       Some(res.getHits.getHits()(0))
+  }
+
+  implicit def searchHits2JValue(searchHits:SearchHits) : JValue = {
+    parse(searchHits.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string().substring("hits".length + 2))
   }
 
   implicit def hits2JArray(hits:Array[SearchHit]) : JArray = JArray(hits.map(hit => parse(hit.getSourceAsString)).toList)
