@@ -114,19 +114,19 @@ object ElasticSearchClient extends JsonUtil {
    */
   def queryBrands(store: String, qr: BrandRequest): JValue = {
     var filters:List[FilterDefinition] = List.empty
-    val results : JValue = qr.categoryPath match {
+    qr.categoryPath match {
       case Some(s) =>
         val req = esearch4s in store -> "product"
         filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
         if(!qr.hidden) filters :+= termFilter("brand.hide", "false")
         val r : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceInclude("brand.*") sourceExclude(createExcludeLang(store, qr.lang, "brand.") :+ "brand.imported" :_*)).getHits
-        r \ "brand"
+        sortByProperty(distinctById(r \ "brand"), "name")
       case None =>
         val req = esearch4s in store -> "brand"
         if(!qr.hidden) filters :+= termFilter("hide", "false")
-        EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
+        val r : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
+        sortByProperty(distinctById(r), "name")
     }
-    sortByProperty(distinctById(results), "name")
   }
 
   /**
