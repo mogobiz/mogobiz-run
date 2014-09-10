@@ -11,12 +11,13 @@ import scala.concurrent.duration._
 import org.specs2.matcher._
 import org.json4s.native.JsonParser
 import org.json4s.JsonAST._
+import com.mogobiz.json.JsonUtil
 
 /**
  *
  * Created by yoannbaudy on 07/09/14.
  */
-class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode with JSonTest with NoTimeConversions {
+class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode with JsonUtil with NoTimeConversions {
   def actorRefFactory = system // connect the DSL to the test ActorSystem
   val STORE = "mogobiz"
 
@@ -29,28 +30,40 @@ class BrandSpec extends Specification with Specs2RouteTest with HttpService with
   "The Brand service" should {
     "return not hidden brands" in {
       Get("/store/" + STORE + "/brands") ~> sealRoute(routes) ~> check {
-        val brands = sortById(JsonParser.parse(responseAs[String]))
-        brands must have size 5
-        checkBrandSamsung(brands(0))
-        checkBrandSamsung(brands(1))
-        checkBrandPhilips(brands(2))
-        checkBrandNike(brands(3))
-        checkBrandPuma(brands(4))
+        val brands: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
+        brands must have size 4
+        checkBrandNike(brands(0))
+        checkBrandPhilips(brands(1))
+        checkBrandPuma(brands(2))
+        checkBrandSamsung(brands(3))
       }
     }
 
-    "return not hidden brands" in {
+    "return hidden brands" in {
       Get("/store/" + STORE + "/brands?hidden=true") ~> sealRoute(routes) ~> check {
-        val brands = sortById(JsonParser.parse(responseAs[String]))
+        val brands: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
         brands must have size 5
-        checkBrandSamsung(brands(0))
-        checkBrandSamsung(brands(1))
+        checkBrandHideBrand(brands(0))
+        checkBrandNike(brands(1))
         checkBrandPhilips(brands(2))
-        checkBrandNike(brands(3))
-        checkBrandPuma(brands(4))
-        // FIXME checkBrandHideBrand(brands(5))
+        checkBrandPuma(brands(3))
+        checkBrandSamsung(brands(4))
       }
     }
+
+    "return categories brands" in {
+      Get("/store/" + STORE + "/brands?categoryPath=hightech") ~> sealRoute(routes) ~> check {
+        val brands: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
+        brands must have size 2
+        checkBrandPhilips(brands(0))
+        checkBrandSamsung(brands(1))
+      }
+    }
+  }
+
+  def checkJArray(j: JValue) : List[JValue] = j match {
+    case JArray(a) => a
+    case _ => List(j)
   }
 
   def checkBrandSamsung(brand: JValue) : MatchResult[JValue] = {

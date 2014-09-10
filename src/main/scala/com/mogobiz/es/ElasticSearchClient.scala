@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.{Calendar, Date, Locale}
 
 import com.mogobiz.es.EsClient._
+import com.mogobiz.json.JsonUtil
 import com.mogobiz.model
 import com.mogobiz.model._
 import com.mogobiz.services.RateBoService
@@ -27,7 +28,7 @@ import scala.util.{Failure, Success, Try}
  * Created by Christophe on 18/02/14.
  */
 
-object ElasticSearchClient {
+object ElasticSearchClient extends JsonUtil {
 
   private val log = Logger(LoggerFactory.getLogger("ElasticSearchClient"))
 
@@ -112,17 +113,20 @@ object ElasticSearchClient {
    * @return
    */
   def queryBrands(store: String, qr: BrandRequest): JValue = {
-    val req = esearch4s in store -> "product"
     var filters:List[FilterDefinition] = List.empty
-    qr.categoryPath match {
+    val results : JValue = qr.categoryPath match {
       case Some(s) =>
+        val req = esearch4s in store -> "product"
         filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
-        if(!qr.hidden) filters :+= termFilter("category.hide", "false")
+        if(!qr.hidden) filters :+= termFilter("brand.hide", "false")
+        val r : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceInclude("brand.*") sourceExclude(createExcludeLang(store, qr.lang, "brand.") :+ "brand.imported" :_*)).getHits
+        r \ "brand"
       case None =>
+        val req = esearch4s in store -> "brand"
         if(!qr.hidden) filters :+= termFilter("hide", "false")
+        EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
     }
-    val results : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)).getHits
-    results \ "brand"
+    sortByProperty(distinctById(results), "name")
   }
 
   /**
@@ -769,10 +773,10 @@ object ElasticSearchClient {
    * @param lang - language
    * @return excluded languages
    */
-  private def createExcludeLang(store: String, lang: String): List[String] = {
+  private def createExcludeLang(store: String, lang: String, prefixe: String = ""): List[String] = {
     if (lang == "_all") List()
     else getStoreLanguagesAsList(store).filter{case l: String => l != lang}.collect { case l:String =>
-      "*." + l
+      prefixe + "*." + l
     }
   }
 
