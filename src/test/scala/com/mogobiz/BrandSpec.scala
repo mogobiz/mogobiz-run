@@ -2,6 +2,7 @@ package com.mogobiz
 
 import com.mogobiz.es.EmbeddedElasticSearchNode
 import org.specs2.mutable.Specification
+import org.specs2.time.NoTimeConversions
 import spray.testkit.Specs2RouteTest
 import spray.routing.HttpService
 import com.mogobiz.services.MogobizRoutes
@@ -15,9 +16,11 @@ import org.json4s.JsonAST._
  *
  * Created by yoannbaudy on 07/09/14.
  */
-class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode with JSonTest {
+class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode with JSonTest with NoTimeConversions {
   def actorRefFactory = system // connect the DSL to the test ActorSystem
   val STORE = "mogobiz"
+
+  sequential
 
   implicit val routeTestTimeout = RouteTestTimeout(FiniteDuration(5, SECONDS))
 

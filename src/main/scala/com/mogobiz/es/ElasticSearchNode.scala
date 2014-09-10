@@ -31,7 +31,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
 
   val esHeadPlugin = "mobz/elasticsearch-head"
   val icuPlugin = "elasticsearch/elasticsearch-analysis-icu/2.2.0"
-  val plugins = Seq(esHeadPlugin, icuPlugin)
+  val plugins = Seq(esHeadPlugin)
 
   lazy val node:Node = {
     val initialSettings : Tuple[Settings, Environment]= InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true)
