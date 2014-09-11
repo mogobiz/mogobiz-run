@@ -785,7 +785,7 @@ object ElasticSearchClient extends JsonUtil {
   private def createExcludeLang(store: String, lang: String): List[String] = {
     if (lang == "_all") List()
     else getStoreLanguagesAsList(store).filter{case l: String => l != lang}.collect { case l:String =>
-      List(l+".*", "*." + l + ".*")
+      List(l, l+".*", "*." + l, "*." + l + ".*")
     }.flatten
   }
 
