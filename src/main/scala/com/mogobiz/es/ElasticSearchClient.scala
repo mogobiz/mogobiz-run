@@ -119,7 +119,7 @@ object ElasticSearchClient extends JsonUtil {
         val req = esearch4s in store -> "product"
         filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
         if(!qr.hidden) filters :+= termFilter("brand.hide", "false")
-        val r : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceInclude("brand.*") sourceExclude(createExcludeLang(store, qr.lang, "brand.") :+ "brand.imported" :_*)).getHits
+        val r : JArray = EsClient.searchAllRaw(filterRequest(req, filters) sourceInclude "brand.*" sourceExclude(createExcludeLang(store, qr.lang) :+ "brand.imported" :_*)).getHits
         sortByProperty(distinctById(r \ "brand"), "name")
       case None =>
         val req = esearch4s in store -> "brand"
@@ -773,11 +773,11 @@ object ElasticSearchClient extends JsonUtil {
    * @param lang - language
    * @return excluded languages
    */
-  private def createExcludeLang(store: String, lang: String, prefixe: String = ""): List[String] = {
+  private def createExcludeLang(store: String, lang: String): List[String] = {
     if (lang == "_all") List()
     else getStoreLanguagesAsList(store).filter{case l: String => l != lang}.collect { case l:String =>
-      prefixe + "*." + l
-    }
+      List(l+".*", "*." + l + ".*")
+    }.flatten
   }
 
   private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition]) : SearchDefinition =

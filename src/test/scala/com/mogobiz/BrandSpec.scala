@@ -40,7 +40,7 @@ class BrandSpec extends Specification with Specs2RouteTest with HttpService with
     }
 
     "return hidden brands" in {
-      Get("/store/" + STORE + "/brands?hidden=true") ~> sealRoute(routes) ~> check {
+      Get("/store/" + STORE + "/brands?hidden=true&lang=fr") ~> sealRoute(routes) ~> check {
         val brands: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
         brands must have size 5
         checkBrandHideBrand(brands(0))
@@ -77,8 +77,8 @@ class BrandSpec extends Specification with Specs2RouteTest with HttpService with
     brand \ "imported" must be_==(JNothing)
     brand \ "fr" \ "name" must be_==(JString("Samsung"))
     brand \ "fr" \ "website" must be_==(JString("http://www.samsung.com/fr"))
-    brand \ "en" \ "website" must be_==(JString("http://www.samsung.com"))
-    brand \ "es" \ "website" must be_==(JString("http://www.samsung.com/es"))
+//    brand \ "en" \ "website" must be_==(JString("http://www.samsung.com"))
+//    brand \ "es" \ "website" must be_==(JString("http://www.samsung.com/es"))
   }
 
   def checkBrandPhilips(brand: JValue) : MatchResult[JValue] = {
@@ -105,9 +105,9 @@ class BrandSpec extends Specification with Specs2RouteTest with HttpService with
     brand \ "imported" must be_==(JNothing)
     brand \ "fr" \ "name" must be_==(JString("Nike"))
     brand \ "fr" \ "website" must be_==(JString("http://www.nike.com/fr/fr_fr/"))
-    brand \ "de" \ "website" must be_==(JString("http://www.nike.com/de/de_de/"))
-    brand \ "en" \ "website" must be_==(JString("http://www.nike.com"))
-    brand \ "es" \ "website" must be_==(JString("http://www.nike.com/es/es_es/"))
+//    brand \ "de" \ "website" must be_==(JString("http://www.nike.com/de/de_de/"))
+//    brand \ "en" \ "website" must be_==(JString("http://www.nike.com"))
+//    brand \ "es" \ "website" must be_==(JString("http://www.nike.com/es/es_es/"))
   }
 
   def checkBrandPuma(brand: JValue) : MatchResult[JValue] = {
@@ -121,9 +121,9 @@ class BrandSpec extends Specification with Specs2RouteTest with HttpService with
     brand \ "imported" must be_==(JNothing)
     brand \ "fr" \ "name" must be_==(JString("Puma"))
     brand \ "fr" \ "website" must be_==(JString("http://www.shop.puma.fr"))
-    brand \ "de" \ "website" must be_==(JString("http://www.shop.puma.de"))
-    brand \ "en" \ "website" must be_==(JString("http://www.puma.com"))
-    brand \ "es" \ "website" must be_==(JString("http://www.puma.com"))
+//    brand \ "de" \ "website" must be_==(JString("http://www.shop.puma.de"))
+//    brand \ "en" \ "website" must be_==(JString("http://www.puma.com"))
+//    brand \ "es" \ "website" must be_==(JString("http://www.puma.com"))
   }
 
   def checkBrandHideBrand(brand: JValue) : MatchResult[JValue] = {
