@@ -1,31 +1,14 @@
 package com.mogobiz
 
-import com.mogobiz.es.EmbeddedElasticSearchNode
-import org.specs2.mutable.Specification
-import org.specs2.time.NoTimeConversions
-import spray.testkit.Specs2RouteTest
-import spray.routing.HttpService
-import com.mogobiz.services.MogobizRoutes
-import com.mogobiz.actors.{MogobizActors, MogobizSystem}
-import scala.concurrent.duration._
 import org.specs2.matcher._
 import org.json4s.native.JsonParser
 import org.json4s.JsonAST._
-import com.mogobiz.json.JsonUtil
 
 /**
  *
  * Created by yoannbaudy on 07/09/14.
  */
-class BrandSpec extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode with JsonUtil with NoTimeConversions {
-  def actorRefFactory = system // connect the DSL to the test ActorSystem
-  val STORE = "mogobiz"
-
-  sequential
-
-  implicit val routeTestTimeout = RouteTestTimeout(FiniteDuration(5, SECONDS))
-
-  step(start)
+class BrandSpec extends MogobizRouteTest {
 
   "The Brand service" should {
 
@@ -145,11 +128,6 @@ class BrandSpec extends Specification with Specs2RouteTest with HttpService with
         checkBrandSamsung(brands(1), "fr")
       }
     }
-  }
-
-  def checkJArray(j: JValue) : List[JValue] = j match {
-    case JArray(a) => a
-    case _ => List(j)
   }
 
   def checkBrandSamsung(brand: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
