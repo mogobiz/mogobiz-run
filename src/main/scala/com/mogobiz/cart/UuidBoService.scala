@@ -1,13 +1,10 @@
 package com.mogobiz.cart
 
+import com.mogobiz.config.Settings
 import com.mogobiz.json.Json4sProtocol
 import org.joda.time.DateTime
-import scalikejdbc.{WrappedResultSet, _}
+import scalikejdbc._
 
-/**
- *
- * Created by Christophe on 05/05/2014.
- */
 object UuidBoService extends BoService {
 
   private val QUEUE_XTYPE_CART = "Cart"
@@ -15,12 +12,12 @@ object UuidBoService extends BoService {
 
   /**
    * Create or update a UuidDate for the given uuid and xtype
-   * @param uuid
-   * @param payload
-   * @param xtype
+   * @param uuid identifier
+   * @param payload content
+   * @param xtype data type stored
    */
   def createAndSave(uuid:String, payload:String, xtype:String) : Unit = {
-    val lifetime = 60 * 15 //min //TODO externalize as config param
+    val lifetime = 60 * Settings.cart.lifetime
     val expireDate = DateTime.now.plusSeconds(lifetime)
 
     val uuidData = UuidDataDao.findByUuidAndXtype(uuid, xtype)
