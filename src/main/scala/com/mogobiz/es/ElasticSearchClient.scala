@@ -134,7 +134,7 @@ object ElasticSearchClient extends JsonUtil {
             sourceExclude(createExcludeLang(store, qr.lang) :+ "imported" :_*)
             sort {by field "name" order SortOrder.ASC}
         ).getHits
-        distinctById(r)
+        r
     }
   }
 
