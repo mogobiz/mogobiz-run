@@ -12,7 +12,11 @@ class ProductHandler {
   def queryProductsByCriteria(storeCode: String, productRequest: ProductRequest): JValue = {
     ElasticSearchClient.queryProductsByCriteria(storeCode,productRequest)
   }
-  
+
+  def queryLastProductsByCriteria(storeCode: String, lastProductRequest: LastProductRequest): JValue = {
+    ElasticSearchClient.queryLastProductsByCriteria(storeCode, lastProductRequest)
+  }
+
   def queryProductsByFulltextCriteria(storeCode: String, params: FullTextSearchProductParameters): JValue = {
     ElasticSearchClient.queryProductsByFulltextCriteria(storeCode,params)
   }

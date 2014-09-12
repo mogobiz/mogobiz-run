@@ -1,12 +1,14 @@
 package com.mogobiz.services
 
 import akka.actor.ActorRef
+import com.fasterxml.jackson.databind.deser.std.FromStringDeserializer
 import com.mogobiz.json.Json4sProtocol
 import Json4sProtocol._
-import com.mogobiz.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductRequest, _}
+import com.mogobiz.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductRequest, QueryLastProductRequest, _}
 import com.mogobiz.model._
 import com.mogobiz.vo.MogoError
 import spray.http.StatusCodes
+import spray.httpx.unmarshalling.{Deserializer, MalformedContent}
 import spray.routing.Directives
 
 import scala.concurrent.ExecutionContext
@@ -29,7 +31,8 @@ import scala.concurrent.duration._
         compare ~
         product
     } ~
-      history
+      history ~
+      lastProducts
   }
 
   lazy val history = path("history") {
@@ -45,6 +48,33 @@ import scala.concurrent.duration._
     }
   }
 
+  import LastProduct._
+
+  implicit val String2LastProduct = new Deserializer[String, LastProduct] {
+    def apply(value: String) = value.toLowerCase match {
+      case "lastcreated" | "created" => Right(LastCreated)
+      case "lastupdated" | "updated" => Right(LastUpdated)
+      case x => Left(MalformedContent("'" + x + "' is not a valid Boolean value"))
+    }
+  }
+
+  lazy val lastProducts = path("lastProducts") {
+    get {
+      parameters(
+        'maxItemPerPage.?
+        , 'pageOffset.?
+        , 'lastProduct
+        , 'categoryPath.?
+        , 'lang ? "_all"
+      ).as(LastProductRequest) {
+        params =>
+          val request = QueryLastProductRequest(storeCode, params)
+          complete {
+            (actor ? request).mapTo[JValue]
+          }
+      }
+    }
+  }
 
   lazy val products = pathEnd {
     get {

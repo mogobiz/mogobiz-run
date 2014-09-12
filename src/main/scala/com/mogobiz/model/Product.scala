@@ -2,6 +2,7 @@ package com.mogobiz.model
 
 import java.util.Date
 
+import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.vo.PagingParams
 
 /**
@@ -71,6 +72,10 @@ case class CompareProductParameters(
 case class FeatureValue(value: String)
 case class Feature(indicator: String, label: String, values: List[FeatureValue])
 case class ComparisonResult(ids: List[String],result:List[Feature])
+
+import LastProduct._
+
+case class LastProductRequest(override val maxItemPerPage: Option[Int], override val  pageOffset: Option[Int], lastProduct:LastProduct, categoryPath: Option[String], lang: String) extends PagingParams
 
 case class ProductRequest(
                            override val maxItemPerPage: Option[Int]

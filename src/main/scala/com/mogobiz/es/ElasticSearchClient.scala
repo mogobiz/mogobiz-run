@@ -230,6 +230,9 @@ object ElasticSearchClient extends JsonUtil {
     }
   }
 
+  def queryLastProductsByCriteria(store: String, req: LastProductRequest) : JValue = {
+    ???
+  }
 
   def queryProductsByCriteria(store: String, req: ProductRequest): JValue = {
     val query = req.name match {
