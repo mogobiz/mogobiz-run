@@ -2,7 +2,6 @@ package com.mogobiz.model
 
 import java.util.Date
 
-import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.vo.PagingParams
 
 /**
