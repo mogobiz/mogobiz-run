@@ -52,6 +52,45 @@ class CategorySpec extends MogobizRouteTest {
       }
     }
 
+    "return not hidden categories by brandId" in {
+      Get("/store/" + STORE + "/categories?brandId=35") ~> sealRoute(routes) ~> check {
+        val categories: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
+        categories must have size 1
+        checkCategoryTelevisions(categories(0))
+      }
+    }
+
+    "return not hidden categories by unknown brandId" in {
+      Get("/store/" + STORE + "/categories?brandId=1") ~> sealRoute(routes) ~> check {
+        val categories: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
+        categories must have size 0
+      }
+    }
+
+    "return not hidden categories by categoryPath hightech/televisions" in {
+      Get("/store/" + STORE + "/categories?categoryPath=hightech/televisions") ~> sealRoute(routes) ~> check {
+        val categories: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
+        categories must have size 1
+        checkCategoryTelevisions(categories(0))
+      }
+    }
+
+    "return not hidden categories by categoryPath hightech" in {
+      Get("/store/" + STORE + "/categories?categoryPath=hightech") ~> sealRoute(routes) ~> check {
+        val categories: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
+        categories must have size 2
+        checkCategoryHightech(categories(0))
+        checkCategoryTelevisions(categories(1))
+      }
+    }
+
+    "return not hidden categories by unknown categoryPath" in {
+      Get("/store/" + STORE + "/categories?categoryPath=nimportequoi") ~> sealRoute(routes) ~> check {
+        val categories: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
+        categories must have size 0
+      }
+    }
+
   }
 
   def checkCategoryHightech(category: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
