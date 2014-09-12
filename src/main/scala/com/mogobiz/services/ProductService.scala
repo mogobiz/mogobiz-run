@@ -1,7 +1,6 @@
 package com.mogobiz.services
 
 import akka.actor.ActorRef
-import com.fasterxml.jackson.databind.deser.std.FromStringDeserializer
 import com.mogobiz.json.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductRequest, QueryLastProductRequest, _}
