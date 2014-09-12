@@ -1,9 +1,7 @@
 package com.mogobiz.handlers
 
-import com.mogobiz._
 import com.mogobiz.es.ElasticSearchClient
 import com.mogobiz.model._
-import com.mogobiz.vo.Paging
 import org.json4s.JsonAST.JValue
 
 
@@ -11,10 +9,6 @@ class ProductHandler {
 
   def queryProductsByCriteria(storeCode: String, productRequest: ProductRequest): JValue = {
     ElasticSearchClient.queryProductsByCriteria(storeCode,productRequest)
-  }
-
-  def queryLastProductsByCriteria(storeCode: String, lastProductRequest: LastProductRequest): JValue = {
-    ElasticSearchClient.queryLastProductsByCriteria(storeCode, lastProductRequest)
   }
 
   def queryProductsByFulltextCriteria(storeCode: String, params: FullTextSearchProductParameters): JValue = {

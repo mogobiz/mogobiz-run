@@ -5,6 +5,8 @@ import java.io.File
 import com.typesafe.config.ConfigFactory
 import scalikejdbc.config._
 
+import scala.util.Try
+
 object Settings {
 
   val default = ConfigFactory.load()
@@ -74,6 +76,10 @@ object Settings {
   val EsCluster  = config getString "elastic.cluster"
   val EsFullUrl  = s"$EsHost:$EsHttpPort"
   val EsDebug    = config getBoolean "elastic.debug"
+  val EsEmbedded = {
+    val e = config getString "elastic.embedded"
+    Try(getClass.getResource(e).getPath) getOrElse e
+  }
 
   require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
   require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")

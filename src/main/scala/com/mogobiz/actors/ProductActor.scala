@@ -9,8 +9,6 @@ object ProductActor {
 
   case class QueryProductRequest(storeCode: String, params: ProductRequest)
 
-  case class QueryLastProductRequest(storeCode: String, params: LastProductRequest)
-
   case class QueryFindProductRequest(storeCode: String, params: FullTextSearchProductParameters)
 
   case class QueryCompareProductRequest(storeCode: String, params: CompareProductParameters)
@@ -34,9 +32,6 @@ class ProductActor extends Actor {
   def receive = {
     case q: QueryProductRequest =>
       sender ! productHandler.queryProductsByCriteria(q.storeCode, q.params)
-
-    case q: QueryLastProductRequest =>
-      sender ! productHandler.queryLastProductsByCriteria(q.storeCode, q.params)
 
     case q: QueryFindProductRequest =>
       sender ! productHandler.queryProductsByFulltextCriteria(q.storeCode, q.params)

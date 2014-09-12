@@ -1,6 +1,6 @@
 package com.mogobiz.es
 
-import java.io.IOException
+import java.io.{File, IOException}
 
 import com.mogobiz.config.Settings._
 import com.typesafe.scalalogging.slf4j.Logger
@@ -52,8 +52,8 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
     })
 
     var settings : ImmutableSettings.Builder = ImmutableSettings.settingsBuilder()
-    val t =  getClass.getResource("/es/data").getPath
-    settings = settings.put("path.data", t).put("script.disable_dynamic", false)
+    new File(EsEmbedded).mkdirs()
+    settings = settings.put("path.data", EsEmbedded).put("script.disable_dynamic", false)
 
     val esNode: Node = NodeBuilder.nodeBuilder().local(false).clusterName(EsCluster).settings(settings).node()
 
