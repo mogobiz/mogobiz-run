@@ -6,7 +6,7 @@ assemblySettings
 
 jarName in assembly := "mogobiz-run.jar"
 
-mainClass in assembly := Some("com.mogobiz.Boot")
+mainClass in assembly := Some("com.mogobiz.Rest")
 
 test in assembly := {}
 
