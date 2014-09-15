@@ -13,6 +13,7 @@ import scala.concurrent.duration._
 import org.json4s.JsonAST.{JArray, JValue}
 
 /**
+ *
  * Created by yoannbaudy on 11/09/14.
  */
 abstract class MogobizRouteTest extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode with JsonUtil with NoTimeConversions {
@@ -23,7 +24,7 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
 
   sequential
 
-  step(start)
+  step(start())
 
   def checkJArray(j: JValue) : List[JValue] = j match {
     case JArray(a) => a
