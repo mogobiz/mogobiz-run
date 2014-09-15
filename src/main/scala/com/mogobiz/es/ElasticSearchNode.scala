@@ -80,11 +80,9 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       ImmutableSettings.settingsBuilder().put("path.data", tmpdir).put("script.disable_dynamic", false)
     ).node()
 
-    val self = this
-
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run() : Unit = {
-        if(!node.isClosed()){
+        if(!node.isClosed){
           node.close()
           logger.info("ES is stopped.")
         }
