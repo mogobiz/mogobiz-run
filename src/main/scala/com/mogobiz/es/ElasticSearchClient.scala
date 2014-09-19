@@ -70,7 +70,7 @@ object ElasticSearchClient extends JsonUtil {
   }
 
   def getPreferences(store: String, uuid: String): Prefs = {
-    EsClient.load[Prefs](_store=prefsIndex(store), _uuid=uuid) match {
+    EsClient.load[Prefs](store=prefsIndex(store), uuid=uuid) match {
       case Some(s) => s
       case None => Prefs(10)
     }
