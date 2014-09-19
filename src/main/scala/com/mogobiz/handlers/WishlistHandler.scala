@@ -26,10 +26,9 @@ class WishlistHandler {
     else {
       val res = wishlistList.copy(wishlists = wishlistList.wishlists :+ wishlist.copy(items = wishlist.items :+ item))
       EsClient.index[WishlistList](esStore(store), res)
-      Success()
+      Success(())
     }
   }
-
   def removeItem(store: String, wishlistListId: String, wishlistId: String, itemUuid: String, owneremail: String): String = {
     val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw new Exception(s"Unknown wishlistList $wishlistListId"))
     if (owneremail != wishlistList.owner.email)
@@ -69,7 +68,7 @@ class WishlistHandler {
     if (wishlistList.wishlists.exists(_.name == wishlist.name))
       Failure(new DuplicateException(s"${wishlist.name}"))
     EsClient.index[WishlistList](esStore(store), wishlistList.copy(wishlists = wishlistList.wishlists :+ wishlist.copy(token = newUUID)))
-    Success()
+    Success(())
   }
 
   def removeWishlist(store: String, wishlistListId: String, wishlistId: String, owneremail: String): Unit = {
@@ -80,7 +79,7 @@ class WishlistHandler {
     EsClient.index[WishlistList](esStore(store), res)
   }
 
-  def wishlistList(store: String, owner: WishlistOwner): WishlistList = {
+  def getWishlistList(store: String, owner: WishlistOwner): WishlistList = {
     val req = search in esStore(store) -> "WishlistList" filter {
       termFilter("owner.email", owner.email)
     }
