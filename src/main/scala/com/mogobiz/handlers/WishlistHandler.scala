@@ -68,7 +68,7 @@ class WishlistHandler {
     val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw new Exception(s"Unknown wishlistList $wishlistListId"))
     if (wishlistList.wishlists.exists(_.name == wishlist.name))
       Failure(new DuplicateException(s"${wishlist.name}"))
-    EsClient.index[WishlistList](esStore(store), wishlistList.copy(wishlists = wishlistList.wishlists :+ wishlist))
+    EsClient.index[WishlistList](esStore(store), wishlistList.copy(wishlists = wishlistList.wishlists :+ wishlist.copy(token = newUUID)))
     Success()
   }
 
@@ -96,14 +96,14 @@ class WishlistHandler {
     if (ownerEmail != wishlistList.owner.email)
       throw new Exception("Not Authorized")
     val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw new Exception(s"Invalid wishlist uuid $wishlist"))
-    s"$store--$wishlistId"
+    s"$store--${wishlist.token}"
   }
 
-  def getWishlistByKey(token: String): Option[Wishlist] = {
+  def getWishlistByToken(token: String): Option[Wishlist] = {
     val tokens = token.split("--")
     val (store, wishlist) = (tokens(0), tokens(1))
     val req = search in esStore(store) -> "WishlistList" filter {
-      termFilter("wishlists.uuid", wishlist)
+      termFilter("wishlists.token", wishlist)
     }
     EsClient.search[WishlistList](req) flatMap {
       _.wishlists.find(_.uuid == wishlist)

@@ -1,7 +1,8 @@
 package com.mogobiz.model
 
-
 import java.util.{Calendar, Date}
+
+import com.mogobiz.utils.GlobalUtil._
 
 
 object WishlistVisibility extends Enumeration {
@@ -27,6 +28,7 @@ case class Wishlist(uuid: String,
                     name: String,
                     visibility: WishlistVisibility,
                     default: Boolean,
+                    token: String = null,
                     ideas: List[WishIdea] = List(),
                     items: List[WishItem] = List(),
                     var dateCreated: Date = Calendar.getInstance().getTime,
