@@ -95,7 +95,7 @@ class WishlistHandler {
     val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw new Exception(s"Unknown wishlistList $wishlistListId"))
     if (ownerEmail != wishlistList.owner.email)
       throw new Exception("Not Authorized")
-    val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw new Exception(s"Invalid wishlist uuid $wishlist"))
+    val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw new Exception(s"Invalid wishlist uuid $wishlistId"))
     s"$store--${wishlist.token}"
   }
 
