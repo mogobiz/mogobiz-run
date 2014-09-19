@@ -521,12 +521,12 @@ object ElasticSearchClient extends JsonUtil {
     val highlightedFields = fieldNames.foldLeft(List[String]())((A,B) => A ::: getHighlightedFieldsAsList(store, B, params.lang))
     val req =
       if(params.highlight){
-        esearch4s in store types(List("product", "category", "brand"):_*) highlighting {
+        esearch4s in store types(List("product", "category", "brand", "tag"):_*) highlighting {
           (fieldNames ::: highlightedFields).map(highlight):_*
         }
       }
       else{
-        esearch4s in store types(List("product", "category", "brand"):_*)
+        esearch4s in store types(List("product", "category", "brand", "tag"):_*)
       }
 
     val json:JValue = EsClient.searchAllRaw(req query {params.query} fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*))
