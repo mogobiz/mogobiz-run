@@ -35,17 +35,17 @@ object EsClient {
     var dateCreated: Date
   }
 
-  def index[T: Manifest](_store: String = EsIndex, t: T): String = {
+  def index[T: Manifest](store: String = EsIndex, t: T): String = {
     val js = JacksonConverter.serialize(t)
-    val req = esindex4s into(_store, manifest[T].runtimeClass.getSimpleName.toLowerCase) doc new DocumentSource {
+    val req = esindex4s into(store, manifest[T].runtimeClass.getSimpleName.toLowerCase) doc new DocumentSource {
       override val json: String = js
     }
     val res = EsClient().execute(req)
     res.getId
   }
 
-  def load[T: Manifest](_store: String = EsIndex, _uuid: String): Option[T] = {
-    val req = get id _uuid from _store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
+  def load[T: Manifest](store: String = EsIndex, uuid: String): Option[T] = {
+    val req = get id uuid from store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
     val res = EsClient().execute(req)
     if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
   }

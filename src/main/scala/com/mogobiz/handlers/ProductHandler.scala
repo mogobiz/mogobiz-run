@@ -43,8 +43,8 @@ class ProductHandler {
     ElasticSearchClient.getComments(storeCode, productId, req)
   }
 
-  def getProductHistory(storeCode: String, req: VisitorHistoryRequest, uuid: String): List[JValue] = {
-    val ids = ElasticSearchClient.getProductHistory(storeCode, uuid)
+  def getProductHistory(storeCode: String, req: VisitorHistoryRequest, sessionId: String): List[JValue] = {
+    val ids = ElasticSearchClient.getProductHistory(storeCode, sessionId)
     if (ids.isEmpty) List() else ElasticSearchClient.getProductsByIds(
       storeCode, ids, ProductDetailsRequest(historize = false, None, req.currency, req.country, req.lang)
     )

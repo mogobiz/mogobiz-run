@@ -8,7 +8,6 @@ object CategoryActor {
 
   case class QueryCategoryRequest(storeCode: String, hidden: Boolean, parentId: Option[String], brandId: Option[String], categoryPath: Option[String], lang: String)
 
-
 }
 
 class CategoryActor extends Actor {
