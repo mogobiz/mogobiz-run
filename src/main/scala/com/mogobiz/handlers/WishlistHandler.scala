@@ -91,12 +91,15 @@ class WishlistHandler {
     }
   }
 
-  def shareByEmail(store: String, wishlistListId: String, wishlistId: String, ownerEmail: String, subject:String, body:String): Unit = {
-    val token = s"$store--$wishlistId"
-    // TODO
+  def getWishlistToken(store: String, wishlistListId: String, wishlistId: String, ownerEmail: String): String = {
+    val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw new Exception(s"Unknown wishlistList $wishlistListId"))
+    if (ownerEmail != wishlistList.owner.email)
+      throw new Exception("Not Authorized")
+    val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw new Exception(s"Invalid wishlist uuid $wishlist"))
+    s"$store--$wishlistId"
   }
 
-  def wishlist(token:String): Option[Wishlist] = {
+  def getWishlistByKey(token: String): Option[Wishlist] = {
     val tokens = token.split("--")
     val (store, wishlist) = (tokens(0), tokens(1))
     val req = search in esStore(store) -> "WishlistList" filter {
