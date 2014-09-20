@@ -61,7 +61,8 @@ case class FullTextSearchProductParameters(
                                             , _currency: Option[String]
                                             , _country: Option[String]
                                             , query: String
-                                            , highlight: Boolean) extends CommonProductParameters(_lang, _currency, _country)
+                                            , highlight: Boolean
+                                            , categoryPath: Option[String]) extends CommonProductParameters(_lang, _currency, _country)
 
 case class CompareProductParameters(
                                      _lang: String

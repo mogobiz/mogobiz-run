@@ -515,17 +515,30 @@ object ElasticSearchClient extends JsonUtil {
    * @return a list of products
    */
   def queryProductsByFulltextCriteria(store: String, params: FullTextSearchProductParameters): JValue = {
-    val fieldNames = List("name", "description", "descriptionAsText", "keywords")
+    val fieldNames = List("name", "description", "descriptionAsText", "keywords", "path", "category.path")
     val fields:List[String] = fieldNames.foldLeft(List[String]())((A,B) => A ::: getIncludedFieldWithPrefixAsList(store, "", B, params._lang))
     val includedFields:List[String] = List("id") ::: (if(params.highlight) List.empty else {fieldNames:::fields})
     val highlightedFields:List[String] = fieldNames.foldLeft(List[String]())((A,B) => A ::: getHighlightedFieldsAsList(store, B, params.lang))
 
+    val filters:List[FilterDefinition] = List(createTermFilter("path", params.categoryPath)).flatten
+
     val req = esearch4s in store types(List("product", "category", "brand", "tag"):_*)
+
     if(params.highlight){
       req highlighting((fieldNames ::: highlightedFields).map(s => highlight(s)):_*)
     }
 
-    val json:JValue = EsClient.searchAllRaw(req query {params.query} fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*))
+    if(filters.nonEmpty){
+      if(filters.size > 1)
+        req query {params.query} query {filteredQuery query {params.query} filter {and(filters: _*)}}
+      else
+        req query {params.query} query {filteredQuery query {params.query} filter filters(0)}
+    }
+    else{
+      req query {params.query}
+    }
+
+    val json:JValue = EsClient.searchAllRaw(req fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*))
 
     val hits = json \ "hits"
 
