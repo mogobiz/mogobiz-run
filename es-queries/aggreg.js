@@ -65,3 +65,20 @@ curl -POST http://localhost:9200/mogobiz/product/_search
     }
 }
 }
+
+
+//requete d'aggregation pour critere de notation
+
+curl -POST http://localhost:9200/mogobiz_comment/_search
+{
+    "aggregations": {
+    "per_notation": {
+        "terms": {
+            "field": "notation",
+                "order": {
+                "_term": "desc"
+            }
+        }
+    }
+}
+}
