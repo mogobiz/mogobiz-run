@@ -46,9 +46,8 @@ trait MogobizRoutes extends Directives {
       new CategoryService(storeCode, categoryActor).route ~
       new ProductService(storeCode, uuid, productActor).route ~
       new PreferenceService(storeCode, uuid, preferenceActor).route ~
-      new CartService(storeCode, uuid, cartActor).route
-
-
+      new CartService(storeCode, uuid, cartActor).route ~
+      new PromotionService(storeCode, promotionActor).route
   }
 
 

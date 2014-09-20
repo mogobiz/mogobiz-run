@@ -106,6 +106,10 @@ object ElasticSearchClient extends JsonUtil {
     )
   }
 
+  def queryPromotions(store: String, qr: PromotionRequest): JValue = {
+    ???
+  }
+
   /**
    * Effectue la recheche de brands dans ES
    * @param store code store
