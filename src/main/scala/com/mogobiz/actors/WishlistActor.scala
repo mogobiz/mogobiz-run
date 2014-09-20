@@ -38,7 +38,7 @@ class WishlistActor extends Actor {
     case r: RemoveItemRequest =>
       sender ! Try(wishlistHandler.removeItem(r.store, r.wishlistListId, r.wishlistId, r.itemUuid, r.owneremail))
     case a: AddIdeaRequest =>
-      sender ! wishlistHandler.addItem(a.store, a.wishlistListId, a.wishlistId, a.idea, a.owneremail)
+      sender ! wishlistHandler.addIdea(a.store, a.wishlistListId, a.wishlistId, a.idea, a.owneremail)
     case r: RemoveIdeaRequest =>
       sender ! Try(wishlistHandler.removeItem(r.store, r.wishlistListId, r.wishlistId, r.ideaUuid, r.owneremail))
     case s :SetOwnerInfoRequest =>
