@@ -520,9 +520,9 @@ object ElasticSearchClient extends JsonUtil {
     val includedFields:List[String] = List("id") ::: (if(params.highlight) List.empty else {fieldNames:::fields})
     val highlightedFields:List[String] = fieldNames.foldLeft(List[String]())((A,B) => A ::: getHighlightedFieldsAsList(store, B, params.lang))
 
-    val filters:List[FilterDefinition] = List(createOrTermFilter(List("category.path", "path"), params.categoryPath)).flatten
+    val filters:List[FilterDefinition] = List(createOrTermAndTypeFilter(List(TypeField("product","category.path"), TypeField("category","path")), params.categoryPath)).flatten
 
-    val req = esearch4s in store types(List("category", "product", "brand", "tag"):_*)
+    val req = esearch4s in store /*FIXME*/types(List("category", "product", "brand", "tag"):_*)
 
     if(params.highlight){
       req highlighting((fieldNames ::: highlightedFields).map(s => highlight(s)):_*)
@@ -806,11 +806,11 @@ object ElasticSearchClient extends JsonUtil {
     }
     else req
 
-  private def createOrTermFilter(_fields:List[String], value:Option[Any]) : Option[FilterDefinition] = {
+  private def createOrTermAndTypeFilter(typeFields:List[TypeField], value:Option[Any]) : Option[FilterDefinition] = {
     value match{
       case Some(s) => Some(
         or(
-          _fields.map(field => termFilter(field, s)):_*
+          typeFields.map(typeField => and(typeFilter(typeField.`type`), termFilter(typeField.field, s)) ):_*
         )
       )
       case None => None
@@ -864,4 +864,5 @@ object ElasticSearchClient extends JsonUtil {
     List.empty
   }
 
+  private case class TypeField(`type`:String, field:String)
 }
