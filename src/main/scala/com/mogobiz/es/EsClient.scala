@@ -35,7 +35,7 @@ object EsClient {
     var dateCreated: Date
   }
 
-  def index[T: Manifest](store: String = EsIndex, t: T): String = {
+  def index[T: Manifest](store: String, t: T): String = {
     val js = JacksonConverter.serialize(t)
     val req = esindex4s into(store, manifest[T].runtimeClass.getSimpleName.toLowerCase) doc new DocumentSource {
       override val json: String = js
@@ -44,7 +44,7 @@ object EsClient {
     res.getId
   }
 
-  def load[T: Manifest](store: String = EsIndex, uuid: String): Option[T] = {
+  def load[T: Manifest](store: String, uuid: String): Option[T] = {
     val req = get id uuid from store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
     val res = EsClient().execute(req)
     if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
@@ -59,24 +59,24 @@ object EsClient {
     EsClient().execute(req).getResponses
   }
 
-  def loadWithVersion[T: Manifest](uuid: String): Option[(T, Long)] = {
-    val req = get id uuid from EsIndex -> manifest[T].runtimeClass.getSimpleName
+  def loadWithVersion[T: Manifest](store: String, uuid: String): Option[(T, Long)] = {
+    val req = get id uuid from store -> manifest[T].runtimeClass.getSimpleName
     val res = EsClient().execute(req)
     val maybeT = if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
     maybeT map ((_, res.getVersion))
   }
 
-  def delete[T: Manifest](uuid: String, refresh: Boolean = false): Boolean = {
-    val req = esdelete4s id uuid from EsIndex -> manifest[T].runtimeClass.getSimpleName refresh refresh
+  def delete[T: Manifest](store: String, uuid: String, refresh: Boolean = false): Boolean = {
+    val req = esdelete4s id uuid from store -> manifest[T].runtimeClass.getSimpleName refresh refresh
     val res = EsClient().execute(req)
     res.isFound
   }
 
-  def update[T <: Timestamped : Manifest](t: T, upsert: Boolean = true, refresh: Boolean = false): Boolean = {
+  def update[T <: Timestamped : Manifest](store: String, t: T, upsert: Boolean = true, refresh: Boolean = false): Boolean = {
     val now = Calendar.getInstance().getTime
     t.lastUpdated = now
     val js = JacksonConverter.serialize(t)
-    val req = esupdate4s id t.uuid in EsIndex -> manifest[T].runtimeClass.getSimpleName refresh refresh doc new DocumentSource {
+    val req = esupdate4s id t.uuid in store -> manifest[T].runtimeClass.getSimpleName refresh refresh doc new DocumentSource {
       override val json: String = js
     }
     req.docAsUpsert(upsert)
@@ -84,11 +84,11 @@ object EsClient {
     res.isCreated
   }
 
-  def update[T <: Timestamped : Manifest](t: T, version: Long): Boolean = {
+  def update[T <: Timestamped : Manifest](store: String, t: T, version: Long): Boolean = {
     val now = Calendar.getInstance().getTime
     t.lastUpdated = now
     val js = JacksonConverter.serialize(t)
-    val req = esupdate4s id t.uuid in EsIndex -> manifest[T].runtimeClass.getSimpleName version version doc new DocumentSource {
+    val req = esupdate4s id t.uuid in store -> manifest[T].runtimeClass.getSimpleName version version doc new DocumentSource {
       override def json: String = js
     }
     val res = EsClient().execute(req)

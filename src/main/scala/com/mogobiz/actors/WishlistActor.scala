@@ -3,7 +3,7 @@ package com.mogobiz.actors
 import akka.actor.Actor
 import com.mogobiz.actors.WishlistActor._
 import com.mogobiz.config.HandlersConfig._
-import com.mogobiz.model.{Wishlist, WishIdea, WishItem, WishlistOwner}
+import com.mogobiz.model.{WishIdea, WishItem, Wishlist, WishlistOwner}
 
 import scala.util.Try
 
@@ -27,6 +27,8 @@ object WishlistActor {
 
   case class GetWishlistTokenRequest(store: String, wishlistListId: String, wishlistId: String, ownerEmail: String)
 
+  case class SetDefaultWishlistRequest(store: String, wishlistListId: String, wishlistId: String, ownerEmail: String)
+
   case class GetWishlistByTokenRequest(token: String)
 
 }
@@ -38,12 +40,12 @@ class WishlistActor extends Actor {
     case r: RemoveItemRequest =>
       sender ! Try(wishlistHandler.removeItem(r.store, r.wishlistListId, r.wishlistId, r.itemUuid, r.owneremail))
     case a: AddIdeaRequest =>
-      sender ! wishlistHandler.addItem(a.store, a.wishlistListId, a.wishlistId, a.idea, a.owneremail)
+      sender ! wishlistHandler.addIdea(a.store, a.wishlistListId, a.wishlistId, a.idea, a.owneremail)
     case r: RemoveIdeaRequest =>
       sender ! Try(wishlistHandler.removeItem(r.store, r.wishlistListId, r.wishlistId, r.ideaUuid, r.owneremail))
-    case s :SetOwnerInfoRequest =>
+    case s: SetOwnerInfoRequest =>
       sender ! Try(wishlistHandler.setOwnerInfo(s.store, s.wishlistListId, s.owner))
-    case a : AddWishlistRequest =>
+    case a: AddWishlistRequest =>
       sender ! Try(wishlistHandler.addWishlist(a.store, a.wishlistListId, a.wishlist, a.owner))
     case r: RemoveWishlistRequest =>
       sender ! Try(wishlistHandler.removeWishlist(r.store, r.wishlistListId, r.wishlistId, r.owneremail))
@@ -53,5 +55,7 @@ class WishlistActor extends Actor {
       sender ! Try(wishlistHandler.getWishlistToken(g.store, g.wishlistListId, g.wishlistId, g.ownerEmail))
     case g: GetWishlistByTokenRequest =>
       sender ! Try(wishlistHandler.getWishlistByToken(g.token))
+    case s: SetDefaultWishlistRequest =>
+      sender ! Try(wishlistHandler.setDefaultWishlist(s.store, s.wishlistListId, s.wishlistId, s.ownerEmail))
   }
 }
