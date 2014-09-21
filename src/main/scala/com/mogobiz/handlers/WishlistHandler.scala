@@ -138,12 +138,6 @@ class WishlistHandler {
   }
 
   def getWishlistList(store: String, owner_email: String): WishlistList = {
-    val req1 = search in esStore(store) types "wishlistlist" limit 1 from 0 filter {
-      nestedFilter("owner") query {
-        termQuery("owner.email", owner_email)
-      }
-    }
-
     val req = search in esStore(store) types "wishlistlist" query {
       filteredQuery query {
         matchall
@@ -177,8 +171,14 @@ class WishlistHandler {
   def getWishlistByToken(token: String): Option[Wishlist] = {
     val tokens = token.split("--")
     val (store, wishlist) = (tokens(0), tokens(1))
-    val req = search in esStore(store) -> "wishlistlist" filter {
-      termFilter("wishlists.token", wishlist)
+    val req = search in esStore(store) types "wishlistlist" query {
+      filteredQuery query {
+        matchall
+      } filter {
+        nestedFilter("wishlists") filter {
+          termFilter("token", wishlist)
+        }
+      }
     }
     EsClient.search[WishlistList](req) flatMap {
       _.wishlists.find(_.uuid == wishlist)
@@ -200,7 +200,6 @@ object RunApp extends App {
   service.setOwnerInfo(Store, wll.uuid, WishlistOwner("hayssam@saleh.fr", Some("Hayssam Saleh"), Some(15), Some(9), Some("Qui suis-je ?")))
   service.addWishlist(Store, wll.uuid, Wishlist(name = "Ma deuxième liste"), wll.owner.email)
 
-  val wll = service.getWishlistList(Store, "hayssam@saleh.fr")
   service.removeIdea(Store, wll.uuid, wll.wishlists.head.uuid, wll.wishlists.head.ideas.head.uuid, "hayssam@saleh.fr")
   service.removeItem(Store, wll.uuid, wll.wishlists.head.uuid, wll.wishlists.head.items.head.uuid, "hayssam@saleh.fr")
   service.removeWishlist(Store, wll.uuid, wll.wishlists.head.uuid, "hayssam@saleh.fr")
