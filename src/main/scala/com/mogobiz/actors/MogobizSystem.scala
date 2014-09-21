@@ -2,6 +2,7 @@ package com.mogobiz.actors
 
 import akka.actor.{ActorSystem, Props}
 import com.mogobiz.mail.EmailService
+import com.mogobiz.jobs._
 
 /**
   * Core is type containing the ``system: ActorSystem`` member. This enables us to use it in our
@@ -47,5 +48,8 @@ trait MogobizActors {
 
   //init the email service with the system Actor
   EmailService(system,"emailService")
+
+  //init jobs
+  CleanCartJob.start(system)
 }
 

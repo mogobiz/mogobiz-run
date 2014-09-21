@@ -48,6 +48,13 @@ object CartBoService extends BoService {
       }
     }
 
+  def cleanExpiredCart : Unit = {
+    uuidService.getExpired.map{ c =>
+      incrementProductsStock(c)
+      uuidService.removeCart(c)
+    }
+  }
+
   def addError(errors:CartErrors,key:String,msg:String,parameters:Seq[Any],locale:Locale):CartErrors={
     errors+(key+"."+msg -> parameters)
   }
@@ -324,6 +331,13 @@ object CartBoService extends BoService {
     updatedCart
   }
 
+  private def incrementProductsStock(c:CartVO): Unit = {
+    c.cartItemVOs.foreach { cartItem =>
+      val sku = TicketType.get(cartItem.skuId)
+      productService.increment(sku, cartItem.quantity, cartItem.startDate)
+    }
+  }
+
   @throws[ClearCartException]
   def clear(locale:Locale, currencyCode:String, cartVO:CartVO ) : CartVO = {
     val errors:CartErrors = Map()
@@ -334,12 +348,7 @@ object CartBoService extends BoService {
       throw new ClearCartException(errors)
     }
 
-
-    cartVO.cartItemVOs.foreach { cartItem =>
-      val sku = TicketType.get(cartItem.skuId)
-      productService.increment(sku, cartItem.quantity, cartItem.startDate)
-    }
-    //TODO ??? uuidDataService.removeCart(); not implemented in iper
+    incrementProductsStock(cartVO)
 
     val updatedCart = new CartVO(uuid=cartVO.uuid)
     uuidService.setCart(updatedCart)

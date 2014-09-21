@@ -2,7 +2,6 @@ package com.mogobiz.handlers
 
 import java.util.Locale
 
-import com.mogobiz._
 import com.mogobiz.cart._
 import com.mogobiz.es.ElasticSearchClient
 import com.mogobiz.model._
@@ -69,6 +68,9 @@ class CartHandler {
           "errors" -> e.getErrors(locale)
         )
         response
+      case t: Throwable =>
+        t.printStackTrace()
+        throw t
     }
   }
 
@@ -280,6 +282,11 @@ class CartHandler {
         )
         response
     }
+  }
+
+  def cleanup(): Unit ={
+    //println("cleanup cart")
+    cartService.cleanExpiredCart
   }
 
 }
