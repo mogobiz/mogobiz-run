@@ -16,18 +16,18 @@ object WishlistVisibility extends Enumeration {
 
 import com.mogobiz.model.WishlistVisibility._
 
-case class WishIdea(uuid: String, idea: String)
+case class WishIdea(uuid: String, name: String)
 
-case class WishBrand(uuid: String, brand: String)
+case class WishBrand(uuid: String, name: String)
 
-case class WishCategory(uuid: String, category: String)
+case class WishCategory(uuid: String, name: String)
 
 case class WishItem(uuid: String, name: String, product: String)
 
 case class WishlistOwner(email: String, name: Option[String] = None, dayOfBirth: Option[Int] = None, monthOfBirth: Option[Int] = None, description: Option[String] = None)
 
-case class Wishlist(name: String,
-                    uuid: String = newUUID,
+case class Wishlist(uuid: String = newUUID,
+                    name: String,
                     visibility: WishlistVisibility = WishlistVisibility.PRIVATE,
                     default: Boolean = false,
                     token: String = null,

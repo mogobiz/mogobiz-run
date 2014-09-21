@@ -23,7 +23,7 @@ object WishlistActor {
 
   case class RemoveWishlistRequest(store: String, wishlistListId: String, wishlistId: String, owneremail: String)
 
-  case class GetWishlistListRequest(store: String, owner: WishlistOwner)
+  case class GetWishlistListRequest(store: String, owner_email: String)
 
   case class GetWishlistTokenRequest(store: String, wishlistListId: String, wishlistId: String, ownerEmail: String)
 
@@ -36,7 +36,7 @@ object WishlistActor {
 class WishlistActor extends Actor {
   def receive = {
     case a: AddItemRequest =>
-      sender ! wishlistHandler.addItem(a.store, a.wishlistListId, a.wishlistId, a.item, a.owneremail)
+      sender ! Try(wishlistHandler.addItem(a.store, a.wishlistListId, a.wishlistId, a.item, a.owneremail))
     case r: RemoveItemRequest =>
       sender ! Try(wishlistHandler.removeItem(r.store, r.wishlistListId, r.wishlistId, r.itemUuid, r.owneremail))
     case a: AddIdeaRequest =>
@@ -50,7 +50,7 @@ class WishlistActor extends Actor {
     case r: RemoveWishlistRequest =>
       sender ! Try(wishlistHandler.removeWishlist(r.store, r.wishlistListId, r.wishlistId, r.owneremail))
     case g: GetWishlistListRequest =>
-      sender ! Try(wishlistHandler.getWishlistList(g.store, g.owner))
+      sender ! Try(wishlistHandler.getWishlistList(g.store, g.owner_email))
     case g: GetWishlistTokenRequest =>
       sender ! Try(wishlistHandler.getWishlistToken(g.store, g.wishlistListId, g.wishlistId, g.ownerEmail))
     case g: GetWishlistByTokenRequest =>
