@@ -4,6 +4,7 @@ import java.util.Calendar
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.model._
+import com.mogobiz.utils.DuplicateException
 import com.mogobiz.utils.GlobalUtil._
 import com.sksamuel.elastic4s.ElasticDsl._
 
@@ -155,4 +156,5 @@ class WishlistHandler {
   }
 }
 
-case class DuplicateException(message: String) extends Exception
+
+
