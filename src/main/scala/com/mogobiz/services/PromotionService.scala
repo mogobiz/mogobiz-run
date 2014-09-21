@@ -3,7 +3,7 @@ package com.mogobiz.services
 import akka.actor.ActorRef
 import com.mogobiz.actors.PromotionActor.QueryPromotionRequest
 import com.mogobiz.json.Json4sProtocol._
-import com.mogobiz.model.PromotionRequest
+import com.mogobiz.model.Promotion._
 import org.json4s._
 import spray.routing.Directives
 
@@ -26,9 +26,13 @@ import scala.concurrent.duration._
 
   lazy val promotions = pathEnd {
     get {
-      parameters(        'maxItemPerPage.?
-        , 'pageOffset.?, 'orderBy.?,
-      'categoryPath.?, 'lang ? "_all").as(PromotionRequest) {
+      parameters(
+        'maxItemPerPage.?
+        , 'pageOffset.?
+        , 'orderBy.?
+        , 'orderDirection.?
+        , 'categoryPath.?
+        , 'lang ? "_all").as(PromotionRequest) {
         params =>
           val request = QueryPromotionRequest(storeCode, params)
           complete {

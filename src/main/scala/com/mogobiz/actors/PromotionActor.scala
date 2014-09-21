@@ -3,7 +3,7 @@ package com.mogobiz.actors
 import akka.actor.Actor
 import com.mogobiz.config.HandlersConfig._
 import PromotionActor._
-import com.mogobiz.model.PromotionRequest
+import com.mogobiz.model.Promotion._
 
 /**
  *
