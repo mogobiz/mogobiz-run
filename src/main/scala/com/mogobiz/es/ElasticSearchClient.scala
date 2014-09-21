@@ -6,6 +6,7 @@ import java.util.{Calendar, Date, Locale}
 import com.mogobiz.es.EsClient._
 import com.mogobiz.json.JsonUtil
 import com.mogobiz.model
+import com.mogobiz.model.Promotion._
 import com.mogobiz.model._
 import com.mogobiz.services.RateBoService
 import com.mogobiz.utils.JacksonConverter
@@ -106,8 +107,30 @@ object ElasticSearchClient extends JsonUtil {
     )
   }
 
-  def queryPromotions(store: String, qr: PromotionRequest): JValue = {
-    ???
+  def queryPromotions(store: String, req: PromotionRequest): JValue = {
+    val query = esearch4s in store -> "coupon"
+    val _size: Int = req.maxItemPerPage.getOrElse(100)
+    val _from: Int = req.pageOffset.getOrElse(0) * _size
+    val _sort = req.orderBy.getOrElse("startDate")
+    val _sortOrder = req.orderDirection.getOrElse("asc")
+    //val now = new SimpleDateFormat("yyyy-MM-dd").format(new Date())
+    val filters:List[FilterDefinition] = List(
+      termFilter("anonymous", true),
+      termFilter("active", true)
+      /*,
+      rangeFilter("startDate") lte now,
+      rangeFilter("endDate") gte now
+      */
+    )
+    val response:SearchHits = EsClient.searchAllRaw(
+      filterRequest(query, filters)
+        from _from
+        size _size
+        sort {
+        by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
+      }
+    )
+    Paging.wrap(response.getTotalHits.toInt, response.getHits, req)
   }
 
   /**
