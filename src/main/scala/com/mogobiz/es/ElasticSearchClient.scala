@@ -162,6 +162,7 @@ object ElasticSearchClient extends JsonUtil {
       case Some(s) =>
         val req = esearch4s in store -> "product"
         filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
+        if(qr.promotionId.isDefined) filters +:= createTermFilter("category.coupons", qr.promotionId).get
         if(!qr.hidden) filters :+= termFilter("brand.hide", "false")
         val r : JArray = EsClient.searchAllRaw(
           filterRequest(req, filters)

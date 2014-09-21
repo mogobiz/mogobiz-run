@@ -26,9 +26,9 @@ import scala.concurrent.duration._
 
   lazy val brands = pathEnd {
     get {
-      parameters('hidden ? false, 'categoryPath.?, 'lang ? "_all") {
-        (hidden, categoryPath, lang) =>
-          val request = QueryBrandRequest(storeCode, hidden, categoryPath, lang)
+      parameters('hidden ? false, 'categoryPath.?, 'lang ? "_all", 'promotionId.?) {
+        (hidden, categoryPath, lang, promotionId) =>
+          val request = QueryBrandRequest(storeCode, hidden, categoryPath, lang, promotionId)
           complete {
             (actor ? request).mapTo[JValue]
           }
