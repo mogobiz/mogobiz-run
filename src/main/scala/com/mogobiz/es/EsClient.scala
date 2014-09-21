@@ -44,6 +44,20 @@ object EsClient {
     res.getId
   }
 
+  def indexTimestamped[T <: Timestamped : Manifest](store: String, t: T, refresh: Boolean = false): String = {
+    val now = Calendar.getInstance().getTime
+    t.lastUpdated = now
+    t.dateCreated = now
+    val json = JacksonConverter.serialize(t)
+    val res = client.client.prepareIndex(store, manifest[T].runtimeClass.getSimpleName.toLowerCase, t.uuid)
+      .setSource(json)
+      .setRefresh(refresh)
+      .execute()
+      .actionGet()
+    res.getId
+  }
+
+
   def load[T: Manifest](store: String, uuid: String): Option[T] = {
     val req = get id uuid from store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
     val res = EsClient().execute(req)
@@ -60,14 +74,14 @@ object EsClient {
   }
 
   def loadWithVersion[T: Manifest](store: String, uuid: String): Option[(T, Long)] = {
-    val req = get id uuid from store -> manifest[T].runtimeClass.getSimpleName
+    val req = get id uuid from store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
     val res = EsClient().execute(req)
     val maybeT = if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
     maybeT map ((_, res.getVersion))
   }
 
   def delete[T: Manifest](store: String, uuid: String, refresh: Boolean = false): Boolean = {
-    val req = esdelete4s id uuid from store -> manifest[T].runtimeClass.getSimpleName refresh refresh
+    val req = esdelete4s id uuid from store -> manifest[T].runtimeClass.getSimpleName.toLowerCase refresh refresh
     val res = EsClient().execute(req)
     res.isFound
   }
@@ -76,7 +90,7 @@ object EsClient {
     val now = Calendar.getInstance().getTime
     t.lastUpdated = now
     val js = JacksonConverter.serialize(t)
-    val req = esupdate4s id t.uuid in store -> manifest[T].runtimeClass.getSimpleName refresh refresh doc new DocumentSource {
+    val req = esupdate4s id t.uuid in store -> manifest[T].runtimeClass.getSimpleName.toLowerCase refresh refresh doc new DocumentSource {
       override val json: String = js
     }
     req.docAsUpsert(upsert)
@@ -88,7 +102,7 @@ object EsClient {
     val now = Calendar.getInstance().getTime
     t.lastUpdated = now
     val js = JacksonConverter.serialize(t)
-    val req = esupdate4s id t.uuid in store -> manifest[T].runtimeClass.getSimpleName version version doc new DocumentSource {
+    val req = esupdate4s id t.uuid in store -> manifest[T].runtimeClass.getSimpleName.toLowerCase version version doc new DocumentSource {
       override def json: String = js
     }
     val res = EsClient().execute(req)

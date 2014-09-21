@@ -100,12 +100,10 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
   lazy val addWishlist = path("add-wishlist") {
     post {
       anyParams('wishlist_list_uuid, 'wishlist_name, 'wishlist_visibility, 'wishlist_default.as[Boolean],
-        'owner_email, 'owner_name.?, 'owner_day_of_birth.?.as[Option[Int]], 'owner_month_of_birth.?.as[Option[Int]], 'owner_description.?) {
-        (wishlist_list_uuid, wishlist_name, wishlist_visibility, wishlist_default,
-         owner_email, owner_name, owner_day_of_birth, owner_month_of_birth, owner_description) =>
+        'owner_email) {
+        (wishlist_list_uuid, wishlist_name, wishlist_visibility, wishlist_default, owner_email) =>
           val wishlist = Wishlist(name = wishlist_name, visibility = WishlistVisibility.withName(wishlist_visibility), default = wishlist_default)
-          val owner = WishlistOwner(owner_email, owner_name, owner_day_of_birth, owner_month_of_birth, owner_description)
-          onComplete((actor ? AddWishlistRequest(storeCode, wishlist_list_uuid, wishlist, owner)).mapTo[Try[String]]) { call =>
+          onComplete((actor ? AddWishlistRequest(storeCode, wishlist_list_uuid, wishlist, owner_email)).mapTo[Try[String]]) { call =>
             handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
           }
       }

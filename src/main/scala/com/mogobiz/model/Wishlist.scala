@@ -20,13 +20,13 @@ class WishlistVisibilityRef extends TypeReference[WishlistVisibility.type]
 
 import com.mogobiz.model.WishlistVisibility._
 
-case class WishIdea(uuid: String, name: String)
+case class WishIdea(uuid: String = newUUID, name: String)
 
-case class WishBrand(uuid: String, name: String)
+case class WishBrand(uuid: String = newUUID, name: String)
 
-case class WishCategory(uuid: String, name: String)
+case class WishCategory(uuid: String = newUUID, name: String)
 
-case class WishItem(uuid: String, name: String, product: String)
+case class WishItem(uuid: String = newUUID, name: String, product: String)
 
 case class WishlistOwner(email: String, name: Option[String] = None, dayOfBirth: Option[Int] = None, monthOfBirth: Option[Int] = None, description: Option[String] = None)
 
@@ -34,7 +34,7 @@ case class Wishlist(uuid: String = newUUID,
                     name: String,
                     @JsonScalaEnumeration(classOf[WishlistVisibilityRef]) visibility: WishlistVisibility = WishlistVisibility.PRIVATE,
                     default: Boolean = false,
-                    token: String = null,
+                    token: String = newUUID,
                     ideas: List[WishIdea] = List(),
                     items: List[WishItem] = List(),
                     brands: List[WishBrand] = List(), // Not yet available

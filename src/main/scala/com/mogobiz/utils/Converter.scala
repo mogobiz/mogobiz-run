@@ -50,7 +50,6 @@ trait BinaryConverter[T] extends Converter[T] {
 
 trait JSONConverter[T] extends Converter[T] {
   def toDomain[T: Manifest](bytes: Array[Byte]): T = {
-    val x: Option[T] = None
     JacksonConverter.deserialize[T](new String(bytes))
   }
 

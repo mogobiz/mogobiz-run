@@ -1,35 +1,31 @@
 package com.mogobiz.handlers
 
-import java.util.Calendar
-
-import com.mogobiz.es.EsClient
 import com.mogobiz.model._
-import com.mogobiz.utils.GlobalUtil
+import com.mogobiz.utils.GlobalUtil._
+import com.mogobiz.utils.JacksonConverter
 import org.specs2.mutable.Specification
 
 class WishlistSpec extends Specification {
-  "Create WishlistList" in {
-    val now = Calendar.getInstance().getTime
-    val wll = WishlistList(GlobalUtil.newUUID,
-      List(
-        Wishlist(GlobalUtil.newUUID, "My Wishlist", WishlistVisibility.PRIVATE, false, GlobalUtil.newUUID,
-          List(
-            WishIdea(GlobalUtil.newUUID, "This is my idea"),
-            WishIdea(GlobalUtil.newUUID, "This is my idea 2")
-          ),
-          List(
-            WishItem(GlobalUtil.newUUID, "My 1st Item", "productuuid1"),
-            WishItem(GlobalUtil.newUUID, "My 2nd Item", "productuuid2")
-          ),
-          List(WishBrand(GlobalUtil.newUUID, "brand1"), WishBrand(GlobalUtil.newUUID, "brand2")),
-          List(WishCategory(GlobalUtil.newUUID, "Category 1"), WishCategory(GlobalUtil.newUUID, "Category 2")),
-          false,
-          now,
-          now
-        )
-      ),
-      WishlistOwner("email@email.com", Some("Me"), Some(10), Some(8), Some("description")), now, now
-    )
-    EsClient.index(WishlistHandler.esStore("mogobiz"), wll) must not beNull
+  val service = new WishlistHandler()
+  val Store = "mogobiz"
+
+
+  "Get user wishlist" in {
+    val wll = service.getWishlistList(Store, "hayssam@saleh.fr")
+    val wluuid = service.addWishlist(Store, wll.uuid, Wishlist(name = "Ma 1ere liste"), wll.owner.email)
+    service.addIdea(Store, wll.uuid, wluuid, WishIdea(name = "My first idea"), "hayssam@saleh.fr")
+    service.addIdea(Store, wll.uuid, wluuid, WishIdea(name = "My second idea"), "hayssam@saleh.fr")
+    service.addItem(Store, wll.uuid, wluuid, WishItem(name = "My first item", product = "product-uuid"), "hayssam@saleh.fr")
+    service.addItem(Store, wll.uuid, wluuid, WishItem(name = "My second item", product = "product-uuid"), "hayssam@saleh.fr")
+    service.setOwnerInfo(Store, wll.uuid, WishlistOwner("hayssam@saleh.fr", Some("Hayssam Saleh"), Some(15), Some(9), Some("Qui suis-je ?")))
+    service.addWishlist(Store, wll.uuid, Wishlist(name = "Ma deuxième liste"), wll.owner.email)
+    wll must not beNull
+  }
+  "remove idea and items" in {
+    val wll = service.getWishlistList(Store, "hayssam@saleh.fr")
+//    service.removeIdea(Store, wll.uuid, wll.wishlists.head.uuid, wll.wishlists.head.ideas.head.uuid, "hayssam@saleh.fr")
+//    service.removeItem(Store, wll.uuid, wll.wishlists.head.uuid, wll.wishlists.head.items.head.uuid, "hayssam@saleh.fr")
+//    service.removeWishlist(Store, wll.uuid, wll.wishlists.head.uuid, "hayssam@saleh.fr")
+    wll must not beNull
   }
 }
