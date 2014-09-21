@@ -108,22 +108,20 @@ object ElasticSearchClient extends JsonUtil {
   }
 
   def queryPromotions(store: String, req: PromotionRequest): JValue = {
-    val query = esearch4s in store -> "coupon"
+    val _query = esearch4s in store -> "coupon"
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
     val _sort = req.orderBy.getOrElse("startDate")
     val _sortOrder = req.orderDirection.getOrElse("asc")
-    //val now = new SimpleDateFormat("yyyy-MM-dd").format(new Date())
+    val now = new SimpleDateFormat("yyyy-MM-dd").format(new Date())
     val filters:List[FilterDefinition] = List(
       termFilter("anonymous", true),
-      termFilter("active", true)
-      /*,
+      termFilter("active", true),
       rangeFilter("startDate") lte now,
       rangeFilter("endDate") gte now
-      */
     )
     val response:SearchHits = EsClient.searchAllRaw(
-      filterRequest(query, filters)
+      filterRequest(_query, filters)
         from _from
         size _size
         sort {
