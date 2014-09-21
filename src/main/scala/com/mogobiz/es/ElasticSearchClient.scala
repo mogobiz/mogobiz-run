@@ -265,11 +265,13 @@ object ElasticSearchClient extends JsonUtil {
         filters +:= termFilter("brand.id", s)
         if(qr.parentId.isDefined) filters +:= termFilter("category.parentId", qr.parentId.get)
         if(qr.categoryPath.isDefined) filters +:= createRegexFilter("category.path", qr.categoryPath).get
+        if(qr.promotionId.isDefined) filters +:= createTermFilter("category.coupons", qr.promotionId).get
         results(esearch4s in store -> "product") \ "category"
       case None =>
         if(qr.parentId.isDefined) filters +:= termFilter("parentId", qr.parentId.get)
         else if(qr.categoryPath.isEmpty) missingFilter("parentId") existence true includeNull true
         if(qr.categoryPath.isDefined) filters +:= createRegexFilter("path", qr.categoryPath).get
+        if(qr.promotionId.isDefined) filters +:= createTermFilter("coupons", qr.promotionId).get
         results(esearch4s in store -> "category")
     }
   }
