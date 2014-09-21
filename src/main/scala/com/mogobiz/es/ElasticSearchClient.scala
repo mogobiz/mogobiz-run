@@ -245,12 +245,12 @@ object ElasticSearchClient extends JsonUtil {
       case Some(s) =>
         filters +:= termFilter("brand.id", s)
         if(qr.parentId.isDefined) filters +:= termFilter("category.parentId", qr.parentId.get)
-        if(qr.categoryPath.isDefined) filters +:= regexFilter("category.path", s".*${qr.categoryPath.get.toLowerCase}.*")
+        if(qr.categoryPath.isDefined) filters +:= createRegexFilter("category.path", qr.categoryPath).get
         results(esearch4s in store -> "product") \ "category"
       case None =>
         if(qr.parentId.isDefined) filters +:= termFilter("parentId", qr.parentId.get)
         else if(qr.categoryPath.isEmpty) missingFilter("parentId") existence true includeNull true
-        if(qr.categoryPath.isDefined) filters +:= regexFilter("path", s".*${qr.categoryPath.get.toLowerCase}.*")
+        if(qr.categoryPath.isDefined) filters +:= createRegexFilter("path", qr.categoryPath).get
         results(esearch4s in store -> "category")
     }
   }
@@ -545,7 +545,14 @@ object ElasticSearchClient extends JsonUtil {
     val includedFields:List[String] = List("id") ::: (if(params.highlight) List.empty else {fieldNames:::fields})
     val highlightedFields:List[String] = fieldNames.foldLeft(List[String]())((A,B) => A ::: getHighlightedFieldsAsList(store, B, params.lang))
 
-    val filters:List[FilterDefinition] = List(createOrTermAndTypeFilter(List(TypeField("product","category.path"), TypeField("category","path")), params.categoryPath)).flatten
+    val filters:List[FilterDefinition] = List(
+      createOrRegexAndTypeFilter(
+        List(
+          TypeField("product","category.path"),
+          TypeField("category","path")
+        ),
+        params.categoryPath)
+    ).flatten
 
     val req = esearch4s in store /*FIXME*/types(List("category", "product", "brand", "tag"):_*)
 
@@ -831,11 +838,11 @@ object ElasticSearchClient extends JsonUtil {
     }
     else req
 
-  private def createOrTermAndTypeFilter(typeFields:List[TypeField], value:Option[Any]) : Option[FilterDefinition] = {
+  private def createOrRegexAndTypeFilter(typeFields:List[TypeField], value:Option[String]) : Option[FilterDefinition] = {
     value match{
       case Some(s) => Some(
         or(
-          typeFields.map(typeField => and(typeFilter(typeField.`type`), termFilter(typeField.field, s)) ):_*
+          typeFields.map(typeField => and(typeFilter(typeField.`type`), regexFilter(typeField.field, s".*${s.toLowerCase}.*")) ):_*
         )
       )
       case None => None
