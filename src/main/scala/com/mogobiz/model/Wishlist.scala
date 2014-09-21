@@ -2,6 +2,8 @@ package com.mogobiz.model
 
 import java.util.Date
 
+import com.fasterxml.jackson.core.`type`.TypeReference
+import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.utils.GlobalUtil._
 
 
@@ -13,6 +15,8 @@ object WishlistVisibility extends Enumeration {
   val PRIVATE = Value("Private")
   val SHARED = Value("Shared")
 }
+
+class WishlistVisibilityRef extends TypeReference[WishlistVisibility.type]
 
 import com.mogobiz.model.WishlistVisibility._
 
@@ -28,7 +32,7 @@ case class WishlistOwner(email: String, name: Option[String] = None, dayOfBirth:
 
 case class Wishlist(uuid: String = newUUID,
                     name: String,
-                    visibility: WishlistVisibility = WishlistVisibility.PRIVATE,
+                    @JsonScalaEnumeration(classOf[WishlistVisibilityRef]) visibility: WishlistVisibility = WishlistVisibility.PRIVATE,
                     default: Boolean = false,
                     token: String = null,
                     ideas: List[WishIdea] = List(),
