@@ -90,8 +90,9 @@ case class ProductRequest(
                            , orderDirection: Option[String]
                            , lang: String
                            , currencyCode: Option[String]
-                           , countryCode: Option[String]) extends PagingParams {
-  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None)
+                           , countryCode: Option[String]
+                           , promotionId: Option[String]) extends PagingParams {
+  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None, None)
 }
 
 case class ProductDetailsRequest(

@@ -289,7 +289,8 @@ object ElasticSearchClient extends JsonUtil {
       createTermFilter("brand.id", req.brandId),
       createTermFilter("tags.name", req.tagName),
       createNumericRangeFilter("price", req.priceMin, req.priceMax),
-      createRangeFilter("creationDate", req.creationDateMin, None)
+      createRangeFilter("creationDate", req.creationDateMin, None),
+      createTermFilter("coupons.id", req.promotionId)
     ) ::: createFeaturedRangeFilters(req.featured.getOrElse(false))).flatten
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(store, req.lang) ::: fieldsToRemoveForProductSearchRendering
     val _size: Int = req.maxItemPerPage.getOrElse(100)
