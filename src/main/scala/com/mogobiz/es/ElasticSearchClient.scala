@@ -12,7 +12,7 @@ import com.mogobiz.services.RateBoService
 import com.mogobiz.utils.JacksonConverter
 import com.mogobiz.vo.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdate4s, _}
-import com.sksamuel.elastic4s.FilterDefinition
+import com.sksamuel.elastic4s.{QueryDefinition, FilterDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.search.SearchHits
@@ -108,11 +108,30 @@ object ElasticSearchClient extends JsonUtil {
   }
 
   def queryPromotions(store: String, req: PromotionRequest): JValue = {
-    val _query = esearch4s in store -> "coupon"
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
     val _sort = req.orderBy.getOrElse("startDate")
     val _sortOrder = req.orderDirection.getOrElse("asc")
+    val _query =
+      if(req.categoryPath.isDefined){
+        val categories:JValue = EsClient.searchRaw(
+          filterRequest(
+            esearch4s in store -> "category", List(
+              createRegexFilter("path", req.categoryPath)
+            ).flatten
+          ) sourceInclude "coupons"
+        ) match {
+          case Some(s) => s
+          case None => JNothing
+        }
+        implicit def json4sFormats: Formats = DefaultFormats
+        ids(
+          (categories  \ "coupons").extract[JArray].values.asInstanceOf[List[List[BigInt]]].flatten.map(coupon=>coupon.toString):_*
+        )
+      }
+      else{
+        matchall
+      }
     val now = new SimpleDateFormat("yyyy-MM-dd").format(new Date())
     val filters:List[FilterDefinition] = List(
       termFilter("anonymous", true),
@@ -121,7 +140,7 @@ object ElasticSearchClient extends JsonUtil {
       rangeFilter("endDate") gte now
     )
     val response:SearchHits = EsClient.searchAllRaw(
-      filterRequest(_query, filters)
+      filterRequest(esearch4s in store -> "coupon", filters, _query)
         from _from
         size _size
         sort {
@@ -829,12 +848,12 @@ object ElasticSearchClient extends JsonUtil {
     }.flatten
   }
 
-  private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition]) : SearchDefinition =
+  private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition], _query:QueryDefinition = matchall) : SearchDefinition =
     if(filters.nonEmpty){
       if(filters.size > 1)
-        req query {filteredQuery query matchall filter {and(filters: _*)}}
+        req query {filteredQuery query _query filter {and(filters: _*)}}
       else
-        req query {filteredQuery query matchall filter filters(0)}
+        req query {filteredQuery query _query filter filters(0)}
     }
     else req
 
