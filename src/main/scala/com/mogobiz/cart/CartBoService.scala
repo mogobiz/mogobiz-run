@@ -451,7 +451,7 @@ object CartBoService extends BoService {
     cartVO.copy(endPrice = Some(newEndPrice), cartItemVOs = newCartItemVOs)
   }
 
-  def prepareBeforePayment(companyCode:String, countryCode:String, stateCode:Option[String], currencyCode:String, cartVO:CartVO,rate:Currency) = { //:Map[String,Any]=
+  def prepareBeforePayment(companyCode:String, countryCode:String, stateCode:Option[String], currencyCode:String, cartVO:CartVO,rate:Currency, buyer:String) = { //:Map[String,Any]=
 
     assert(!companyCode.isEmpty)
     assert(!countryCode.isEmpty)
@@ -503,7 +503,7 @@ object CartBoService extends BoService {
 
       val boCartTmp = BOCart(
         id = 0,
-        buyer = "christophe.galant@ebiznext.com", //FIXME
+        buyer = buyer,
         transactionUuid = cartTTC.uuid,
         xdate = DateTime.now,
         price = cartTTC.price,

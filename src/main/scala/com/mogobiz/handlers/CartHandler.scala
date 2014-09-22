@@ -216,7 +216,7 @@ class CartHandler {
     val cart = cartService.initCart(uuid)
 
     try {
-      val data = cartService.prepareBeforePayment(storeCode, country, params.state, currency.code, cart, currency)
+      val data = cartService.prepareBeforePayment(storeCode, country, params.state, currency.code, cart, currency, params.buyer)
 
       val response = Map(
         "success" -> true,

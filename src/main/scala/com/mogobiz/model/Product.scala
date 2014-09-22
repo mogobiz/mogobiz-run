@@ -50,7 +50,7 @@ case class CartParameters(_currency:Option[String],_country:Option[String],_lang
 
 case class CouponParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
-case class PrepareTransactionParameters(_currency:Option[String],_country:Option[String],state:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+case class PrepareTransactionParameters(_currency:Option[String],_country:Option[String],state:Option[String],_lang:String, buyer:String) extends CommonProductParameters(_lang,_currency,_country)
 
 case class CommitTransactionParameters(transactionUuid:String)
 

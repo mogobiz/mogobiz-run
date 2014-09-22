@@ -164,7 +164,7 @@ import scala.concurrent.duration._
   }
 
   lazy val paymentPrepare = path("prepare") {
-    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(PrepareTransactionParameters) {
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all", 'buyer).as(PrepareTransactionParameters) {
       params => {
         val request = QueryCartPaymentPrepareRequest(storeCode, uuid, params)
         complete {
