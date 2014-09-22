@@ -4,6 +4,7 @@ import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
 import com.mogobiz.actors.{MogobizActors, MogobizSystem}
+import com.mogobiz.utils.{Exceptions, Utils}
 import spray.http.StatusCodes._
 import spray.http.{StatusCodes, HttpCookie, HttpEntity, StatusCode}
 import spray.routing.{Directives, _}
@@ -95,7 +96,7 @@ trait DefaultComplete {
       case Failure(t) => complete(StatusCodes.InternalServerError -> Map('error -> t.toString))
       case Success(res) =>
         res match {
-          case Failure(t) => complete(StatusCodes.Unauthorized -> Map('error -> t.toString))
+          case Failure(t) => complete(Exceptions.toHTTPResponse(t) -> Map('error -> t.toString))
           case Success(id) => handler(id)
         }
     }
