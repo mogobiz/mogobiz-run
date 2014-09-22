@@ -22,7 +22,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
   // execution context for futures
 
 
-  val serviceName = "wishlist"
+  val serviceName = "wishlists"
   val route = {
     pathPrefix(serviceName) {
       addItem ~
@@ -39,7 +39,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     }
   }
 
-  lazy val addItem = path("add-item") {
+  lazy val addItem = path("wishlist" / "item") {
     post {
       anyParams('wishlist_list_uuid, 'wishlist_uuid, 'item_name, 'product_uuid, 'owner_email) {
         (wishlist_list_uuid, wishlist_uuid, item_name, product_uuid, owner_email) =>
@@ -50,10 +50,10 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     }
   }
 
-  lazy val removeItem = path("remove-item") {
-    (delete | get | post) {
-      anyParams('wishlist_list_uuid, 'wishlist_uuid, 'item_nuuid, 'owner_email) {
-        (wishlist_list_uuid, wishlist_uuid, item_uuid, owner_email) =>
+  lazy val removeItem = path("wishlist" / "item" / Segment) { item_uuid =>
+    delete {
+      parameters('wishlist_list_uuid, 'wishlist_uuid, 'owner_email) {
+        (wishlist_list_uuid, wishlist_uuid, owner_email) =>
           onComplete((actor ? RemoveItemRequest(storeCode, wishlist_list_uuid, wishlist_uuid, item_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
             handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
           }
@@ -62,7 +62,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
   }
 
 
-  lazy val addIdea = path("add-idea") {
+  lazy val addIdea = path("wishlist" / "idea") {
     post {
       anyParams('wishlist_list_uuid, 'wishlist_uuid, 'idea, 'owner_email) {
         (wishlist_list_uuid, wishlist_uuid, idea, owner_email) =>
@@ -73,23 +73,24 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     }
   }
 
-  lazy val removeIdea = path("remove-idea") {
-    (delete | get | post) {
-      anyParams('wishlist_list_uuid, 'wishlist_uuid, 'idea_nuuid, 'owner_email) {
-        (wishlist_list_uuid, wishlist_uuid, idea_uuid, owner_email) =>
+  lazy val removeIdea = path("wishlist" / "idea" / Segment) { idea_uuid =>
+    delete {
+      anyParams('wishlist_list_uuid, 'wishlist_uuid, 'owner_email) {
+        (wishlist_list_uuid, wishlist_uuid, owner_email) =>
           onComplete((actor ? RemoveIdeaRequest(storeCode, wishlist_list_uuid, wishlist_uuid, idea_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
             handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
           }
       }
     }
   }
+
   /*
-  case class WishlistOwner(email: String, name: Option[String] = None, dayOfBirth: Option[Int] = None, monthOfBirth: Option[Int] = None, description: Option[String] = None)
+  Does not update email. owner email is used for security check only
    */
-  lazy val setOwnerInfo = path("set-owner-info") {
+  lazy val setOwnerInfo = path("owner" / Segment) { wishlist_list_uuid =>
     post {
-      anyParams('wishlist_list_uuid, 'owner_email, 'owner_name.?, 'owner_day_of_birth.?.as[Option[Int]], 'owner_month_of_birth.?.as[Option[Int]], 'owner_description.?) {
-        (wishlist_list_uuid, owner_email, owner_name, owner_day_of_birth, owner_month_of_birth, owner_description) =>
+      anyParams('owner_email, 'owner_name.?, 'owner_day_of_birth.?.as[Option[Int]], 'owner_month_of_birth.?.as[Option[Int]], 'owner_description.?) {
+        (owner_email, owner_name, owner_day_of_birth, owner_month_of_birth, owner_description) =>
           onComplete((actor ? SetOwnerInfoRequest(storeCode, wishlist_list_uuid, WishlistOwner(owner_email, owner_name, owner_day_of_birth, owner_month_of_birth, owner_description))).mapTo[Try[Unit]]) { call =>
             handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
           }
@@ -97,7 +98,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     }
   }
 
-  lazy val addWishlist = path("add-wishlist") {
+  lazy val addWishlist = path("wishlist") {
     post {
       anyParams('wishlist_list_uuid, 'wishlist_name, 'wishlist_visibility, 'wishlist_default.as[Boolean],
         'owner_email) {
@@ -110,10 +111,10 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     }
   }
 
-  lazy val removeWishlist = path("remove-wishlist") {
-    (delete | get | post) {
-      anyParams('wishlist_list_uuid, 'wishlist_uuid, 'owner_email) {
-        (wishlist_list_uuid, wishlist_uuid, owner_email) =>
+  lazy val removeWishlist = path("wishlist" / Segment) { wishlist_uuid =>
+    delete {
+      anyParams('wishlist_list_uuid, 'owner_email) {
+        (wishlist_list_uuid, owner_email) =>
           onComplete((actor ? RemoveWishlistRequest(storeCode, wishlist_list_uuid, wishlist_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
             handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
           }
@@ -121,19 +122,17 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     }
   }
 
-  lazy val getWishlistList = path("get-wishlists") {
+  lazy val getWishlistList = path(Segment) { owner_email =>
     get {
-      parameter('owner_email) { owner_email =>
-        onComplete((actor ? GetWishlistListRequest(storeCode, owner_email)).mapTo[Try[WishlistList]]) { call =>
-          handleComplete(call, (id: WishlistList) => complete(StatusCodes.OK, id))
-        }
+      onComplete((actor ? GetWishlistListRequest(storeCode, owner_email)).mapTo[Try[WishlistList]]) { call =>
+        handleComplete(call, (id: WishlistList) => complete(StatusCodes.OK, id))
       }
     }
   }
 
-  lazy val getWishlistToken = path("get-wishlist-token") {
+  lazy val getWishlistToken = path("wishlist" / "token" / Segment) { wishlist_uuid =>
     get {
-      parameters('wishlist_list_uuid, 'wishlist_uuid, 'owner_email) { (wishlist_list_uuid, wishlist_uuid, owner_email) =>
+      parameters('wishlist_list_uuid, 'owner_email) { (wishlist_list_uuid, owner_email) =>
         onComplete((actor ? GetWishlistTokenRequest(storeCode, wishlist_list_uuid, wishlist_uuid, owner_email)).mapTo[Try[String]]) { call =>
           handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
         }
@@ -141,20 +140,18 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     }
   }
 
-  lazy val getWishlistByToken = path("get-wishlist-by-token") {
+  lazy val getWishlistByToken = path("wishlist" / Segment) { token =>
     get {
-      parameter('token) { token =>
-        onComplete((actor ? GetWishlistByTokenRequest(token)).mapTo[Try[Option[Wishlist]]]) { call =>
-          handleComplete(call, (wl: Option[Wishlist]) => complete(wl.map((StatusCodes.OK, _)).getOrElse((StatusCodes.NotFound, ""))))
-        }
+      onComplete((actor ? GetWishlistByTokenRequest(token)).mapTo[Try[Option[Wishlist]]]) { call =>
+        handleComplete(call, (wl: Option[Wishlist]) => complete(wl.map((StatusCodes.OK, _)).getOrElse((StatusCodes.NotFound, ""))))
       }
     }
   }
 
-  lazy val setDefaultWishlist = path("set-default-wishlist") {
-    (get | post) {
-      anyParams('wishlist_list_uuid, 'wishlist_uuid, 'owner_email) {
-        (wishlist_list_uuid, wishlist_uuid, owner_email) =>
+  lazy val setDefaultWishlist = path("wishlist" / "default" / Segment) { wishlist_uuid =>
+    post {
+      anyParams('wishlist_list_uuid, 'owner_email) {
+        (wishlist_list_uuid, owner_email) =>
           onComplete((actor ? SetDefaultWishlistRequest(storeCode, wishlist_list_uuid, wishlist_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
             handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
           }
