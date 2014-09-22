@@ -49,3 +49,7 @@ case class WishlistList(uuid: String = newUUID,
                         owner: WishlistOwner,
                         var dateCreated: Date = null,
                         var lastUpdated: Date = null)
+
+case class AddWishlistCommand(name: String, visibility: WishlistVisibility = WishlistVisibility.PRIVATE, defaultIndicator: Boolean = false, owner_email: String)
+
+case class AddItemCommand(name: String, product: String, owner_email: String)
