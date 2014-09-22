@@ -22,9 +22,9 @@ import com.mogobiz.model.WishlistVisibility._
 
 case class WishIdea(uuid: String = newUUID, name: String)
 
-case class WishBrand(uuid: String = newUUID, name: String)
+case class WishBrand(uuid: String = newUUID, name: String, brand: String)
 
-case class WishCategory(uuid: String = newUUID, name: String)
+case class WishCategory(uuid: String = newUUID, name: String, category: String)
 
 case class WishItem(uuid: String = newUUID, name: String, product: String)
 

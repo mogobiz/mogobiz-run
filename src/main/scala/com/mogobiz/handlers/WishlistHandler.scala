@@ -143,7 +143,7 @@ class WishlistHandler {
         matchall
       } filter {
         nestedFilter("owner") filter {
-          termFilter("email", "hayssam@saleh.fr")
+          termFilter("email", owner_email)
         }
       }
     }
