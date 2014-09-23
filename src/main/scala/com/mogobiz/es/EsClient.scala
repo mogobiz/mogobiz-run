@@ -12,6 +12,7 @@ import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.common.settings.ImmutableSettings
 import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
 import org.elasticsearch.index.get.GetResult
+import org.elasticsearch.search.aggregations.{Aggregations, Aggregation}
 import org.elasticsearch.search.{SearchHit, SearchHits}
 import org.json4s.JsonAST.{JArray, JValue}
 import org.json4s.native.JsonMethods._
@@ -137,10 +138,29 @@ object EsClient {
   def searchRaw(req: SearchDefinition): Option[SearchHit] = {
     debug(req)
     val res = EsClient().execute(req)
+
     if (res.getHits.getTotalHits == 0)
       None
     else
       Some(res.getHits.getHits()(0))
+  }
+
+  def searchAgg(req: SearchDefinition) : JValue = {  //Aggregations = {
+    debug(req)
+    val res = EsClient().execute(req)
+
+    val resStr = res.toString
+    //println("resStr=",resStr)
+    parse(resStr)
+    //TODO parse \ "aggregations"
+    /*
+    println("res=",res)
+    val res2 = res.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
+    println("res2=",res2)
+    val res3 = parse(res2)
+    println("res3=",res3)
+    res3
+    */
   }
 
   implicit def searchHits2JValue(searchHits:SearchHits) : JValue = {

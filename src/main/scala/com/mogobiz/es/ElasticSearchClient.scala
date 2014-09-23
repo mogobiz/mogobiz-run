@@ -12,10 +12,11 @@ import com.mogobiz.services.RateBoService
 import com.mogobiz.utils.JacksonConverter
 import com.mogobiz.vo.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdate4s, _}
-import com.sksamuel.elastic4s.{QueryDefinition, FilterDefinition}
+import com.sksamuel.elastic4s.{SearchType, QueryDefinition, FilterDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.search.SearchHits
+import org.elasticsearch.search.aggregations.bucket.histogram.HistogramBuilder
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JArray, JNothing, JObject}
 import org.json4s.JsonDSL._
@@ -827,6 +828,31 @@ object ElasticSearchClient extends JsonUtil {
       case None => List.empty
     }
   }
+
+  def getProductCriteria(store: String, priceInterval: Long): JValue = {
+    val res = EsClient searchAgg(
+      esearch4s in store -> "product" aggs {
+        aggregation terms "category" field "category.fr.name.raw"
+      } aggs {
+        aggregation terms "brand" field "brand.fr.name.raw"
+      } aggs {
+        aggregation terms "features" field "features.fr.name.raw" aggs {
+          aggregation terms "feature_values" field "features.fr.value.raw"
+        }
+      } aggs {
+        aggregation histogram "prices" field "price" interval priceInterval //((HistogramBuilder)builder).minDocCount(0)
+      }
+      searchType SearchType.Count
+    )
+    res
+
+    /*
+    println(req)
+    val res = EsClient().execute(req)
+    println(res)
+    */
+  }
+
 
   def createComment(store:String, productId:Long, c:CommentRequest): Comment = {
     require(!store.isEmpty)

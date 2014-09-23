@@ -46,6 +46,7 @@ trait MogobizActors {
   val cartActor = system.actorOf(Props[CartActor])
   val promotionActor = system.actorOf(Props[PromotionActor])
   val wishlistActor =system.actorOf(Props[WishlistActor])
+  val facetActor = system.actorOf(Props[FacetActor])
 
   //init the email service with the system Actor
   EmailService(system,"emailService")
