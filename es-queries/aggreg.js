@@ -41,6 +41,30 @@ curl -POST http://localhost:9200/mogobiz/product/_search
             "field": "price"
         }
     },
+    "prices_histo": {
+        "histogram": {
+            "field": "price",
+                "interval": 5000,
+                "min_doc_count": 0
+        }
+    },
+    "price_ranges": {
+        "range": {
+            "field": "price",
+                "ranges": [
+                {
+                    "to": 5000
+                },
+                {
+                    "from": 5000,
+                    "to": 10000
+                },
+                {
+                    "from": 10000
+                }
+            ]
+        }
+    },
     "per_category": {
         "terms": {
             "field": "category.fr.name.raw" //"category.path"
