@@ -26,7 +26,7 @@ case class WishBrand(uuid: String = newUUID, name: String, brand: String)
 
 case class WishCategory(uuid: String = newUUID, name: String, category: String)
 
-case class WishItem(uuid: String = newUUID, name: String, product: String)
+case class WishItem(uuid: String = newUUID, name: String, product: String, sku : Option[String] = None)
 
 case class WishlistOwner(email: String, name: Option[String] = None, dayOfBirth: Option[Int] = None, monthOfBirth: Option[Int] = None, description: Option[String] = None)
 
@@ -52,4 +52,4 @@ case class WishlistList(uuid: String = newUUID,
 
 case class AddWishlistCommand(name: String, visibility: WishlistVisibility = WishlistVisibility.PRIVATE, defaultIndicator: Boolean = false, owner_email: String)
 
-case class AddItemCommand(name: String, product: String, owner_email: String)
+case class AddItemCommand(name: String, product: String, owner_email: String, product_sku : Option[String] = None)

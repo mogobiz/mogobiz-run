@@ -42,7 +42,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
   lazy val addItem = path(Segment / "wishlist" / Segment / "item") { (wishlist_list_uuid, wishlist_uuid) =>
     post {
       entity(as[AddItemCommand]) { cmd =>
-        val wishlist = WishItem(GlobalUtil.newUUID, cmd.name, cmd.product)
+        val wishlist = WishItem(GlobalUtil.newUUID, cmd.name, cmd.product, cmd.product_sku)
         onComplete((actor ? AddItemRequest(storeCode, wishlist_list_uuid, wishlist_uuid, wishlist, cmd.owner_email)).mapTo[Try[String]]) { call =>
           handleComplete(call, (id: String) => complete(StatusCodes.OK, Map("result" -> id)))
         }
@@ -119,8 +119,8 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
 
   lazy val getWishlistList = pathEnd {
     get {
-      parameters('owner_email) { owner_email =>
-          onComplete((actor ? GetWishlistListRequest(storeCode, owner_email)).mapTo[Try[WishlistList]]) { call =>
+      parameters('owner_email, 'wishlist_uuid.?) { (owner_email, wishlist_uuid) =>
+          onComplete((actor ? GetWishlistListRequest(storeCode, owner_email, wishlist_uuid)).mapTo[Try[WishlistList]]) { call =>
             handleComplete(call, (id: WishlistList) => complete(StatusCodes.OK, Map("result" -> id)))
           }
       }

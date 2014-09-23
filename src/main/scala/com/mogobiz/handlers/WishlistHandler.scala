@@ -4,8 +4,8 @@ import java.util.Calendar
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.model._
-import com.mogobiz.utils.{NotFoundException, NotAuthorizedException, DuplicateException}
 import com.mogobiz.utils.GlobalUtil._
+import com.mogobiz.utils.{DuplicateException, NotAuthorizedException, NotFoundException}
 import com.sksamuel.elastic4s.ElasticDsl._
 
 import scala.util.Success
@@ -137,22 +137,26 @@ class WishlistHandler {
     EsClient.update[WishlistList](esStore(store), wishlistList.copy(wishlists = wishlists))
   }
 
-  def getWishlistList(store: String, owner_email: String): WishlistList = {
-    val req = search in esStore(store) types "wishlistlist" query {
-      filteredQuery query {
-        matchall
-      } filter {
-        nestedFilter("owner") filter {
-          termFilter("email", owner_email)
+  def getWishlistList(store: String, owner_email: String, wishlistUuid: Option[String] = None): WishlistList = {
+    wishlistUuid.map { wishlistListId =>
+      EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
+    } getOrElse {
+      val req = search in esStore(store) types "wishlistlist" query {
+        filteredQuery query {
+          matchall
+        } filter {
+          nestedFilter("owner") filter {
+            termFilter("email", owner_email)
+          }
         }
       }
-    }
 
-    println(req._builder.toString)
-    EsClient.search[WishlistList](req).getOrElse {
-      val wishlistList = WishlistList(newUUID, Nil, WishlistOwner(email = owner_email))
-      EsClient.indexTimestamped[WishlistList](esStore(store), wishlistList)
-      wishlistList
+      println(req._builder.toString)
+      EsClient.search[WishlistList](req).getOrElse {
+        val wishlistList = WishlistList(newUUID, Nil, WishlistOwner(email = owner_email))
+        EsClient.indexTimestamped[WishlistList](esStore(store), wishlistList)
+        wishlistList
+      }
     }
   }
 
@@ -191,7 +195,7 @@ object RunApp extends App {
   val service = new WishlistHandler()
   val Store = "mogobiz"
 
-  val wll = service.getWishlistList(Store, "hayssam@saleh.fr")
+  val wll = service.getWishlistList(Store, "hayssam@saleh.fr", None)
   val wluuid = service.addWishlist(Store, wll.uuid, Wishlist(name = "Ma 1ere liste"), wll.owner.email)
   service.addIdea(Store, wll.uuid, wluuid, WishIdea(name = "My first idea"), "hayssam@saleh.fr")
   service.addIdea(Store, wll.uuid, wluuid, WishIdea(name = "My second idea"), "hayssam@saleh.fr")
