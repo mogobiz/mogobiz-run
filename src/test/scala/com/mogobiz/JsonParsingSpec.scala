@@ -1,8 +1,5 @@
 package com.mogobiz
 
-import org.specs2.mutable.Specification
-import org.json4s._
-import org.json4s.native.JsonMethods._
 import org.json4s.JsonDSL._
 
 /**

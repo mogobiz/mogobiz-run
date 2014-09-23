@@ -19,11 +19,11 @@ object WishlistActor {
 
   case class SetOwnerInfoRequest(store: String, wishlistListId: String, owner: WishlistOwner)
 
-  case class AddWishlistRequest(store: String, wishlistListId: String, wishlist: Wishlist, owner: WishlistOwner)
+  case class AddWishlistRequest(store: String, wishlistListId: String, wishlist: Wishlist, owneremail: String)
 
   case class RemoveWishlistRequest(store: String, wishlistListId: String, wishlistId: String, owneremail: String)
 
-  case class GetWishlistListRequest(store: String, owner: WishlistOwner)
+  case class GetWishlistListRequest(store: String, owner_email: String, wishlistListId:Option[String] = None)
 
   case class GetWishlistTokenRequest(store: String, wishlistListId: String, wishlistId: String, ownerEmail: String)
 
@@ -36,7 +36,7 @@ object WishlistActor {
 class WishlistActor extends Actor {
   def receive = {
     case a: AddItemRequest =>
-      sender ! wishlistHandler.addItem(a.store, a.wishlistListId, a.wishlistId, a.item, a.owneremail)
+      sender ! Try(wishlistHandler.addItem(a.store, a.wishlistListId, a.wishlistId, a.item, a.owneremail))
     case r: RemoveItemRequest =>
       sender ! Try(wishlistHandler.removeItem(r.store, r.wishlistListId, r.wishlistId, r.itemUuid, r.owneremail))
     case a: AddIdeaRequest =>
@@ -46,11 +46,11 @@ class WishlistActor extends Actor {
     case s: SetOwnerInfoRequest =>
       sender ! Try(wishlistHandler.setOwnerInfo(s.store, s.wishlistListId, s.owner))
     case a: AddWishlistRequest =>
-      sender ! Try(wishlistHandler.addWishlist(a.store, a.wishlistListId, a.wishlist, a.owner))
+      sender ! Try(wishlistHandler.addWishlist(a.store, a.wishlistListId, a.wishlist, a.owneremail))
     case r: RemoveWishlistRequest =>
       sender ! Try(wishlistHandler.removeWishlist(r.store, r.wishlistListId, r.wishlistId, r.owneremail))
     case g: GetWishlistListRequest =>
-      sender ! Try(wishlistHandler.getWishlistList(g.store, g.owner))
+      sender ! Try(wishlistHandler.getWishlistList(g.store, g.owner_email, g.wishlistListId))
     case g: GetWishlistTokenRequest =>
       sender ! Try(wishlistHandler.getWishlistToken(g.store, g.wishlistListId, g.wishlistId, g.ownerEmail))
     case g: GetWishlistByTokenRequest =>

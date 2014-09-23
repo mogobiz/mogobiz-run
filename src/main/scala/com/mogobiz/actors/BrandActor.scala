@@ -6,13 +6,13 @@ import com.mogobiz.config.HandlersConfig._
 
 object BrandActor {
 
-  case class QueryBrandRequest(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String)
+  case class QueryBrandRequest(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String, promotionId:Option[String])
 
 }
 
 class BrandActor extends Actor {
   def receive = {
     case q: QueryBrandRequest =>
-      sender ! brandHandler.queryBrand(q.storeCode, q.hidden, q.categoryPath, q.lang)
+      sender ! brandHandler.queryBrand(q.storeCode, q.hidden, q.categoryPath, q.lang, q.promotionId)
   }
 }

@@ -4,11 +4,13 @@ import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
 import com.mogobiz.actors.{MogobizActors, MogobizSystem}
+import com.mogobiz.utils.{Exceptions, Utils}
 import spray.http.StatusCodes._
-import spray.http.{HttpCookie, HttpEntity, StatusCode}
+import spray.http.{StatusCodes, HttpCookie, HttpEntity, StatusCode}
 import spray.routing.{Directives, _}
 import spray.util.LoggingContext
 
+import scala.util.{Success, Failure, Try}
 import scala.util.control.NonFatal
 
 trait MogobizRoutes extends Directives {
@@ -46,9 +48,9 @@ trait MogobizRoutes extends Directives {
       new CategoryService(storeCode, categoryActor).route ~
       new ProductService(storeCode, uuid, productActor).route ~
       new PreferenceService(storeCode, uuid, preferenceActor).route ~
-      new CartService(storeCode, uuid, cartActor).route
-
-
+      new CartService(storeCode, uuid, cartActor).route ~
+      new PromotionService(storeCode, promotionActor).route ~
+      new WishlistService(storeCode, wishlistActor).route
   }
 
 
@@ -84,4 +86,19 @@ class RoutedHttpService(route: Route) extends Actor with HttpService with ActorL
 
   def receive: Receive =
     runRoute(route)(handler, RejectionHandler.Default, context, RoutingSettings.default, LoggingContext.fromActorRefFactory)
+}
+
+trait DefaultComplete {
+  this : Directives =>
+  def handleComplete[T](call: Try[Try[T]], handler: T => Route): Route = {
+    import com.mogobiz.json.JsonSupport._
+    call match {
+      case Failure(t) => complete(StatusCodes.InternalServerError -> Map('error -> t.toString))
+      case Success(res) =>
+        res match {
+          case Failure(t) => complete(Exceptions.toHTTPResponse(t) -> Map('error -> t.toString))
+          case Success(id) => handler(id)
+        }
+    }
+  }
 }

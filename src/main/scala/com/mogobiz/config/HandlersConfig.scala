@@ -12,5 +12,6 @@ object HandlersConfig {
   val productHandler = new ProductHandler
   val preferenceHandler = new PreferenceHandler
   val cartHandler = new CartHandler
-  var wishlistHandler = new WishlistHandler
+  val wishlistHandler = new WishlistHandler
+  val promotionHandler = new PromotionHandler
 }

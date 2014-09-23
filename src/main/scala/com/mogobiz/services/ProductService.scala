@@ -64,7 +64,10 @@ import scala.concurrent.duration._
         , 'orderDirection.?
         , 'lang ? "_all"
         , 'currency.?
-        , 'country.?).as(ProductRequest) {
+        , 'country.?
+        , 'promotionId.?
+        , 'property.?
+        , 'feature.?).as(ProductRequest) {
         params =>
           val request = QueryProductRequest(storeCode, params)
           complete {
@@ -81,7 +84,8 @@ import scala.concurrent.duration._
         , 'currency.?
         , 'country.?
         , 'query
-        , 'highlight ? false).as(FullTextSearchProductParameters) {
+        , 'highlight ? false
+        , 'categoryPath.?).as(FullTextSearchProductParameters) {
         params =>
           val request = QueryFindProductRequest(storeCode, params)
           complete {

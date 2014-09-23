@@ -23,6 +23,11 @@ object Settings {
   val RememberCookieName = config getString "session.remember.cookie.name"
   val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
 
+  object cart {
+    val lifetime = 15
+  }
+
+
   object clickatell {
     val user = ""
     val password = ""

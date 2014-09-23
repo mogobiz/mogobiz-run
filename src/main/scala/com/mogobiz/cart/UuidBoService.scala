@@ -1,40 +1,37 @@
 package com.mogobiz.cart
 
+import com.mogobiz.config.Settings
 import com.mogobiz.json.Json4sProtocol
 import org.joda.time.DateTime
-import scalikejdbc.{WrappedResultSet, _}
+import scalikejdbc._
 
-/**
- *
- * Created by Christophe on 05/05/2014.
- */
 object UuidBoService extends BoService {
 
   private val QUEUE_XTYPE_CART = "Cart"
-  val store : Map[String,UuidData] = Map()
+  val store: Map[String, UuidData] = Map()
 
   /**
    * Create or update a UuidDate for the given uuid and xtype
-   * @param uuid
-   * @param payload
-   * @param xtype
+   * @param uuid identifier
+   * @param payload content
+   * @param xtype data type stored
    */
-  def createAndSave(uuid:String, payload:String, xtype:String) : Unit = {
-    val lifetime = 60 * 15 //min //TODO externalize as config param
+  def createAndSave(uuid: String, payload: String, xtype: String): Unit = {
+    val lifetime = 60 * Settings.cart.lifetime
     val expireDate = DateTime.now.plusSeconds(lifetime)
 
     val uuidData = UuidDataDao.findByUuidAndXtype(uuid, xtype)
     if (uuidData.isDefined) {
       // update the existing UuidData
-      UuidDataDao.save(new UuidData(uuidData.get.id,uuid,xtype,payload,uuidData.get.createdDate,expireDate))
+      UuidDataDao.save(new UuidData(uuidData.get.id, uuid, xtype, payload, uuidData.get.createdDate, expireDate))
     }
     else {
       // create a new UuidData
-      UuidDataDao.save(new UuidData(None,uuid,xtype,payload,DateTime.now,expireDate))
+      UuidDataDao.save(new UuidData(None, uuid, xtype, payload, DateTime.now, expireDate))
     }
   }
 
-  def getCart(uuid:String): Option[CartVO] = {
+  def getCart(uuid: String): Option[CartVO] = {
     import Json4sProtocol._
     import org.json4s.native.JsonMethods._
 
@@ -52,7 +49,20 @@ object UuidBoService extends BoService {
     import org.json4s.native.Serialization.write
 
     val payload = write(cart)
-    createAndSave(cart.uuid,payload,QUEUE_XTYPE_CART)
+    createAndSave(cart.uuid, payload, QUEUE_XTYPE_CART)
+  }
+
+  def removeCart(cart: CartVO): Unit = {
+    UuidDataDao.delete(cart.uuid)
+  }
+
+  def getExpired: List[CartVO] = {
+    import Json4sProtocol._
+    import org.json4s.native.JsonMethods._
+
+    UuidDataDao.getExpired.map {
+      d => parse(d.payload).extract[CartVO]
+    }
   }
 }
 
@@ -86,6 +96,18 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
         sql"""update uuid_data set expire_date=${entity.expireDate},last_updated=${DateTime.now},payload=${entity.payload} where id=${entity.id}""".
           update().apply()
       }
+    }
+  }
+
+  def delete(uuid: String): Unit = {
+    DB localTx { implicit session =>
+      sql""" delete from uuid_data where uuid=${uuid} """.update().apply()
+    }
+  }
+
+  def getExpired : List[UuidData] = {
+    DB readOnly { implicit session =>
+      sql"""select * from uuid_data where expire_date < ${DateTime.now} """.map(rs => UuidDataDao(rs)).list().apply()
     }
   }
 }

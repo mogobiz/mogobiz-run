@@ -6,12 +6,13 @@ import java.util.{Calendar, Date, Locale}
 import com.mogobiz.es.EsClient._
 import com.mogobiz.json.JsonUtil
 import com.mogobiz.model
+import com.mogobiz.model.Promotion._
 import com.mogobiz.model._
 import com.mogobiz.services.RateBoService
 import com.mogobiz.utils.JacksonConverter
 import com.mogobiz.vo.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdate4s, _}
-import com.sksamuel.elastic4s.FilterDefinition
+import com.sksamuel.elastic4s.{QueryDefinition, FilterDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.search.SearchHits
@@ -106,6 +107,49 @@ object ElasticSearchClient extends JsonUtil {
     )
   }
 
+  def queryPromotions(store: String, req: PromotionRequest): JValue = {
+    val _size: Int = req.maxItemPerPage.getOrElse(100)
+    val _from: Int = req.pageOffset.getOrElse(0) * _size
+    val _sort = req.orderBy.getOrElse("startDate")
+    val _sortOrder = req.orderDirection.getOrElse("asc")
+    val _query =
+      if(req.categoryPath.isDefined){
+        val categories:JValue = EsClient.searchRaw(
+          filterRequest(
+            esearch4s in store -> "category", List(
+              createRegexFilter("path", req.categoryPath)
+            ).flatten
+          ) sourceInclude "coupons"
+        ) match {
+          case Some(s) => s
+          case None => JNothing
+        }
+        implicit def json4sFormats: Formats = DefaultFormats
+        ids(
+          (categories  \ "coupons").extract[JArray].values.asInstanceOf[List[List[BigInt]]].flatten.map(coupon=>coupon.toString):_*
+        )
+      }
+      else{
+        matchall
+      }
+    val now = new SimpleDateFormat("yyyy-MM-dd").format(new Date())
+    val filters:List[FilterDefinition] = List(
+      termFilter("anonymous", true),
+      termFilter("active", true),
+      rangeFilter("startDate") lte now,
+      rangeFilter("endDate") gte now
+    )
+    val response:SearchHits = EsClient.searchAllRaw(
+      filterRequest(esearch4s in store -> "coupon", filters, _query)
+        from _from
+        size _size
+        sort {
+        by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
+      }
+    )
+    Paging.wrap(response.getTotalHits.toInt, response.getHits, req)
+  }
+
   /**
    * Effectue la recheche de brands dans ES
    * @param store code store
@@ -118,6 +162,7 @@ object ElasticSearchClient extends JsonUtil {
       case Some(s) =>
         val req = esearch4s in store -> "product"
         filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
+        if(qr.promotionId.isDefined) filters +:= createTermFilter("category.coupons", qr.promotionId).get
         if(!qr.hidden) filters :+= termFilter("brand.hide", "false")
         val r : JArray = EsClient.searchAllRaw(
           filterRequest(req, filters)
@@ -220,12 +265,14 @@ object ElasticSearchClient extends JsonUtil {
       case Some(s) =>
         filters +:= termFilter("brand.id", s)
         if(qr.parentId.isDefined) filters +:= termFilter("category.parentId", qr.parentId.get)
-        if(qr.categoryPath.isDefined) filters +:= regexFilter("category.path", s".*${qr.categoryPath.get.toLowerCase}.*")
+        if(qr.categoryPath.isDefined) filters +:= createRegexFilter("category.path", qr.categoryPath).get
+        if(qr.promotionId.isDefined) filters +:= createTermFilter("category.coupons", qr.promotionId).get
         results(esearch4s in store -> "product") \ "category"
       case None =>
         if(qr.parentId.isDefined) filters +:= termFilter("parentId", qr.parentId.get)
         else if(qr.categoryPath.isEmpty) missingFilter("parentId") existence true includeNull true
-        if(qr.categoryPath.isDefined) filters +:= regexFilter("path", s".*${qr.categoryPath.get.toLowerCase}.*")
+        if(qr.categoryPath.isDefined) filters +:= createRegexFilter("path", qr.categoryPath).get
+        if(qr.promotionId.isDefined) filters +:= createTermFilter("coupons", qr.promotionId).get
         results(esearch4s in store -> "category")
     }
   }
@@ -238,6 +285,7 @@ object ElasticSearchClient extends JsonUtil {
         }
       case None => esearch4s in store -> "product"
     }
+
     val filters:List[FilterDefinition] = (List(
       createTermFilter("code", req.code),
       createTermFilter("xtype", req.xtype),
@@ -245,8 +293,42 @@ object ElasticSearchClient extends JsonUtil {
       createTermFilter("brand.id", req.brandId),
       createTermFilter("tags.name", req.tagName),
       createNumericRangeFilter("price", req.priceMin, req.priceMax),
-      createRangeFilter("creationDate", req.creationDateMin, None)
-    ) ::: createFeaturedRangeFilters(req.featured.getOrElse(false))).flatten
+      createRangeFilter("creationDate", req.creationDateMin, None),
+      createTermFilter("coupons.id", req.promotionId)
+    ) ::: createFeaturedRangeFilters(req.featured.getOrElse(false))
+      ::: List(/*property*/
+        req.property match {
+          case Some(x:String) =>
+            val properties = (for(property <- x.split("""\|\|\|""")) yield {
+              val kv = property.split( """\:\:\:""")
+              if(kv.size == 2) createTermFilter(kv(0), Some(kv(1))) else None
+            }).toList.flatten
+            if(properties.size > 1) Some(must(properties:_*)) else if(properties.size == 1) Some(properties(0)) else None
+          case _ => None
+        }
+      )
+      ::: List(/*feature*/
+        req.feature match {
+          case Some(x:String) =>
+            val features:List[FilterDefinition] = (for(feature <- x.split("""\|\|\|""")) yield {
+              val kv = feature.split("""\:\:\:""")
+              if(kv.size == 2)
+                Some(
+                  must(
+                    List(
+                      createTermFilter("features.name.raw", Some(kv(0))),
+                      createTermFilter("features.value.raw", Some(kv(1)))
+                    ).flatten:_*
+                  )
+                )
+              else
+                None
+            }).toList.flatten
+            if(features.size > 1) Some(and(features:_*)) else if(features.size == 1) Some(features(0)) else None
+          case _ => None
+        }
+      )
+    ).flatten
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(store, req.lang) ::: fieldsToRemoveForProductSearchRendering
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
@@ -515,17 +597,37 @@ object ElasticSearchClient extends JsonUtil {
    * @return a list of products
    */
   def queryProductsByFulltextCriteria(store: String, params: FullTextSearchProductParameters): JValue = {
-    val fieldNames = List("name", "description", "descriptionAsText", "keywords")
+    val fieldNames = List("name", "description", "descriptionAsText", "keywords", "path", "category.path")
     val fields:List[String] = fieldNames.foldLeft(List[String]())((A,B) => A ::: getIncludedFieldWithPrefixAsList(store, "", B, params._lang))
     val includedFields:List[String] = List("id") ::: (if(params.highlight) List.empty else {fieldNames:::fields})
     val highlightedFields:List[String] = fieldNames.foldLeft(List[String]())((A,B) => A ::: getHighlightedFieldsAsList(store, B, params.lang))
 
-    val req = esearch4s in store types(List("product", "category", "brand", "tag"):_*)
+    val filters:List[FilterDefinition] = List(
+      createOrRegexAndTypeFilter(
+        List(
+          TypeField("product","category.path"),
+          TypeField("category","path")
+        ),
+        params.categoryPath)
+    ).flatten
+
+    val req = esearch4s in store /*FIXME*/types(List("category", "product", "brand", "tag"):_*)
+
     if(params.highlight){
       req highlighting((fieldNames ::: highlightedFields).map(s => highlight(s)):_*)
     }
 
-    val json:JValue = EsClient.searchAllRaw(req query {params.query} fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*))
+    if(filters.nonEmpty){
+      if(filters.size > 1)
+        req query {params.query} query {filteredQuery query {params.query} filter {and(filters: _*)}}
+      else
+        req query {params.query} query {filteredQuery query {params.query} filter filters(0)}
+    }
+    else{
+      req query {params.query}
+    }
+
+    val json:JValue = EsClient.searchAllRaw(req fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*))
 
     val hits = json \ "hits"
 
@@ -784,18 +886,40 @@ object ElasticSearchClient extends JsonUtil {
     }.flatten
   }
 
-  private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition]) : SearchDefinition =
+  private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition], _query:QueryDefinition = matchall) : SearchDefinition =
     if(filters.nonEmpty){
       if(filters.size > 1)
-        req query {filteredQuery query matchall filter {and(filters: _*)}}
+        req query {filteredQuery query _query filter {and(filters: _*)}}
       else
-        req query {filteredQuery query matchall filter filters(0)}
+        req query {filteredQuery query _query filter filters(0)}
     }
     else req
 
+  private def createOrRegexAndTypeFilter(typeFields:List[TypeField], value:Option[String]) : Option[FilterDefinition] = {
+    value match{
+      case Some(s) => Some(
+        or(
+          typeFields.map(typeField => and(typeFilter(typeField.`type`), regexFilter(typeField.field, s".*${s.toLowerCase}.*")) ):_*
+        )
+      )
+      case None => None
+    }
+  }
+
   private def createTermFilter(field:String, value:Option[Any]) : Option[FilterDefinition] = {
     value match{
-      case Some(s) => Some(termFilter(field, s))
+      case Some(s) =>
+        s match {
+          case v:String =>
+            val values = v.split("""\|""")
+            if(values.size > 1){
+              Some(termsFilter(field, values:_*))
+            }
+            else{
+              Some(termFilter(field, v))
+            }
+          case _ => Some(termFilter(field, s))
+        }
       case None => None
     }
   }
@@ -840,4 +964,5 @@ object ElasticSearchClient extends JsonUtil {
     List.empty
   }
 
+  private case class TypeField(`type`:String, field:String)
 }

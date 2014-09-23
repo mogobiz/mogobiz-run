@@ -6,7 +6,7 @@ import org.json4s.JsonAST.JValue
 
 class BrandHandler {
 
-  def queryBrand(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String): JValue = {
-    ElasticSearchClient.queryBrands(storeCode, new BrandRequest(hidden, categoryPath, lang))
+  def queryBrand(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String, promotionId:Option[String]): JValue = {
+    ElasticSearchClient.queryBrands(storeCode, new BrandRequest(hidden, categoryPath, lang, promotionId))
   }
 }

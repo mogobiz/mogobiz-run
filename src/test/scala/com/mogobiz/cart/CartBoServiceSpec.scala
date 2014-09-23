@@ -20,6 +20,7 @@ class CartBoServiceSpec extends Specification {
 
   val defaultCurrency = new Currency(2, 0.01, "EUR", "euro")
   val cur = "EUR"
+  val buyer = "christophe.galant@ebiznext.com"
 
   private def generateUuid = {
     val uuid = UUID.randomUUID.toString
@@ -503,7 +504,7 @@ class CartBoServiceSpec extends Specification {
     val currency = defaultCurrency
     val cart = prepareCartWith2items
 
-    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, cart, currency)
+    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, cart, currency, buyer)
 
 
     /*
@@ -531,7 +532,7 @@ class CartBoServiceSpec extends Specification {
     val currency = defaultCurrency
     val preparedCart = prepareCartWith2items
 
-    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency)
+    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency, buyer)
 
     val cartService = CartBoService
     val cart = cartService.initCart(preparedCart.uuid)
@@ -554,7 +555,7 @@ class CartBoServiceSpec extends Specification {
     val currency = defaultCurrency
     val preparedCart = prepareCartWith2items
 
-    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency)
+    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency, buyer)
 
     val cartService = CartBoService
     val cart = cartService.initCart(preparedCart.uuid)

@@ -2,7 +2,6 @@ package com.mogobiz.handlers
 
 import java.util.Locale
 
-import com.mogobiz._
 import com.mogobiz.cart._
 import com.mogobiz.es.ElasticSearchClient
 import com.mogobiz.model._
@@ -23,7 +22,7 @@ class CartHandler {
     val locale = new Locale(lang, country)
 
     val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
-    cartRenderService.renderCart(cart, currency, locale)
+    cartRenderService.renderCart(cart, storeCode, currency, locale)
   }
 
   def queryCartClear(storeCode: String, uuid: String, params: CartParameters): Map[String, Any] = {
@@ -36,7 +35,7 @@ class CartHandler {
 
     val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     val updatedCart = cartService.clear(locale, currency.code, cart)
-    cartRenderService.renderCart(updatedCart, currency, locale)
+    cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
   }
 
   def queryCartItemAdd(storeCode: String, uuid: String, params: CartParameters, cmd: AddToCartCommand): Map[String, Any] = {
@@ -52,7 +51,7 @@ class CartHandler {
     val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     try {
       val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.skuId, cmd.quantity, cmd.dateTime, cmd.registeredCartItems)
-      val data = cartRenderService.renderCart(updatedCart, currency, locale)
+      val data = cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
       val response = Map(
         "success" -> true,
         "data" -> data,
@@ -69,6 +68,9 @@ class CartHandler {
           "errors" -> e.getErrors(locale)
         )
         response
+      case t: Throwable =>
+        t.printStackTrace()
+        throw t
     }
   }
 
@@ -84,7 +86,7 @@ class CartHandler {
     val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     try {
       val updatedCart = cartService.updateItem(locale, currency.code, cart, cartItemId, cmd.quantity)
-      val data = cartRenderService.renderCart(updatedCart, currency, locale)
+      val data = cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
       val response = Map(
         "success" -> true,
         "data" -> data,
@@ -113,7 +115,7 @@ class CartHandler {
     val currency = ElasticSearchClient.getCurrency(storeCode, params.currency, lang)
     try {
       val updatedCart = cartService.removeItem(locale, currency.code, cart, cartItemId)
-      val data = cartRenderService.renderCart(updatedCart, currency, locale)
+      val data = cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
       val response = Map(
         "success" -> true,
         "data" -> data,
@@ -145,7 +147,7 @@ class CartHandler {
 
     try {
       val updatedCart = cartService.addCoupon(storeCode, couponCode, cart, locale, currency.code)
-      val data = cartRenderService.renderCart(updatedCart, currency, locale)
+      val data = cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
       val response = Map(
         "success" -> true,
         "data" -> data,
@@ -175,7 +177,7 @@ class CartHandler {
 
     try {
       val updatedCart = cartService.removeCoupon(storeCode, couponCode, cart, locale, currency.code)
-      val data = cartRenderService.renderCart(updatedCart, currency, locale)
+      val data = cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
       val response = Map(
         "success" -> true,
         "data" -> data,
@@ -214,7 +216,7 @@ class CartHandler {
     val cart = cartService.initCart(uuid)
 
     try {
-      val data = cartService.prepareBeforePayment(storeCode, country, params.state, currency.code, cart, currency)
+      val data = cartService.prepareBeforePayment(storeCode, country, params.state, currency.code, cart, currency, params.buyer)
 
       val response = Map(
         "success" -> true,
@@ -264,7 +266,7 @@ class CartHandler {
     val cart = cartService.initCart(uuid)
     try {
       val updatedCart = cartService.cancel(cart)
-      val data = cartRenderService.renderCart(updatedCart, currency, locale)
+      val data = cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
       val response = Map(
         "success" -> true,
         "data" -> data,
@@ -280,6 +282,11 @@ class CartHandler {
         )
         response
     }
+  }
+
+  def cleanup(): Unit ={
+    //println("cleanup cart")
+    cartService.cleanExpiredCart
   }
 
 }

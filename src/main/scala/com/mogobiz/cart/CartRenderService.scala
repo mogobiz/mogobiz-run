@@ -2,6 +2,7 @@ package com.mogobiz.cart
 
 import java.util.Locale
 
+import com.mogobiz.cart.domain.Coupon
 import com.mogobiz.json.Json4sProtocol
 import com.mogobiz.model.Currency
 import com.mogobiz.services.RateBoService
@@ -22,7 +23,7 @@ object CartRenderService {
 
   val rateService = RateBoService
 
-  def renderCart(cart:CartVO, currency:Currency,locale:Locale):Map[String,Any]={
+  def renderCart(cart:CartVO,companyCode:String, currency:Currency,locale:Locale):Map[String,Any]={
     logger.info(s"currency: ${currency.code}, ${currency.rate}")
     var map :Map[String,Any]= Map()
 
@@ -33,12 +34,14 @@ object CartRenderService {
 
     val cartWithUpdatedCoupons = updateCoupons(cart)
 
-    val coupons = cartWithUpdatedCoupons.coupons.map{
+    val cartWithUpdatedCouponsAndPromotion = updateWithPromotions(cartWithUpdatedCoupons, companyCode)
+
+    val coupons = cartWithUpdatedCouponsAndPromotion.coupons.map{
       c => renderCoupon(c,currency, locale)
     }
     map+=("coupons"-> coupons)
 
-    val prices = renderPriceCart(cartWithUpdatedCoupons,currency,locale)
+    val prices = renderPriceCart(cartWithUpdatedCouponsAndPromotion,currency,locale)
     map++=prices
 
     println("renderCart->Map")
@@ -52,14 +55,17 @@ object CartRenderService {
    * @param rate
    * @return
    */
-  def renderTransactionCart(cart:CartVO, rate:Currency):Map[String,Any]={
+  def renderTransactionCart(cart:CartVO, companyCode:String, rate:Currency):Map[String,Any]={
 
     val items = cart.cartItemVOs.map(item => renderTransactionCartItem(item,rate))
     val cartWithUpdatedCoupons = updateCoupons(cart)
-    val coupons = cartWithUpdatedCoupons.coupons.map{
+
+    val cartWithUpdatedCouponsAndPromotion = updateWithPromotions(cartWithUpdatedCoupons, companyCode)
+
+    val coupons = cartWithUpdatedCouponsAndPromotion.coupons.map{
       c => renderTransactionCoupon(c,rate)
     }
-    val prices = renderTransactionPriceCart(cartWithUpdatedCoupons,rate)
+    val prices = renderTransactionPriceCart(cartWithUpdatedCouponsAndPromotion,rate)
 
     var map :Map[String,Any]= Map(
       "count" -> cart.count,
@@ -213,7 +219,9 @@ object CartRenderService {
   private def updateCoupons(cart: CartVO):CartVO= {
 
     println("updateCoupons")
+    //active le coupon et renvoie la réduction appliqué pour chaque coupon
     val updatedCoupons = cart.coupons.map(c => CouponService.updateCoupon(c, cart))
+    //somme des réductions
     val reduc = updatedCoupons.foldLeft(0l)((acc,c) => acc + c.price)
 
     println(s"reduc=$reduc")
@@ -228,4 +236,19 @@ object CartRenderService {
     cart.copy(reduction = reduc, finalPrice = finalprice, coupons = updatedCoupons)
   }
 
+  private def updateWithPromotions(cart: CartVO, companyCode:String):CartVO = {
+    val promotions = CouponService.getPromotions(cart,companyCode)
+    val reduc = promotions.foldLeft(0l)((acc,c) => acc + c.price)
+
+    println(s"reduc=$reduc")
+    println(s"cart.endPrice=${cart.endPrice}")
+
+    val finalprice = cart.endPrice match{
+      case Some(endprice) => endprice - reduc
+      case _ => cart.price - reduc
+    }
+    println(s"finalprice=$finalprice")
+
+    cart.copy(reduction = reduc, finalPrice = finalprice)
+  }
 }
