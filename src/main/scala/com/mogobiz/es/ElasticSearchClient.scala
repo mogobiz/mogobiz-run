@@ -298,35 +298,33 @@ object ElasticSearchClient extends JsonUtil {
     ) ::: createFeaturedRangeFilters(req.featured.getOrElse(false))
       ::: List(/*property*/
         req.property match {
-          case Some(x:String) if x.split("""\:\:\:""").size > 1 =>
-            val properties = for(property <- x.split("""\|\|\|""")) yield {
+          case Some(x:String) =>
+            val properties = (for(property <- x.split("""\|\|\|""")) yield {
               val kv = property.split( """\:\:\:""")
-              createTermFilter(kv(0), Some(kv(1)))
-            }
-            if(properties.size > 1){
-              Some(must(properties.toList.flatten:_*))
-            }
-            else
-              properties(0)
+              if(kv.size == 2) createTermFilter(kv(0), Some(kv(1))) else None
+            }).toList.flatten
+            if(properties.size > 1) Some(must(properties:_*)) else if(properties.size == 1) Some(properties(0)) else None
           case _ => None
         }
       )
       ::: List(/*feature*/
         req.feature match {
-          case Some(x:String) if x.split("""\:\:\:""").size > 1 =>
-            val features = for(feature <- x.split("""\|\|\|""")) yield {
+          case Some(x:String) =>
+            val features:List[FilterDefinition] = (for(feature <- x.split("""\|\|\|""")) yield {
               val kv = feature.split("""\:\:\:""")
-              val queries = List(
-                createTermFilter("features.name.raw", Some(kv(0))),
-                createTermFilter("features.value.raw", Some(kv(1)))
-              ).flatten
-              must(queries:_*)
-            }
-            if(features.size > 1){
-              Some(and(features:_*))
-            }
-            else
-              Some(features(0))
+              if(kv.size == 2)
+                Some(
+                  must(
+                    List(
+                      createTermFilter("features.name.raw", Some(kv(0))),
+                      createTermFilter("features.value.raw", Some(kv(1)))
+                    ).flatten:_*
+                  )
+                )
+              else
+                None
+            }).toList.flatten
+            if(features.size > 1) Some(and(features:_*)) else if(features.size == 1) Some(features(0)) else None
           case _ => None
         }
       )
