@@ -300,7 +300,7 @@ object ElasticSearchClient extends JsonUtil {
       req.property match {
         case Some(x:String) if x.split("""\:\:\:""").size == 2 => {
           val kv = x.split("""\:\:\:""")
-          Some(termFilter(kv(0), kv(1)))
+          createTermFilter(kv(0), Some(kv(1)))
         }
         case _ => None
       }
@@ -884,7 +884,19 @@ object ElasticSearchClient extends JsonUtil {
 
   private def createTermFilter(field:String, value:Option[Any]) : Option[FilterDefinition] = {
     value match{
-      case Some(s) => Some(termFilter(field, s))
+      case Some(s) =>
+        s match {
+          case v:String => {
+            val values = v.split("""\|""")
+            if(values.size > 1){
+              Some(termsFilter(field, values:_*))
+            }
+            else{
+              Some(termFilter(field, v))
+            }
+          }
+          case _ => Some(termFilter(field, s))
+        }
       case None => None
     }
   }
