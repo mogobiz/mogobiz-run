@@ -299,20 +299,34 @@ object ElasticSearchClient extends JsonUtil {
       ::: List(/*property*/
         req.property match {
           case Some(x:String) if x.split("""\:\:\:""").size > 1 =>
-            val kv = x.split("""\:\:\:""")
-            createTermFilter(kv(0), Some(kv(1)))
+            val properties = for(property <- x.split("""\|\|\|""")) yield {
+              val kv = property.split( """\:\:\:""")
+              createTermFilter(kv(0), Some(kv(1)))
+            }
+            if(properties.size > 1){
+              Some(must(properties.toList.flatten:_*))
+            }
+            else
+              properties(0)
           case _ => None
         }
       )
       ::: List(/*feature*/
         req.feature match {
           case Some(x:String) if x.split("""\:\:\:""").size > 1 =>
-            val kv = x.split("""\:\:\:""")
-            val queries = List(
-              createTermFilter("features.name.raw", Some(kv(0))),
-              createTermFilter("features.value.raw", Some(kv(1)))
-            ).flatten
-            Some(must(queries:_*))
+            val features = for(feature <- x.split("""\|\|\|""")) yield {
+              val kv = feature.split("""\:\:\:""")
+              val queries = List(
+                createTermFilter("features.name.raw", Some(kv(0))),
+                createTermFilter("features.value.raw", Some(kv(1)))
+              ).flatten
+              must(queries:_*)
+            }
+            if(features.size > 1){
+              Some(and(features:_*))
+            }
+            else
+              Some(features(0))
           case _ => None
         }
       )
