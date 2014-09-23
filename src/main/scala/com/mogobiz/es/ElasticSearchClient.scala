@@ -296,15 +296,27 @@ object ElasticSearchClient extends JsonUtil {
       createRangeFilter("creationDate", req.creationDateMin, None),
       createTermFilter("coupons.id", req.promotionId)
     ) ::: createFeaturedRangeFilters(req.featured.getOrElse(false))
-      ::: List(
-      req.property match {
-        case Some(x:String) if x.split("""\:\:\:""").size == 2 => {
-          val kv = x.split("""\:\:\:""")
-          createTermFilter(kv(0), Some(kv(1)))
+      ::: List(/*property*/
+        req.property match {
+          case Some(x:String) if x.split("""\:\:\:""").size > 1 =>
+            val kv = x.split("""\:\:\:""")
+            createTermFilter(kv(0), Some(kv(1)))
+          case _ => None
         }
-        case _ => None
-      }
-    )).flatten
+      )
+      ::: List(/*feature*/
+        req.feature match {
+          case Some(x:String) if x.split("""\:\:\:""").size > 1 =>
+            val kv = x.split("""\:\:\:""")
+            val queries = List(
+              createTermFilter("features.name.raw", Some(kv(0))),
+              createTermFilter("features.value.raw", Some(kv(1)))
+            ).flatten
+            Some(must(queries:_*))
+          case _ => None
+        }
+      )
+    ).flatten
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(store, req.lang) ::: fieldsToRemoveForProductSearchRendering
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
@@ -886,7 +898,7 @@ object ElasticSearchClient extends JsonUtil {
     value match{
       case Some(s) =>
         s match {
-          case v:String => {
+          case v:String =>
             val values = v.split("""\|""")
             if(values.size > 1){
               Some(termsFilter(field, values:_*))
@@ -894,7 +906,6 @@ object ElasticSearchClient extends JsonUtil {
             else{
               Some(termFilter(field, v))
             }
-          }
           case _ => Some(termFilter(field, s))
         }
       case None => None
