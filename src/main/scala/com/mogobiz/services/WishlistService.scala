@@ -44,7 +44,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
       entity(as[AddItemCommand]) { cmd =>
         val wishlist = WishItem(GlobalUtil.newUUID, cmd.name, cmd.product)
         onComplete((actor ? AddItemRequest(storeCode, wishlist_list_uuid, wishlist_uuid, wishlist, cmd.owner_email)).mapTo[Try[String]]) { call =>
-          handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
+          handleComplete(call, (id: String) => complete(StatusCodes.OK, Map("result" -> id)))
         }
       }
     }
@@ -65,7 +65,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     post {
       parameters('idea, 'owner_email) { (idea, owner_email) =>
           onComplete((actor ? AddIdeaRequest(storeCode, wishlist_list_uuid, wishlist_uuid, WishIdea(GlobalUtil.newUUID, idea), owner_email)).mapTo[Try[String]]) { call =>
-            handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
+            handleComplete(call, (id: String) => complete(StatusCodes.OK, Map("result" -> id)))
           }
       }
     }
@@ -101,7 +101,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
       entity(as[AddWishlistCommand]) { cmd =>
         val wishlist = Wishlist(name = cmd.name, visibility = cmd.visibility, default = cmd.defaultIndicator)
         onComplete((actor ? AddWishlistRequest(storeCode, wishlist_list_uuid, wishlist, cmd.owner_email)).mapTo[Try[String]]) { call =>
-          handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
+          handleComplete(call, (id: String) => complete(StatusCodes.OK, Map("result" -> id)))
         }
       }
     }
@@ -121,7 +121,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     get {
       parameters('owner_email) { owner_email =>
           onComplete((actor ? GetWishlistListRequest(storeCode, owner_email)).mapTo[Try[WishlistList]]) { call =>
-            handleComplete(call, (id: WishlistList) => complete(StatusCodes.OK, id))
+            handleComplete(call, (id: WishlistList) => complete(StatusCodes.OK, Map("result" -> id)))
           }
       }
     }
@@ -131,7 +131,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     get {
       parameters('owner_email) { owner_email =>
         onComplete((actor ? GetWishlistTokenRequest(storeCode, wishlist_list_uuid, wishlist_uuid, owner_email)).mapTo[Try[String]]) { call =>
-          handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
+          handleComplete(call, (id: String) => complete(StatusCodes.OK, Map("result" -> id)))
         }
       }
     }
