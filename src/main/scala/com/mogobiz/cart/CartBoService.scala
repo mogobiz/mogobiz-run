@@ -451,7 +451,7 @@ object CartBoService extends BoService {
     cartVO.copy(endPrice = Some(newEndPrice), cartItemVOs = newCartItemVOs)
   }
 
-  def prepareBeforePayment(companyCode:String, countryCode:String, stateCode:Option[String], currencyCode:String, cartVO:CartVO,rate:Currency) = { //:Map[String,Any]=
+  def prepareBeforePayment(companyCode:String, countryCode:String, stateCode:Option[String], currencyCode:String, cartVO:CartVO,rate:Currency, buyer:String) = { //:Map[String,Any]=
 
     assert(!companyCode.isEmpty)
     assert(!countryCode.isEmpty)
@@ -503,9 +503,9 @@ object CartBoService extends BoService {
 
       val boCartTmp = BOCart(
         id = 0,
-        buyer = "christophe.galant@ebiznext.com", //FIXME
+        buyer = buyer,
         transactionUuid = cartTTC.uuid,
-        date = DateTime.now,
+        xdate = DateTime.now,
         price = cartTTC.price,
         status = TransactionStatus.PENDING,
         currencyCode = currencyCode,
@@ -623,7 +623,7 @@ object CartBoService extends BoService {
 
     uuidService.setCart(updatedCart)
 
-    val renderedCart = CartRenderService.renderTransactionCart(updatedCart,rate)
+    val renderedCart = CartRenderService.renderTransactionCart(updatedCart, companyCode, rate)
     /*
         implicit def json4sFormats: Formats = DefaultFormats
         import org.json4s.native.JsonMethods._
@@ -1070,6 +1070,19 @@ object CouponService extends BoService {
     } else {
       couponVO
     }
+  }
+
+
+  def getPromotions(cart: CartVO,companyCode:String): List[CouponVO] ={
+    val promoAvailable = Coupon.findPromotionsThatOnlyApplyOnCart(companyCode)
+    logger.info("getPromotions: "+promoAvailable.size)
+
+    //convert to CouponVO in order to be used by updateCoupon
+    //not very effcient but that will do for the time being
+    val couponsVO = promoAvailable.map(CouponVO(_))
+    val updatedPromo = couponsVO.map(updateCoupon(_,cart))
+
+    updatedPromo
   }
 
   /**

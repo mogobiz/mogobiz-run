@@ -2,6 +2,7 @@ package com.mogobiz.cart
 
 import com.mogobiz.cart.ProductCalendar._
 import com.mogobiz.cart.ProductType._
+import com.mogobiz.cart.domain.ReductionRule
 import com.mogobiz.cart.domain.ReductionRuleType.ReductionRuleType
 import org.joda.time.DateTime
 import scalikejdbc._
@@ -207,7 +208,7 @@ package object domain {
 
   case class Coupon
   (id: Long, name: String, code: String, companyFk: Long,startDate: Option[DateTime]=None, endDate: Option[DateTime]=None, //price: Long,
-   numberOfUses:Option[Long]=None, reductionSoldFk:Option[Long]=None,active: Boolean = true,catalogWise:Boolean = false,
+   numberOfUses:Option[Long]=None, reductionSoldFk:Option[Long]=None,active: Boolean = true, anonymous:Boolean = false, catalogWise:Boolean = false,
    dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
 
     def rules = Coupon.getRules(this.id)
@@ -249,7 +250,16 @@ package object domain {
     def apply(rn: ResultName[Coupon])(rs:WrappedResultSet): Coupon = Coupon(
       id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code), startDate=rs.get(rn.startDate),endDate=rs.get(rn.endDate),
       numberOfUses = rs.get(rn.numberOfUses),companyFk = rs.get(rn.companyFk),reductionSoldFk=rs.get(rn.reductionSoldFk),
+      active = rs.get(rn.active), anonymous = rs.get(rn.anonymous), catalogWise = rs.get(rn.catalogWise),
       dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
+
+    def apply(rs: WrappedResultSet):Coupon = Coupon(
+      id = rs.long("id"), name = rs.string("name"), code=rs.string("code"), startDate=rs.jodaDateTimeOpt("start_date"),endDate=rs.jodaDateTimeOpt("end_date"),
+      numberOfUses = rs.longOpt("number_of_uses"),companyFk = rs.long("company_fk"),reductionSoldFk=rs.longOpt("reduction_sold_fk"),
+      active = rs.boolean("active"), anonymous = rs.boolean("anonymous"), catalogWise = rs.boolean("catalog_wise"),
+      dateCreated = rs.jodaDateTime("date_created"),lastUpdated = rs.jodaDateTime("last_updated")
+    )
+
 
     def findByCode(companyCode:String, couponCode:String):Option[Coupon]={
       val compagny = Company.findByCode(companyCode)
@@ -261,6 +271,24 @@ package object domain {
             withSQL {
               select.from(Coupon as c).where.eq(c.code, couponCode).and.eq(c.companyFk,compagny.get.id)
             }.map(Coupon(c.resultName)).single().apply()
+        }
+      }
+    }
+
+    def findPromotionsThatOnlyApplyOnCart(companyCode:String):List[Coupon]={
+      val compagny = Company.findByCode(companyCode)
+      if (compagny.isEmpty) List()
+      else {
+        //val c = Coupon.syntax("c")
+        val now = DateTime.now
+        DB readOnly {
+          implicit session =>
+            sql""" select c.* from coupon c inner join coupon_reduction_rule crr on crr.rules_fk = c.id inner join reduction_rule rr on crr.reduction_rule_id = rr.id and rr.xtype = 'X_PURCHASED_Y_OFFERED' where company_fk=9 and start_date<=${now} and end_date>=${now} and anonymous=true """.map(rs => Coupon(rs)).list().apply()
+            /*
+            withSQL {
+              select.from(Coupon as c).where.eq(c.companyFk,compagny.get.id).and.eq(c.anonymous, true).and.lt(c.startDate,now).and.gt(c.endDate)
+            }.map(Coupon(c.resultName)).list().apply()
+            */
         }
       }
     }

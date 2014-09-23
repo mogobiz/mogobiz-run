@@ -129,7 +129,7 @@ package object transaction {
     }
   }
 
-  case class BOCart(id:Long, transactionUuid:String,date:DateTime, price:Long,status : TransactionStatus, currencyCode:String,currencyRate:Double,companyFk:Long,buyer:String = "christophe.galant@ebiznext.com",
+  case class BOCart(id:Long, transactionUuid:String,xdate:DateTime, price:Long,status : TransactionStatus, currencyCode:String,currencyRate:Double,companyFk:Long,buyer:String,
                     dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now
                     , override val uuid : String = java.util.UUID.randomUUID().toString() //TODO
                      ) extends Entity with DateAware {
@@ -144,8 +144,8 @@ package object transaction {
     override val tableName = "b_o_cart"
 
     def apply(rn: ResultName[BOCart])(rs:WrappedResultSet): BOCart = BOCart(
-      id=rs.get(rn.id),transactionUuid=rs.get(rn.transactionUuid),price=rs.get(rn.price),
-      date=rs.get(rn.date),status=TransactionStatus.valueOf(rs.string("s_on_t")), //FIXME
+      id=rs.get(rn.id),transactionUuid=rs.get(rn.transactionUuid),price=rs.get(rn.price), buyer = rs.get(rn.buyer),
+      xdate=rs.get(rn.xdate),status=TransactionStatus.valueOf(rs.string("s_on_t")), //FIXME
       currencyCode = rs.get(rn.currencyCode),currencyRate = rs.get(rn.currencyRate),
       companyFk=rs.get(rn.companyFk),dateCreated=rs.get(rn.dateCreated),lastUpdated=rs.get(rn.lastUpdated))
 
@@ -183,7 +183,7 @@ package object transaction {
           b.companyFk -> boCart.companyFk,
           b.currencyCode -> boCart.currencyCode,
           b.currencyRate -> boCart.currencyRate,
-          b.date -> DateTime.now,
+          b.xdate -> DateTime.now,
           b.dateCreated -> DateTime.now,
           b.lastUpdated -> DateTime.now,
           b.price -> boCart.price,

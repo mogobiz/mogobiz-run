@@ -41,10 +41,11 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
 
   lazy val addItem = path(Segment / "wishlist" / Segment / "item") { (wishlist_list_uuid, wishlist_uuid) =>
     post {
-      parameters('item_name, 'product_uuid, 'owner_email) { (item_name, product_uuid, owner_email) =>
-          onComplete((actor ? AddItemRequest(storeCode, wishlist_list_uuid, wishlist_uuid, WishItem(GlobalUtil.newUUID, item_name, product_uuid), owner_email)).mapTo[Try[String]]) { call =>
-            handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
-          }
+      entity(as[AddItemCommand]) { cmd =>
+        val wishlist = WishItem(GlobalUtil.newUUID, cmd.name, cmd.product)
+        onComplete((actor ? AddItemRequest(storeCode, wishlist_list_uuid, wishlist_uuid, wishlist, cmd.owner_email)).mapTo[Try[String]]) { call =>
+          handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
+        }
       }
     }
   }
@@ -97,12 +98,11 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
 
   lazy val addWishlist = path(Segment / "wishlist") { wishlist_list_uuid =>
     post {
-      parameters('wishlist_name, 'wishlist_visibility, 'wishlist_default.as[Boolean], 'owner_email) {
-        (wishlist_name, wishlist_visibility, wishlist_default, owner_email) =>
-          val wishlist = Wishlist(name = wishlist_name, visibility = WishlistVisibility.withName(wishlist_visibility), default = wishlist_default)
-          onComplete((actor ? AddWishlistRequest(storeCode, wishlist_list_uuid, wishlist, owner_email)).mapTo[Try[String]]) { call =>
-            handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
-          }
+      entity(as[AddWishlistCommand]) { cmd =>
+        val wishlist = Wishlist(name = cmd.name, visibility = cmd.visibility, default = cmd.defaultIndicator)
+        onComplete((actor ? AddWishlistRequest(storeCode, wishlist_list_uuid, wishlist, cmd.owner_email)).mapTo[Try[String]]) { call =>
+          handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
+        }
       }
     }
   }

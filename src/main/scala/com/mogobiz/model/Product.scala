@@ -50,7 +50,7 @@ case class CartParameters(_currency:Option[String],_country:Option[String],_lang
 
 case class CouponParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
-case class PrepareTransactionParameters(_currency:Option[String],_country:Option[String],state:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+case class PrepareTransactionParameters(_currency:Option[String],_country:Option[String],state:Option[String],_lang:String, buyer:String) extends CommonProductParameters(_lang,_currency,_country)
 
 case class CommitTransactionParameters(transactionUuid:String)
 
@@ -91,8 +91,9 @@ case class ProductRequest(
                            , lang: String
                            , currencyCode: Option[String]
                            , countryCode: Option[String]
-                           , promotionId: Option[String]) extends PagingParams {
-  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None, None)
+                           , promotionId: Option[String]
+                           , property : Option[String]) extends PagingParams {
+  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None, None, None)
 }
 
 case class ProductDetailsRequest(
