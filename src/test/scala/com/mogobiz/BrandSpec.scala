@@ -132,10 +132,10 @@ class BrandSpec extends MogobizRouteTest {
 
   def checkBrandSamsung(brand: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
     brand \ "id" must be_==(JInt(35))
-    brand \ "twitter" must be_==(JNull)
+    brand \ "twitter" must be_==(JString(""))
     brand \ "hide" must be_==(JBool(false))
     brand \ "website" must be_==(JString("http://www.samsung.com/fr"))
-    brand \ "description" must be_==(JNull)
+    brand \ "description" must be_==(JString(""))
     brand \ "name" must be_==(JString("Samsung"))
     brand \ "increments" must be_==(JInt(0))
     brand \ "imported" must be_==(JNothing)
@@ -147,10 +147,10 @@ class BrandSpec extends MogobizRouteTest {
 
   def checkBrandPhilips(brand: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
     brand \ "id" must be_==(JInt(40))
-    brand \ "twitter" must be_==(JNull)
+    brand \ "twitter" must be_==(JString(""))
     brand \ "hide" must be_==(JBool(false))
     brand \ "website" must be_==(JString("http://www.philips.com"))
-    brand \ "description" must be_==(JNull)
+    brand \ "description" must be_==(JString(""))
     brand \ "name" must be_==(JString("Philips"))
     brand \ "increments" must be_==(JInt(0))
     brand \ "imported" must be_==(JNothing)
@@ -162,10 +162,10 @@ class BrandSpec extends MogobizRouteTest {
 
   def checkBrandNike(brand: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
     brand \ "id" must be_==(JInt(41))
-    brand \ "twitter" must be_==(JNull)
+    brand \ "twitter" must be_==(JString(""))
     brand \ "hide" must be_==(JBool(false))
     brand \ "website" must be_==(JString("http://www.nike.com/fr/fr_fr/"))
-    brand \ "description" must be_==(JNull)
+    brand \ "description" must be_==(JString(""))
     brand \ "name" must be_==(JString("Nike"))
     brand \ "increments" must be_==(JInt(0))
     brand \ "imported" must be_==(JNothing)
@@ -177,10 +177,10 @@ class BrandSpec extends MogobizRouteTest {
 
   def checkBrandPuma(brand: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
     brand \ "id" must be_==(JInt(46))
-    brand \ "twitter" must be_==(JNull)
+    brand \ "twitter" must be_==(JString(""))
     brand \ "hide" must be_==(JBool(false))
     brand \ "website" must be_==(JString("http://www.shop.puma.fr"))
-    brand \ "description" must be_==(JNull)
+    brand \ "description" must be_==(JString(""))
     brand \ "name" must be_==(JString("Puma"))
     brand \ "increments" must be_==(JInt(0))
     brand \ "imported" must be_==(JNothing)
@@ -192,10 +192,10 @@ class BrandSpec extends MogobizRouteTest {
 
   def checkBrandHideBrand(brand: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
     brand \ "id" must be_==(JInt(51))
-    brand \ "twitter" must be_==(JNull)
+    brand \ "twitter" must be_==(JString(""))
     brand \ "hide" must be_==(JBool(true))
     brand \ "website" must be_==(JString("http://www.google.fr"))
-    brand \ "description" must be_==(JNull)
+    brand \ "description" must be_==(JString(""))
     brand \ "name" must be_==(JString("Hide brand"))
     brand \ "increments" must be_==(JInt(0))
     brand \ "imported" must be_==(JNothing)
