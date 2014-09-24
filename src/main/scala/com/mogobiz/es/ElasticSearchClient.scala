@@ -851,10 +851,9 @@ object ElasticSearchClient extends JsonUtil {
       }
     )
     import scala.collection.JavaConversions._
-    val products:Terms = productsByNotation.getAggregations.get[Terms]("products")
     val ids:List[Long] =
       (for(
-        bucket:Terms.Bucket <- products.getBuckets
+        bucket:Terms.Bucket <- productsByNotation.getAggregations.get[Terms]("products").getBuckets
       ) yield {
         bucket.getKey.toLong
       }).toList
