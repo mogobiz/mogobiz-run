@@ -9,6 +9,7 @@ import com.sksamuel.elastic4s.source.DocumentSource
 import com.sksamuel.elastic4s.{ElasticClient, GetDefinition, MultiGetDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
+import org.elasticsearch.action.search.MultiSearchResponse
 import org.elasticsearch.common.settings.ImmutableSettings
 import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
 import org.elasticsearch.index.get.GetResult
@@ -141,6 +142,17 @@ object EsClient {
       None
     else
       Some(res.getHits.getHits()(0))
+  }
+
+  def multiSearchRaw(req: List[SearchDefinition]): Array[Option[SearchHits]] = {
+    req.foreach(debug)
+    val multiSearchResponse:MultiSearchResponse = EsClient().execute(req:_*)
+    for(resp <- multiSearchResponse.getResponses) yield {
+      if(resp.isFailure)
+        None
+      else
+        Some(resp.getResponse.getHits)
+    }
   }
 
   implicit def searchHits2JValue(searchHits:SearchHits) : JValue = {

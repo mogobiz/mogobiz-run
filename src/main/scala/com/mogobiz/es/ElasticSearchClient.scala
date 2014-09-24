@@ -462,9 +462,20 @@ object ElasticSearchClient extends JsonUtil {
    */
   def queryProductById(store: String, id: Long, req: ProductDetailsRequest): Option[JValue] = {
     lazy val currency = getCurrency(store, req.currency, req.lang)
-    val product:Option[GetResponse] = EsClient.loadRaw(get id id from store -> "product")
-    product match{
-      case Some(p) => Some(renderProduct(p, req.country, req.currency, req.lang, currency, List()))
+    val response = multiSearchRaw(
+      List(
+        esearch4s in store -> "product" query {ids(List(s"$id"))},
+        esearch4s in store -> "stock" filter termFilter("productId", id)
+      )
+    )
+    response(0) match{
+      case Some(p) =>
+        val product = renderProduct(p.getHits()(0), req.country, req.currency, req.lang, currency, List())
+        response(1) match{
+          case Some(s) =>
+            Some(JObject(product.asInstanceOf[JObject].obj :+ JField("stocks", s.getHits)))
+          case None => Some(product)
+        }
       case None => None
     }
   }
