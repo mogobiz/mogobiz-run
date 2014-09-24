@@ -26,6 +26,8 @@ object ProductActor {
   case class QueryCreateCommentRequest(storeCode: String, productId: Long, req: CommentRequest)
 
   case class QueryVisitedProductRequest(storeCode: String, req: VisitorHistoryRequest,  uuid: String)
+
+  case class QueryNotationProductRequest(storeCode: String, lang: String)
 }
 
 class ProductActor extends Actor {
@@ -60,5 +62,7 @@ class ProductActor extends Actor {
     case q: QueryVisitedProductRequest =>
       sender ! productHandler.getProductHistory(q.storeCode, q.req, q.uuid)
 
+    case q: QueryNotationProductRequest =>
+      sender ! productHandler.getProductsByNotation(q.storeCode, q.lang)
   }
 }

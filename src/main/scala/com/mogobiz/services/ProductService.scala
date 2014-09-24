@@ -27,6 +27,7 @@ import scala.concurrent.duration._
       products ~
       find ~
       compare ~
+      notation ~
       product
     } ~
       history
@@ -106,6 +107,19 @@ import scala.concurrent.duration._
           val request = QueryCompareProductRequest(storeCode, params)
           complete {
             (actor ? request).mapTo[JValue]
+          }
+      }
+    }
+  }
+
+  lazy val notation = path("notation") {
+    get {
+      parameters(
+        'lang ? "_all") {
+        params =>
+          val request = QueryNotationProductRequest(storeCode, params)
+          complete {
+            (actor ? request).mapTo[List[JValue]]
           }
       }
     }

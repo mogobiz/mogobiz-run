@@ -50,4 +50,7 @@ class ProductHandler {
     )
   }
 
+  def getProductsByNotation(storeCode:String, lang:String): List[JValue] = {
+    ElasticSearchClient.getProductsByNotation(storeCode, lang)
+  }
 }

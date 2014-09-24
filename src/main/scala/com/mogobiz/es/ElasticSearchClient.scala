@@ -15,7 +15,10 @@ import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdat
 import com.sksamuel.elastic4s.{QueryDefinition, FilterDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
+import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.search.SearchHits
+import org.elasticsearch.search.aggregations.Aggregation
+import org.elasticsearch.search.aggregations.bucket.terms.Terms
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JArray, JNothing, JObject}
 import org.json4s.JsonDSL._
@@ -837,6 +840,25 @@ object ElasticSearchClient extends JsonUtil {
       case Some(s) => (response2JValue(s) \ "productIds").extract[List[Long]]
       case None => List.empty
     }
+  }
+
+  def getProductsByNotation(storeCode:String, lang:String): List[JValue] = {
+    val productsByNotation:SearchResponse = EsClient().execute(
+      esearch4s in s"${storeCode}_comment" types "comment" aggs {
+        aggregation terms "products" field "productId" order Terms.Order.aggregation("avg_notation", false) aggregations (
+          aggregation avg "avg_notation" field "notation"
+        )
+      }
+    )
+    import scala.collection.JavaConversions._
+    val products:Terms = productsByNotation.getAggregations.get[Terms]("products")
+    val ids:List[Long] =
+      (for(
+        bucket:Terms.Bucket <- products.getBuckets
+      ) yield {
+        bucket.getKey.toLong
+      }).toList
+    getProductsByIds(storeCode, ids, new ProductDetailsRequest(false, None, None, None, lang))
   }
 
   def createComment(store:String, productId:Long, c:CommentRequest): Comment = {
