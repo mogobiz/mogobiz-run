@@ -16,6 +16,8 @@ object Settings {
   val Interface    = config getString  "spray.can.server.interface"
   val Port         = config getInt     "spray.can.server.port"
 
+  val CookieTracking = config getString "spray.can.server.cookie_tracking"
+
   val ApplicationSecret = config getString "session.application.secret"
   val SessionFolder = new File(config getString "session.folder")
   val SessionCookieName = config getString "session.cookie.name"
