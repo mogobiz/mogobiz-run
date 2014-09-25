@@ -12,7 +12,7 @@ import scala.util.Success
 
 
 object WishlistHandler {
-  def esStore(store: String) = s"$store-wishlist"
+  def esStore(store: String) = s"${store}_wishlist"
 }
 
 class WishlistHandler {
