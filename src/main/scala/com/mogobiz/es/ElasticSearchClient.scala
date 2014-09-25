@@ -318,9 +318,9 @@ object ElasticSearchClient extends JsonUtil {
               if(kv.size == 2)
                 Some(
                   must(
-                    List(
-                      createTermFilter("features.name.raw", Some(kv(0))),
-                      createTermFilter("features.value.raw", Some(kv(1)))
+                    List(//TODO handle multilingual
+                      createNestedTermFilter("features", "features.name.raw", Some(kv(0))),
+                      createNestedTermFilter("features", "features.value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                 )
@@ -934,6 +934,24 @@ object ElasticSearchClient extends JsonUtil {
           typeFields.map(typeField => and(typeFilter(typeField.`type`), regexFilter(typeField.field, s".*${s.toLowerCase}.*")) ):_*
         )
       )
+      case None => None
+    }
+  }
+
+  private def createNestedTermFilter(path:String, field:String, value:Option[Any]) : Option[FilterDefinition] = {
+    value match{
+      case Some(s) =>
+        s match {
+          case v:String =>
+            val values = v.split("""\|""")
+            if(values.size > 1){
+              Some(nestedFilter(path) filter termsFilter(field, values:_*))
+            }
+            else{
+              Some(nestedFilter(path) filter termFilter(field, v))
+            }
+          case _ => Some(nestedFilter(path) filter termFilter(field, s))
+        }
       case None => None
     }
   }
