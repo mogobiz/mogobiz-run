@@ -45,7 +45,8 @@ package object es {
 
   def getAllExcludedLanguagesExcept(store: String, langRequested: String): List[String] = {
     val storeLanguagesList: List[String] = getStoreLanguagesAsList(store)
-    if (langRequested.isEmpty) storeLanguagesList
+    if (langRequested == "_all") List()
+    else if(langRequested.isEmpty) storeLanguagesList
     else storeLanguagesList.filter {
       lang => lang != langRequested
     }
