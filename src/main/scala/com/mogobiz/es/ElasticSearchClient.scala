@@ -201,60 +201,6 @@ object ElasticSearchClient extends JsonUtil {
   }
 
   /**
-   *
-   * @param store
-   * @return
-   */
-  def queryStoreLanguages(store: String): JValue = {
-    val languages:JValue = EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
-      case Some(s) => s
-      case None => JNothing
-    }
-    languages  \ "languages"
-  }
-
-  def getStoreLanguagesAsList(store: String): List[String] = {
-    implicit def json4sFormats: Formats = DefaultFormats
-    queryStoreLanguages(store).extract[List[String]]
-  }
-
-  def getAllExcludedLanguagesExcept(store: String, langRequested: String): List[String] = {
-    val storeLanguagesList: List[String] = getStoreLanguagesAsList(store)
-    if (langRequested.isEmpty) storeLanguagesList
-    else storeLanguagesList.filter {
-      lang => lang != langRequested
-    }
-  }
-
-  def getAllExcludedLanguagesExceptAsList(store: String, lang: String): List[String] = {
-    getAllExcludedLanguagesExcept(store,lang).flatMap {
-      l => l :: "*." + l :: Nil
-    }
-  }
-
-  def getLangFieldsWithPrefixAsList(store: String, preField: String, field: String): List[String] = {
-    getStoreLanguagesAsList(store).flatMap {
-      l => preField + l + "." + field :: Nil
-    }
-  }
-
-  def getIncludedFieldWithPrefixAsList(store: String, preField:  String, field: String, lang: String) : List[String] = {
-    if ("_all".equals(lang)) {
-      getLangFieldsWithPrefixAsList(store, preField, field)
-    } else {
-      List(preField + lang + "." + field)
-    }
-  }
-
-  def getHighlightedFieldsAsList(store: String, field: String, lang: String): List[String] = {
-    if ("_all".equals(lang))
-      getStoreLanguagesAsList(store).flatMap {
-        l => l + "." + field :: Nil
-      }
-    else List(s"$lang.$field")
-  }
-
-  /**
    * retreive categories for given request<br/>
    * if brandId is set, the caller must test distinct results
    * @param store
@@ -902,20 +848,6 @@ object ElasticSearchClient extends JsonUtil {
     periods.exists(period => {
       day.getTime.compareTo(period.startDate) >= 0 && day.getTime.compareTo(period.endDate) <= 0
     })
-  }
-
-  /**
-   * if lang == "_all" returns an empty list
-   * else returns the list of all languages except the given language
-   * @param store - store
-   * @param lang - language
-   * @return excluded languages
-   */
-  private def createExcludeLang(store: String, lang: String): List[String] = {
-    if (lang == "_all") List()
-    else getStoreLanguagesAsList(store).filter{case l: String => l != lang}.collect { case l:String =>
-      List(l, l+".*", "*." + l, "*." + l + ".*")
-    }.flatten
   }
 
   private def filterRequest(req:SearchDefinition, filters:List[FilterDefinition], _query:QueryDefinition = matchall) : SearchDefinition =
