@@ -9,6 +9,7 @@ import org.json4s._
 
 
 import scala.concurrent.ExecutionContext
+import scala.util.Try
 
 class FacetService (storeCode: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives  {
   import akka.pattern.ask
@@ -32,7 +33,7 @@ class FacetService (storeCode: String, actor: ActorRef)(implicit executionContex
           val request = QueryGetFacetRequest(storeCode, priceInterval.toLong) //lang,
 
           complete {
-            (actor ? request).mapTo[JValue]
+            (actor ? request).mapTo[Try[JValue]]
           }
       }
     }

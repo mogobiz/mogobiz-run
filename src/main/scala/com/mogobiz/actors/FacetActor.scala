@@ -16,7 +16,6 @@ class FacetActor extends Actor {
 
   def receive = {
     case q: QueryGetFacetRequest =>
-      //sender ! Try(facetHandler.getProductCriteria(q.storeCode, q.priceInterval))
-      sender ! facetHandler.getProductCriteria(q.storeCode, q.priceInterval)
+      sender ! Try(facetHandler.getProductCriteria(q.storeCode, q.priceInterval))
   }
 }
