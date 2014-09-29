@@ -12,7 +12,7 @@ import com.mogobiz.services.RateBoService
 import com.mogobiz.utils.JacksonConverter
 import com.mogobiz.vo.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdate4s, _}
-import com.sksamuel.elastic4s.{SearchType, QueryDefinition, FilterDefinition}
+import com.sksamuel.elastic4s.{HistogramAggregation, SearchType, QueryDefinition, FilterDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.search.SearchHits
@@ -840,7 +840,7 @@ object ElasticSearchClient extends JsonUtil {
           aggregation terms "feature_values" field "features.fr.value.raw"
         }
       } aggs {
-        aggregation histogram "prices" field "price" interval priceInterval //((HistogramBuilder)builder).minDocCount(0)
+        aggregation histogram "prices" field "price" interval priceInterval minDocCount(0)
       }
       searchType SearchType.Count
     )
@@ -851,6 +851,14 @@ object ElasticSearchClient extends JsonUtil {
     val res = EsClient().execute(req)
     println(res)
     */
+  }
+
+  implicit class HistogramAggregationUtils(h: HistogramAggregation){
+
+    def minDocCount(minDocCount: Long): HistogramAggregation = {
+      h.builder.minDocCount(minDocCount)
+      return h
+    }
   }
 
 
