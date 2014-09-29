@@ -14,4 +14,5 @@ object HandlersConfig {
   val cartHandler = new CartHandler
   val wishlistHandler = new WishlistHandler
   val promotionHandler = new PromotionHandler
+  val facetHandler = new FacetHandler
 }

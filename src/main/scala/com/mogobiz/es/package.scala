@@ -2,7 +2,7 @@ package com.mogobiz
 
 import com.mogobiz.model.Currency
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
-import com.sksamuel.elastic4s.{QueryDefinition, FilterDefinition}
+import com.sksamuel.elastic4s.{HistogramAggregation, QueryDefinition, FilterDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.json4s.JsonAST.JNothing
 import org.json4s._
@@ -180,15 +180,21 @@ package object es {
   }
 
   def createNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {
-    val req = _gte match{
-      case Some(s) => Some(numericRangeFilter(field) gte s)
-      case None => None
-    }
-    _lte match {
-      case Some(s) => if(req.isDefined) Some(req.get lte s) else Some(numericRangeFilter(field) lte s)
-      case None => None
+    (_gte,_lte) match {
+      case (Some(gte_v), Some(lte_v)) => Some(numericRangeFilter(field) gte gte_v lte lte_v)
+      case (Some(gte_v), None) => Some(numericRangeFilter(field) gte gte_v)
+      case (None, Some(lte_v)) => Some(numericRangeFilter(field) lte lte_v)
+      case _ => None
     }
   }
 
   case class TypeField(`type`:String, field:String)
+
+  implicit class HistogramAggregationUtils(h: HistogramAggregation){
+
+    def minDocCount(minDocCount: Long): HistogramAggregation = {
+      h.builder.minDocCount(minDocCount)
+      return h
+    }
+  }
 }
