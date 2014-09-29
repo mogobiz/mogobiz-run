@@ -83,7 +83,7 @@ case class FacetRequest(
                          , categoryName: Option[String]
                          , priceMin: Option[Long]
                          , priceMax: Option[Long]
-                         , feature : Option[String]
+                         , features : Option[String]
                          ) {
  // def this(priceInterval: Long, lang:String) = this(priceInterval, lang, None, None,None,None,None)
 }

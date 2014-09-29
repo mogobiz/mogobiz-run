@@ -122,3 +122,5 @@ agg ={
 //http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&categoryName=habillement
 //http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&brandName=samsung
 //http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&priceMin=25000&priceMax=30000
+//http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&brandName=samsung%7Cnike
+//http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&features=Resulution:::Full%20HD%7CHD%20Ready

@@ -842,16 +842,31 @@ object ElasticSearchClient extends JsonUtil {
 
     val langparam = if(req.lang=="_all") "" else req.lang+"."
 
-    val priceFilter = createNumericRangeFilter("price", req.priceMin, req.priceMax)
-    println("priceFilter",priceFilter)
-
     val filters:List[FilterDefinition] = (List(
       createTermFilter("brand.name", req.brandName),
       createTermFilter("category.name", req.categoryName),
-      priceFilter
+      createNumericRangeFilter("price", req.priceMin, req.priceMax)
+    )::: List(/*feature*/
+      req.features match {
+        case Some(x:String) =>
+          val features:List[FilterDefinition] = (for(feature <- x.split("""\|\|\|""")) yield {
+            val kv = feature.split("""\:\:\:""")
+            if(kv.size == 2)
+              Some(
+                must(
+                  List(
+                    createTermFilter(s"features.${langparam}name.raw", Some(kv(0))),
+                    createTermFilter(s"features.${langparam}value.raw", Some(kv(1)))
+                  ).flatten:_*
+                )
+              )
+            else
+              None
+          }).toList.flatten
+          if(features.size > 1) Some(and(features:_*)) else if(features.size == 1) Some(features(0)) else None
+        case _ => None
+      }
     )).flatten
-
-    println("filters.size = "+filters.size)
 
     val esq = (filterRequest(query, filters) aggs {
       aggregation terms "category" field s"category.${langparam}name.raw"
@@ -863,20 +878,14 @@ object ElasticSearchClient extends JsonUtil {
       }
     } aggs {
       aggregation histogram "prices" field "price" interval req.priceInterval minDocCount(0)
+    } aggs {
+      aggregation min "price_min" field "price"
+    } aggs {
+      aggregation max "price_max" field "price"
     }
     searchType SearchType.Count)
 
-    val res = EsClient searchAgg(esq)
-    res
-
-    /*
-    val res = EsClient().execute(req)
-    val aggs = List(res.getAggregations.get[Terms]("category"))
-    implicit def json4sFormats: Formats = DefaultFormats
-    import org.json4s.native.JsonMethods._
-    import org.json4s.native.Serialization.{ write}
-    parse(write(aggs))
-    */
+    EsClient searchAgg(esq)
   }
 
   implicit class HistogramAggregationUtils(h: HistogramAggregation){
@@ -1003,19 +1012,6 @@ object ElasticSearchClient extends JsonUtil {
   }
 
   private def createNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {
-    /*
-    println(s"createNumericRangeFilter(${field}, ${_gte}, ${_lte})")
-    val req = _gte match{
-      case Some(s) => Some(numericRangeFilter(field) gte s)
-      case None => None
-    }
-    println("createNumericRangeFilter req=",req)
-    println("createNumericRangeFilter _lte=",_lte)
-    _lte match {
-      case Some(s) => if(req.isDefined) Some(req.get lte s) else Some(numericRangeFilter(field) lte s)
-      case None => None
-    }*/
-
     (_gte,_lte) match {
       case (Some(gte_v), Some(lte_v)) => Some(numericRangeFilter(field) gte gte_v lte lte_v)
       case (Some(gte_v), None) => Some(numericRangeFilter(field) gte gte_v)
