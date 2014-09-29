@@ -1,32 +1,43 @@
 curl -POST http://localhost:9200/mogobiz/product/_search
 
 //recherche par filtre
-"query": {
+q= {"query": {
     "filtered": {
         "filter": {
-            "term":{
-                "name":"pull"
+            "term": {
+                "name": "pull"
             }
         }
     }
-},
-
+}
+}
 //recherche par post-filtre
-"post_filter": {   "term": {     "name": "pull"   } }}
+q={"post_filter": {   "term": {     "name": "pull"   } }}}
 
 //recherche query/match
-"query": {
+q={"query": {
     "match": {
         "name": "pull"
     }
-},
+}}
 
-{
+req = {
     "query": {
         "query_string": {
             "query": "pull"
         }
     },
+    "filter": {
+    "bool": {
+        "must": [
+            {
+                "term": {
+                    "brand.name": "Samsung"
+                }
+            }
+        ]
+    }
+},
     "aggregations": {
     "price_stats":{
       "stats":{ "field" : "price"}
@@ -94,7 +105,7 @@ curl -POST http://localhost:9200/mogobiz/product/_search
 //requete d'aggregation pour critere de notation
 
 curl -POST http://localhost:9200/mogobiz_comment/_search
-{
+agg ={
     "aggregations": {
     "per_notation": {
         "terms": {
@@ -106,3 +117,8 @@ curl -POST http://localhost:9200/mogobiz_comment/_search
     }
 }
 }
+
+
+//http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&categoryName=habillement
+//http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&brandName=samsung
+//http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&priceMin=25000&priceMax=30000
