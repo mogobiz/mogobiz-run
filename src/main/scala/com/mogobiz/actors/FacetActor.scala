@@ -8,7 +8,7 @@ import scala.util.Try
 
 object FacetActor {
 
-  case class QueryGetFacetRequest(storeCode: String, priceInterval: Long)
+  case class QueryGetFacetRequest(storeCode: String, lang:String, priceInterval: Long)
 
 }
 
@@ -16,6 +16,6 @@ class FacetActor extends Actor {
 
   def receive = {
     case q: QueryGetFacetRequest =>
-      sender ! Try(facetHandler.getProductCriteria(q.storeCode, q.priceInterval))
+      sender ! Try(facetHandler.getProductCriteria(q.storeCode, q.lang, q.priceInterval))
   }
 }

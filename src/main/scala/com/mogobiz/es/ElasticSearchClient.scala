@@ -12,11 +12,12 @@ import com.mogobiz.services.RateBoService
 import com.mogobiz.utils.JacksonConverter
 import com.mogobiz.vo.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, update => esupdate4s, _}
-import com.sksamuel.elastic4s.{HistogramAggregation, SearchType, QueryDefinition, FilterDefinition}
+import com.sksamuel.elastic4s._
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.aggregations.bucket.histogram.HistogramBuilder
+import org.elasticsearch.search.aggregations.bucket.terms.Terms
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JArray, JNothing, JObject}
 import org.json4s.JsonDSL._
@@ -829,27 +830,32 @@ object ElasticSearchClient extends JsonUtil {
     }
   }
 
-  def getProductCriteria(store: String, priceInterval: Long): JValue = {
-    val res = EsClient searchAgg(
-      esearch4s in store -> "product" aggs {
-        aggregation terms "category" field "category.fr.name.raw"
-      } aggs {
-        aggregation terms "brand" field "brand.fr.name.raw"
-      } aggs {
-        aggregation terms "features" field "features.fr.name.raw" aggs {
-          aggregation terms "feature_values" field "features.fr.value.raw"
-        }
-      } aggs {
-        aggregation histogram "prices" field "price" interval priceInterval minDocCount(0)
+  def getProductCriteria(store: String, lang:String, priceInterval: Long): JValue = {
+
+    val langparam = if(lang!="") lang+"." else lang
+    val req = (esearch4s in store -> "product" aggs {
+      aggregation terms "category" field s"category.${langparam}name.raw"
+    } aggs {
+      aggregation terms "brand" field s"brand.${langparam}name.raw"
+    } aggs {
+      aggregation terms "features" field s"features.${langparam}name.raw" aggs {
+        aggregation terms "feature_values" field s"features.${langparam}value.raw"
       }
-      searchType SearchType.Count
-    )
+    } aggs {
+      aggregation histogram "prices" field "price" interval priceInterval minDocCount(0)
+    }
+    searchType SearchType.Count)
+
+    val res = EsClient searchAgg(req)
     res
 
     /*
-    println(req)
     val res = EsClient().execute(req)
-    println(res)
+    val aggs = List(res.getAggregations.get[Terms]("category"))
+    implicit def json4sFormats: Formats = DefaultFormats
+    import org.json4s.native.JsonMethods._
+    import org.json4s.native.Serialization.{ write}
+    parse(write(aggs))
     */
   }
 

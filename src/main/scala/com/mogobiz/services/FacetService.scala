@@ -30,7 +30,8 @@ class FacetService (storeCode: String, actor: ActorRef)(implicit executionContex
     get {
       parameters('priceInterval, 'lang ? "_all") {
         (priceInterval, lang) =>
-          val request = QueryGetFacetRequest(storeCode, priceInterval.toLong) //lang,
+          val langparam = if(lang=="_all") "" else lang
+          val request = QueryGetFacetRequest(storeCode, langparam, priceInterval.toLong)
 
           complete {
             (actor ? request).mapTo[Try[JValue]]

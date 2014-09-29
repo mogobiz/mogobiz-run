@@ -145,22 +145,16 @@ object EsClient {
       Some(res.getHits.getHits()(0))
   }
 
-  def searchAgg(req: SearchDefinition) : JValue = {  //Aggregations = {
+  /**
+   * send back the aggregations results
+   * @param req
+   * @return
+   */
+  def searchAgg(req: SearchDefinition) : JValue = {
     debug(req)
     val res = EsClient().execute(req)
-
-    val resStr = res.toString
-    //println("resStr=",resStr)
-    parse(resStr)
-    //TODO parse \ "aggregations"
-    /*
-    println("res=",res)
-    val res2 = res.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string()
-    println("res2=",res2)
-    val res3 = parse(res2)
-    println("res3=",res3)
-    res3
-    */
+    val resJson = parse(res.toString)
+    resJson \ "aggregations"
   }
 
   implicit def searchHits2JValue(searchHits:SearchHits) : JValue = {
