@@ -2,6 +2,7 @@ package com.mogobiz.services
 
 import akka.actor.ActorRef
 import com.mogobiz.actors.FacetActor.QueryGetFacetRequest
+import com.mogobiz.model.FacetRequest
 import spray.routing.Directives
 import com.mogobiz.json.Json4sProtocol
 import Json4sProtocol._
@@ -28,10 +29,9 @@ class FacetService (storeCode: String, actor: ActorRef)(implicit executionContex
 
   lazy val getFacets = pathEnd{
     get {
-      parameters('priceInterval, 'lang ? "_all") {
-        (priceInterval, lang) =>
-          val langparam = if(lang=="_all") "" else lang
-          val request = QueryGetFacetRequest(storeCode, langparam, priceInterval.toLong)
+      parameters('priceInterval, 'lang ? "_all", 'name.?, 'brandName.?, 'categoryName.?, 'priceMin.?, 'priceMax.?, 'feature.?).as(FacetRequest) {
+        param =>
+          val request = QueryGetFacetRequest(storeCode, param)
 
           complete {
             (actor ? request).mapTo[Try[JValue]]

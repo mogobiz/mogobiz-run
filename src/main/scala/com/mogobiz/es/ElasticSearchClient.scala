@@ -830,10 +830,30 @@ object ElasticSearchClient extends JsonUtil {
     }
   }
 
-  def getProductCriteria(store: String, lang:String, priceInterval: Long): JValue = {
+  def getProductCriteria(store: String, req: FacetRequest): JValue = {
 
-    val langparam = if(lang!="") lang+"." else lang
-    val req = (esearch4s in store -> "product" aggs {
+    val query = req.name match {
+      case Some(s) =>
+        esearch4s in store -> "product" query {
+          matchQuery("name", s)
+        }
+      case None => esearch4s in store -> "product"
+    }
+
+    val langparam = if(req.lang=="_all") "" else req.lang+"."
+
+    val priceFilter = createNumericRangeFilter("price", req.priceMin, req.priceMax)
+    println("priceFilter",priceFilter)
+
+    val filters:List[FilterDefinition] = (List(
+      createTermFilter("brand.name", req.brandName),
+      createTermFilter("category.name", req.categoryName),
+      priceFilter
+    )).flatten
+
+    println("filters.size = "+filters.size)
+
+    val esq = (filterRequest(query, filters) aggs {
       aggregation terms "category" field s"category.${langparam}name.raw"
     } aggs {
       aggregation terms "brand" field s"brand.${langparam}name.raw"
@@ -842,11 +862,11 @@ object ElasticSearchClient extends JsonUtil {
         aggregation terms "feature_values" field s"features.${langparam}value.raw"
       }
     } aggs {
-      aggregation histogram "prices" field "price" interval priceInterval minDocCount(0)
+      aggregation histogram "prices" field "price" interval req.priceInterval minDocCount(0)
     }
     searchType SearchType.Count)
 
-    val res = EsClient searchAgg(req)
+    val res = EsClient searchAgg(esq)
     res
 
     /*
@@ -983,13 +1003,24 @@ object ElasticSearchClient extends JsonUtil {
   }
 
   private def createNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {
+    /*
+    println(s"createNumericRangeFilter(${field}, ${_gte}, ${_lte})")
     val req = _gte match{
       case Some(s) => Some(numericRangeFilter(field) gte s)
       case None => None
     }
+    println("createNumericRangeFilter req=",req)
+    println("createNumericRangeFilter _lte=",_lte)
     _lte match {
       case Some(s) => if(req.isDefined) Some(req.get lte s) else Some(numericRangeFilter(field) lte s)
       case None => None
+    }*/
+
+    (_gte,_lte) match {
+      case (Some(gte_v), Some(lte_v)) => Some(numericRangeFilter(field) gte gte_v lte lte_v)
+      case (Some(gte_v), None) => Some(numericRangeFilter(field) gte gte_v)
+      case (None, Some(lte_v)) => Some(numericRangeFilter(field) lte lte_v)
+      case _ => None
     }
   }
 
