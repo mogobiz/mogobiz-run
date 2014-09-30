@@ -73,9 +73,24 @@ case class FeatureValue(value: String)
 case class Feature(indicator: String, label: String, values: List[FeatureValue])
 case class ComparisonResult(ids: List[String],result:List[Feature])
 
+case class FacetRequest(
+                           priceInterval:Long
+                         , lang: String
+                         , name: Option[String]
+                         //, brandId: Option[Int]
+                         //, categoryPath: Option[String]
+                         , brandName: Option[String]
+                         , categoryName: Option[String]
+                         , priceMin: Option[Long]
+                         , priceMax: Option[Long]
+                         , features : Option[String]
+                         ) {
+ // def this(priceInterval: Long, lang:String) = this(priceInterval, lang, None, None,None,None,None)
+}
+
 case class ProductRequest(
-                           override val maxItemPerPage: Option[Int]
-                           ,override val  pageOffset: Option[Int]
+                             override val maxItemPerPage: Option[Int]
+                           , override val pageOffset: Option[Int]
                            , xtype: Option[String]
                            , name: Option[String]
                            , code: Option[String]

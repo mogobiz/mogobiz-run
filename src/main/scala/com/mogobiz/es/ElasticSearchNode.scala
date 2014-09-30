@@ -43,19 +43,18 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
     val initialSettings : Tuple[Settings, Environment]= InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true)
     if (!initialSettings.v2().pluginsFile().exists()) {
       FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile())
+      val pluginManager : PluginManager = new PluginManager(initialSettings.v2(), null, PluginManager.OutputMode.VERBOSE, TimeValue.timeValueMillis(0))
+      plugins.foreach(plugin => {
+        pluginManager.removePlugin(plugin)
+        try {
+          pluginManager.downloadAndExtract(plugin)
+        }
+        catch {
+          case e: IOException  =>
+            logger.error(e.getMessage)
+        }
+      })
     }
-
-    val pluginManager : PluginManager = new PluginManager(initialSettings.v2(), null, PluginManager.OutputMode.VERBOSE, TimeValue.timeValueMillis(0))
-    plugins.foreach(plugin => {
-      pluginManager.removePlugin(plugin)
-      try {
-        pluginManager.downloadAndExtract(plugin)
-      }
-      catch {
-        case e: IOException  =>
-          logger.error(e.getMessage)
-      }
-    })
 
     val tmpdir:String = s"${System.getProperty("java.io.tmpdir")}${System.currentTimeMillis()}/data"
     new File(tmpdir).mkdirs()
@@ -90,6 +89,8 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       }
     })
 
+    esNode.client().admin().indices().prepareRefresh().execute().actionGet()
+
     esNode
   }
 
@@ -98,6 +99,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       node.start()
       logger.info("ES is starting...")
     }
+    logger.info("ES is started")
   }
 
 }

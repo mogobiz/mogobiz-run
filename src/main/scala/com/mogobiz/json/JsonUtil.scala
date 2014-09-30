@@ -1,10 +1,18 @@
 package com.mogobiz.json
 
-import org.json4s.JsonAST._
+import org.json4s.JsonAST.JDecimal
+import org.json4s.JsonAST.JDouble
+import org.json4s.JsonAST.JField
+import org.json4s.JsonAST.JNothing
+import org.json4s.JsonAST.JObject
+import org.json4s.JsonAST.JString
+import org.json4s.JsonAST.JValue
 import org.json4s.JsonAST.JInt
 import org.json4s.JsonAST.JArray
+import org.json4s._
 
 /**
+ *
  * Created by yoannbaudy on 10/09/14.
  */
 trait JsonUtil {
@@ -66,4 +74,24 @@ trait JsonUtil {
   }
   def distinctById(j: JValue): List[JValue] = distinctByProperty(j, "id")
 
+  def extractJSonProperty(source: JValue, property: String): JValue = {
+    extractJSonProperty(source, property, JNothing)
+  }
+
+  def extractJSonProperty(source: JValue, property: String, defaultValue: JValue): JValue = {
+    source match {
+      case o: JObject =>
+        o.obj.find {p: JField => p._1 == property}.getOrElse(JField(property, defaultValue))._2
+      case _ => defaultValue
+    }
+  }
+
+  def removeFields(jValue: JValue, fields: List[String]): JValue = {
+    if (fields.isEmpty) jValue
+    else {
+      removeFields(jValue removeField {
+        f => f._1 == fields.head
+      }, fields.tail)
+    }
+  }
 }
