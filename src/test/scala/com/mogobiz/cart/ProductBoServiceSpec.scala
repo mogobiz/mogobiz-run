@@ -42,7 +42,7 @@ class ProductBoServiceSpec  extends Specification {
 
     val quantity = 1
     val date = None
-    service.decrement(ticketType , quantity, date)
+    service.decrementStock(ticketType , quantity, date)
 
     val ticketType2 = TicketType.get(ttid)
     ticketType2.id must be_==(ttid)
