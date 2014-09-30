@@ -13,11 +13,11 @@ class ResourceBundle(baseName: String) {
   def contains(key: String, locale: Locale) =
     bundle(locale).containsKey(key)
 
-  def get(key: String, locale: Locale) =
+  def get(key: String, locale: Locale): String =
     bundle(locale).getString(key)
 
-  def find(key: String, locale: Locale) =
-    Try { get(key, locale) }.toOption
+  def find(key: String, locale: Locale): Option[String] =
+    Try(get(key, locale)).toOption
 
   def getOrElse(key: String, locale: Locale, default: =>String) =
     find(key, locale).getOrElse(default)
