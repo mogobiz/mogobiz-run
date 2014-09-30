@@ -18,7 +18,7 @@ class FacetHandler {
       case None => esearch4s in storeCode -> "product"
     }
 
-    val langparam = if(req.lang=="_all") "" else req.lang+"."
+    val lang = if(req.lang=="_all") "" else s"${req.lang}."
 
     val filters:List[FilterDefinition] = (List(
       createTermFilter("brand.name", req.brandName),
@@ -33,8 +33,8 @@ class FacetHandler {
               Some(
                 must(
                   List(
-                    createTermFilter(s"features.${langparam}name.raw", Some(kv(0))),
-                    createTermFilter(s"features.${langparam}value.raw", Some(kv(1)))
+                    createTermFilter(s"features.${lang}name.raw", Some(kv(0))),
+                    createTermFilter(s"features.${lang}value.raw", Some(kv(1)))
                   ).flatten:_*
                 )
               )
@@ -47,15 +47,15 @@ class FacetHandler {
     )).flatten
 
     val esq = (filterRequest(query, filters) aggs {
-      aggregation terms "category" field s"category.${langparam}name.raw"
+      aggregation terms "category" field s"category.${lang}name.raw"
     } aggs {
-      aggregation terms "brand" field s"brand.${langparam}name.raw"
+      aggregation terms "brand" field s"brand.${lang}name.raw"
     } aggs {
-      aggregation terms "features" field s"features.${langparam}name.raw" aggs {
-        aggregation terms "feature_values" field s"features.${langparam}value.raw"
+      aggregation terms "features" field s"features.${lang}name.raw" aggs {
+        aggregation terms "feature_values" field s"features.${lang}value.raw"
       }
     } aggs {
-      aggregation histogram "prices" field "price" interval req.priceInterval minDocCount(0)
+      aggregation histogram "prices" field "price" interval req.priceInterval minDocCount 0
     } aggs {
       aggregation min "price_min" field "price"
     } aggs {
@@ -63,6 +63,6 @@ class FacetHandler {
     }
       searchType SearchType.Count)
 
-    EsClient searchAgg(esq)
+    EsClient searchAgg esq
   }
 }

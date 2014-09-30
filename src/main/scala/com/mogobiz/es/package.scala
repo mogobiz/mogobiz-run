@@ -21,14 +21,15 @@ package object es {
   def queryCurrency(store: String, currencyCode:Option[String]) : Currency = {
     assert(!store.isEmpty)
     currencyCode match {
-      case Some(s) =>     EsClient.search[Currency](
-        filterRequest(
-          esearch4s in store -> "rate",
-          List(
-            createTermFilter("code", Some(currencyCode))
-          ).flatten
-        )
-      ) getOrElse defaultCurrency
+      case Some(s) =>
+        EsClient.search[Currency](
+          filterRequest(
+            esearch4s in store -> "rate",
+            List(
+              createTermFilter("code", Some(currencyCode))
+            ).flatten
+          )
+        ) getOrElse defaultCurrency
       case None =>
         log.warn(s"No currency code supplied: fallback to programmatic default currency: ${defaultCurrency.code}, ${defaultCurrency.rate}")
         defaultCurrency
@@ -194,7 +195,7 @@ package object es {
 
     def minDocCount(minDocCount: Long): HistogramAggregation = {
       h.builder.minDocCount(minDocCount)
-      return h
+      h
     }
   }
 }
