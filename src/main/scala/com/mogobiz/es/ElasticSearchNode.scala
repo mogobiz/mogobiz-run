@@ -89,6 +89,8 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       }
     })
 
+    esNode.client().admin().indices().prepareRefresh().execute().actionGet()
+
     esNode
   }
 
@@ -97,6 +99,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       node.start()
       logger.info("ES is starting...")
     }
+    logger.info("ES is started")
   }
 
 }

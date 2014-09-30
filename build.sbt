@@ -85,7 +85,7 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-email" % "1.3.3",
   "org.specs2" %% "specs2" % "2.3.13" % "test",
   "org.scala-lang.modules" %% "scala-async" % "0.9.2" % "test",
-  "org.elasticsearch" % "elasticsearch-analysis-icu" % "2.2.0" % "test"
+  "org.elasticsearch" % "elasticsearch-analysis-icu" % "2.2.0"
 )
 //    "commons-codec" % "commons-codec" % "1.9",
 //    "com.google.gdata" % "core" % "1.0",
