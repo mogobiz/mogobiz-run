@@ -156,12 +156,14 @@ package object domain {
       rs.longOpt(tr.resultName.id).map(_ => TaxRate(tr)(rs))
   }
 
-  case class TicketType(id:Long,name:String,price:Long,minOrder:Long=0,maxOrder:Long=0,stock:Option[Stock]=None,product:Option[Product]=None,startDate:Option[DateTime]=None,stopDate:Option[DateTime]=None){
+  case class TicketType(uuid:String, sku:String, id:Long,name:String,price:Long,minOrder:Long=0,maxOrder:Long=0,stock:Option[Stock]=None,product:Option[Product]=None,startDate:Option[DateTime]=None,stopDate:Option[DateTime]=None){
 
   }
   object TicketType extends SQLSyntaxSupport[TicketType] {
 
     def apply(rs:WrappedResultSet):TicketType = TicketType(
+      uuid = rs.string("uuid"),
+      sku = rs.string("sku"),
       id=rs.long("id"),
       name=rs.string("name"),
       price=rs.long("price"),minOrder=rs.long("min_order"),maxOrder=rs.long("max_order"),
@@ -171,6 +173,7 @@ package object domain {
       product = Some(Product.applyFk(rs)))
 
     def apply(rn: ResultName[TicketType])(rs:WrappedResultSet): TicketType = new TicketType(
+      uuid=rs.get(rn.uuid), sku = rs.get(rn.sku),
       id=rs.get(rn.id),name=rs.get(rn.name),price=rs.get(rn.price),
       minOrder=rs.get(rn.minOrder),maxOrder=rs.get(rn.maxOrder),
       stock=Some(Stock(rs)),product=Some(Product.applyFk(rs)))

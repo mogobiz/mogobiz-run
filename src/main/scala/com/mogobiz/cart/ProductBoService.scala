@@ -1,6 +1,9 @@
 package com.mogobiz.cart
 
 import java.util.Calendar
+import akka.actor.Props
+import com.mogobiz.actors.EsUpdateActor.StockUpdateRequest
+import com.mogobiz.actors.{EsUpdateActor, CartActor, ActorSystemLocator}
 import com.mogobiz.cart.domain._
 import scalikejdbc._
 import org.joda.time.DateTime
@@ -10,7 +13,7 @@ object ProductBoService extends BoService {
   /**
    * Increment the stock of the ticketType of the ticket for the given date and decrement the number of sale
    */
-  def incrementStock(ticketType:TicketType , quantity:Long, date:Option[DateTime]):Unit = {
+  def incrementStock(storeCode : Option[String], ticketType:TicketType , quantity:Long, date:Option[DateTime]):Unit = {
     val product = ticketType.product.get
     ticketType.stock match {
       case Some(stock) =>
@@ -22,11 +25,30 @@ object ProductBoService extends BoService {
         DB localTx { implicit session =>
 //          updateProductSales(product.id, -quantity, now)
 //          updateTicketTypeSales(ticketType.id, -quantity, now)
-          updateStockCalendarSales(stockCalendar.id, -quantity, now)
+          val newSold = updateStockCalendarSales(stockCalendar.id, -quantity, now)
+
+          if(storeCode.isDefined) {
+            product.calendarType match {
+              case ProductCalendar.NO_DATE => updateEsStock(storeCode.get, ticketType.uuid, newSold)
+              case _ => //TODO updateEsStockByDateTime()
+
+            }
+          }
         }
-        //TODO ES upsertProduct(product)
+
       case None => throw new UnavailableStockException("increment stock error : stock does not exist")
     }
+  }
+
+
+  def updateEsStock(storeCode: String, uuid:String, sold:Long) = {
+    println("********************************************")
+    println(s"updateEsStock [$storeCode], [$uuid], [$sold]")
+    println("********************************************")
+
+    val system = ActorSystemLocator.get
+    val stockActor = system.actorOf(Props[EsUpdateActor])
+    stockActor ! StockUpdateRequest(storeCode, uuid, sold)
   }
 
   /**
@@ -37,7 +59,7 @@ object ProductBoService extends BoService {
    * @param date
    * @throws InsufficientStockException
    */
-  def decrementStock(ticketType: TicketType, quantity: Long , date:Option[DateTime] ):Unit = {
+  def decrementStock(storeCode:Option[String], ticketType: TicketType, quantity: Long , date:Option[DateTime] ):Unit = {
     val product = ticketType.product.get
     ticketType.stock match {
       case Some(stock) =>
@@ -55,10 +77,16 @@ object ProductBoService extends BoService {
           implicit session =>
 //            updateProductSales(product.id, quantity, now)
 //            updateTicketTypeSales(ticketType.id, quantity, now)
-            updateStockCalendarSales(stockCalendar.id, quantity, now)
-        }
+            val newSold = updateStockCalendarSales(stockCalendar.id, quantity, now)
 
-        //TODO update ES upsertProduct(product)
+            if(storeCode.isDefined) {
+              product.calendarType match {
+                case ProductCalendar.NO_DATE => updateEsStock(storeCode.get, ticketType.uuid, newSold)
+                case _ => //TODO updateEsStockByDateTime()
+
+              }
+            }
+        }
       case None => throw new UnavailableStockException("decrement stock error : stock does not exist")
     }
   }
@@ -143,9 +171,11 @@ object ProductBoService extends BoService {
   }
 
 
-  private def updateStockCalendarSales(id:Long,quantity:Long,now:DateTime)(implicit session:DBSession) = {
+  private def updateStockCalendarSales(id:Long,quantity:Long,now:DateTime)(implicit session:DBSession) : Long = {
     val sold = sql"select sold from stock_calendar where id=$id".map(rs => rs.long("sold")).single().apply().get
-    sql"update stock_calendar  set sold = ${sold+quantity},last_updated = $now where id=$id".update().apply()
+    val newSold = sold+quantity
+    sql"update stock_calendar  set sold = ${newSold},last_updated = $now where id=$id".update().apply()
+    newSold
   }
 
 

@@ -50,7 +50,7 @@ class CartHandler {
 
     val currency = queryCurrency(storeCode, params.currency)
     try {
-      val updatedCart = cartService.addItem(locale, currency.code, cart, cmd.skuId, cmd.quantity, cmd.dateTime, cmd.registeredCartItems)
+      val updatedCart = cartService.addItem(storeCode, locale, currency.code, cart, cmd.skuId, cmd.quantity, cmd.dateTime, cmd.registeredCartItems)
       val data = cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
       val response = Map(
         "success" -> true,
@@ -85,7 +85,7 @@ class CartHandler {
 
     val currency = queryCurrency(storeCode, params.currency)
     try {
-      val updatedCart = cartService.updateItem(locale, currency.code, cart, cartItemId, cmd.quantity)
+      val updatedCart = cartService.updateItem(storeCode, locale, currency.code, cart, cartItemId, cmd.quantity)
       val data = cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
       val response = Map(
         "success" -> true,
@@ -114,7 +114,7 @@ class CartHandler {
 
     val currency = queryCurrency(storeCode, params.currency)
     try {
-      val updatedCart = cartService.removeItem(locale, currency.code, cart, cartItemId)
+      val updatedCart = cartService.removeItem(storeCode, locale, currency.code, cart, cartItemId)
       val data = cartRenderService.renderCart(updatedCart, storeCode, currency, locale)
       val response = Map(
         "success" -> true,

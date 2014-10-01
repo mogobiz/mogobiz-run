@@ -69,7 +69,7 @@ object CartBoService extends BoService {
    * @return send back the new cart with the added item
    */
   @throws[AddCartItemException]
-  def addItem(locale:Locale , currencyCode:String , cartVO:CartVO , ticketTypeId:Long, quantity:Int, dateTime:Option[DateTime], registeredCartItems:List[RegisteredCartItemVO]):CartVO  = {
+  def addItem(storeCode:String, locale:Locale , currencyCode:String , cartVO:CartVO , ticketTypeId:Long, quantity:Int, dateTime:Option[DateTime], registeredCartItems:List[RegisteredCartItemVO]):CartVO  = {
 
     assert(!currencyCode.isEmpty,"currencyCode should not be empty")
     assert(!locale.getCountry.isEmpty,"locale.getCountry should not be empty")
@@ -124,7 +124,7 @@ object CartBoService extends BoService {
       throw new AddCartItemException(errors)
 
     // decrement stock
-    productService.decrementStock(ticketType,quantity,startEndDate._1)
+    productService.decrementStock(Some(storeCode), ticketType,quantity,startEndDate._1)
 
     //resume existing items
     var oldCartPrice = 0l
@@ -188,7 +188,7 @@ object CartBoService extends BoService {
    * @return
    */
   @throws[UpdateCartItemException]
-  def updateItem(locale:Locale, currencyCode:String, cartVO:CartVO , cartItemId:String , quantity:Int ) : CartVO = {
+  def updateItem(storeCode: String, locale:Locale, currencyCode:String, cartVO:CartVO , cartItemId:String , quantity:Int ) : CartVO = {
 
     val errors:CartErrors = Map()
 
@@ -221,7 +221,7 @@ object CartBoService extends BoService {
           try
           {
             // On décrémente le stock
-            productService.decrementStock(sku, quantity - oldQuantity, cartItem.startDate)
+            productService.decrementStock(Some(storeCode), sku, quantity - oldQuantity, cartItem.startDate)
           }
           catch {
             case ex:InsufficientStockException =>
@@ -232,7 +232,7 @@ object CartBoService extends BoService {
         else
         {
           // On incrémente le stock
-          productService.incrementStock(sku, oldQuantity - quantity, cartItem.startDate)
+          productService.incrementStock(Some(storeCode), sku, oldQuantity - quantity, cartItem.startDate)
         }
 
         val item = cartItem
@@ -298,7 +298,7 @@ object CartBoService extends BoService {
   }
 
   @throws[RemoveCartItemException]
-  def removeItem(locale:Locale , currencyCode:String , cartVO:CartVO , cartItemId:String ) : CartVO = {
+  def removeItem(storeCode:String, locale:Locale , currencyCode:String , cartVO:CartVO , cartItemId:String ) : CartVO = {
 
     val errors:CartErrors = Map()
 
@@ -317,7 +317,7 @@ object CartBoService extends BoService {
 
     val sku = TicketType.get(cartItem.skuId)
 
-    productService.incrementStock(sku, cartItem.quantity, cartItem.startDate)
+    productService.incrementStock(Some(storeCode), sku, cartItem.quantity, cartItem.startDate)
 
     val newEndPrice:Option[Long] = (cartVO.endPrice,cartItem.totalEndPrice) match {
       case (Some(cartendprice),Some(itemtotalendprice)) => Some(cartendprice - itemtotalendprice)
@@ -332,7 +332,7 @@ object CartBoService extends BoService {
   private def incrementProductsStock(c:CartVO): Unit = {
     c.cartItemVOs.foreach { cartItem =>
       val sku = TicketType.get(cartItem.skuId)
-      productService.incrementStock(sku, cartItem.quantity, cartItem.startDate)
+      productService.incrementStock(None, sku, cartItem.quantity, cartItem.startDate)
     }
   }
 
