@@ -13,8 +13,9 @@ object ProductBoService extends BoService {
   /**
    * Increment the stock of the ticketType of the ticket for the given date and decrement the number of sale
    */
-  def incrementStock(storeCode : Option[String], ticketType:TicketType , quantity:Long, date:Option[DateTime]):Unit = {
+  def incrementStock(ticketType:TicketType , quantity:Long, date:Option[DateTime]):Unit = {
     val product = ticketType.product.get
+    val storeCode = product.company.get.code
     ticketType.stock match {
       case Some(stock) =>
         // Search the corresponding StockCalendar
@@ -27,13 +28,12 @@ object ProductBoService extends BoService {
 //          updateTicketTypeSales(ticketType.id, -quantity, now)
           val newSold = updateStockCalendarSales(stockCalendar.id, -quantity, now)
 
-          if(storeCode.isDefined) {
+
             product.calendarType match {
-              case ProductCalendar.NO_DATE => updateEsStock(storeCode.get, ticketType.uuid, newSold)
+              case ProductCalendar.NO_DATE => updateEsStock(storeCode, ticketType.uuid, newSold)
               case _ => //TODO updateEsStockByDateTime()
 
             }
-          }
         }
 
       case None => throw new UnavailableStockException("increment stock error : stock does not exist")
@@ -59,8 +59,10 @@ object ProductBoService extends BoService {
    * @param date
    * @throws InsufficientStockException
    */
-  def decrementStock(storeCode:Option[String], ticketType: TicketType, quantity: Long , date:Option[DateTime] ):Unit = {
+  def decrementStock(ticketType: TicketType, quantity: Long , date:Option[DateTime] ):Unit = {
     val product = ticketType.product.get
+    val storeCode = product.company.get.code
+
     ticketType.stock match {
       case Some(stock) =>
         // Search the corresponding StockCalendar
@@ -79,12 +81,10 @@ object ProductBoService extends BoService {
 //            updateTicketTypeSales(ticketType.id, quantity, now)
             val newSold = updateStockCalendarSales(stockCalendar.id, quantity, now)
 
-            if(storeCode.isDefined) {
-              product.calendarType match {
-                case ProductCalendar.NO_DATE => updateEsStock(storeCode.get, ticketType.uuid, newSold)
-                case _ => //TODO updateEsStockByDateTime()
+            product.calendarType match {
+              case ProductCalendar.NO_DATE => updateEsStock(storeCode, ticketType.uuid, newSold)
+              case _ => //TODO updateEsStockByDateTime()
 
-              }
             }
         }
       case None => throw new UnavailableStockException("decrement stock error : stock does not exist")
