@@ -80,7 +80,7 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core"  % "jackson-core"               % jacksonV,
   "com.fasterxml.jackson.core"  % "jackson-databind"           % jacksonV,
   "com.typesafe.akka"          %% "akka-actor"                 % akkaV,
-  "com.typesafe.akka"          %% "akka-testkit"               % akkaV,
+  "com.typesafe.akka"          %% "akka-testkit"               % akkaV           % "test",
   "com.sksamuel.elastic4s"     %% "elastic4s"                  % elastic4sV      exclude("org.elasticsearch", "elasticsearch"),
   "org.elasticsearch"           % "elasticsearch"              % elasticSearchV,
   "org.elasticsearch"           % "elasticsearch-analysis-icu" % "2.2.0"         % "provided",
