@@ -4,7 +4,7 @@ import AssemblyKeys._
 
 assemblySettings
 
-jarName in assembly := "mogobiz-run.jar"
+jarName in assembly := s"mogobiz-run-${version.value}.jar"
 
 mainClass in assembly := Some("com.mogobiz.Rest")
 
@@ -22,7 +22,6 @@ scalaVersion := "2.11.1"
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
-
 resolvers += "BoneCP Repository" at "http://jolbox.com/bonecp/downloads/maven"
 
 resolvers += Resolver.sonatypeRepo("releases")
@@ -36,7 +35,6 @@ resolvers += "scribe-java-mvn-repo" at "https://raw.github.com/fernandezpablo85/
 resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
 
 resolvers += "Grep code" at "http://grepcode.com/snapshot/repo1.maven.org/maven2/"
-
 
 val akkaV = "2.3.3"
 
@@ -109,3 +107,43 @@ credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 publishArtifact in(Compile, packageSrc) := false
 
 publishArtifact in(Test, packageSrc) := false
+
+val ProfileMySQL = config("mysql") extend Compile
+
+val ProfilePostgreSQL = config("postgresql") extend Compile
+
+val root = (project in file("."))
+  .configs(ProfileMySQL, ProfilePostgreSQL)
+  .settings(
+    inConfig(ProfilePostgreSQL)(
+      assemblySettings ++ Revolver.settings ++ Seq(
+        mainClass in assembly := Some("com.mogobiz.Rest"),
+        test in assembly := {},
+        jarName in assembly := s"mogobiz-run-postgresql-${version.value}.jar",
+        mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
+        {
+          case PathList("com", "ibm", "icu", xs @ _*) => MergeStrategy.discard
+          case PathList("com", "mysql", xs @ _*) => MergeStrategy.discard
+          case x => old(x)
+        }
+        }
+      )
+    ):_*
+  )
+  .settings(
+    inConfig(ProfileMySQL)(
+      assemblySettings ++ Revolver.settings ++ Seq(
+        mainClass in assembly := Some("com.mogobiz.Rest"),
+        test in assembly := {},
+        jarName in assembly := s"mogobiz-run-mysql-${version.value}.jar",
+        mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
+        {
+          case PathList("com", "ibm", "icu", xs @ _*) => MergeStrategy.discard
+          case PathList("org", "postgresql", xs @ _*) => MergeStrategy.discard
+          case x => old(x)
+        }
+        }
+      )
+    ):_*
+  )
+
