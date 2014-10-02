@@ -2,11 +2,10 @@ package com.mogobiz.cart
 
 import com.mogobiz.cart.ProductCalendar._
 import com.mogobiz.cart.ProductType._
-import com.mogobiz.cart.domain.ReductionRule
 import com.mogobiz.cart.domain.ReductionRuleType.ReductionRuleType
+import com.mogobiz.utils.GlobalUtil
 import org.joda.time.DateTime
 import scalikejdbc._
-
 /**
  *
  * Created by Christophe on 09/05/2014.
@@ -60,8 +59,15 @@ package object domain {
   }
 
   case class StockCalendar(
-                            id:Long,stock:Long,sold:Long,startDate:Option[DateTime],product:Product,ticketType:TicketType,
-                            dateCreated:DateTime,lastUpdated:DateTime) extends Entity with DateAware
+                            id:Long,
+                            uuid:String,
+                            stock:Long,
+                            sold:Long,
+                            startDate:Option[DateTime],
+                            product:Product,
+                            ticketType:TicketType,
+                            dateCreated:DateTime,
+                            lastUpdated:DateTime) extends DateAware //Entity with
 
   object StockCalendar {
 
@@ -70,8 +76,8 @@ package object domain {
            values (${s.id},${s.dateCreated},${s.lastUpdated},${s.product.id},${s.sold},${s.startDate},${s.stock},${s.ticketType.id}, ${s.uuid})"""
     }
   }
-  case class Product(id:Long,name:String,xtype:ProductType, calendarType:ProductCalendar,taxRateFk:Option[Long], taxRate: Option[TaxRate],
-                     poiFk:Option[Long],shippingFk:Option[Long],companyFk:Long,
+  case class Product(id:Long, uuid:String, name:String,xtype:ProductType, calendarType:ProductCalendar,taxRateFk:Option[Long], taxRate: Option[TaxRate],
+                     poiFk:Option[Long],shippingFk:Option[Long],companyFk:Long, stockDisplay: Boolean,
                      startDate:Option[DateTime],stopDate:Option[DateTime] ){
 
     def company = Company.get(companyFk)
@@ -93,6 +99,7 @@ package object domain {
 
     def apply(rn: ResultName[Product])(rs:WrappedResultSet): Product = new Product(
       id = rs.get(rn.id),
+      uuid = rs.get(rn.uuid),
       name = rs.get(rn.name),
       xtype = ProductType.valueOf(rs.string("x_on_p")),//,rs.get(rn.xtype), //FIXME
       calendarType = ProductCalendar.valueOf(rs.string("ct_on_p")), //rs.get(rn.calendarType), //FIXME
@@ -101,13 +108,14 @@ package object domain {
       companyFk = rs.get(rn.companyFk),
       poiFk = rs.get(rn.poiFk),
       shippingFk = rs.get(rn.shippingFk),
+      stockDisplay = rs.get(rn.stockDisplay),
       startDate = rs.get(rn.startDate),
       stopDate = rs.get(rn.stopDate)
     )
 
 
-    def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"),shippingFk= rs.longOpt("shipping_fk"),startDate=rs.get("start_date"),stopDate=rs.get("stop_date"))
-    def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"), shippingFk= rs.longOpt("shipping_fk"),startDate=rs.get("start_date"),stopDate=rs.get("stop_date"))
+    def apply(rs:WrappedResultSet): Product = Product(id = rs.long("id"), uuid = rs.string("uuid"), name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"),shippingFk= rs.longOpt("shipping_fk"),stockDisplay = rs.get("stock_display"),startDate=rs.get("start_date"),stopDate=rs.get("stop_date"))
+    def applyFk(rs:WrappedResultSet): Product = Product(id = rs.long("product_fk"),uuid = rs.string("uuid"),name = rs.string("name"),xtype = ProductType.valueOf(rs.string("xtype")),calendarType = ProductCalendar.valueOf(rs.string("calendar_type")),taxRateFk = rs.longOpt("tax_rate_fk"),taxRate = Some(TaxRate(rs)),companyFk = rs.long("company_fk"),poiFk= rs.longOpt("poi_fk"), shippingFk= rs.longOpt("shipping_fk"),stockDisplay = rs.get("stock_display"),startDate=rs.get("start_date"),stopDate=rs.get("stop_date"))
 
     def get(id:Long):Option[Product] = {
 
@@ -156,9 +164,22 @@ package object domain {
       rs.longOpt(tr.resultName.id).map(_ => TaxRate(tr)(rs))
   }
 
-  case class TicketType(uuid:String, sku:String, id:Long,name:String,price:Long,minOrder:Long=0,maxOrder:Long=0,stock:Option[Stock]=None,product:Option[Product]=None,startDate:Option[DateTime]=None,stopDate:Option[DateTime]=None){
+  case class TicketType(
+                         uuid:String,
+                         sku:String,
+                         id:Long,
+                         name:String,
+                         price:Long,
+                         minOrder:Long=0,
+                         maxOrder:Long=0,
+                         stock:Option[Stock]=None,
+                         product:Option[Product]=None,
+                         availabilityDate:Option[DateTime]=None,
+                         startDate:Option[DateTime]=None,
+                         stopDate:Option[DateTime]=None){
 
   }
+
   object TicketType extends SQLSyntaxSupport[TicketType] {
 
     def apply(rs:WrappedResultSet):TicketType = TicketType(
@@ -168,12 +189,13 @@ package object domain {
       name=rs.string("name"),
       price=rs.long("price"),minOrder=rs.long("min_order"),maxOrder=rs.long("max_order"),
       stock=Some(Stock(rs)),
+      availabilityDate = rs.get("availability_date"),
       startDate = rs.get("start_date"),
       stopDate = rs.get("stop_date"),
       product = Some(Product.applyFk(rs)))
 
     def apply(rn: ResultName[TicketType])(rs:WrappedResultSet): TicketType = new TicketType(
-      uuid=rs.get(rn.uuid), sku = rs.get(rn.sku),
+      uuid=rs.get(rn.uuid), sku = rs.get(rn.sku), availabilityDate = rs.get(rn.availabilityDate),
       id=rs.get(rn.id),name=rs.get(rn.name),price=rs.get(rn.price),
       minOrder=rs.get(rn.minOrder),maxOrder=rs.get(rn.maxOrder),
       stock=Some(Stock(rs)),product=Some(Product.applyFk(rs)))

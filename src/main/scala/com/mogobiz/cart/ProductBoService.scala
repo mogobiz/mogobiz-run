@@ -2,9 +2,11 @@ package com.mogobiz.cart
 
 import java.util.Calendar
 import akka.actor.Props
-import com.mogobiz.actors.EsUpdateActor.StockUpdateRequest
+import com.mogobiz.actors.EsUpdateActor.{StockCalendarUpdateRequest, StockUpdateRequest}
 import com.mogobiz.actors.{EsUpdateActor, CartActor, ActorSystemLocator}
 import com.mogobiz.cart.domain._
+import com.mogobiz.handlers.StockHandler
+import com.mogobiz.utils.GlobalUtil._
 import scalikejdbc._
 import org.joda.time.DateTime
 
@@ -28,10 +30,9 @@ object ProductBoService extends BoService {
 //          updateTicketTypeSales(ticketType.id, -quantity, now)
           val newSold = updateStockCalendarSales(stockCalendar.id, -quantity, now)
 
-
             product.calendarType match {
               case ProductCalendar.NO_DATE => updateEsStock(storeCode, ticketType.uuid, newSold)
-              case _ => //TODO updateEsStockByDateTime()
+              case _ => updateEsStockByDateTime(storeCode, ticketType, stockCalendar.copy(sold = newSold))
 
             }
         }
@@ -41,11 +42,13 @@ object ProductBoService extends BoService {
   }
 
 
-  def updateEsStock(storeCode: String, uuid:String, sold:Long) = {
-    println("********************************************")
-    println(s"updateEsStock [$storeCode], [$uuid], [$sold]")
-    println("********************************************")
+  def updateEsStockByDateTime(storeCode: String,  ticketType: TicketType, stockCalendar: StockCalendar) = {
+    val system = ActorSystemLocator.get
+    val stockActor = system.actorOf(Props[EsUpdateActor])
+    stockActor ! StockCalendarUpdateRequest(storeCode, ticketType, stockCalendar)
+  }
 
+  def updateEsStock(storeCode: String, uuid:String, sold:Long) = {
     val system = ActorSystemLocator.get
     val stockActor = system.actorOf(Props[EsUpdateActor])
     stockActor ! StockUpdateRequest(storeCode, uuid, sold)
@@ -83,7 +86,7 @@ object ProductBoService extends BoService {
 
             product.calendarType match {
               case ProductCalendar.NO_DATE => updateEsStock(storeCode, ticketType.uuid, newSold)
-              case _ => //TODO updateEsStockByDateTime()
+              case _ => updateEsStockByDateTime(storeCode, ticketType, stockCalendar.copy(sold = newSold))
 
             }
         }
@@ -108,14 +111,14 @@ object ProductBoService extends BoService {
             sql"select * from stock_calendar where ticket_type_fk=${ticketType.id} and start_date=$date"
       }
 
-      val stockCal = str.map(rs => new StockCalendar(rs.long("id"), rs.long("stock"), rs.long("sold"), rs.get("start_date"), product,ticketType, rs.get("date_created"),rs.get("last_updated"))).single().apply()
+      val stockCal = str.map(rs => new StockCalendar(rs.long("id"), rs.string("uuid"), rs.long("stock"), rs.long("sold"), rs.get("start_date"), product,ticketType, rs.get("date_created"),rs.get("last_updated"))).single().apply()
 
       stockCal match {
         case Some(s) => s
         case None =>
           val now = new DateTime()
           val newid = newId()
-          val defaultStockCal = StockCalendar(newid, stock.stock, 0, date, product, ticketType, now, now)
+          val defaultStockCal = StockCalendar(newid, newUUID, stock.stock, 0, date, product, ticketType, now, now)
 
           StockCalendar.insert(defaultStockCal).update().apply() //TODO find a way to include .update().apply() into the insert method
           defaultStockCal

@@ -30,18 +30,21 @@ case class Stock(
                   id:Long,
                   uuid:String = newUUID,
                   sku:String,
+                  productId:Long,
+                  productUuid:String,
                   startDate:Date,
                   stopDate:Date,
                   availabilityDate:Option[Date],
-                  dateCreated:Date = new Date(),
-                  lastUpdated:Date = new Date(),
+                  var dateCreated:Date = new Date(),
+                  var lastUpdated:Date = new Date(),
+                  imported: Date = new Date(),
                   initialStock:Long,
                   stockUnlimited:Boolean,
                   stockOutSelling:Boolean,
                   stockDisplay:Boolean,
                   calendarType:Option[String],
                   stock:Option[Long],
-                  stockByDateTime:Seq[StockCalendar])
+                  stockByDateTime:Option[Seq[StockCalendar]])
 
 /**
  *
@@ -55,7 +58,7 @@ case class Stock(
 case class StockCalendar(
                           id:Long,
                           uuid:String = newUUID,
-                          dateCreated:Date = new Date(),
-                          lastUpdated:Date = new Date(),
+                          var dateCreated:Date = new Date(),
+                          var lastUpdated:Date = new Date(),
                           startDate:Date,
                           stock:Long)
