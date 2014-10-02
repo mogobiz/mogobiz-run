@@ -97,7 +97,7 @@ object EsClient {
     }
     req.docAsUpsert(upsert)
     val res = EsClient().execute(req)
-    res.isCreated
+    res.isCreated || res.getVersion > 1
   }
 
   def update[T <: Timestamped : Manifest](store: String, t: T, version: Long): Boolean = {
