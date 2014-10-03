@@ -5,7 +5,7 @@ import java.util.Date
 import com.mogobiz.cart.domain.{TicketType, StockCalendar}
 import com.mogobiz.model.{StockCalendar => EsStockCalendar, Stock => EsStock}
 import com.mogobiz.es.EsClient
-import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s,search => esearch4s, _}
+import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s}
 import com.sksamuel.elastic4s.ElasticDsl._
 /**
  * Handle the stock update in es
