@@ -1,6 +1,7 @@
 package com.mogobiz.cart
 
 import scalikejdbc._
+import com.mogobiz.config.Settings.NextVal
 
 /**
  * 
@@ -8,7 +9,8 @@ import scalikejdbc._
  */
 trait BoService {
   def newId()(implicit session: DBSession):Int={
-    val res = sql"select nextVal('hibernate_sequence')".map(rs => rs.int(1)).single().apply()
-    res.get
+    val res = session.connection.createStatement().executeQuery(NextVal)
+    res.next()
+    res.getInt(1)
   }
 }
