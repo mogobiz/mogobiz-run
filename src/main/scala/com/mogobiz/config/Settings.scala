@@ -73,9 +73,9 @@ object Settings {
     val QrCodeAccessUrl = config getString "mogobiz.admin.qrCodeAccessUrl"
   }
 
-  DBs.setupAll()
-  //DBsWithEnv("development").setupAll()
-  val NextVal = config getString "db.default.nextval"
+  val Dialect = config getString "dialect"
+  val NextVal = config getString s"$Dialect.db.default.nextval"
+  DBsWithEnv(Dialect).setupAll()
 
   val EsHost     = config getString "elastic.host"
   val EsHttpPort = config getInt "elastic.httpPort"

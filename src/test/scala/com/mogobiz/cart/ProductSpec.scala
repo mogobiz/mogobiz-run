@@ -1,7 +1,7 @@
 package com.mogobiz.cart
 
 import org.specs2.mutable.Specification
-import scalikejdbc.config.DBs
+import scalikejdbc.config.DBsWithEnv
 import com.mogobiz.cart.domain._
 
 /**
@@ -10,7 +10,7 @@ import com.mogobiz.cart.domain._
  */
 class ProductSpec extends Specification {
 
-  DBs.setupAll()
+  DBsWithEnv("test").setupAll()
 
 
   "get by id" in {

@@ -10,7 +10,7 @@ import com.mogobiz.cart.domain.{TaxRate,Product}
  */
 class TaxRateBoServiceSpec  extends Specification {
 
-  DBs.setupAll()
+  DBsWithEnv("test").setupAll()
 
   val service = TaxRateBoService
   val taxRateId = 13

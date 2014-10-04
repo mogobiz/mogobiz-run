@@ -5,12 +5,12 @@ import com.mogobiz.utils.GlobalUtil
 import org.joda.time.DateTime
 import org.specs2.mutable.Specification
 import scalikejdbc.DB
-import scalikejdbc.config.DBs
+import scalikejdbc.config.DBsWithEnv
 
 
 class BOCartSpec  extends Specification {
 
-  DBs.setupAll()
+  DBsWithEnv("test").setupAll()
 
   "the BO DAO " should {
 

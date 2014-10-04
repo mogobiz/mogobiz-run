@@ -2,13 +2,17 @@ import spray.revolver.RevolverPlugin.Revolver
 
 import AssemblyKeys._
 
+import mogobiz.DbProfilePlugin._
+
 assemblySettings
 
-jarName in assembly := s"mogobiz-run-${version.value}.jar"
+jarName in assembly := s"${name.value}-${version.value}.jar"
 
 mainClass in assembly := Some("com.mogobiz.Rest")
 
 test in assembly := {}
+
+name:= "mogobiz-run"
 
 organization := "com.mogobiz"
 
@@ -108,43 +112,8 @@ publishArtifact in(Compile, packageSrc) := false
 
 publishArtifact in(Test, packageSrc) := false
 
-val assemblyShareSettings = assemblySettings ++ Revolver.settings ++ Seq(
-  mainClass in assembly := Some("com.mogobiz.Rest"),
-  test in assembly := {}
-)
+Seq(PostgreSQL.settings: _*)
 
-val ProfileMySQL = config("mysql") extend Compile
+Seq(MySQL.settings: _*)
 
-val ProfilePostgreSQL = config("postgresql") extend Compile
-
-val root = (project in file("."))
-  .configs(ProfileMySQL, ProfilePostgreSQL)
-  .settings(
-    inConfig(ProfilePostgreSQL)(
-      assemblyShareSettings ++ Seq(
-        jarName in assembly := s"mogobiz-run-postgresql-${version.value}.jar",
-        mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
-        {
-          case PathList("com", "ibm", "icu", xs @ _*) => MergeStrategy.discard
-          case PathList("com", "mysql", xs @ _*) => MergeStrategy.discard
-          case x => old(x)
-        }
-        }
-      )
-    ):_*
-  )
-  .settings(
-    inConfig(ProfileMySQL)(
-      assemblyShareSettings ++ Seq(
-        jarName in assembly := s"mogobiz-run-mysql-${version.value}.jar",
-        mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
-        {
-          case PathList("com", "ibm", "icu", xs @ _*) => MergeStrategy.discard
-          case PathList("org", "postgresql", xs @ _*) => MergeStrategy.discard
-          case x => old(x)
-        }
-        }
-      )
-    ):_*
-  )
-
+Seq(Oracle.settings: _*)

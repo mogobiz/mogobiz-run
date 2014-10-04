@@ -5,7 +5,7 @@ import java.util.{Locale, UUID}
 import com.mogobiz.model.Currency
 import com.mogobiz.cart.domain._
 import org.specs2.mutable.Specification
-import scalikejdbc.config.DBs
+import scalikejdbc.config.DBsWithEnv
 
 /**
  *
@@ -13,7 +13,7 @@ import scalikejdbc.config.DBs
  */
 class CartBoServiceSpec extends Specification {
 
-  DBs.setupAll()
+  DBsWithEnv("test").setupAll()
 
   val service = CartBoService
   val renderService = CartRenderService
