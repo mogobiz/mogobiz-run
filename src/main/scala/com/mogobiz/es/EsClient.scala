@@ -97,7 +97,7 @@ object EsClient {
     }
     req.docAsUpsert(upsert)
     val res = EsClient().execute(req)
-    res.isCreated
+    res.isCreated || res.getVersion > 1
   }
 
   def update[T <: Timestamped : Manifest](store: String, t: T, version: Long): Boolean = {
@@ -181,10 +181,16 @@ object EsClient {
 
   implicit def responses2JArray(hits:Array[MultiGetItemResponse]) : JArray = JArray(hits.map(hit => parse(hit.getResponse.getSourceAsString)).toList)
 
+  implicit def JValue2StringSource(json:JValue) : StringSource = new StringSource(compact(render(json)))
+
   private def debug(req: SearchDefinition) {
     if (EsDebug) {
       logger.info(req._builder.toString)
     }
+  }
+
+  class StringSource(val str:String) extends DocumentSource {
+    def json = str
   }
 
 }

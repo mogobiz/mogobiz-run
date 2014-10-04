@@ -215,6 +215,7 @@ package object transaction {
                         startDate : Option[DateTime],
                         endDate : Option[DateTime],
                         //bOCart : BOCart,
+                        ticketTypeFk : Long,
                         bOCartFk : Long,
                         dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now
                         , override val uuid : String = java.util.UUID.randomUUID().toString() //TODO
@@ -231,7 +232,7 @@ package object transaction {
 
     def apply(rn: ResultName[BOCartItem])(rs:WrappedResultSet): BOCartItem = new BOCartItem(id=rs.get(rn.id),code=rs.get(rn.code),price=rs.get(rn.price),tax=rs.get(rn.tax),
       endPrice=rs.get(rn.endPrice),totalPrice=rs.get(rn.totalPrice),totalEndPrice=rs.get(rn.totalEndPrice),quantity=rs.get(rn.quantity),hidden=rs.get(rn.hidden),
-      startDate = rs.get(rn.startDate),endDate = rs.get(rn.endDate),dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated),bOCartFk=rs.get(rn.bOCartFk))
+      startDate = rs.get(rn.startDate),endDate = rs.get(rn.endDate),dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated),bOCartFk=rs.get(rn.bOCartFk),ticketTypeFk=rs.get(rn.ticketTypeFk))
 
     def findByBOCart(boCart:BOCart):List[BOCartItem] = {
 

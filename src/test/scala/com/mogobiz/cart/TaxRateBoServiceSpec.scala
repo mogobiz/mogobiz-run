@@ -3,7 +3,7 @@ package com.mogobiz.cart
 import org.specs2.mutable.Specification
 import scalikejdbc.config._
 import com.mogobiz.cart.domain.{TaxRate,Product}
-
+import com.mogobiz.utils.GlobalUtil._
 /**
  *
  * Created by Christophe on 07/05/2014.
@@ -42,7 +42,7 @@ class TaxRateBoServiceSpec  extends Specification {
 
     val country = "FR"
     val state = None
-    val product = new Product(id=47,name="",xtype=ProductType.PRODUCT, calendarType=ProductCalendar.NO_DATE,taxRateFk = Some(taxRateId),taxRate=Some(defaultTaxRate),shippingFk=None,startDate=None,stopDate=None,poiFk=None,companyFk=8)
+    val product = new Product(id=47,uuid=newUUID, name="", stockDisplay = true,xtype=ProductType.PRODUCT, calendarType=ProductCalendar.NO_DATE,taxRateFk = Some(taxRateId),taxRate=Some(defaultTaxRate),shippingFk=None,startDate=None,stopDate=None,poiFk=None,companyFk=8)
 
     val rate = service.findTaxRateByProduct(product,country,state)
     rate must beSome(19.6f)
