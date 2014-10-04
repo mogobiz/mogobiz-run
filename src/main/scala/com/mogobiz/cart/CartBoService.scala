@@ -18,10 +18,8 @@ import org.joda.time.format.DateTimeFormat
 import org.slf4j.LoggerFactory
 import scalikejdbc.config.DBs
 import scalikejdbc._
-import com.mogobiz.cart.domain.ReductionRuleType.ReductionRuleType
 
 /**
- * Created by Christophe on 05/05/2014.
  * The Cart Back office Service in charge of retrieving/storing data from database
  */
 object CartBoService extends BoService {
@@ -126,7 +124,7 @@ object CartBoService extends BoService {
       throw new AddCartItemException(errors)
 
     // decrement stock
-    productService.decrement(ticketType,quantity,startEndDate._1)
+    productService.decrementStock(ticketType,quantity,startEndDate._1)
 
     //resume existing items
     var oldCartPrice = 0l
@@ -223,7 +221,7 @@ object CartBoService extends BoService {
           try
           {
             // On décrémente le stock
-            productService.decrement(sku, quantity - oldQuantity, cartItem.startDate)
+            productService.decrementStock(sku, quantity - oldQuantity, cartItem.startDate)
           }
           catch {
             case ex:InsufficientStockException =>
@@ -234,7 +232,7 @@ object CartBoService extends BoService {
         else
         {
           // On incrémente le stock
-          productService.increment(sku, oldQuantity - quantity, cartItem.startDate)
+          productService.incrementStock(sku, oldQuantity - quantity, cartItem.startDate)
         }
 
         val item = cartItem
@@ -319,7 +317,7 @@ object CartBoService extends BoService {
 
     val sku = TicketType.get(cartItem.skuId)
 
-    productService.increment(sku, cartItem.quantity, cartItem.startDate)
+    productService.incrementStock(sku, cartItem.quantity, cartItem.startDate)
 
     val newEndPrice:Option[Long] = (cartVO.endPrice,cartItem.totalEndPrice) match {
       case (Some(cartendprice),Some(itemtotalendprice)) => Some(cartendprice - itemtotalendprice)
@@ -334,7 +332,7 @@ object CartBoService extends BoService {
   private def incrementProductsStock(c:CartVO): Unit = {
     c.cartItemVOs.foreach { cartItem =>
       val sku = TicketType.get(cartItem.skuId)
-      productService.increment(sku, cartItem.quantity, cartItem.startDate)
+      productService.incrementStock(sku, cartItem.quantity, cartItem.startDate)
     }
   }
 
@@ -493,9 +491,6 @@ object CartBoService extends BoService {
       }
     }
 
-    //    if (result.success) {
-    //cartTTC.uuid = UUID.randomUUID();
-
     val updatedCart = cartTTC.copy(inTransaction = true)
 
     //TRANSACTION 2 : INSERTIONS
@@ -589,8 +584,9 @@ object CartBoService extends BoService {
           totalEndPrice = cartItem.totalEndPrice.get,
           hidden = false,
           quantity = cartItem.quantity,
-          startDate = ticketType.startDate, //product.startDate
-          endDate = ticketType.stopDate, //product.stopDate
+          startDate = ticketType.startDate,
+          endDate = ticketType.stopDate,
+          ticketTypeFk = ticketType.id,
           bOCartFk = boCart.id
           //bOCart = boCart
           //bOProducts = [boProduct]
@@ -609,8 +605,9 @@ object CartBoService extends BoService {
             b.totalEndPrice -> cartItem.totalEndPrice.get,
             b.hidden -> false,
             b.quantity -> cartItem.quantity,
-            b.startDate -> ticketType.startDate, //product.startDate
-            b.endDate -> ticketType.stopDate, //product.stopDate
+            b.startDate -> ticketType.startDate,
+            b.endDate -> ticketType.stopDate,
+            b.ticketTypeFk -> ticketType.id,
             b.bOCartFk -> boCart.id,
             b.dateCreated -> DateTime.now, b.lastUpdated -> DateTime.now
           )
@@ -652,7 +649,10 @@ object CartBoService extends BoService {
     BOCart.findByTransactionUuid(cartVO.uuid) match {
       case Some(boCart) =>
 
-        val emailingData = BOCartItem.findByBOCart(boCart).map { boCartItem =>
+        val boCartItems = BOCartItem.findByBOCart(boCart)
+        val emailingData = boCartItems.map { boCartItem =>
+
+          //browse boTicketType to send confirmation mails
           BOCartItem.bOProducts(boCartItem).map { boProduct =>
             val product = boProduct.product
             BOTicketType.findByBOProduct(boProduct.id).map {  boTicketType =>
@@ -673,12 +673,7 @@ object CartBoService extends BoService {
         }.flatten
 
         DB localTx { implicit session =>
-          // Mise à jour du statut et du transactionUUID
-          /* code iper
-        boCart.transactionUuid = transactionUuid;
-        boCart.status = TransactionStatus.COMPLETE;
-        boCart.save()
-        */
+          // update status and transactionUUID
           withSQL {
             update(BOCart).set(
               BOCart.column.transactionUuid -> transactionUuid,
@@ -687,20 +682,14 @@ object CartBoService extends BoService {
             ).where.eq(BOCart.column.id, boCart.id)
           }.update.apply()
 
-          /* code iper
-        cartVO.uuid = null;
-        cartVO.price = 0
-        cartVO.endPrice = 0
-        cartVO.count = 0;
-        cartVO.cartItemVOs = null
-        //TODO uuidDataService.removeCart(); PAS IMPLEMENTE DANS IPER
-        */
+          //update nbSales
+          boCartItems.map { boCartItem =>
+            val ticketType = TicketType.get(boCartItem.ticketTypeFk)
+            productService.incrementSales(ticketType, boCartItem.quantity)
+          }
         }
-        //code traduit en : val updatedCart = cartVO.copy(inTransaction = false, price = 0, endPrice = Some(0),count = 0, cartItemVOs = Array())
-        //TODO a confirmer, mais je pense que c'est un reset complet du panier qu'on veut, comme suit :
         val updatedCart = CartVO(uuid = cartVO.uuid)
         uuidService.setCart(updatedCart)
-        //TODO sendEmails(emailingData) faire un Actor
         emailingData
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
     }
@@ -736,10 +725,6 @@ object CartBoService extends BoService {
       case Some(boCart) =>
         DB localTx { implicit session =>
           // Mise à jour du statut et du transactionUUID
-          /* code iper
-        boCart.status = TransactionStatus.FAILED;
-        boCart.save()
-        */
           withSQL {
             update(BOCart).set(
               BOCart.column.status -> TransactionStatus.FAILED.toString,

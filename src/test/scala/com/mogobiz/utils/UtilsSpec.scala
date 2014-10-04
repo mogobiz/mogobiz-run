@@ -5,10 +5,6 @@ import org.joda.time.DateTime
 import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs
 
-/**
- *
- * Created by Christophe on 15/07/2014.
- */
 class UtilsSpec  extends Specification  {
 
   DBs.setupAll()
@@ -67,7 +63,7 @@ class UtilsSpec  extends Specification  {
 
   "a DATE_TIME ticket type, with the right date & time" in {
     val ticketType = TicketType.get(146)
-    val date = Some(new DateTime(2014,8,24,15,0))
+    val date = Some(new DateTime(2014,DateTime.now.monthOfYear().get(),24,15,0))
     val res = Utils.verifyAndExtractStartEndDate(Some(ticketType),date)
     res._1 must beSome[DateTime]
     res._2 must beSome[DateTime]
