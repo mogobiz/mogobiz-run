@@ -75,6 +75,7 @@ object Settings {
 
   DBs.setupAll()
   //DBsWithEnv("development").setupAll()
+  val NextVal = config getString "db.default.nextval"
 
   val EsHost     = config getString "elastic.host"
   val EsHttpPort = config getInt "elastic.httpPort"

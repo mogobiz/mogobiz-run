@@ -12,6 +12,8 @@ class BrandSpec extends MogobizRouteTest {
 
   "The Brand service" should {
 
+    node.client().admin().indices().prepareRefresh().execute().actionGet()
+
     "return not hidden brands" in {
       Get("/store/" + STORE + "/brands") ~> sealRoute(routes) ~> check {
         val brands: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))

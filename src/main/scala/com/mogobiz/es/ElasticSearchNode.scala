@@ -57,7 +57,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
     }
 
     val tmpdir:String = s"${System.getProperty("java.io.tmpdir")}${System.currentTimeMillis()}/data"
-    logger.info(tmpdir)
+    logger.debug(tmpdir)
     new File(tmpdir).mkdirs()
 
     implicit def toPath (filename: String) = get(filename)

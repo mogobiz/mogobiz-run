@@ -108,6 +108,11 @@ publishArtifact in(Compile, packageSrc) := false
 
 publishArtifact in(Test, packageSrc) := false
 
+val assemblyShareSettings = assemblySettings ++ Revolver.settings ++ Seq(
+  mainClass in assembly := Some("com.mogobiz.Rest"),
+  test in assembly := {}
+)
+
 val ProfileMySQL = config("mysql") extend Compile
 
 val ProfilePostgreSQL = config("postgresql") extend Compile
@@ -116,9 +121,7 @@ val root = (project in file("."))
   .configs(ProfileMySQL, ProfilePostgreSQL)
   .settings(
     inConfig(ProfilePostgreSQL)(
-      assemblySettings ++ Revolver.settings ++ Seq(
-        mainClass in assembly := Some("com.mogobiz.Rest"),
-        test in assembly := {},
+      assemblyShareSettings ++ Seq(
         jarName in assembly := s"mogobiz-run-postgresql-${version.value}.jar",
         mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
         {
@@ -132,9 +135,7 @@ val root = (project in file("."))
   )
   .settings(
     inConfig(ProfileMySQL)(
-      assemblySettings ++ Revolver.settings ++ Seq(
-        mainClass in assembly := Some("com.mogobiz.Rest"),
-        test in assembly := {},
+      assemblyShareSettings ++ Seq(
         jarName in assembly := s"mogobiz-run-mysql-${version.value}.jar",
         mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
         {
