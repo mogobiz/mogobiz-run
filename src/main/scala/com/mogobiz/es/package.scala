@@ -191,11 +191,4 @@ package object es {
 
   case class TypeField(`type`:String, field:String)
 
-  implicit class HistogramAggregationUtils(h: HistogramAggregation){
-
-    def minDocCount(minDocCount: Long): HistogramAggregation = {
-      h.builder.minDocCount(minDocCount)
-      h
-    }
-  }
 }

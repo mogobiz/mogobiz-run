@@ -2,10 +2,12 @@ package com.mogobiz.handlers
 
 
 import com.mogobiz.es.{EsClient, _}
-import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
+import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s}
 import com.sksamuel.elastic4s.{SearchType, FilterDefinition}
 import com.mogobiz.model.FacetRequest
 import org.json4s._
+import com.mogobiz.es.aggregations.Aggregations._
+import com.mogobiz.es.aggregations.ElasticDsl2._
 
 class FacetHandler {
 
@@ -51,8 +53,10 @@ class FacetHandler {
     } aggs {
       aggregation terms "brand" field s"brand.${lang}name.raw"
     } aggs {
-      aggregation terms "features" field s"features.${lang}name.raw" aggs {
-        aggregation terms "feature_values" field s"features.${lang}value.raw"
+      nestedPath("features") aggs {
+        aggregation terms "features_name" field s"features.${lang}name.raw" aggs {
+          aggregation terms "feature_values" field s"features.${lang}value.raw"
+        }
       }
     } aggs {
       aggregation histogram "prices" field "price" interval req.priceInterval minDocCount 0
