@@ -73,7 +73,7 @@ object Settings {
     val QrCodeAccessUrl = config getString "mogobiz.admin.qrCodeAccessUrl"
   }
 
-  val Dialect = config getString "dialect"
+  val Dialect = if(config hasPath "dialect") config getString "dialect" else "test"
   val NextVal = config getString s"$Dialect.db.default.nextval"
   DBsWithEnv(Dialect).setupAll()
 
