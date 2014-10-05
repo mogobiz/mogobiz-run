@@ -20,7 +20,7 @@ version := "0.0.1-SNAPSHOT"
 
 logLevel in Global := Level.Warn
 
-crossScalaVersions := Seq("2.11.1")
+crossScalaVersions := Seq(scalaVersion.value)
 
 scalaVersion := "2.11.1"
 
