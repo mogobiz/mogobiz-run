@@ -16,21 +16,30 @@ object DbProfilePlugin extends Plugin {
 
   def entries(f: File):List[File] = f :: (if (f.isDirectory) IO.listFiles(f).toList.flatMap(entries) else Nil)
 
+  lazy val assemblyMainClass = settingKey[Option[String]]("main class for the assembly")
+
   trait Keys {
     def Config:Configuration
-    lazy val profile2jar = taskKey[File]("Generates profile jar file")
+    lazy val dbprofile2jar = taskKey[File]("Generates profile jar file")
     lazy val defaultSettings = assemblySettings ++ Revolver.settings ++ Seq(
       jarName in assembly := s"${name.value}-${Config.name}-${version.value}.jar",
-      mainClass in assembly := Some("com.mogobiz.Rest"),
+      mainClass in assembly := assemblyMainClass.value,
       test in assembly := {},
-      profile2jar := {
+      dbprofile2jar := {
         val destDir = baseDirectory.value
         val jarFile = Config.name + ".jar"
         val confDir = baseDirectory.value / "src" / Config.name / "resources"
         IO.zip(entries(confDir).map(d => (d, d.getAbsolutePath.substring(confDir.getAbsolutePath.length))), destDir / jarFile)
         destDir / jarFile
       },
-      fullClasspath in assembly <+= profile2jar
+      fullClasspath in assembly <+= dbprofile2jar,
+      mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
+        {
+          case PathList("com", "ibm", "icu", xs @ _*) => MergeStrategy.discard
+          case "application.conf" => MergeStrategy.concat
+          case x => old(x)
+        }
+      }
     )
   }
 
@@ -40,10 +49,8 @@ object DbProfilePlugin extends Plugin {
       defaultSettings ++ Seq(
         mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
           {
-            case PathList("com", "ibm", "icu", xs @ _*) => MergeStrategy.discard
             case PathList("com", "mysql", xs @ _*) => MergeStrategy.discard
             case PathList("oracle", xs @ _*) => MergeStrategy.discard
-            case "application.conf" => MergeStrategy.concat
             case x => old(x)
           }
         }
@@ -57,10 +64,8 @@ object DbProfilePlugin extends Plugin {
       defaultSettings ++ Seq(
         mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
           {
-            case PathList("com", "ibm", "icu", xs @ _*) => MergeStrategy.discard
             case PathList("oracle", xs @ _*) => MergeStrategy.discard
             case PathList("org", "postgresql", xs @ _*) => MergeStrategy.discard
-            case "application.conf" => MergeStrategy.concat
             case x => old(x)
           }
         }
@@ -74,10 +79,8 @@ object DbProfilePlugin extends Plugin {
       defaultSettings ++ Seq(
         mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) =>
           {
-            case PathList("com", "ibm", "icu", xs @ _*) => MergeStrategy.discard
             case PathList("com", "mysql", xs @ _*) => MergeStrategy.discard
             case PathList("org", "postgresql", xs @ _*) => MergeStrategy.discard
-            case "application.conf" => MergeStrategy.concat
             case x => old(x)
           }
         }
