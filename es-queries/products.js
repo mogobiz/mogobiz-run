@@ -103,3 +103,78 @@ esquery={
     "from": 0, //pageOffset * maxItemsPerPage
     "size": 3 //maxItemsPerPage
 };
+
+
+// update product with notation
+url = "http://localhost:9200/mogobiz/product/61/_update" //POST
+//70,79
+q={
+    "doc": {
+        "notations": [
+            {
+                "5": 10
+            },
+            {
+                "4": 50
+            },
+            {
+                "3": 80
+            },
+            {
+                "2": 30
+            },
+            {
+                "0": 15
+            }
+        ]
+    }
+}
+
+q={
+    "doc": {
+        "notations": [
+            {
+                "notation": "5",
+                "value": "10"
+            },
+            {
+                "4": 50
+            },
+            {
+                "3": 80
+            },
+            {
+                "2": 30
+            },
+            {
+                "0": 15
+            }
+        ]
+    }
+}
+
+q2={
+    "doc":{
+        "notations2": [
+            {
+                "notation":"5",
+                "value":10
+            },
+            {
+                "notation":"4",
+                "value":50
+            },
+            {
+                "notation":"3",
+                "value":80
+            },
+            {
+                "notation":"2",
+                "value":30
+            },
+            {
+                "notation":"1",
+                "value":15
+            }]
+    }
+}

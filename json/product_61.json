@@ -1,0 +1,222 @@
+{
+    "_index":"mogobiz_1412287800030",
+    "_type":"product",
+    "_id":"61",
+    "_version":1,
+    "found":true,
+    "_source":{
+        "startDate":"2014-01-01T00:00:00Z",
+        "stopDate":"2014-12-31T23:59:00Z",
+        "stopFeatureDate":"2014-10-31T00:00:00Z",
+        "increments":0,
+        "imported":"2014-10-03T00:10:00Z",
+        "id":61,
+        "coupons":[
+            {
+                "id":159
+            }
+        ],
+        "notations": [{"5":10},{"4":50},{"3":80},{"2":30},{"0":15}],
+        "notations2": [
+                    {
+                        "notation":"5",
+                        "value":10
+                    },
+                    {
+                        "notation":"4",
+                        "value":50
+                    },
+                    {
+                        "notation":"3",
+                        "value":80
+                    },
+                    {
+                        "notation":"2",
+                        "value":30
+                    },
+                    {
+                        "notation":"1",
+                        "value":15
+                    }],
+        "shipping":{
+            "amount":0,
+            "free":false,
+            "height":110,
+            "weight":25,
+            "width":120,
+            "fr":{
+                "name":null
+            },
+            "depth":15
+        },
+        "sanitizedName":"tv-100-full-hd",
+        "hide":false,
+        "description":"Full HD 100\" Television",
+        "name":"TV 100\" Full HD",
+        "xtype":"PRODUCT",
+        "features":[
+            {
+                "position":0,
+                "hide":false,
+                "name":"Fabriqu&eacute; en",
+                "domain":"",
+                "value":"Chine",
+                "fr":{
+                    "name":"Fabriqu&eacute; en",
+                    "value":"Chine"
+                },
+                "en":{
+                    "name":"Made in",
+                    "value":"China"
+                },
+                "uuid":"3e07576f-1fa0-4253-a276-bcc51cf1a2e4",
+                "es":{
+                    "name":"Made in",
+                    "value":"China"
+                }
+            },
+            {
+                "position":0,
+                "hide":false,
+                "name":"Size",
+                "domain":"",
+                "value":"100\"",
+                "fr":{
+                    "name":"Size",
+                    "value":"100\""
+                },
+                "uuid":"626e5b08-3a7b-4489-9863-68fd31da5469"
+            },
+            {
+                "position":1,
+                "hide":false,
+                "name":"Resulution",
+                "domain":"",
+                "value":"Full HD",
+                "fr":{
+                    "name":"Resulution",
+                    "value":"Full HD"
+                },
+                "uuid":"cd549a59-c8cb-47fd-b6a0-ca25efb82b3d"
+            }
+        ],
+        "availabilityDate":null,
+        "fr":{
+            "name":"TV 100\" Full HD",
+            "description":"Full HD 100\" Television",
+            "descriptionAsText":"Full HD 100\" Television",
+            "keywords":""
+        },
+        "startFeatureDate":"2014-10-01T00:00:00Z",
+        "descriptionAsText":"Full HD 100\" Television",
+        "keywords":"",
+        "taxRate":{
+            "id":13,
+            "name":"TaxRate",
+            "localTaxRates":[
+                {
+                    "id":11,
+                    "rate":19.6,
+                    "countryCode":"FR",
+                    "stateCode":""
+                },
+                {
+                    "id":12,
+                    "rate":9.0,
+                    "countryCode":"USA",
+                    "stateCode":"USA.AL"
+                }
+            ]
+        },
+        "lastUpdated":"2014-10-02T00:54:13Z",
+        "stockDisplay":true,
+        "code":"TV_SS_1",
+        "nbSales":0,
+        "calendarType":"NO_DATE",
+        "category":{
+            "id":21,
+            "coupons":[
+                [
+                    159
+                ]
+            ],
+            "parentId":20,
+            "keywords":"TV t&eacute;l&eacute; t&eacute;l&eacute;vision HD",
+            "hide":false,
+            "description":"",
+            "name":"T&eacute;l&eacute;visions",
+            "path":"hightech/televisions",
+            "fr":{
+                "name":"T&eacute;l&eacute;visions",
+                "description":"",
+                "keywords":"TV t&eacute;l&eacute; t&eacute;l&eacute;vision HD"
+            },
+            "increments":0,
+            "en":{
+                "name":"Televisions"
+            },
+            "uuid":"58c5c56b-0100-447e-a20d-db3eb6ed158a"
+        },
+        "price":30000,
+        "dateCreated":"2014-10-02T00:54:13Z",
+        "brand":{
+            "de":{
+                "website":"http://www.samsung.com/de"
+            },
+            "id":35,
+            "twitter":"",
+            "hide":false,
+            "website":"http://www.samsung.com/fr",
+            "description":"",
+            "name":"Samsung",
+            "fr":{
+                "name":"Samsung",
+                "website":"http://www.samsung.com/fr"
+            },
+            "increments":0,
+            "en":{
+                "website":"http://www.samsung.com"
+            },
+            "es":{
+                "website":"http://www.samsung.com/es"
+            }
+        },
+        "skus":[
+            {
+                "position":null,
+                "startDate":"2014-01-01T00:00:00Z",
+                "stopDate":"2014-12-31T23:59:00Z",
+                "xprivate":null,
+                "variation3":{
+
+                },
+                "sku":"f2243751-07a0-4ec7-9bf6-0bca1f1d37c3",
+                "id":63,
+                "picture":null,
+                "nbSales":0,
+                "coupons":[
+                    {
+                        "id":159
+                    }
+                ],
+                "price":30000,
+                "minOrder":1,
+                "description":"",
+                "name":"Standard",
+                "fr":{
+                    "name":"Standard",
+                    "description":""
+                },
+                "maxOrder":10,
+                "variation2":{
+
+                },
+                "variation1":{
+
+                },
+                "uuid":"a51ca637-9356-4057-8bba-2962babf8d1d"
+            }
+        ],
+        "uuid":"eea7f448-6fba-4228-8947-a1076b382f21"
+    }
+}
