@@ -15,4 +15,7 @@ object HandlersConfig {
   val wishlistHandler = new WishlistHandler
   val promotionHandler = new PromotionHandler
   val facetHandler = new FacetHandler
+  val stockHandler = new StockHandler
+  val salesHandler = new SalesHandler
+
 }

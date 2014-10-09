@@ -6,10 +6,12 @@ import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s}
 import com.sksamuel.elastic4s.{SearchType, FilterDefinition}
 import com.mogobiz.model.FacetRequest
 import org.json4s._
+import org.json4s.JsonAST.{JObject, JValue}
 import com.mogobiz.es.aggregations.Aggregations._
 import com.mogobiz.es.aggregations.ElasticDsl2._
 
 class FacetHandler {
+
 
   def getProductCriteria(storeCode: String, req: FacetRequest) : JValue = {
     val query = req.name match {
@@ -59,6 +61,12 @@ class FacetHandler {
         }
       }
     } aggs {
+      nestedPath("notations") aggs {
+        aggregation terms "notation" field s"notations.notation" aggs {
+          aggregation sum "nbcomments" field s"notations.nbcomments"
+        }
+      }
+    } aggs {
       aggregation histogram "prices" field "price" interval req.priceInterval minDocCount 0
     } aggs {
       aggregation min "price_min" field "price"
@@ -69,4 +77,27 @@ class FacetHandler {
 
     EsClient searchAgg esq
   }
+
+
+  def getCommentNotations(storeCode: String, productId: Option[Long]) : List[JValue] = {
+
+    val filters = List(createTermFilter("productId", productId)).flatten
+    val req = (filterRequest((esearch4s in s"${storeCode}_comment" types "comment"), filters) aggs {
+        agg terms "notations" field "notation"
+      } searchType SearchType.Count)
+
+    val resagg = EsClient searchAgg req
+
+    val keyValue = for {
+      JArray(buckets) <- resagg \ "notations" \ "buckets"
+      JObject(bucket) <- buckets
+      JField("key_as_string", JString(key)) <- bucket
+      JField("doc_count", JInt(value)) <- bucket
+    } yield  JObject(List(JField("notation", JString(key)), JField("nbcomments", JInt(value))))
+
+    //println(keyValue)
+    keyValue
+
+  }
+
 }

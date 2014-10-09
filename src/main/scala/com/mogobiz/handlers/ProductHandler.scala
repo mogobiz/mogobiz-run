@@ -328,6 +328,32 @@ class ProductHandler extends JsonUtil {
     }
   }
 
+  def updateProductNotations(storeCode:String, productId: Long, values: List[JValue]): Boolean = {
+    /* marche pas avec un script :(
+    val script = "ctx._source.notations4=notations"
+    //val notations = compact(render(JField("notations", JArray(values))))
+    val notations = compact(render(values))
+    println(notations)
+    val notations_str ="""[{"notation":"2","nbcomments":2},{"notation":"3","nbcomments":2},{"notation":"5","nbcomments":2},{"notation":"1","nbcomments":1}]"""
+    println(notations_str)
+    val req = esupdate4s id productId in storeCode -> "product" script script params {"notations" -> Map("notation" -> 2) }
+    println(req)
+    val res = EsClient.updateRaw(req)
+    println(res)
+    */
+
+    val res = EsClient.loadRaw(get(productId) from storeCode -> "product").get
+    val v1 = res.getVersion
+    val product = response2JValue(res)
+
+    val notations = JObject(("notations", JArray(values)))
+    val updatedProduct = (product removeField { f => f._1 =="notations"} ) merge notations
+    val res2 = EsClient.updateRaw(esupdate4s id productId in storeCode -> "product" doc updatedProduct)
+    //res2.getVersion > v1
+    true
+  }
+
+
   def updateComment(storeCode: String, productId: Long, commentId: String, useful: Boolean): Boolean = {
     val script = "if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}"
     val req = esupdate4s id commentId in s"${commentIndex(storeCode)}/comment" script script params {"useful" -> s"$useful"}
