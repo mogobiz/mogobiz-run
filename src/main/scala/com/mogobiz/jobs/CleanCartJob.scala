@@ -8,7 +8,7 @@ object CleanCartJob{
   def start(system:ActorSystem): Unit ={
     import system.dispatcher
     val job = system.actorOf(Props[CleanCartJob])
-    system.scheduler.schedule(0 second, 60 seconds, job, "")
+    system.scheduler.schedule(2 seconds, 60 seconds, job, "")
   }
 }
 
