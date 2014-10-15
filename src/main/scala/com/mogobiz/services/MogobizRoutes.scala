@@ -20,7 +20,7 @@ trait MogobizRoutes extends Directives {
   private implicit val _ = system.dispatcher
 
   val routes = {
-    pathPrefix("store" / Segment) {
+    pathPrefix((("api" / "store") | "store") / Segment) {
       storeCode => {
         optionalCookie(CookieTracking) {
           case Some(mogoCookie) =>
@@ -52,7 +52,8 @@ trait MogobizRoutes extends Directives {
       new CartService(storeCode, uuid, cartActor).route ~
       new PromotionService(storeCode, promotionActor).route ~
       new WishlistService(storeCode, wishlistActor).route ~
-      new FacetService(storeCode, facetActor).route
+      new FacetService(storeCode, facetActor).route ~
+      new ResourceService(storeCode).route
   }
 
 

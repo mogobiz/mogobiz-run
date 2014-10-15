@@ -15,4 +15,5 @@ object HandlersConfig {
   val wishlistHandler = new WishlistHandler
   val promotionHandler = new PromotionHandler
   val facetHandler = new FacetHandler
+  val resourceHandler = new ResourceHandler
 }

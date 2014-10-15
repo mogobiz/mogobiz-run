@@ -89,10 +89,13 @@ object Settings {
     Try(getClass.getResource(e).getPath) getOrElse e
   }
 
+  val ResourcesRootPath = config getString "resources.rootPath"
+
   require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
   require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")
   require(RememberCookieName.nonEmpty, "session.remember.cookie.name must be non-empty")
   //  require(Interface.nonEmpty, "interface must be non-empty")
   //  require(0 < Port && Port < 65536, "illegal port")
+  require(ResourcesRootPath.nonEmpty, "resources.rootPath must be non-empty")
 }
 

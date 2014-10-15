@@ -85,7 +85,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"          %% "akka-testkit"               % akkaV           % "test",
   "com.sksamuel.elastic4s"     %% "elastic4s"                  % elastic4sV      exclude("org.elasticsearch", "elasticsearch"),
   "org.elasticsearch"           % "elasticsearch"              % elasticSearchV,
-  "org.elasticsearch"           % "elasticsearch-analysis-icu" % "2.2.0"         % "provided",
+  "org.elasticsearch"           % "elasticsearch-analysis-icu" % "2.2.0",
   "com.google.zxing"            % "core"                       % "1.7",
   "org.apache.commons"          % "commons-email"              % "1.3.3",
   "org.specs2"                 %% "specs2"                     % "2.3.13"        % "test",
