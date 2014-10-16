@@ -29,7 +29,7 @@ class FacetService (storeCode: String, actor: ActorRef)(implicit executionContex
 
   lazy val getFacets = pathEnd{
     get {
-      parameters('priceInterval, 'lang ? "_all", 'name.?, 'brandName.?, 'categoryName.?, 'priceMin.?, 'priceMax.?, 'features.?).as(FacetRequest) {
+      parameters('priceInterval, 'lang ? "_all", 'name.?, 'brandName.?, 'categoryName.?, 'notations.?, 'priceMin.?, 'priceMax.?, 'features.?).as(FacetRequest) {
         param =>
           val request = QueryGetFacetRequest(storeCode, param)
 

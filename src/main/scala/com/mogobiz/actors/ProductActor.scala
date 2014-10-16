@@ -1,6 +1,7 @@
 package com.mogobiz.actors
 
-import akka.actor.Actor
+import akka.actor.{Props, Actor}
+import com.mogobiz.actors.EsUpdateActor.ProductNotationsUpdateRequest
 import com.mogobiz.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductDetailsRequest, QueryProductRequest, _}
 import com.mogobiz.config.HandlersConfig._
 import com.mogobiz.model._
@@ -51,7 +52,12 @@ class ProductActor extends Actor {
       sender ! productHandler.getProductTimes(q.storeCode, q.params, q.productId, q.uuid)
 
     case q: QueryCreateCommentRequest =>
-      sender ! productHandler.createComment(q.storeCode, q.productId, q.req)
+      val comment = productHandler.createComment(q.storeCode, q.productId, q.req)
+
+      val updateActor = context.actorOf(Props[EsUpdateActor])
+      updateActor ! ProductNotationsUpdateRequest(q.storeCode, q.productId)
+
+      sender ! comment
 
     case q: QueryGetCommentRequest =>
       sender ! productHandler.getComment(q.storeCode, q.productId, q.req)
@@ -65,4 +71,5 @@ class ProductActor extends Actor {
     case q: QueryNotationProductRequest =>
       sender ! productHandler.getProductsByNotation(q.storeCode, q.lang)
   }
+
 }

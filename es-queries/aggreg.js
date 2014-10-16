@@ -124,3 +124,84 @@ agg ={
 //http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&priceMin=25000&priceMax=30000
 //http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&brandName=samsung%7Cnike
 //http://localhost:8082/store/mogobiz/facets?priceInterval=5000&lang=fr&features=Resulution:::Full%20HD%7CHD%20Ready
+
+agg_notes= {
+    "aggregations": {
+        "note0": {
+            "sum": {
+                "field": "notations.0"
+            }
+        },
+        "note1": {
+            "sum": {
+                "field": "notations.1"
+            }
+        },
+        "note2": {
+            "sum": {
+                "field": "notations.2"
+            }
+        },
+        "note3": {
+            "sum": {
+                "field": "notations.3"
+            }
+        },
+        "note4": {
+            "sum": {
+                "field": "notations.4"
+            }
+        },
+        "note5": {
+            "sum": {
+                "field": "notations.5"
+            }
+        },
+        "per_notations": {
+            "terms": {
+                "field": "notations"
+            }
+        },
+        "notations2_stat": {
+            "stats": {
+                "field": "notations2.value"
+            }
+        },
+        "per_notations2": {
+            "terms": {
+                "field": "notations2.notation"
+            },
+            "aggs": {
+                "per_notations2_value": {
+                    "sum": {
+                        "field": "notations2.value"
+                    }
+                }
+            }
+        }
+    }
+}
+
+var query = {
+    "aggregations": {
+        "notations": {
+            "nested": {
+                "path": "notations"
+            },
+            "aggs": {
+                "features_name": {
+                    "terms": {
+                        "field": "notations.notation"
+                    },
+                    "aggs": {
+                        "features_value": {
+                            "terms": {
+                                "field": "notations.nbcomments"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
