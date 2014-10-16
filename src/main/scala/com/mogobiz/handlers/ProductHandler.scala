@@ -348,7 +348,7 @@ class ProductHandler extends JsonUtil {
 
     val notations = JObject(("notations", JArray(values)))
     val updatedProduct = (product removeField { f => f._1 =="notations"} ) merge notations
-    val res2 = EsClient.updateRaw(esupdate4s id productId in storeCode -> "product" doc updatedProduct)
+    val res2 = EsClient.updateRaw(esupdate4s id productId in storeCode -> "product" doc updatedProduct retryOnConflict 4)
     //res2.getVersion > v1
     true
   }
