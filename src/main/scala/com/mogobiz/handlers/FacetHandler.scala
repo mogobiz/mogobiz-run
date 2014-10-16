@@ -52,9 +52,13 @@ class FacetHandler {
     )).flatten
 
     val esq = (filterRequest(query, filters) aggs {
-      aggregation terms "category" field s"category.${lang}name.raw"
+      aggregation terms "category" field s"category.${lang}name.raw" aggs {
+        agg terms "path" field "category.path"
+      }
     } aggs {
-      aggregation terms "brand" field s"brand.${lang}name.raw"
+      aggregation terms "brand" field s"brand.${lang}name.raw" aggs {
+        agg terms "id" field "brand.id"
+      }
     } aggs {
       nestedPath("features") aggs {
         aggregation terms "features_name" field s"features.${lang}name.raw" aggs {
