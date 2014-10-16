@@ -27,6 +27,7 @@ class FacetHandler {
     val filters:List[FilterDefinition] = (List(
       createTermFilter("brand.name", req.brandName.map(_.toLowerCase)),
       createTermFilter("category.name", req.categoryName.map(_.toLowerCase)),
+      createNestedTermFilter("notations","notations.notation", req.notations),
       createNumericRangeFilter("price", req.priceMin, req.priceMax)
     )::: List(/*feature*/
       req.features match {
@@ -37,8 +38,8 @@ class FacetHandler {
               Some(
                 must(
                   List(
-                    createTermFilter(s"features.${lang}name.raw", Some(kv(0))),
-                    createTermFilter(s"features.${lang}value.raw", Some(kv(1)))
+                    createNestedTermFilter("features",s"features.${lang}name.raw", Some(kv(0))),
+                    createNestedTermFilter("features",s"features.${lang}value.raw", Some(kv(1)))
                   ).flatten:_*
                 )
               )
