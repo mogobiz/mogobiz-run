@@ -26,6 +26,8 @@ class FacetHandler {
     val _lang = if(req.lang=="_all") "" else s"_${req.lang}"
 
     val filters:List[FilterDefinition] = (List(
+      createTermFilter("brand.id", req.brandId),
+      createTermFilter("category.path", req.categoryPath),
       createTermFilter("brand.name", req.brandName.map(_.toLowerCase)),
       createTermFilter("category.name", req.categoryName.map(_.toLowerCase)),
       createNestedTermFilter("notations","notations.notation", req.notations),

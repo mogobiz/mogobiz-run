@@ -79,6 +79,8 @@ case class FacetRequest(
                          , name: Option[String]
                          //, brandId: Option[Int]
                          //, categoryPath: Option[String]
+                         , brandId: Option[Long]
+                         , categoryPath: Option[String]
                          , brandName: Option[String]
                          , categoryName: Option[String]
                          , notations: Option[String]
