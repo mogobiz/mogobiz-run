@@ -58,9 +58,19 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
 
     val tmpdir:String = s"${System.getProperty("java.io.tmpdir")}${System.currentTimeMillis()}/data"
     logger.debug(tmpdir)
+//    println("tmpdir="+tmpdir)
     new File(tmpdir).mkdirs()
 
-    implicit def toPath (filename: String) = get(filename)
+    implicit def toPath (filename: String) = {
+//      println("toPath => filename="+filename)
+//      println("os.name="+System.getProperty("os.name"))
+//      println(File.separator)
+      val c = filename.charAt(0)
+
+      if((c== '/' || c=='\\') && c!=File.separator)
+        get(filename.substring(1))
+      else get(filename)
+    }
 
     Files.walkFileTree(EsEmbedded, new SimpleFileVisitor[Path]() {
       @Override
