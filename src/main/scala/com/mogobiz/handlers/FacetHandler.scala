@@ -23,6 +23,7 @@ class FacetHandler {
     }
 
     val lang = if(req.lang=="_all") "" else s"${req.lang}."
+    val _lang = if(req.lang=="_all") "" else s"_${req.lang}"
 
     val filters:List[FilterDefinition] = (List(
       createTermFilter("brand.name", req.brandName.map(_.toLowerCase)),
@@ -52,17 +53,26 @@ class FacetHandler {
     )).flatten
 
     val esq = (filterRequest(query, filters) aggs {
-      aggregation terms "category" field s"category.${lang}name.raw" aggs {
-        agg terms "path" field "category.path"
+      aggregation terms "category" field "category.path" aggs {
+        agg terms "name" field "category.name.raw"
+      } aggs {
+        agg terms s"name${_lang}" field s"category.${lang}name.raw"
       }
+
     } aggs {
-      aggregation terms "brand" field s"brand.${lang}name.raw" aggs {
-        agg terms "id" field "brand.id"
+      aggregation terms "brand" field "brand.id" aggs {
+        agg terms "name" field "brand.name.raw"
+      } aggs {
+        agg terms s"name${_lang}" field s"brand.${lang}name.raw"
       }
     } aggs {
       nestedPath("features") aggs {
-        aggregation terms "features_name" field s"features.${lang}name.raw" aggs {
-          aggregation terms "feature_values" field s"features.${lang}value.raw"
+        aggregation terms "features_name" field s"features.name.raw" aggs {
+          aggregation terms s"features_name${_lang}" field s"features.${lang}name.raw"
+        } aggs {
+          aggregation terms s"feature_values" field s"features.value.raw"
+        } aggs {
+          aggregation terms s"feature_values${_lang}" field s"features.${lang}value.raw"
         }
       }
     } aggs {
