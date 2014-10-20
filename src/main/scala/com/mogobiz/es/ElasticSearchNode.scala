@@ -67,7 +67,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
 //      println(File.separator)
       val c = filename.charAt(0)
 
-      if((c== '/' || c=='\\') && c!=File.separator)
+      if((c== '/' || c=='\\') && c.toString!=File.separator)
         get(filename.substring(1))
       else get(filename)
     }
