@@ -83,6 +83,7 @@ case class FacetRequest(
                          , categoryPath: Option[String]
                          , brandName: Option[String]
                          , categoryName: Option[String]
+                         , tags: Option[String]
                          , notations: Option[String]
                          , priceMin: Option[Long]
                          , priceMax: Option[Long]

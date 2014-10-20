@@ -30,6 +30,7 @@ class FacetHandler {
       createTermFilter("category.path", req.categoryPath),
       createTermFilter("brand.name", req.brandName.map(_.toLowerCase)),
       createTermFilter("category.name", req.categoryName.map(_.toLowerCase)),
+      createTermFilter("tags.name", req.tags.map(_.toLowerCase)),
       createNestedTermFilter("notations","notations.notation", req.notations),
       createNumericRangeFilter("price", req.priceMin, req.priceMax)
     )::: List(/*feature*/
@@ -67,6 +68,8 @@ class FacetHandler {
       } aggs {
         agg terms s"name${_lang}" field s"brand.${lang}name.raw"
       }
+    } aggs {
+      agg terms "tags" field "tags.name"
     } aggs {
       nestedPath("features") aggs {
         aggregation terms "features_name" field s"features.name.raw" aggs {
