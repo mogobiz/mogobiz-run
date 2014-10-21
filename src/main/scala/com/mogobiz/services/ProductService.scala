@@ -68,7 +68,8 @@ import scala.concurrent.duration._
         , 'country.?
         , 'promotionId.?
         , 'property.?
-        , 'feature.?).as(ProductRequest) {
+        , 'feature.?
+        , 'variations.?).as(ProductRequest) {
         params =>
           val request = QueryProductRequest(storeCode, params)
           complete {

@@ -81,6 +81,41 @@ class ProductHandler extends JsonUtil {
         case _ => None
       }
     )
+      ::: List(/* variations */
+      productRequest.variations match {
+        case Some(v: String) =>
+          val variations: List[FilterDefinition] = (for(variation <- v.split("""\|\|\|""")) yield{
+            val kv = variation.split("""\:\:\:""")
+            if(kv.size == 2)
+              Some(
+                or(
+                  must(
+                    List(
+                      createTermFilter("skus.variation1.name", Some(kv(0))),
+                      createTermFilter("skus.variation1.value", Some(kv(1)))
+                    ).flatten:_*
+                  )
+                  ,must(
+                    List(
+                      createTermFilter("skus.variation2.name", Some(kv(0))),
+                      createTermFilter("skus.variation2.value", Some(kv(1)))
+                    ).flatten:_*
+                  )
+                  ,must(
+                    List(
+                      createTermFilter("skus.variation3.name", Some(kv(0))),
+                      createTermFilter("skus.variation3.value", Some(kv(1)))
+                    ).flatten:_*
+                  )
+                )
+              )
+            else
+              None
+          }).toList.flatten
+          if(variations.size > 1) Some(and(variations:_*)) else if(variations.size == 1) Some(variations(0)) else None
+        case _ => None
+      }
+    )
       ).flatten
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(storeCode, productRequest.lang) ::: fieldsToRemoveForProductSearchRendering
     val _size: Int = productRequest.maxItemPerPage.getOrElse(100)
