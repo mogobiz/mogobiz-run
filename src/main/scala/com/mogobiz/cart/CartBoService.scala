@@ -87,10 +87,6 @@ object CartBoService extends BoService {
 
     var errors:CartErrors = Map()
 
-    if(cartVO.inTransaction){ //if(cartVO.uuid){
-      errors = addError(errors, "cart", "initiate.payment.error", null, locale)
-    }
-
     if (ticketType.minOrder > quantity || (ticketType.maxOrder < quantity && ticketType.maxOrder > -1))
     {
       println(ticketType.minOrder+">"+quantity)
@@ -191,12 +187,6 @@ object CartBoService extends BoService {
   def updateItem(locale:Locale, currencyCode:String, cartVO:CartVO , cartItemId:String , quantity:Int ) : CartVO = {
 
     val errors:CartErrors = Map()
-
-    if(cartVO.inTransaction){ //if (cartVO.uuid) {
-      // un paiement a été initialisé, on ne peut plus modifier le contenu du panier avant la fin du paiement (ou l'abandon)
-      addError(errors, "cart", "initiate.payment.error", null, locale)
-      throw new UpdateCartItemException(errors)
-    }
 
     //    if (result.success) {
     //TODO ou faire un map et qd id == renvoyé l'item modifié
@@ -302,12 +292,6 @@ object CartBoService extends BoService {
 
     val errors:CartErrors = Map()
 
-    if(cartVO.inTransaction){ //if (cartVO.uuid) {
-      // un paiement a été initialisé, on ne peut plus modifier le contenu du panier avant la fin du paiement (ou l'abandon)
-      addError(errors, "cart", "initiate.payment.error", null, locale)
-      throw new RemoveCartItemException(errors)
-    }
-
     val parts = cartVO.cartItemVOs.partition { cartItem  => cartItem.id == cartItemId }
     val removed = parts._1.headOption
     val items = parts._2
@@ -339,12 +323,6 @@ object CartBoService extends BoService {
   @throws[ClearCartException]
   def clear(locale:Locale, currencyCode:String, cartVO:CartVO ) : CartVO = {
     val errors:CartErrors = Map()
-
-    if(cartVO.inTransaction){ //if (cartVO.uuid) {
-      // un paiement a été initialisé, on ne peut plus modifier le contenu du panier avant la fin du paiement (ou l'abandon)
-      addError(errors, "cart", "initiate.payment.error", null, locale)
-      throw new ClearCartException(errors)
-    }
 
     incrementProductsStock(cartVO)
 
