@@ -91,20 +91,20 @@ class ProductHandler extends JsonUtil {
                 or(
                   must(
                     List(
-                      createTermFilter("skus.variation1.name", Some(kv(0))),
-                      createTermFilter("skus.variation1.value", Some(kv(1)))
+                      createNestedTermFilter("skus", "skus.variation1.name", Some(kv(0))),
+                      createNestedTermFilter("skus", "skus.variation1.value", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createTermFilter("skus.variation2.name", Some(kv(0))),
-                      createTermFilter("skus.variation2.value", Some(kv(1)))
+                      createNestedTermFilter("skus", "skus.variation2.name", Some(kv(0))),
+                      createNestedTermFilter("skus", "skus.variation2.value", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createTermFilter("skus.variation3.name", Some(kv(0))),
-                      createTermFilter("skus.variation3.value", Some(kv(1)))
+                      createNestedTermFilter("skus", "skus.variation3.name", Some(kv(0))),
+                      createNestedTermFilter("skus", "skus.variation3.value", Some(kv(1)))
                     ).flatten:_*
                   )
                 )
