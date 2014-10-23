@@ -89,7 +89,7 @@ case class FacetRequest(
                          , priceMax: Option[Long]
                          , features : Option[String]
                          ) {
- // def this(priceInterval: Long, lang:String) = this(priceInterval, lang, None, None,None,None,None)
+  def this(priceInterval: Long, lang:String) = this(priceInterval, lang, None, None, None, None, None, None, None, None, None, None)
 }
 
 case class ProductRequest(
@@ -101,6 +101,7 @@ case class ProductRequest(
                            , categoryPath: Option[String]
                            , brandId: Option[Int]
                            , tagName: Option[String]
+                           , notations: Option[String]
                            , priceMin: Option[Long]
                            , priceMax: Option[Long]
                            , creationDateMin: Option[String]
@@ -114,7 +115,7 @@ case class ProductRequest(
                            , property : Option[String]
                            , feature : Option[String]
                            , variations : Option[String]) extends PagingParams {
-  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None, None, None, None, None)
+  def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None, None, None, None, None)
 }
 
 case class ProductDetailsRequest(

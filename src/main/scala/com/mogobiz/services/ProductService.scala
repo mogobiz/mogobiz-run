@@ -57,6 +57,7 @@ import scala.concurrent.duration._
         , 'categoryPath.?
         , 'brandId.?
         , 'tagName.?
+        , 'notations.?
         , 'priceMin.?
         , 'priceMax.?
         , 'creationDateMin.?
