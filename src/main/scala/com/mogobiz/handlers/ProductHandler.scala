@@ -44,7 +44,7 @@ class ProductHandler extends JsonUtil {
       createTermFilter("xtype", productRequest.xtype),
       createRegexFilter("path", productRequest.categoryPath),
       createTermFilter("brand.id", productRequest.brandId),
-      createTermFilter("tags.name", productRequest.tagName),
+      createTermFilter("tags.name.raw", productRequest.tagName),
       createNestedTermFilter("notations","notations.notation", productRequest.notations),
       createNumericRangeFilter("price", productRequest.priceMin, productRequest.priceMax),
       createRangeFilter("creationDate", productRequest.creationDateMin, None),
