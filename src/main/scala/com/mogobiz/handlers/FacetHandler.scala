@@ -53,7 +53,43 @@ class FacetHandler {
           if(features.size > 1) Some(and(features:_*)) else if(features.size == 1) Some(features(0)) else None
         case _ => None
       }
-    )).flatten
+    )
+      ::: List(/* variations */
+      req.variations match {
+        case Some(v: String) =>
+          val variations: List[FilterDefinition] = (for(variation <- v.split("""\|\|\|""")) yield{
+            val kv = variation.split("""\:\:\:""")
+            if(kv.size == 2)
+              Some(
+                or(
+                  must(
+                    List(
+                      createNestedTermFilter("skus", "skus.variation1.name", Some(kv(0))),
+                      createNestedTermFilter("skus", "skus.variation1.value", Some(kv(1)))
+                    ).flatten:_*
+                  )
+                  ,must(
+                    List(
+                      createNestedTermFilter("skus", "skus.variation2.name", Some(kv(0))),
+                      createNestedTermFilter("skus", "skus.variation2.value", Some(kv(1)))
+                    ).flatten:_*
+                  )
+                  ,must(
+                    List(
+                      createNestedTermFilter("skus", "skus.variation3.name", Some(kv(0))),
+                      createNestedTermFilter("skus", "skus.variation3.value", Some(kv(1)))
+                    ).flatten:_*
+                  )
+                )
+              )
+            else
+              None
+          }).toList.flatten
+          if(variations.size > 1) Some(and(variations:_*)) else if(variations.size == 1) Some(variations(0)) else None
+        case _ => None
+      }
+    )
+      ).flatten
 
     val esq = (filterRequest(query, filters) aggs {
       aggregation terms "category" field "category.path" aggs {
@@ -83,6 +119,20 @@ class FacetHandler {
         }
       }
     } aggs {
+      nestedPath("skus") aggs {
+        aggregation terms "variation1_name" field s"skus.variation1.name.raw" aggs {
+          aggregation terms s"variation1_values" field s"skus.variation1.value.raw"
+        }
+      } aggs {
+        aggregation terms "variation2_name" field s"skus.variation2.name.raw" aggs {
+          aggregation terms s"variation2_values" field s"skus.variation2.value.raw"
+        }
+      } aggs {
+        aggregation terms "variation3_name" field s"skus.variation3.name.raw" aggs {
+          aggregation terms s"variation3_values" field s"skus.variation3.value.raw"
+        }
+      }
+    } aggs {
       nestedPath("notations") aggs {
         aggregation terms "notation" field s"notations.notation" aggs {
           aggregation sum "nbcomments" field s"notations.nbcomments"
@@ -109,6 +159,7 @@ class FacetHandler {
       } searchType SearchType.Count)
 
     val resagg = EsClient searchAgg req
+    println("getCommentNotations resagg:",resagg)
 
     val keyValue = for {
       JArray(buckets) <- resagg \ "notations" \ "buckets"
@@ -117,7 +168,7 @@ class FacetHandler {
       JField("doc_count", JInt(value)) <- bucket
     } yield  JObject(List(JField("notation", JString(key)), JField("nbcomments", JInt(value))))
 
-    //println(keyValue)
+    println("getCommentNotations keyValue:",keyValue)
     keyValue
 
   }
