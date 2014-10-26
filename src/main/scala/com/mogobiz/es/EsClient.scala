@@ -3,6 +3,7 @@ package com.mogobiz.es
 import java.util.{Calendar, Date}
 
 import com.mogobiz.config.Settings._
+import com.mogobiz.json.Json4sProtocol
 import com.mogobiz.utils.JacksonConverter
 import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, index => esindex4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.source.DocumentSource
@@ -15,6 +16,7 @@ import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
 import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.search.aggregations.{Aggregations, Aggregation}
 import org.elasticsearch.search.{SearchHit, SearchHits}
+import org.json4s.{DefaultFormats, Formats}
 import org.json4s.JsonAST.{JArray, JValue}
 import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
@@ -99,6 +101,35 @@ object EsClient {
     val res = EsClient().execute(req)
     res.isCreated || res.getVersion > 1
   }
+
+  def update2[T <: Timestamped : Manifest](store: String, t: T, json:String, upsert: Boolean = true, refresh: Boolean = false): Boolean = {
+    val now = Calendar.getInstance().getTime
+    t.lastUpdated = now
+
+    /*
+    import org.json4s.native.JsonMethods._
+    import org.json4s.native.Serialization.write
+    //implicit def format = DefaultFormats.lossless
+    import Json4sProtocol._
+
+    val js = parse(write(t))
+    */
+
+    val js = json
+
+
+    //val js = JacksonConverter.serialize(t)
+
+    val req = esupdate4s id t.uuid in store -> manifest[T].runtimeClass.getSimpleName.toLowerCase refresh refresh doc new DocumentSource {
+      override val json: String = js
+    }
+    req.docAsUpsert(upsert)
+    val res = EsClient().execute(req)
+    res.isCreated || res.getVersion > 1
+  }
+
+
+
 
   def update[T <: Timestamped : Manifest](store: String, t: T, version: Long): Boolean = {
     val now = Calendar.getInstance().getTime

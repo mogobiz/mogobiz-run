@@ -7,6 +7,8 @@ import com.mogobiz.model.{StockCalendar => EsStockCalendar, Stock => EsStock}
 import com.mogobiz.es.EsClient
 import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s}
 import com.sksamuel.elastic4s.ElasticDsl._
+import org.json4s.{DefaultFormats, Formats}
+
 /**
  * Handle the stock update in es
  */
@@ -17,11 +19,24 @@ class StockHandler {
 
     val script = "ctx._source.stock = ctx._source.initialStock - sold"
     val req = esupdate4s id uuid in s"${storeCode}/stock" script script params {"sold" -> s"$sold"} retryOnConflict 4
+    println(req)
     EsClient.updateRaw(req)
 
   }
 
   def update(storeCode: String, ticketType: TicketType, stockCalendar:StockCalendar):Boolean = {
+
+
+    def doUpdate(storeCode:String, newStock:EsStock):Boolean = {
+
+      println("update du stock:",newStock)
+
+      import org.json4s.native.Serialization.write
+      implicit def json4sFormats: Formats = DefaultFormats.lossless
+      val json = write(newStock)
+      EsClient.update2[EsStock](storeCode, newStock, json)
+    }
+
     println("update ES stock with stockCalendar", stockCalendar)
 
     //1. get the doc
@@ -58,7 +73,7 @@ class StockHandler {
           }
           val newStock = stock.copy(stockByDateTime = Some(newStockByDateTime))
 
-          EsClient.update[EsStock](storeCode, newStock)
+          doUpdate(storeCode, newStock)
         } else {
           println(s" stockCal non trouvé => ajout à la seq du stock")
           val newEsStockCal = EsStockCalendar(
@@ -72,7 +87,7 @@ class StockHandler {
           val newStockByDateTime = stock.stockByDateTime.getOrElse(Seq()) :+ newEsStockCal
           val newStock = stock.copy(stockByDateTime = Some(newStockByDateTime))
 
-          EsClient.update[EsStock](storeCode, newStock)
+          doUpdate(storeCode, newStock)
         }
 
       case _ =>
@@ -104,7 +119,7 @@ class StockHandler {
         )))
         )
 
-        EsClient.update[EsStock](storeCode, newStock)
+        doUpdate(storeCode, newStock)
 
     }
 
