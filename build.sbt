@@ -119,3 +119,5 @@ Seq(MySQL.settings: _*)
 Seq(Oracle.settings: _*)
 
 assemblyMainClass := Some("com.mogobiz.Rest")
+
+packAutoSettings
