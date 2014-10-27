@@ -623,17 +623,6 @@ class ProductHandler extends JsonUtil {
    *
    */
 
-  /**
-   * Fix the date according to the timezone
-   * @param cal - calendar
-   * @return
-   */
-  private def getFixedDate(cal: Calendar):Calendar = {
-    val fixeddate = Calendar.getInstance
-    fixeddate.setTime(new Date(cal.getTime.getTime - fixeddate.getTimeZone.getRawOffset))
-    fixeddate
-  }
-
   private def isDateIncluded(periods: List[IntraDayPeriod], day: Calendar): Boolean = {
 
     periods.exists(period => {
