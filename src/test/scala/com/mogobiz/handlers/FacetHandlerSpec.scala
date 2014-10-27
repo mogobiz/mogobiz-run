@@ -13,7 +13,7 @@ class FacetHandlerSpec extends Specification {
   "the facet handler" should {
     "send back aggregation with nested features" in {
       skipped
-      val req = FacetRequest(priceInterval = 5000, lang = "fr", None, None, None, None, None, None,None,None,None,None)
+      val req = FacetRequest(priceInterval = 5000, lang = "fr", None, None, None, None, None, None,None,None,None,None,None)
 
       val res = handler.getProductCriteria(storeCode, req)
 
