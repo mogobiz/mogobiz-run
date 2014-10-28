@@ -17,7 +17,7 @@ object WishlistHandler {
 
 class WishlistHandler {
 
-  import com.mogobiz.handlers.WishlistHandler._
+  import WishlistHandler._
 
   def addItem(store: String, wishlistListId: String, wishlistId: String, item: WishItem, owneremail: String): String = {
     val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))

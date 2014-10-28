@@ -81,6 +81,7 @@ object Settings {
   val EsHttpPort = config getInt "elastic.httpPort"
   val EsPort     = config getInt "elastic.port"
   val EsIndex    = config getString "elastic.index"
+  val EsMLIndex    = config getString "elastic.mlindex"
   val EsCluster  = config getString "elastic.cluster"
   val EsFullUrl  = s"$EsHost:$EsHttpPort"
   val EsDebug    = config getBoolean "elastic.debug"

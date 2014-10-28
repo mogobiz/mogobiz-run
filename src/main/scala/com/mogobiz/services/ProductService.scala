@@ -138,7 +138,7 @@ import scala.concurrent.duration._
   def details (productId: Long) = get {
     get {
       parameters(
-        'historize ? false
+        'historize ? false // historize is set to true when accessed by end user. Else this may be a technical call to display the product
         , 'visitorId.?
         , 'currency.?
         , 'country.?

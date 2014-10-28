@@ -6,6 +6,7 @@ import java.util.{Date, Calendar, Locale}
 import com.mogobiz.es.{EsClient, _}
 import com.mogobiz.es.EsClient._
 import com.mogobiz.json.JsonUtil
+import com.mogobiz.learning.UserActionRegistration
 import com.mogobiz.model
 import com.mogobiz.model._
 import com.mogobiz.services.RateBoService
@@ -27,7 +28,6 @@ import scala.util.{Failure, Success, Try}
 class ProductHandler extends JsonUtil {
 
   val rateService = RateBoService
-
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
 
   def queryProductsByCriteria(storeCode: String, productRequest: ProductRequest): JValue = {
@@ -288,6 +288,8 @@ class ProductHandler extends JsonUtil {
 
   def getProductDetails(store: String, params: ProductDetailsRequest, productId: Long, uuid: String): JValue = {
     if (params.historize) {
+      // We store in User history only if it is a end user action
+      UserActionRegistration.register(store, uuid, productId.toString, UserAction.View)
       addToHistory(store, productId, uuid)
     }
     queryProductById(store, productId, params)

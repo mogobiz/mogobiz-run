@@ -4,6 +4,7 @@ import java.util.Locale
 
 import com.mogobiz.cart._
 import com.mogobiz.es._
+import com.mogobiz.learning.UserActionRegistration
 import com.mogobiz.model._
 
 
@@ -238,7 +239,10 @@ class CartHandler {
 
   def queryCartPaymentCommit(storeCode: String, uuid: String, params: CommitTransactionParameters): Map[String, Any] = {
     val cart = cartService.initCart(uuid)
-
+    cart.cartItemVOs.foreach {
+      item =>
+        UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase)
+    }
     try {
       val emailingData = cartService.commit(cart, params.transactionUuid)
       val response = Map(

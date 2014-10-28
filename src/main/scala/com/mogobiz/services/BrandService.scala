@@ -6,6 +6,7 @@ import Json4sProtocol._
 import com.mogobiz.actors.BrandActor.QueryBrandRequest
 import org.json4s._
 import spray.routing.Directives
+import spray.routing.directives.LogEntry
 
 import scala.concurrent.ExecutionContext
 
@@ -20,7 +21,7 @@ import scala.concurrent.duration._
 
   val route = {
     pathPrefix("brands") {
-      brands
+        brands
     }
   }
 
