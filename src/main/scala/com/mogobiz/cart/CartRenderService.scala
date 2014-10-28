@@ -68,6 +68,7 @@ object CartRenderService {
     val prices = renderTransactionPriceCart(cartWithUpdatedCouponsAndPromotion,rate)
 
     var map :Map[String,Any]= Map(
+      "uuid" -> cart.uuid,
       "count" -> cart.count,
       "cartItemVOs" -> items,
       "coupons"-> coupons

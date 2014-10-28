@@ -92,20 +92,20 @@ class ProductHandler extends JsonUtil {
                 or(
                   must(
                     List(
-                      createNestedTermFilter("skus", "skus.variation1.name", Some(kv(0))),
-                      createNestedTermFilter("skus", "skus.variation1.value", Some(kv(1)))
+                      createNestedTermFilter("skus", "skus.variation1.name.raw", Some(kv(0))),
+                      createNestedTermFilter("skus", "skus.variation1.value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createNestedTermFilter("skus", "skus.variation2.name", Some(kv(0))),
-                      createNestedTermFilter("skus", "skus.variation2.value", Some(kv(1)))
+                      createNestedTermFilter("skus", "skus.variation2.name.raw", Some(kv(0))),
+                      createNestedTermFilter("skus", "skus.variation2.value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createNestedTermFilter("skus", "skus.variation3.name", Some(kv(0))),
-                      createNestedTermFilter("skus", "skus.variation3.value", Some(kv(1)))
+                      createNestedTermFilter("skus", "skus.variation3.name.raw", Some(kv(0))),
+                      createNestedTermFilter("skus", "skus.variation3.value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                 )
@@ -624,17 +624,6 @@ class ProductHandler extends JsonUtil {
    * http://stackoverflow.com/questions/19330564/scala-how-to-customize-date-format-using-simpledateformat-using-json4s
    *
    */
-
-  /**
-   * Fix the date according to the timezone
-   * @param cal - calendar
-   * @return
-   */
-  private def getFixedDate(cal: Calendar):Calendar = {
-    val fixeddate = Calendar.getInstance
-    fixeddate.setTime(new Date(cal.getTime.getTime - fixeddate.getTimeZone.getRawOffset))
-    fixeddate
-  }
 
   private def isDateIncluded(periods: List[IntraDayPeriod], day: Calendar): Boolean = {
 
