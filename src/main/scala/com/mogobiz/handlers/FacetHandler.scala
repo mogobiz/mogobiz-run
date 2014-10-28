@@ -23,7 +23,7 @@ class FacetHandler {
     }
 
     val lang = if(req.lang=="_all") "" else s"${req.lang}."
-    val _lang = if(req.lang=="_all") "" else s"_${req.lang}"
+    val _lang = if(req.lang=="_all") "_" else s"_${req.lang}"
 
     val filters:List[FilterDefinition] = (List(
       createTermFilter("brand.id", req.brandId),
@@ -64,20 +64,20 @@ class FacetHandler {
                 or(
                   must(
                     List(
-                      createNestedTermFilter("skus", "skus.variation1.name", Some(kv(0))),
-                      createNestedTermFilter("skus", "skus.variation1.value", Some(kv(1)))
+                      createNestedTermFilter("skus", s"skus.variation1.${lang}name.raw", Some(kv(0))),
+                      createNestedTermFilter("skus", s"skus.variation1.${lang}value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createNestedTermFilter("skus", "skus.variation2.name", Some(kv(0))),
-                      createNestedTermFilter("skus", "skus.variation2.value", Some(kv(1)))
+                      createNestedTermFilter("skus", s"skus.variation2.${lang}name.raw", Some(kv(0))),
+                      createNestedTermFilter("skus", s"skus.variation2.${lang}value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createNestedTermFilter("skus", "skus.variation3.name", Some(kv(0))),
-                      createNestedTermFilter("skus", "skus.variation3.value", Some(kv(1)))
+                      createNestedTermFilter("skus", s"skus.variation3.${lang}name.raw", Some(kv(0))),
+                      createNestedTermFilter("skus", s"skus.variation3.${lang}value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                 )
@@ -121,15 +121,27 @@ class FacetHandler {
     } aggs {
       nestedPath("skus") aggs {
         aggregation terms "variation1_name" field s"skus.variation1.name.raw" aggs {
+          aggregation terms s"variation1_name${_lang}" field s"skus.variation1.${lang}name.raw"
+        } aggs {
           aggregation terms s"variation1_values" field s"skus.variation1.value.raw"
+        } aggs {
+          aggregation terms s"variation1_values${_lang}" field s"skus.variation1.${lang}value.raw"
         }
       } aggs {
         aggregation terms "variation2_name" field s"skus.variation2.name.raw" aggs {
+          aggregation terms s"variation2_name${_lang}" field s"skus.variation2.${lang}name.raw"
+        } aggs {
           aggregation terms s"variation2_values" field s"skus.variation2.value.raw"
+        } aggs {
+          aggregation terms s"variation2_values${_lang}" field s"skus.variation2.${lang}value.raw"
         }
       } aggs {
         aggregation terms "variation3_name" field s"skus.variation3.name.raw" aggs {
+          aggregation terms s"variation3_name${_lang}" field s"skus.variation3.${lang}name.raw"
+        } aggs {
           aggregation terms s"variation3_values" field s"skus.variation3.value.raw"
+        } aggs {
+          aggregation terms s"variation3_values${_lang}" field s"skus.variation3.${lang}value.raw"
         }
       }
     } aggs {
