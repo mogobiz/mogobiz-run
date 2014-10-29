@@ -17,10 +17,6 @@ import scala.util.Try
 class WishlistService(storeCode: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
   implicit val timeout = Timeout(10 seconds)
 
-  implicit val system = ActorSystem()
-
-  // execution context for futures
-
 
   val serviceName = "wishlists"
   val route = {

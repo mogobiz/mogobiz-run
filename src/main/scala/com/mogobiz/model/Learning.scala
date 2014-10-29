@@ -8,7 +8,7 @@ object UserAction extends Enumeration {
   type UserAction = Value
   val Purchase = Value("purchase")
   val View = Value("view")
-}            ·
+}
 
 import java.util.Calendar
 import java.util.Date
