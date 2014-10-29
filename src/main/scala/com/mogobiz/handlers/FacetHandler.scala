@@ -64,20 +64,20 @@ class FacetHandler {
                 or(
                   must(
                     List(
-                      createNestedTermFilter("skus", s"skus.variation1.${lang}name.raw", Some(kv(0))),
-                      createNestedTermFilter("skus", s"skus.variation1.${lang}value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation1.${lang}name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation1.${lang}value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createNestedTermFilter("skus", s"skus.variation2.${lang}name.raw", Some(kv(0))),
-                      createNestedTermFilter("skus", s"skus.variation2.${lang}value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation2.${lang}name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation2.${lang}value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createNestedTermFilter("skus", s"skus.variation3.${lang}name.raw", Some(kv(0))),
-                      createNestedTermFilter("skus", s"skus.variation3.${lang}value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation3.${lang}name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation3.${lang}value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                 )

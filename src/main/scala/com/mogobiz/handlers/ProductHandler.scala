@@ -39,6 +39,8 @@ class ProductHandler extends JsonUtil {
       case None => esearch4s in storeCode -> "product"
     }
 
+    val lang = if(productRequest.lang == "_all") "" else s"${productRequest.lang}."
+
     val filters:List[FilterDefinition] = (List(
       createTermFilter("code", productRequest.code),
       createTermFilter("xtype", productRequest.xtype),
@@ -69,9 +71,9 @@ class ProductHandler extends JsonUtil {
             if(kv.size == 2)
               Some(
                 must(
-                  List(//TODO handle multilingual
-                    createNestedTermFilter("features", "features.name.raw", Some(kv(0))),
-                    createNestedTermFilter("features", "features.value.raw", Some(kv(1)))
+                  List(
+                    createNestedTermFilter("features", s"features.${lang}name.raw", Some(kv(0))),
+                    createNestedTermFilter("features", s"features.${lang}value.raw", Some(kv(1)))
                   ).flatten:_*
                 )
               )
@@ -92,20 +94,20 @@ class ProductHandler extends JsonUtil {
                 or(
                   must(
                     List(
-                      createNestedTermFilter("skus", "skus.variation1.name.raw", Some(kv(0))),
-                      createNestedTermFilter("skus", "skus.variation1.value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation1.${lang}name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation1.${lang}value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createNestedTermFilter("skus", "skus.variation2.name.raw", Some(kv(0))),
-                      createNestedTermFilter("skus", "skus.variation2.value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation2.${lang}name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation2.${lang}value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createNestedTermFilter("skus", "skus.variation3.name.raw", Some(kv(0))),
-                      createNestedTermFilter("skus", "skus.variation3.value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation3.${lang}name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation3.${lang}value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                 )
