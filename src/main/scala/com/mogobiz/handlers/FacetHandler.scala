@@ -119,7 +119,7 @@ class FacetHandler {
         }
       }
     } aggs {
-      nestedPath("skus") aggs {
+      //nestedPath("skus") aggs {
         aggregation terms "variation1_name" field s"skus.variation1.name.raw" aggs {
           aggregation terms s"variation1_name${_lang}" field s"skus.variation1.${lang}name.raw"
         } aggs {
@@ -143,7 +143,7 @@ class FacetHandler {
         } aggs {
           aggregation terms s"variation3_values${_lang}" field s"skus.variation3.${lang}value.raw"
         }
-      }
+      //}
     } aggs {
       nestedPath("notations") aggs {
         aggregation terms "notation" field s"notations.notation" aggs {
