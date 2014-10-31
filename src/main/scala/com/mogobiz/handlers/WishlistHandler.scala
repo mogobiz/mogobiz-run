@@ -49,6 +49,21 @@ class WishlistHandler {
     }
   }
 
+  def addCategory(store: String, wishlistListId: String, wishlistId: String, cat: WishCategory, owneremail: String): String = {
+    val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
+    if (owneremail != wishlistList.owner.email)
+      throw NotAuthorizedException("Not Authorized")
+    val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
+    if (wishlist.brands.exists(_.brand == cat.category))
+      throw new DuplicateException(s"${cat.name}")
+    else {
+      val now = Calendar.getInstance().getTime
+      val res = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlistId) :+ wishlist.copy(categories = wishlist.categories :+ cat, lastUpdated = now))
+      Success(EsClient.update[WishlistList](esStore(store), res))
+      cat.uuid
+    }
+  }
+
   def addIdea(store: String, wishlistListId: String, wishlistId: String, idea: WishIdea, owneremail: String): String = {
     val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
     if (owneremail != wishlistList.owner.email)
@@ -86,6 +101,16 @@ class WishlistHandler {
     val now = Calendar.getInstance().getTime
     val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     val res = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlist.uuid) :+ wishlist.copy(brands = wishlist.brands.filter(_.uuid != brandUuid), lastUpdated = now))
+    EsClient.update[WishlistList](esStore(store), res)
+  }
+
+  def removeCategory(store: String, wishlistListId: String, wishlistId: String, catUuid: String, owneremail: String): Unit = {
+    val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
+    if (owneremail != wishlistList.owner.email)
+      throw NotAuthorizedException("Not Authorized")
+    val now = Calendar.getInstance().getTime
+    val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
+    val res = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlist.uuid) :+ wishlist.copy(categories = wishlist.categories.filter(_.uuid != catUuid), lastUpdated = now))
     EsClient.update[WishlistList](esStore(store), res)
   }
 

@@ -21,6 +21,10 @@ object WishlistActor {
 
   case class RemoveBrandRequest(store: String, wishlistListId: String, wishlistId: String, brandUuid: String, owneremail: String)
 
+  case class AddCategoryRequest(store: String, wishlistListId: String, wishlistId: String, category: WishCategory, owneremail: String)
+
+  case class RemoveCategoryRequest(store: String, wishlistListId: String, wishlistId: String, categoryUuid: String, owneremail: String)
+
   case class SetOwnerInfoRequest(store: String, wishlistListId: String, owner: WishlistOwner)
 
   case class AddWishlistRequest(store: String, wishlistListId: String, wishlist: Wishlist, owneremail: String)
@@ -51,6 +55,10 @@ class WishlistActor extends Actor {
       sender ! wishlistHandler.addBrand(a.store, a.wishlistListId, a.wishlistId, a.brand, a.owneremail)
     case r: RemoveBrandRequest =>
       sender ! Try(wishlistHandler.removeBrand(r.store, r.wishlistListId, r.wishlistId, r.brandUuid, r.owneremail))
+    case a: AddCategoryRequest =>
+      sender ! wishlistHandler.addCategory(a.store, a.wishlistListId, a.wishlistId, a.category, a.owneremail)
+    case r: RemoveCategoryRequest =>
+      sender ! Try(wishlistHandler.removeCategory(r.store, r.wishlistListId, r.wishlistId, r.categoryUuid, r.owneremail))
     case s: SetOwnerInfoRequest =>
       sender ! Try(wishlistHandler.setOwnerInfo(s.store, s.wishlistListId, s.owner))
     case a: AddWishlistRequest =>

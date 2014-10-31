@@ -55,3 +55,5 @@ case class AddWishlistCommand(name: String, visibility: WishlistVisibility = Wis
 case class AddItemCommand(name: String, product: String, owner_email: String, product_sku : Option[String] = None)
 
 case class AddBrandCommand(name: String, brand: String, owner_email: String)
+
+case class AddCategoryCommand(name: String, category: String, owner_email: String)

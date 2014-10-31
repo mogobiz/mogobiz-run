@@ -25,6 +25,10 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
         removeItem ~
         addIdea ~
         removeIdea ~
+        addBrand ~
+        removeBrand ~
+        addCategory ~
+        removeCategory ~
         setOwnerInfo ~
         addWishlist ~
         removeWishlist ~
@@ -93,6 +97,27 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
       parameters('owner_email) {
         (owner_email) =>
           onComplete((actor ? RemoveBrandRequest(storeCode, wishlist_list_uuid, wishlist_uuid, brand_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
+            handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
+          }
+      }
+    }
+  }
+
+  lazy val addCategory = path(Segment / "wishlist" / Segment / "category") { (wishlist_list_uuid, wishlist_uuid) =>
+    post {
+      entity(as[AddCategoryCommand]) { cmd =>
+        onComplete((actor ? AddCategoryRequest(storeCode, wishlist_list_uuid, wishlist_uuid, WishCategory(GlobalUtil.newUUID, cmd.name, cmd.category), cmd.owner_email)).mapTo[Try[String]]) { call =>
+          handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
+        }
+      }
+    }
+  }
+
+  lazy val removeCategory = path(Segment / "wishlist" / Segment / "category" / Segment) { (wishlist_list_uuid, wishlist_uuid, category_uuid) =>
+    delete {
+      parameters('owner_email) {
+        (owner_email) =>
+          onComplete((actor ? RemoveBrandRequest(storeCode, wishlist_list_uuid, wishlist_uuid, category_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
             handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
           }
       }
