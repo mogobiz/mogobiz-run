@@ -49,6 +49,15 @@ class WishlistHandler {
     }
   }
 
+  def addIdea(store: String, wishlistListId: String, wishlistId: String, idea: WishIdea, owneremail: String): String = {
+    val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
+    if (owneremail != wishlistList.owner.email)
+      throw NotAuthorizedException("Not Authorized")
+    val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
+    val res = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlistId) :+ wishlist.copy(ideas = wishlist.ideas :+ idea))
+    EsClient.update[WishlistList](esStore(store), res)
+    idea.uuid
+  }
 
   def removeItem(store: String, wishlistListId: String, wishlistId: String, itemUuid: String, owneremail: String): Unit = {
     val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
@@ -60,23 +69,23 @@ class WishlistHandler {
     EsClient.update[WishlistList](esStore(store), res)
   }
 
-  def addIdea(store: String, wishlistListId: String, wishlistId: String, idea: WishIdea, owneremail: String): String = {
-    val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
-    if (owneremail != wishlistList.owner.email)
-      throw NotAuthorizedException("Not Authorized")
-    val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
-    val res = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlistId) :+ wishlist.copy(ideas = wishlist.ideas :+ idea))
-    EsClient.update[WishlistList](esStore(store), res)
-    idea.uuid
-  }
-
   def removeIdea(store: String, wishlistListId: String, wishlistId: String, ideaUuid: String, owneremail: String): Unit = {
     val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
     if (owneremail != wishlistList.owner.email)
       throw NotAuthorizedException("Not Authorized")
     val now = Calendar.getInstance().getTime
     val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
-    val res = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlist.uuid) :+ wishlist.copy(items = wishlist.items.filter(_.uuid != ideaUuid), lastUpdated = now))
+    val res = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlist.uuid) :+ wishlist.copy(ideas = wishlist.ideas.filter(_.uuid != ideaUuid), lastUpdated = now))
+    EsClient.update[WishlistList](esStore(store), res)
+  }
+
+  def removeBrand(store: String, wishlistListId: String, wishlistId: String, brandUuid: String, owneremail: String): Unit = {
+    val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
+    if (owneremail != wishlistList.owner.email)
+      throw NotAuthorizedException("Not Authorized")
+    val now = Calendar.getInstance().getTime
+    val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
+    val res = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlist.uuid) :+ wishlist.copy(brands = wishlist.brands.filter(_.uuid != brandUuid), lastUpdated = now))
     EsClient.update[WishlistList](esStore(store), res)
   }
 

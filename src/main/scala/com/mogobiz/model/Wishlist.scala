@@ -53,3 +53,5 @@ case class WishlistList(uuid: String = newUUID,
 case class AddWishlistCommand(name: String, visibility: WishlistVisibility = WishlistVisibility.PRIVATE, defaultIndicator: Boolean = false, owner_email: String)
 
 case class AddItemCommand(name: String, product: String, owner_email: String, product_sku : Option[String] = None)
+
+case class AddBrandCommand(name: String, brand: String, owner_email: String)

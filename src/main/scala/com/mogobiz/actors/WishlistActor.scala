@@ -3,7 +3,7 @@ package com.mogobiz.actors
 import akka.actor.Actor
 import com.mogobiz.actors.WishlistActor._
 import com.mogobiz.config.HandlersConfig._
-import com.mogobiz.model.{WishIdea, WishItem, Wishlist, WishlistOwner}
+import com.mogobiz.model._
 
 import scala.util.Try
 
@@ -16,6 +16,10 @@ object WishlistActor {
   case class AddIdeaRequest(store: String, wishlistListId: String, wishlistId: String, idea: WishIdea, owneremail: String)
 
   case class RemoveIdeaRequest(store: String, wishlistListId: String, wishlistId: String, ideaUuid: String, owneremail: String)
+
+  case class AddBrandRequest(store: String, wishlistListId: String, wishlistId: String, brand: WishBrand, owneremail: String)
+
+  case class RemoveBrandRequest(store: String, wishlistListId: String, wishlistId: String, brandUuid: String, owneremail: String)
 
   case class SetOwnerInfoRequest(store: String, wishlistListId: String, owner: WishlistOwner)
 
@@ -42,7 +46,11 @@ class WishlistActor extends Actor {
     case a: AddIdeaRequest =>
       sender ! wishlistHandler.addIdea(a.store, a.wishlistListId, a.wishlistId, a.idea, a.owneremail)
     case r: RemoveIdeaRequest =>
-      sender ! Try(wishlistHandler.removeItem(r.store, r.wishlistListId, r.wishlistId, r.ideaUuid, r.owneremail))
+      sender ! Try(wishlistHandler.removeIdea(r.store, r.wishlistListId, r.wishlistId, r.ideaUuid, r.owneremail))
+    case a: AddBrandRequest =>
+      sender ! wishlistHandler.addBrand(a.store, a.wishlistListId, a.wishlistId, a.brand, a.owneremail)
+    case r: RemoveBrandRequest =>
+      sender ! Try(wishlistHandler.removeBrand(r.store, r.wishlistListId, r.wishlistId, r.brandUuid, r.owneremail))
     case s: SetOwnerInfoRequest =>
       sender ! Try(wishlistHandler.setOwnerInfo(s.store, s.wishlistListId, s.owner))
     case a: AddWishlistRequest =>

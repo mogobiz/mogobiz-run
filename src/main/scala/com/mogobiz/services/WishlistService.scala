@@ -60,9 +60,9 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
   lazy val addIdea = path(Segment / "wishlist" / Segment / "idea") { (wishlist_list_uuid, wishlist_uuid) =>
     post {
       parameters('idea, 'owner_email) { (idea, owner_email) =>
-          onComplete((actor ? AddIdeaRequest(storeCode, wishlist_list_uuid, wishlist_uuid, WishIdea(GlobalUtil.newUUID, idea), owner_email)).mapTo[Try[String]]) { call =>
-            handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
-          }
+        onComplete((actor ? AddIdeaRequest(storeCode, wishlist_list_uuid, wishlist_uuid, WishIdea(GlobalUtil.newUUID, idea), owner_email)).mapTo[Try[String]]) { call =>
+          handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
+        }
       }
     }
   }
@@ -72,6 +72,27 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
       parameters('owner_email) {
         (owner_email) =>
           onComplete((actor ? RemoveIdeaRequest(storeCode, wishlist_list_uuid, wishlist_uuid, idea_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
+            handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
+          }
+      }
+    }
+  }
+
+  lazy val addBrand = path(Segment / "wishlist" / Segment / "brand") { (wishlist_list_uuid, wishlist_uuid) =>
+    post {
+      entity(as[AddBrandCommand]) { cmd =>
+        onComplete((actor ? AddBrandRequest(storeCode, wishlist_list_uuid, wishlist_uuid, WishBrand(GlobalUtil.newUUID, cmd.name, cmd.brand), cmd.owner_email)).mapTo[Try[String]]) { call =>
+          handleComplete(call, (id: String) => complete(StatusCodes.OK, id))
+        }
+      }
+    }
+  }
+
+  lazy val removeBrand = path(Segment / "wishlist" / Segment / "brand" / Segment) { (wishlist_list_uuid, wishlist_uuid, brand_uuid) =>
+    delete {
+      parameters('owner_email) {
+        (owner_email) =>
+          onComplete((actor ? RemoveBrandRequest(storeCode, wishlist_list_uuid, wishlist_uuid, brand_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
             handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
           }
       }

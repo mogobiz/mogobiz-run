@@ -11,10 +11,10 @@ object Settings {
 
   val default = ConfigFactory.load()
 
-  val config  = ConfigFactory.load("mogobiz").withFallback(default)
+  val config = ConfigFactory.load("mogobiz").withFallback(default)
 
-  val Interface    = config getString  "spray.can.server.interface"
-  val Port         = config getInt     "spray.can.server.port"
+  val Interface = config getString "spray.can.server.interface"
+  val Port = config getInt "spray.can.server.port"
 
   val CookieTracking = config getString "spray.can.server.cookie_tracking"
 
@@ -57,15 +57,15 @@ object Settings {
      */
 
     object SMTP {
-      val Hostname     = config getString "mail.smtp.hostname"
-      val Port         = config getInt "mail.smtp.port"
-      val Username     = config getString "mail.smtp.username"
-      val Password     = config getString "mail.smtp.password"
+      val Hostname = config getString "mail.smtp.hostname"
+      val Port = config getInt "mail.smtp.port"
+      val Username = config getString "mail.smtp.username"
+      val Password = config getString "mail.smtp.password"
       val IsSSLEnabled = config getBoolean "mail.smtp.sslEnabled"
     }
 
     val defaultFrom = config getString "mail.defaultFrom"
-    val MaxAge      = (config getInt "mail.maxAgeInHours") * 3600
+    val MaxAge = (config getInt "mail.maxAgeInHours") * 3600
   }
 
   object MogobizAdmin {
@@ -73,18 +73,18 @@ object Settings {
     val QrCodeAccessUrl = config getString "mogobiz.admin.qrCodeAccessUrl"
   }
 
-  val Dialect = if(config hasPath "dialect") config getString "dialect" else "test"
+  val Dialect = if (config hasPath "dialect") config getString "dialect" else "test"
   val NextVal = config getString s"$Dialect.db.default.nextval"
   DBsWithEnv(Dialect).setupAll()
 
-  val EsHost     = config getString "elastic.host"
+  val EsHost = config getString "elastic.host"
   val EsHttpPort = config getInt "elastic.httpPort"
-  val EsPort     = config getInt "elastic.port"
-  val EsIndex    = config getString "elastic.index"
-  val EsMLIndex    = config getString "elastic.mlindex"
-  val EsCluster  = config getString "elastic.cluster"
-  val EsFullUrl  = s"$EsHost:$EsHttpPort"
-  val EsDebug    = config getBoolean "elastic.debug"
+  val EsPort = config getInt "elastic.port"
+  val EsIndex = config getString "elastic.index"
+  val EsMLIndex = config getString "elastic.mlindex"
+  val EsCluster = config getString "elastic.cluster"
+  val EsFullUrl = s"$EsHost:$EsHttpPort"
+  val EsDebug = config getBoolean "elastic.debug"
   val EsEmbedded = {
     val e = config getString "elastic.embedded"
     Try(getClass.getResource(e).getPath) getOrElse e
