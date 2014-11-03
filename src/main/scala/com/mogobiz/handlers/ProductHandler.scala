@@ -436,7 +436,7 @@ class ProductHandler extends JsonUtil {
     implicit def json4sFormats: Formats = DefaultFormats
     val ids:List[Long] =
       EsClient.loadRaw(get id sessionId from(historyIndex(storeCode), "history")) match {
-        case Some(s) => (response2JValue(s) \ "productIds").extract[List[Long]]
+        case Some(s) => (response2JValue(s) \ "productIds").extract[List[String]].map(_.toLong).reverse
         case None => List.empty
       }
     if (ids.isEmpty) List() else getProductsByIds(
@@ -495,14 +495,16 @@ class ProductHandler extends JsonUtil {
    * @return
    */
   private def addToHistory(store:String, productId:Long, sessionId:String) : Boolean = {
-    val script = "ctx._source.productIds.contains(pid) ? (ctx.op = \"none\") : ctx._source.productIds += pid"
+
+    //add to the end because productIds is an ArrayList (performance issue if we use ArrayList.add(0,_) => so last is newer
+    val script = "if(ctx._source.productIds.contains(pid)){ ctx._source.productIds.remove(ctx._source.productIds.indexOf(pid))}; ctx._source.productIds += pid"
     EsClient.updateRaw(
       esupdate4s id sessionId in s"${historyIndex(store)}/history" script
         script
         params {
-        "pid" -> productId
+        "pid" -> s"$productId"
       } upsert {
-        "productIds" -> Seq(productId)
+        "productIds" -> Seq(s"$productId")
       } retryOnConflict 4
     )
     true
