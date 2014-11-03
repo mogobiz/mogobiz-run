@@ -27,7 +27,7 @@ class FacetHandler {
 
     val filters:List[FilterDefinition] = (List(
       createTermFilter("brand.id", req.brandId),
-      createTermFilter("category.path", req.categoryPath),
+      createRegexFilter("category.path", req.categoryPath),
       createTermFilter("brand.name", req.brandName.map(_.toLowerCase)),
       createTermFilter("category.name", req.categoryName.map(_.toLowerCase)),
       createNestedTermFilter("tags", "tags.name", req.tags.map(_.toLowerCase)),
