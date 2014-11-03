@@ -48,15 +48,15 @@ class WishlistActor extends Actor {
     case r: RemoveItemRequest =>
       sender ! Try(wishlistHandler.removeItem(r.store, r.wishlistListId, r.wishlistId, r.itemUuid, r.owneremail))
     case a: AddIdeaRequest =>
-      sender ! wishlistHandler.addIdea(a.store, a.wishlistListId, a.wishlistId, a.idea, a.owneremail)
+      sender ! Try(wishlistHandler.addIdea(a.store, a.wishlistListId, a.wishlistId, a.idea, a.owneremail))
     case r: RemoveIdeaRequest =>
       sender ! Try(wishlistHandler.removeIdea(r.store, r.wishlistListId, r.wishlistId, r.ideaUuid, r.owneremail))
     case a: AddBrandRequest =>
-      sender ! wishlistHandler.addBrand(a.store, a.wishlistListId, a.wishlistId, a.brand, a.owneremail)
+      sender ! Try(wishlistHandler.addBrand(a.store, a.wishlistListId, a.wishlistId, a.brand, a.owneremail))
     case r: RemoveBrandRequest =>
       sender ! Try(wishlistHandler.removeBrand(r.store, r.wishlistListId, r.wishlistId, r.brandUuid, r.owneremail))
     case a: AddCategoryRequest =>
-      sender ! wishlistHandler.addCategory(a.store, a.wishlistListId, a.wishlistId, a.category, a.owneremail)
+      sender ! Try(wishlistHandler.addCategory(a.store, a.wishlistListId, a.wishlistId, a.category, a.owneremail))
     case r: RemoveCategoryRequest =>
       sender ! Try(wishlistHandler.removeCategory(r.store, r.wishlistListId, r.wishlistId, r.categoryUuid, r.owneremail))
     case s: SetOwnerInfoRequest =>
