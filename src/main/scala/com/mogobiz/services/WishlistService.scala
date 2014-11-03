@@ -117,7 +117,7 @@ class WishlistService(storeCode: String, actor: ActorRef)(implicit executionCont
     delete {
       parameters('owner_email) {
         (owner_email) =>
-          onComplete((actor ? RemoveBrandRequest(storeCode, wishlist_list_uuid, wishlist_uuid, category_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
+          onComplete((actor ? RemoveCategoryRequest(storeCode, wishlist_list_uuid, wishlist_uuid, category_uuid, owner_email)).mapTo[Try[Unit]]) { call =>
             handleComplete(call, (x: Unit) => complete(StatusCodes.OK))
           }
       }
