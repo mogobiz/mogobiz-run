@@ -10,7 +10,6 @@ import com.mogobiz.learning.UserActionRegistration
 import com.mogobiz.model
 import com.mogobiz.model._
 import com.mogobiz.services.RateBoService
-import com.mogobiz.utils.JacksonConverter
 import com.mogobiz.vo.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s, search => esearch4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
