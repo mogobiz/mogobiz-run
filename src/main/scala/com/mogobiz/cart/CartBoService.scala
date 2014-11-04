@@ -10,7 +10,7 @@ import com.mogobiz.cart.WeightUnit.WeightUnit
 import com.mogobiz.cart.LinearUnit.LinearUnit
 import com.mogobiz.cart.transaction._
 import com.mogobiz.cart.domain._
-import com.mogobiz.utils.{ResourceBundle, Utils, QRCodeUtils, SecureCodec}
+import com.mogobiz.utils._
 import com.sun.org.apache.xml.internal.security.utils.Base64
 import com.typesafe.scalalogging.slf4j.Logger
 import org.joda.time.DateTime
@@ -528,7 +528,7 @@ object CartBoService extends BoService {
                     boTicketTmp.firstname + ";LastName:" + boTicketTmp.lastname + ";Phone:" + boTicketTmp.phone +
                     ";TicketType:" + boTicketTmp.ticketType + ";shortCode:" + shortCode
 
-                  val encryptedQrCodeContent = SecureCodec.encrypt(qrCodeContent, product.company.get.aesPassword)
+                  val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, product.company.get.aesPassword, "AES")
                   val output = new ByteArrayOutputStream()
                   QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
                   val qrCodeBase64 = Base64.encode(output.toByteArray)

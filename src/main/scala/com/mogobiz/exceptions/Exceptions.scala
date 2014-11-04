@@ -1,4 +1,4 @@
-package com.mogobiz.utils
+package com.mogobiz.exceptions
 
 import spray.http.{StatusCode, StatusCodes}
 

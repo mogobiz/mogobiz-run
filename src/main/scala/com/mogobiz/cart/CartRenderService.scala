@@ -3,7 +3,7 @@ package com.mogobiz.cart
 import java.util.Locale
 
 import com.mogobiz.cart.domain.Coupon
-import com.mogobiz.json.Json4sProtocol
+import com.mogobiz.implicits.Json4sProtocol
 import com.mogobiz.model.Currency
 import com.mogobiz.services.RateBoService
 import com.typesafe.scalalogging.slf4j.Logger

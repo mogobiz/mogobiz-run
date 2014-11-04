@@ -1,7 +1,7 @@
 package com.mogobiz.cart
 
 import com.mogobiz.config.Settings
-import com.mogobiz.json.Json4sProtocol
+import com.mogobiz.implicits.Json4sProtocol
 import org.joda.time.DateTime
 import scalikejdbc._
 

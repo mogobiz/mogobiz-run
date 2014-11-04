@@ -3,9 +3,10 @@ package com.mogobiz.handlers
 import java.util.Calendar
 
 import com.mogobiz.es.EsClient
+import com.mogobiz.exceptions.{NotFoundException, NotAuthorizedException, DuplicateException}
 import com.mogobiz.model._
 import com.mogobiz.utils.GlobalUtil._
-import com.mogobiz.utils.{DuplicateException, NotAuthorizedException, NotFoundException}
+import com.mogobiz.exceptions.NotFoundException
 import com.sksamuel.elastic4s.ElasticDsl._
 
 import scala.util.Success

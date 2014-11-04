@@ -7,7 +7,7 @@ import com.sksamuel.elastic4s.ElasticDsl._
 import org.json4s.JsonAST.{JObject, JArray, JInt}
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization._
-import com.mogobiz.json.JsonSupport._
+import com.mogobiz.implicits.JsonSupport._
 
 class SalesHandler {
 

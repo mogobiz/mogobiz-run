@@ -7,7 +7,7 @@ import spray.testkit.Specs2RouteTest
 import spray.routing.HttpService
 import com.mogobiz.services.MogobizRoutes
 import com.mogobiz.actors.{MogobizActors, MogobizSystem}
-import com.mogobiz.json.JsonUtil
+import com.mogobiz.implicits.JsonUtil
 import org.specs2.matcher.JsonMatchers
 import scala.concurrent.duration._
 import org.json4s.JsonAST.{JArray, JValue}

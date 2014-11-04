@@ -3,8 +3,8 @@ package com.mogobiz.es
 import java.util.{Calendar, Date}
 
 import com.mogobiz.config.Settings._
-import com.mogobiz.json.Json4sProtocol
-import com.mogobiz.utils.JacksonConverter
+import com.mogobiz.implicits.Json4sProtocol
+import com.mogobiz.json.JacksonConverter
 import com.sksamuel.elastic4s.ElasticDsl.{delete => esdelete4s, index => esindex4s, update => esupdate4s, _}
 import com.sksamuel.elastic4s.source.DocumentSource
 import com.sksamuel.elastic4s.{ElasticClient, GetDefinition, MultiGetDefinition}

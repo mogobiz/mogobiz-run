@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 import com.mogobiz.actors.FacetActor.QueryGetFacetRequest
 import com.mogobiz.model.FacetRequest
 import spray.routing.Directives
-import com.mogobiz.json.Json4sProtocol
+import com.mogobiz.implicits.Json4sProtocol
 import Json4sProtocol._
 import org.json4s._
 

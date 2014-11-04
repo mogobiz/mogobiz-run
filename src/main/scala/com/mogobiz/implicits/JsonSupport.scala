@@ -1,4 +1,4 @@
-package com.mogobiz.json
+package com.mogobiz.implicits
 
 import org.json4s.DefaultFormats
 import spray.httpx.Json4sJacksonSupport

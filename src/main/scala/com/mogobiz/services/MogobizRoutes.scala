@@ -4,7 +4,8 @@ import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, Props}
 import com.mogobiz.actors.{MogobizActors, MogobizSystem}
-import com.mogobiz.utils.{MogobizException, Exceptions}
+import com.mogobiz.exceptions.MogobizException
+import com.mogobiz.exceptions.Exceptions
 import com.mogobiz.config.Settings._
 import spray.http.StatusCodes._
 import spray.http.{StatusCodes, HttpCookie, HttpEntity, StatusCode}
@@ -94,7 +95,7 @@ class RoutedHttpService(route: Route) extends Actor with HttpService with ActorL
 trait DefaultComplete {
   this : Directives =>
   def handleComplete[T](call: Try[Try[T]], handler: T => Route): Route = {
-    import com.mogobiz.json.JsonSupport._
+    import com.mogobiz.implicits.JsonSupport._
     call match {
       case Failure(t) => complete(StatusCodes.InternalServerError -> Map('error -> t.toString))
       case Success(res) =>

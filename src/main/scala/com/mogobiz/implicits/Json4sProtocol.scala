@@ -1,4 +1,4 @@
-package com.mogobiz.json
+package com.mogobiz.implicits
 
 import com.mogobiz.cart.LinearUnit._
 import com.mogobiz.cart.ProductCalendar._

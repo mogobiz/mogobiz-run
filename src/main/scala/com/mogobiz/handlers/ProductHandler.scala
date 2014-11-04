@@ -10,13 +10,13 @@ import com.mogobiz.learning.UserActionRegistration
 import com.mogobiz.model
 import com.mogobiz.model._
 import com.mogobiz.services.RateBoService
-import com.mogobiz.utils.JacksonConverter
+import com.mogobiz.json.JacksonConverter
 import com.mogobiz.vo.Paging
-import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s,search => esearch4s, _}
+import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s, search => esearch4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import org.elasticsearch.action.get.MultiGetItemResponse
 import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.search.SearchHits
+import org.elasticsearch.search.{SearchHit, SearchHits}
 import org.elasticsearch.search.aggregations.bucket.terms.Terms
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JObject, JArray, JNothing}
@@ -39,83 +39,83 @@ class ProductHandler extends JsonUtil {
       case None => esearch4s in storeCode -> "product"
     }
 
-    val lang = if(productRequest.lang == "_all") "" else s"${productRequest.lang}."
+    val lang = if (productRequest.lang == "_all") "" else s"${productRequest.lang}."
 
-    val filters:List[FilterDefinition] = (List(
+    val filters: List[FilterDefinition] = (List(
       createTermFilter("code", productRequest.code),
       createTermFilter("xtype", productRequest.xtype),
       createRegexFilter("path", productRequest.categoryPath),
       createTermFilter("brand.id", productRequest.brandId),
-      createNestedTermFilter("tags","tags.name.raw", productRequest.tagName),
-      createNestedTermFilter("notations","notations.notation", productRequest.notations),
+      createNestedTermFilter("tags", "tags.name.raw", productRequest.tagName),
+      createNestedTermFilter("notations", "notations.notation", productRequest.notations),
       createNumericRangeFilter("price", productRequest.priceMin, productRequest.priceMax),
       createRangeFilter("creationDate", productRequest.creationDateMin, None),
       createTermFilter("coupons.id", productRequest.promotionId)
     ) ::: createFeaturedRangeFilters(productRequest.featured.getOrElse(false))
       ::: List(/*property*/
       productRequest.property match {
-        case Some(x:String) =>
-          val properties = (for(property <- x.split("""\|\|\|""")) yield {
+        case Some(x: String) =>
+          val properties = (for (property <- x.split( """\|\|\|""")) yield {
             val kv = property.split( """\:\:\:""")
-            if(kv.size == 2) createTermFilter(kv(0), Some(kv(1))) else None
+            if (kv.size == 2) createTermFilter(kv(0), Some(kv(1))) else None
           }).toList.flatten
-          if(properties.size > 1) Some(must(properties:_*)) else if(properties.size == 1) Some(properties(0)) else None
+          if (properties.size > 1) Some(must(properties: _*)) else if (properties.size == 1) Some(properties(0)) else None
         case _ => None
       }
     )
       ::: List(/*feature*/
       productRequest.feature match {
-        case Some(x:String) =>
-          val features:List[FilterDefinition] = (for(feature <- x.split("""\|\|\|""")) yield {
-            val kv = feature.split("""\:\:\:""")
-            if(kv.size == 2)
+        case Some(x: String) =>
+          val features: List[FilterDefinition] = (for (feature <- x.split( """\|\|\|""")) yield {
+            val kv = feature.split( """\:\:\:""")
+            if (kv.size == 2)
               Some(
                 must(
                   List(
                     createNestedTermFilter("features", s"features.${lang}name.raw", Some(kv(0))),
                     createNestedTermFilter("features", s"features.${lang}value.raw", Some(kv(1)))
-                  ).flatten:_*
+                  ).flatten: _*
                 )
               )
             else
               None
           }).toList.flatten
-          if(features.size > 1) Some(and(features:_*)) else if(features.size == 1) Some(features(0)) else None
+          if (features.size > 1) Some(and(features: _*)) else if (features.size == 1) Some(features(0)) else None
         case _ => None
       }
     )
       ::: List(/* variations */
       productRequest.variations match {
         case Some(v: String) =>
-          val variations: List[FilterDefinition] = (for(variation <- v.split("""\|\|\|""")) yield{
-            val kv = variation.split("""\:\:\:""")
-            if(kv.size == 2)
+          val variations: List[FilterDefinition] = (for (variation <- v.split( """\|\|\|""")) yield {
+            val kv = variation.split( """\:\:\:""")
+            if (kv.size == 2)
               Some(
                 or(
                   must(
                     List(
                       createTermFilter(s"skus.variation1.${lang}name.raw", Some(kv(0))),
                       createTermFilter(s"skus.variation1.${lang}value.raw", Some(kv(1)))
-                    ).flatten:_*
+                    ).flatten: _*
                   )
-                  ,must(
+                  , must(
                     List(
                       createTermFilter(s"skus.variation2.${lang}name.raw", Some(kv(0))),
                       createTermFilter(s"skus.variation2.${lang}value.raw", Some(kv(1)))
-                    ).flatten:_*
+                    ).flatten: _*
                   )
-                  ,must(
+                  , must(
                     List(
                       createTermFilter(s"skus.variation3.${lang}name.raw", Some(kv(0))),
                       createTermFilter(s"skus.variation3.${lang}value.raw", Some(kv(1)))
-                    ).flatten:_*
+                    ).flatten: _*
                   )
                 )
               )
             else
               None
           }).toList.flatten
-          if(variations.size > 1) Some(and(variations:_*)) else if(variations.size == 1) Some(variations(0)) else None
+          if (variations.size > 1) Some(and(variations: _*)) else if (variations.size == 1) Some(variations(0)) else None
         case _ => None
       }
     )
@@ -126,17 +126,17 @@ class ProductHandler extends JsonUtil {
     val _sort = productRequest.orderBy.getOrElse("name")
     val _sortOrder = productRequest.orderDirection.getOrElse("asc")
     lazy val currency = queryCurrency(storeCode, productRequest.currencyCode)
-    val response:SearchHits = EsClient.searchAllRaw(
+    val response: SearchHits = EsClient.searchAllRaw(
       filterRequest(query, filters)
-        sourceExclude(fieldsToExclude :_*)
+        sourceExclude (fieldsToExclude: _*)
         from _from
         size _size
         sort {
         by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
       }
     )
-    val hits:JArray = response.getHits
-    val products:JValue = hits.map{
+    val hits: JArray = response.getHits
+    val products: JValue = hits.map {
       hit => renderProduct(hit, productRequest.countryCode, productRequest.currencyCode, productRequest.lang, currency, fieldsToRemoveForProductSearchRendering)
     }
     Paging.wrap(response.getTotalHits.toInt, products, productRequest)
@@ -144,36 +144,55 @@ class ProductHandler extends JsonUtil {
 
   def queryProductsByFulltextCriteria(storeCode: String, params: FullTextSearchProductParameters): JValue = {
     val fieldNames = List("name", "description", "descriptionAsText", "keywords", "path", "category.path")
-    val fields:List[String] = fieldNames.foldLeft(List[String]())((A,B) => A ::: getIncludedFieldWithPrefixAsList(storeCode, "", B, params._lang))
-    val includedFields:List[String] = List("id") ::: (if(params.highlight) List.empty else {fieldNames:::fields})
-    val highlightedFields:List[String] = fieldNames.foldLeft(List[String]())((A,B) => A ::: getHighlightedFieldsAsList(storeCode, B, params.lang))
+    val fields: List[String] = fieldNames.foldLeft(List[String]())((A, B) => A ::: getIncludedFieldWithPrefixAsList(storeCode, "", B, params._lang))
+    val includedFields: List[String] = List("id") ::: (if (params.highlight) List.empty
+    else {
+      fieldNames ::: fields
+    })
+    val highlightedFields: List[String] = fieldNames.foldLeft(List[String]())((A, B) => A ::: getHighlightedFieldsAsList(storeCode, B, params.lang))
 
-    val filters:List[FilterDefinition] = List(
+    val filters: List[FilterDefinition] = List(
       createOrRegexAndTypeFilter(
         List(
-          TypeField("product","category.path"),
-          TypeField("category","path")
+          TypeField("product", "category.path"),
+          TypeField("category", "path")
         ),
         params.categoryPath)
     ).flatten
 
-    val req = esearch4s in storeCode /*FIXME*/types(List("category", "product", "brand", "tag"):_*)
+    val req = esearch4s in storeCode /*FIXME*/ types (List("category", "product", "brand", "tag"): _*)
 
-    if(params.highlight){
-      req highlighting((fieldNames ::: highlightedFields).map(s => highlight(s)):_*)
+    if (params.highlight) {
+      req highlighting ((fieldNames ::: highlightedFields).map(s => highlight(s)): _*)
     }
 
-    if(filters.nonEmpty){
-      if(filters.size > 1)
-        req query {params.query} query {filteredQuery query {params.query} filter {and(filters: _*)}}
+    if (filters.nonEmpty) {
+      if (filters.size > 1)
+        req query {
+          params.query
+        } query {
+          filteredQuery query {
+            params.query
+          } filter {
+            and(filters: _*)
+          }
+        }
       else
-        req query {params.query} query {filteredQuery query {params.query} filter filters(0)}
+        req query {
+          params.query
+        } query {
+          filteredQuery query {
+            params.query
+          } filter filters(0)
+        }
     }
-    else{
-      req query {params.query}
+    else {
+      req query {
+        params.query
+      }
     }
 
-    val json:JValue = EsClient.searchAllRaw(req fields(fieldNames:::fields:_*) sourceInclude(includedFields:_*))
+    val json: JValue = EsClient.searchAllRaw(req fields (fieldNames ::: fields: _*) sourceInclude (includedFields: _*))
 
     val hits = json \ "hits"
 
@@ -201,12 +220,12 @@ class ProductHandler extends JsonUtil {
   def getProductsFeatures(storeCode: String, params: CompareProductParameters): JValue = {
     val idList = params.ids.split(",").toList
 
-    val includedFields:List[String] = List("id", "name", "features.name", "features.value") :::
+    val includedFields: List[String] = List("id", "name", "features.name", "features.value") :::
       getIncludedFieldWithPrefixAsList(storeCode, "", "name", params.lang) :::
       getIncludedFieldWithPrefixAsList(storeCode, "features.", "name", params.lang) :::
       getIncludedFieldWithPrefixAsList(storeCode, "features.", "value", params.lang)
 
-    val docs:Array[MultiGetItemResponse] = EsClient.loadRaw(multiget(idList.map(id => get id id from storeCode -> "product" fields(includedFields:_*)):_*))
+    val docs: Array[MultiGetItemResponse] = EsClient.loadRaw(multiget(idList.map(id => get id id from storeCode -> "product" fields (includedFields: _*)): _*))
 
     var allLanguages: List[String] = getStoreLanguagesAsList(storeCode)
 
@@ -219,7 +238,8 @@ class ProductHandler extends JsonUtil {
           val v = extractJSonProperty(extractJSonProperty(feature, lang), esProperty)
           if (v == JNothing) JField("-", "-")
           else JField(lang, v)
-        }}.filter{v: JField => v._1 != "-"} :+ JField(targetPropery, value)
+        }
+        }.filter { v: JField => v._1 != "-"} :+ JField(targetPropery, value)
       }
       else {
         val valueInGivenLang = extractJSonProperty(extractJSonProperty(feature, params._lang), esProperty)
@@ -231,12 +251,12 @@ class ProductHandler extends JsonUtil {
     import org.json4s.native.JsonMethods._
     implicit def json4sFormats: Formats = DefaultFormats
 
-    val featuresByNameAndIds : List[(Long, List[(String, JValue, List[JField])])] = (for {
+    val featuresByNameAndIds: List[(Long, List[(String, JValue, List[JField])])] = (for {
       doc <- docs
       id = doc.getId.toLong
-      result:JObject = parse(doc.getResponse.getSourceAsString).extract[JObject]
+      result: JObject = parse(doc.getResponse.getSourceAsString).extract[JObject]
     } yield {
-      val featuresByName : List[(String, JValue, List[JField])] = for {
+      val featuresByName: List[(String, JValue, List[JField])] = for {
         JArray(features) <- result \ "features"
         JObject(feature) <- features
         JField("name", JString(name)) <- feature
@@ -248,10 +268,12 @@ class ProductHandler extends JsonUtil {
     val ids: List[Long] = featuresByNameAndIds.map { idAndFeaturesByName: (Long, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1}.distinct
 
     // Liste des noms des features (avec traduction des noms des features)
-    val featuresName : List[(String, List[JField])] = {for {feature: (String, JValue, List[JField]) <-
-                                                            featuresByNameAndIds.map { idAndFeaturesByName: (Long, List[(String, JValue, List[JField])]) => idAndFeaturesByName._2}.
-                                                              flatMap {featuresByName: List[(String, JValue, List[JField])] => featuresByName}
-    } yield (feature._1, translateFeature(feature._2, "name", "label"))}.distinct
+    val featuresName: List[(String, List[JField])] = {
+      for {feature: (String, JValue, List[JField]) <-
+           featuresByNameAndIds.map { idAndFeaturesByName: (Long, List[(String, JValue, List[JField])]) => idAndFeaturesByName._2}.
+             flatMap { featuresByName: List[(String, JValue, List[JField])] => featuresByName}
+      } yield (feature._1, translateFeature(feature._2, "name", "label"))
+    }.distinct
 
     // List de JObject correspond au contenu de la propriété "result" du résultat de la méthode
     // On construit pour chaque nom de feature et pour chaque id de produit
@@ -261,7 +283,7 @@ class ProductHandler extends JsonUtil {
 
       // Contenu pour la future propriété "values" du résultat
       val valuesList = ids.map { id: Long =>
-        val featuresByName: Option[(Long, List[(String, JValue, List[JField])])] = featuresByNameAndIds.find{ idAndFeaturesByName: (Long, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1 == id }
+        val featuresByName: Option[(Long, List[(String, JValue, List[JField])])] = featuresByNameAndIds.find { idAndFeaturesByName: (Long, List[(String, JValue, List[JField])]) => idAndFeaturesByName._1 == id}
         if (featuresByName.isDefined) {
           val feature: Option[(String, JValue, List[JField])] = featuresByName.get._2.find { nameAndFeature: (String, JValue, List[JField]) => nameAndFeature._1 == featureName._1}
           if (feature.isDefined) {
@@ -273,7 +295,7 @@ class ProductHandler extends JsonUtil {
       }
 
       // Récupération des valeurs différents pour le calcul de l'indicateur
-      val uniqueValue = valuesList.map {valueObject: JValue =>
+      val uniqueValue = valuesList.map { valueObject: JValue =>
         extractJSonProperty(valueObject, "value") match {
           case s: JString => s.s
           case _ => "-"
@@ -283,7 +305,7 @@ class ProductHandler extends JsonUtil {
       JObject(featureName._2 :+ JField("values", valuesList) :+ JField("indicator", if (uniqueValue.size == 1) "0" else "1"))
     }
 
-    val jFieldIds = JField("ids", JArray(ids.map {id: Long => JString(String.valueOf(id))}))
+    val jFieldIds = JField("ids", JArray(ids.map { id: Long => JString(String.valueOf(id))}))
     var jFieldResult = JField("result", JArray(resultContent))
     JObject(List(jFieldIds, jFieldResult))
   }
@@ -298,12 +320,12 @@ class ProductHandler extends JsonUtil {
   }
 
   def getProductDates(storeCode: String, params: ProductDatesRequest, productId: Long, uuid: String): JValue = {
-    val filters:List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
-    val hits:SearchHits = EsClient.searchAllRaw(
-      filterRequest(esearch4s in storeCode -> "product", filters) sourceInclude(List("datePeriods", "intraDayPeriods"):_*)
+    val filters: List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
+    val hits: SearchHits = EsClient.searchAllRaw(
+      filterRequest(esearch4s in storeCode -> "product", filters) sourceInclude (List("datePeriods", "intraDayPeriods"): _*)
     )
-    val inPeriods:List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
-    val outPeriods:List[EndPeriod] = hits.getHits.map(hit => hit.field("datePeriods").getValue[List[EndPeriod]]).flatten.toList
+    val inPeriods: List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
+    val outPeriods: List[EndPeriod] = hits.getHits.map(hit => hit.field("datePeriods").getValue[List[EndPeriod]]).flatten.toList
     //date or today
     val now = Calendar.getInstance().getTime
     val today = getCalendar(sdf.parse(sdf.format(now)))
@@ -313,14 +335,14 @@ class ProductHandler extends JsonUtil {
     }
     val endCalendar = getCalendar(startCalendar.getTime)
     endCalendar.add(Calendar.MONTH, 1)
-    def checkDate(currentDate:Calendar,endCalendar: Calendar, acc: List[String]) : List[String] = {
-      if(!currentDate.before(endCalendar)) acc
-      else{
+    def checkDate(currentDate: Calendar, endCalendar: Calendar, acc: List[String]): List[String] = {
+      if (!currentDate.before(endCalendar)) acc
+      else {
         currentDate.add(Calendar.DAY_OF_YEAR, 1)
         if (isDateIncluded(inPeriods, currentDate) && !isDateExcluded(outPeriods, currentDate)) {
           val date = sdf.format(currentDate.getTime)
-          checkDate(currentDate, endCalendar, date::acc)
-        }else{
+          checkDate(currentDate, endCalendar, date :: acc)
+        } else {
           checkDate(currentDate, endCalendar, acc)
         }
       }
@@ -330,11 +352,11 @@ class ProductHandler extends JsonUtil {
   }
 
   def getProductTimes(storeCode: String, params: ProductTimesRequest, productId: Long, uuid: String): JValue = {
-    val filters:List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
-    val hits:SearchHits = EsClient.searchAllRaw(
-      filterRequest(esearch4s in storeCode -> "product", filters) sourceInclude(List("intraDayPeriods"):_*)
+    val filters: List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
+    val hits: SearchHits = EsClient.searchAllRaw(
+      filterRequest(esearch4s in storeCode -> "product", filters) sourceInclude (List("intraDayPeriods"): _*)
     )
-    val intraDayPeriods:List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
+    val intraDayPeriods: List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
     //date or today
     val day = getCalendar(sdf.parse(params.date.getOrElse(sdf.format(Calendar.getInstance().getTime))))
     implicit def json4sFormats: Formats = DefaultFormats
@@ -358,7 +380,7 @@ class ProductHandler extends JsonUtil {
           day.getTime.compareTo(period.endDate) <= 0
         cond
       }
-    }.map{
+    }.map {
       //get the start date hours value only
       period => {
         // the parsed date returned by ES is parsed according to the server Timezone and so it returns 16 (parsed value) instead of 15 (ES value)
@@ -368,7 +390,7 @@ class ProductHandler extends JsonUtil {
     }
   }
 
-  def updateProductNotations(storeCode:String, productId: Long, values: List[JValue]): Boolean = {
+  def updateProductNotations(storeCode: String, productId: Long, values: List[JValue]): Boolean = {
     /* marche pas avec un script :(
     val script = "ctx._source.notations4=notations"
     //val notations = compact(render(JField("notations", JArray(values))))
@@ -387,7 +409,7 @@ class ProductHandler extends JsonUtil {
     val product = response2JValue(res)
 
     val notations = JObject(("notations", JArray(values)))
-    val updatedProduct = (product removeField { f => f._1 =="notations"} ) merge notations
+    val updatedProduct = (product removeField { f => f._1 == "notations"}) merge notations
     val res2 = EsClient.updateRaw(esupdate4s id productId in storeCode -> "product" doc updatedProduct retryOnConflict 4)
     //res2.getVersion > v1
     true
@@ -396,7 +418,9 @@ class ProductHandler extends JsonUtil {
 
   def updateComment(storeCode: String, productId: Long, commentId: String, useful: Boolean): Boolean = {
     val script = "if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}"
-    val req = esupdate4s id commentId in s"${commentIndex(storeCode)}/comment" script script params {"useful" -> s"$useful"}
+    val req = esupdate4s id commentId in s"${commentIndex(storeCode)}/comment" script script params {
+      "useful" -> s"$useful"
+    }
     EsClient.updateRaw(req)
     true
   }
@@ -404,7 +428,7 @@ class ProductHandler extends JsonUtil {
   def createComment(storeCode: String, productId: Long, req: CommentRequest): Comment = {
     require(!storeCode.isEmpty)
     require(productId > 0)
-    val comment = Try(Comment(None, req.userId , req.surname, req.notation, req.subject, req.comment, req.created, productId))
+    val comment = Try(Comment(None, req.userId, req.surname, req.notation, req.subject, req.comment, req.created, productId))
     comment match {
       case Success(s) =>
         Comment(Some(EsClient.index[Comment](commentIndex(storeCode), s)), req.userId, req.surname, req.notation, req.subject, req.comment, req.created, productId)
@@ -413,10 +437,15 @@ class ProductHandler extends JsonUtil {
   }
 
   def getComment(storeCode: String, productId: Long, req: CommentGetRequest): JValue = {
+    def deserializeComment(hit: SearchHit): Comment = {
+      val c: Comment = JacksonConverter.deserialize[Comment](hit.getSourceAsString)
+      Comment(Some(hit.getId), c.userId, c.surname, c.notation, c.subject, c.comment, c.created, c.productId, c.useful, c.notuseful)
+    }
+
     val size = req.maxItemPerPage.getOrElse(100)
     val from = req.pageOffset.getOrElse(0) * size
-    val filters:List[FilterDefinition] = List(createTermFilter("productId", Some(s"$productId"))).flatten
-    val hits:SearchHits = EsClient.searchAllRaw(
+    val filters: List[FilterDefinition] = List(createTermFilter("productId", Some(s"$productId"))).flatten
+    val hits: SearchHits = EsClient.searchAllRaw(
       filterRequest(esearch4s in commentIndex(storeCode) -> "comment", filters)
         from from
         size size
@@ -424,7 +453,7 @@ class ProductHandler extends JsonUtil {
         by field "created" order SortOrder.DESC
       }
     )
-    val comments:List[Comment] = hits.getHits.map(JacksonConverter.deserializeComment).toList
+    val comments: List[Comment] = hits.getHits.map(deserializeComment).toList
     val paging = Paging.add(hits.getTotalHits.toInt, comments, req)
     import org.json4s._
     import org.json4s.jackson.Serialization
@@ -434,18 +463,19 @@ class ProductHandler extends JsonUtil {
 
   def getProductHistory(storeCode: String, req: VisitorHistoryRequest, sessionId: String): List[JValue] = {
     implicit def json4sFormats: Formats = DefaultFormats
-    val ids:List[Long] =
+    val ids: List[Long] =
       EsClient.loadRaw(get id sessionId from(historyIndex(storeCode), "history")) match {
         case Some(s) => (response2JValue(s) \ "productIds").extract[List[Long]]
         case None => List.empty
       }
-    if (ids.isEmpty) List() else getProductsByIds(
+    if (ids.isEmpty) List()
+    else getProductsByIds(
       storeCode, ids, ProductDetailsRequest(historize = false, None, req.currency, req.country, req.lang)
     )
   }
 
-  def getProductsByNotation(storeCode:String, lang:String): List[JValue] = {
-    val productsByNotation:SearchResponse = EsClient().execute(
+  def getProductsByNotation(storeCode: String, lang: String): List[JValue] = {
+    val productsByNotation: SearchResponse = EsClient().execute(
       esearch4s in s"${storeCode}_comment" types "comment" aggs {
         aggregation terms "products" field "productId" order Terms.Order.aggregation("avg_notation", false) aggregations (
           aggregation avg "avg_notation" field "notation"
@@ -453,9 +483,9 @@ class ProductHandler extends JsonUtil {
       }
     )
     import scala.collection.JavaConversions._
-    val ids:List[Long] =
-      (for(
-        bucket:Terms.Bucket <- productsByNotation.getAggregations.get[Terms]("products").getBuckets
+    val ids: List[Long] =
+      (for (
+        bucket: Terms.Bucket <- productsByNotation.getAggregations.get[Terms]("products").getBuckets
       ) yield {
         bucket.getKey.toLong
       }).toList
@@ -472,18 +502,18 @@ class ProductHandler extends JsonUtil {
    */
   private def getProductsByIds(store: String, ids: List[Long], req: ProductDetailsRequest): List[JValue] = {
     lazy val currency = queryCurrency(store, req.currency)
-    val products:List[MultiGetItemResponse] = EsClient.loadRaw(multiget(ids.map(id => get id id from store -> "product"):_*)).toList
-    for(product <- products if !product.isFailed) yield {
-      val p:JValue = product.getResponse
+    val products: List[MultiGetItemResponse] = EsClient.loadRaw(multiget(ids.map(id => get id id from store -> "product"): _*)).toList
+    for (product <- products if !product.isFailed) yield {
+      val p: JValue = product.getResponse
       renderProduct(p, req.country, req.currency, req.lang, currency, List())
     }
   }
 
-  private def commentIndex(store:String):String = {
+  private def commentIndex(store: String): String = {
     s"${store}_comment"
   }
 
-  private def historyIndex(store:String):String = {
+  private def historyIndex(store: String): String = {
     s"${store}_history"
   }
 
@@ -494,7 +524,7 @@ class ProductHandler extends JsonUtil {
    * @param sessionId - session id
    * @return
    */
-  private def addToHistory(store:String, productId:Long, sessionId:String) : Boolean = {
+  private def addToHistory(store: String, productId: Long, sessionId: String): Boolean = {
     val script = "ctx._source.productIds.contains(pid) ? (ctx.op = \"none\") : ctx._source.productIds += pid"
     EsClient.updateRaw(
       esupdate4s id sessionId in s"${historyIndex(store)}/history" script
@@ -519,14 +549,16 @@ class ProductHandler extends JsonUtil {
     lazy val currency = queryCurrency(store, req.currency)
     val response = multiSearchRaw(
       List(
-        esearch4s in store -> "product" query {ids(List(s"$id"))},
+        esearch4s in store -> "product" query {
+          ids(List(s"$id"))
+        },
         esearch4s in store -> "stock" filter termFilter("productId", id)
       )
     )
-    response(0) match{
+    response(0) match {
       case Some(p) =>
         val product = renderProduct(p.getHits()(0), req.country, req.currency, req.lang, currency, List())
-        response(1) match{
+        response(1) match {
           case Some(s) =>
             Some(JObject(product.asInstanceOf[JObject].obj :+ JField("stocks", s.getHits)))
           case None => Some(product)
@@ -589,11 +621,12 @@ class ProductHandler extends JsonUtil {
     */
   }
 
-  private val sdf = new SimpleDateFormat("yyyy-MM-dd") //THH:mm:ssZ
+  private val sdf = new SimpleDateFormat("yyyy-MM-dd")
+  //THH:mm:ssZ
   private val hours = new SimpleDateFormat("HH:mm")
 
-  private def createFeaturedRangeFilters(featured:Boolean) : List[Option[FilterDefinition]] = {
-    if(featured){
+  private def createFeaturedRangeFilters(featured: Boolean): List[Option[FilterDefinition]] = {
+    if (featured) {
       val today = sdf.format(Calendar.getInstance().getTime)
       List(
         createRangeFilter("startFeatureDate", None, Some(s"$today")),
@@ -614,7 +647,7 @@ class ProductHandler extends JsonUtil {
    * @param d - date
    * @return
    */
-  private def getFixedDate(d: Date):Calendar = {
+  private def getFixedDate(d: Date): Calendar = {
     val fixeddate = Calendar.getInstance()
     fixeddate.setTime(new Date(d.getTime - fixeddate.getTimeZone.getRawOffset))
     fixeddate
@@ -650,7 +683,7 @@ class ProductHandler extends JsonUtil {
 
   }
 
-  private def isDateExcluded(periods:List[EndPeriod] , day:Calendar ) : Boolean  = {
+  private def isDateExcluded(periods: List[EndPeriod], day: Calendar): Boolean = {
     periods.exists(period => {
       day.getTime.compareTo(period.startDate) >= 0 && day.getTime.compareTo(period.endDate) <= 0
     })

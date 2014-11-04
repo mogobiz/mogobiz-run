@@ -4,7 +4,7 @@ import akka.actor.{ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.mogobiz.actors.WishlistActor._
-import com.mogobiz.json.JsonSupport._
+import com.mogobiz.implicits.JsonSupport._
 import com.mogobiz.model._
 import com.mogobiz.utils.GlobalUtil
 import spray.http.StatusCodes
