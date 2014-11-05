@@ -1,7 +1,7 @@
 package com.mogobiz.mail
 
-import com.mogobiz.actors.BootedMogobizSystem
 import com.mogobiz.config.Settings
+import com.mogobiz.system.BootedMogobizSystem
 import com.mogobiz.utils.MailTemplateUtils
 import org.specs2.mutable.Specification
 import org.specs2.time.NoTimeConversions

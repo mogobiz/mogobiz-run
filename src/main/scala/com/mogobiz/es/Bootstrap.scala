@@ -9,7 +9,7 @@ import org.elasticsearch.index.query.TermQueryBuilder
 object Bootstrap {
 
   def createIndex(): Unit = {
-    EsClient.client.client.prepareDeleteByQuery(Settings.EsMLIndex).setQuery(new TermQueryBuilder("_type", "UserHistoryMatrix")).execute.actionGet
+    //EsClient.client.client.prepareDeleteByQuery(Settings.EsMLIndex).setQuery(new TermQueryBuilder("_type", "UserHistoryMatrix")).execute.actionGet
 
   }
 }

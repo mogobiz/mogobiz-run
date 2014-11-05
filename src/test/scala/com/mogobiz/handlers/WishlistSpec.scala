@@ -2,7 +2,7 @@ package com.mogobiz.handlers
 
 import com.mogobiz.model._
 import com.mogobiz.utils.GlobalUtil._
-import com.mogobiz.implicits.JacksonConverter
+import com.mogobiz.json.JacksonConverter
 import org.specs2.mutable.Specification
 
 class WishlistSpec extends Specification {

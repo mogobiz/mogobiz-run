@@ -2,25 +2,27 @@ package com.mogobiz.services
 
 import java.util.UUID
 
-import akka.actor.{Actor, ActorLogging, Props}
-import com.mogobiz.actors.{MogobizActors, MogobizSystem}
+import akka.actor.{Props}
+import com.mogobiz.actors.{MogobizActors}
 import com.mogobiz.exceptions.MogobizException
-import com.mogobiz.exceptions.Exceptions
 import com.mogobiz.config.Settings._
-import spray.http.StatusCodes._
-import spray.http.{StatusCodes, HttpCookie, HttpEntity, StatusCode}
+import com.mogobiz.system.MogobizSystem
+
+import spray.http.{StatusCodes, HttpCookie}
 import spray.routing.{Directives, _}
-import spray.util.LoggingContext
+
+import com.mogobiz.system.RoutedHttpService
 
 import scala.util.{Success, Failure, Try}
-import scala.util.control.NonFatal
+
 
 trait MogobizRoutes extends Directives {
   this: MogobizActors with MogobizSystem =>
 
   private implicit val _ = system.dispatcher
 
-  val routes = {
+  def routes =
+    logRequestResponse(showRequest _) {
     pathPrefix((("api" / "store") | "store") / Segment) {
       storeCode => {
         optionalCookie(CookieTracking) {
@@ -45,7 +47,7 @@ trait MogobizRoutes extends Directives {
       new TagService(storeCode, tagActor).route ~
       new BrandService(storeCode, brandActor).route ~
       new LangService(storeCode, langActor).route ~
-      new CountryService(storeCode, countryActor).route ~
+      new CountryService(storeCode, countriesActor).route ~
       new CurrencyService(storeCode, currencyActor).route ~
       new CategoryService(storeCode, categoryActor).route ~
       new ProductService(storeCode, uuid, productActor).route ~
@@ -58,39 +60,9 @@ trait MogobizRoutes extends Directives {
   }
 
 
-  val routesServices = system.actorOf(Props(new RoutedHttpService(routes)))
+  def routesServices = system.actorOf(Props(new RoutedHttpService(routes)))
 }
 
-/**
- *
- * @param responseStatus
- * @param response
- */
-case class ErrorResponseException(responseStatus: StatusCode, response: Option[HttpEntity]) extends Exception
-
-/**
- * Allows you to construct Spray ``HttpService`` from a concatenation of routes; and wires in the error handler.
- * It also logs all internal server errors using ``SprayActorLogging``.
- *
- * @param route the (concatenated) route
- */
-class RoutedHttpService(route: Route) extends Actor with HttpService with ActorLogging {
-
-  implicit def actorRefFactory = context
-
-  implicit val handler = ExceptionHandler {
-    case NonFatal(ErrorResponseException(statusCode, entity)) => ctx =>
-      ctx.complete(statusCode, entity)
-
-    case NonFatal(e) => ctx => {
-      log.error(e, InternalServerError.defaultMessage)
-      ctx.complete(InternalServerError)
-    }
-  }
-
-  def receive: Receive =
-    runRoute(route)(handler, RejectionHandler.Default, context, RoutingSettings.default, LoggingContext.fromActorRefFactory)
-}
 
 trait DefaultComplete {
   this : Directives =>
