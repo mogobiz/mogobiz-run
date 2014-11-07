@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory
 
 import scala.language.{implicitConversions, reflectiveCalls}
 
-object EsClient {
+object EsClientOld {
   private val logger = Logger(LoggerFactory.getLogger("esClient"))
 
   val settings = ImmutableSettings.settingsBuilder().put("cluster.name", EsCluster).build()
@@ -44,7 +44,7 @@ object EsClient {
     val req = esindex4s into(store, manifest[T].runtimeClass.getSimpleName.toLowerCase) doc new DocumentSource {
       override val json: String = js
     }
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     res.getId
   }
 
@@ -64,29 +64,29 @@ object EsClient {
 
   def load[T: Manifest](store: String, uuid: String): Option[T] = {
     val req = get id uuid from store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
   }
 
   def loadRaw(req:GetDefinition): Option[GetResponse] = {
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     if (res.isExists) Some(res) else None
   }
 
   def loadRaw(req:MultiGetDefinition): Array[MultiGetItemResponse] = {
-    EsClient().execute(req).getResponses
+    EsClientOld().execute(req).getResponses
   }
 
   def loadWithVersion[T: Manifest](store: String, uuid: String): Option[(T, Long)] = {
     val req = get id uuid from store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     val maybeT = if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
     maybeT map ((_, res.getVersion))
   }
 
   def delete[T: Manifest](store: String, uuid: String, refresh: Boolean = false): Boolean = {
     val req = esdelete4s id uuid from store -> manifest[T].runtimeClass.getSimpleName.toLowerCase refresh refresh
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     res.isFound
   }
 
@@ -98,7 +98,7 @@ object EsClient {
       override val json: String = js
     }
     req.docAsUpsert(upsert)
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     res.isCreated || res.getVersion > 1
   }
 
@@ -124,7 +124,7 @@ object EsClient {
       override val json: String = js
     }
     req.docAsUpsert(upsert)
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     res.isCreated || res.getVersion > 1
   }
 
@@ -138,23 +138,23 @@ object EsClient {
     val req = esupdate4s id t.uuid in store -> manifest[T].runtimeClass.getSimpleName.toLowerCase version version doc new DocumentSource {
       override def json: String = js
     }
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     true
   }
 
   def updateRaw(req:UpdateDefinition) : GetResult = {
-    EsClient().execute(req).getGetResult
+    EsClientOld().execute(req).getGetResult
   }
 
   def searchAll[T: Manifest](req: SearchDefinition): Seq[T] = {
     debug(req)
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     res.getHits.getHits.map { hit => JacksonConverter.deserialize[T](hit.getSourceAsString)}
   }
 
   def search[T: Manifest](req: SearchDefinition): Option[T] = {
     debug(req)
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     if (res.getHits.getTotalHits == 0)
       None
     else
@@ -163,13 +163,13 @@ object EsClient {
 
   def searchAllRaw(req: SearchDefinition): SearchHits = {
     debug(req)
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     res.getHits
   }
 
   def searchRaw(req: SearchDefinition): Option[SearchHit] = {
     debug(req)
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
 
     if (res.getHits.getTotalHits == 0)
       None
@@ -179,7 +179,7 @@ object EsClient {
 
   def multiSearchRaw(req: List[SearchDefinition]): Array[Option[SearchHits]] = {
     req.foreach(debug)
-    val multiSearchResponse:MultiSearchResponse = EsClient().execute(req:_*)
+    val multiSearchResponse:MultiSearchResponse = EsClientOld().execute(req:_*)
     for(resp <- multiSearchResponse.getResponses) yield {
       if(resp.isFailure)
         None
@@ -195,7 +195,7 @@ object EsClient {
    */
   def searchAgg(req: SearchDefinition) : JValue = {
     debug(req)
-    val res = EsClient().execute(req)
+    val res = EsClientOld().execute(req)
     val resJson = parse(res.toString)
     resJson \ "aggregations"
   }

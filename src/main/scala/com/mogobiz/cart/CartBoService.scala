@@ -26,7 +26,7 @@ object CartBoService extends BoService {
 
   type CouponVO = Coupon
 
-  DBs.setupAll()
+  //DBs.setupAll()
 
   private val logger = Logger(LoggerFactory.getLogger("CartBoService"))
 

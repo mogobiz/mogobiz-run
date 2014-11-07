@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import com.mogobiz.es._
-import com.mogobiz.es.EsClient._
+import com.mogobiz.es.EsClientOld._
 import com.mogobiz.model.Promotion._
 import com.mogobiz.vo.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
@@ -23,7 +23,7 @@ class PromotionHandler {
     val _sortOrder = req.orderDirection.getOrElse("asc")
     val _query =
       if(req.categoryPath.isDefined){
-        val categories:JValue = EsClient.searchRaw(
+        val categories:JValue = EsClientOld.searchRaw(
           filterRequest(
             esearch4s in storeCode -> "category", List(
               createRegexFilter("path", req.categoryPath)
@@ -48,7 +48,7 @@ class PromotionHandler {
       rangeFilter("startDate") lte now,
       rangeFilter("endDate") gte now
     )
-    val response:SearchHits = EsClient.searchAllRaw(
+    val response:SearchHits = EsClientOld.searchAllRaw(
       filterRequest(esearch4s in storeCode -> "coupon", filters, _query)
         from _from
         size _size

@@ -4,7 +4,7 @@ import java.util.Date
 
 import com.mogobiz.cart.domain.{TicketType, StockCalendar}
 import com.mogobiz.model.{StockCalendar => EsStockCalendar, Stock => EsStock}
-import com.mogobiz.es.EsClient
+import com.mogobiz.es.EsClientOld
 import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s}
 import com.sksamuel.elastic4s.ElasticDsl._
 import org.json4s.{DefaultFormats, Formats}
@@ -20,7 +20,7 @@ class StockHandler {
     val script = "ctx._source.stock = ctx._source.initialStock - sold"
     val req = esupdate4s id uuid in s"${storeCode}/stock" script script params {"sold" -> s"$sold"} retryOnConflict 4
     println(req)
-    EsClient.updateRaw(req)
+    EsClientOld.updateRaw(req)
 
   }
 
@@ -34,7 +34,7 @@ class StockHandler {
       import org.json4s.native.Serialization.write
       implicit def json4sFormats: Formats = DefaultFormats.lossless
       val json = write(newStock)
-      EsClient.update2[EsStock](storeCode, newStock, json)
+      EsClientOld.update2[EsStock](storeCode, newStock, json)
     }
 
     println("update ES stock with stockCalendar", stockCalendar)
@@ -43,7 +43,7 @@ class StockHandler {
 //    val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
 
     val startDate = stockCalendar.startDate.get.toDate
-    val res = EsClient.load[EsStock](storeCode,ticketType.uuid)
+    val res = EsClientOld.load[EsStock](storeCode,ticketType.uuid)
     println(res)
 
     // Some(Stock(139,0ec602d5-3da8-4e64-9986-27e04e7b7fe1,f8a279fc-3836-4aed-93bd-64e1609598b0,135,07e020a0-5aaf-4def-a783-15edd33c360e,Wed Jan 01 01:00:00 CET 2014,Thu Jan 01 00:59:00 CET 2015,None,Thu Oct 02 02:54:15 CEST 2014,Thu Oct 02 02:54:15 CEST 2014,Fri Oct 03 02:10:01 CEST 2014,150,false,false,true,Some(DATE_ONLY),None,null))

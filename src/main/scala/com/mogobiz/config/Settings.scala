@@ -18,12 +18,12 @@ object Settings {
 
   val CookieTracking = config getString "mogobiz.cookie-tracking"
 
-//  val ApplicationSecret = config getString "session.application.secret"
-//  val SessionFolder = new File(config getString "session.folder")
-//  val SessionCookieName = config getString "session.cookie.name"
-//  val SessionCookieMaxAge = config getLong "session.cookie.maxage"
-//  val RememberCookieName = config getString "session.remember.cookie.name"
-//  val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
+  //  val ApplicationSecret = config getString "session.application.secret"
+  //  val SessionFolder = new File(config getString "session.folder")
+  //  val SessionCookieName = config getString "session.cookie.name"
+  //  val SessionCookieMaxAge = config getLong "session.cookie.maxage"
+  //  val RememberCookieName = config getString "session.remember.cookie.name"
+  //  val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
 
   object cart {
     val lifetime = 15
@@ -75,6 +75,7 @@ object Settings {
 
   val Dialect = if (config hasPath "dialect") config getString "dialect" else "test"
   val NextVal = config getString s"$Dialect.db.default.nextval"
+
   DBsWithEnv(Dialect).setupAll()
 
   val EsHost = config getString "elastic.host"
@@ -92,9 +93,9 @@ object Settings {
 
   val ResourcesRootPath = config getString "resources.rootPath"
 
-//  require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
-//  require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")
-//  require(RememberCookieName.nonEmpty, "session.remember.cookie.name must be non-empty")
+  //  require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
+  //  require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")
+  //  require(RememberCookieName.nonEmpty, "session.remember.cookie.name must be non-empty")
   //  require(Interface.nonEmpty, "interface must be non-empty")
   //  require(0 < Port && Port < 65536, "illegal port")
   require(ResourcesRootPath.nonEmpty, "resources.rootPath must be non-empty")

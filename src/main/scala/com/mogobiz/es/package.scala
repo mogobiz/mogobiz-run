@@ -22,7 +22,7 @@ package object es {
     assert(!store.isEmpty)
     currencyCode match {
       case Some(s) =>
-        EsClient.search[Currency](
+        EsClientOld.search[Currency](
           filterRequest(
             esearch4s in store -> "rate",
             List(
@@ -42,8 +42,8 @@ package object es {
    * @return store languages
    */
   def queryStoreLanguages(store: String): JValue = {
-    import EsClient._
-    val languages:JValue = EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
+    import EsClientOld._
+    val languages:JValue = EsClientOld.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
       case Some(s) => s
       case None => JNothing
     }
