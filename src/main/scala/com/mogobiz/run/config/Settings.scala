@@ -6,7 +6,6 @@ import scalikejdbc.config._
 import scala.util.Try
 
 trait MogobizTypesafeConfig extends TypesafeConfig {
-
   lazy val config: Config = ConfigFactory.load("mogobiz")
 }
 
@@ -20,9 +19,6 @@ object Settings {
   val default = ConfigFactory.load()
 
   val config = ConfigFactory.load("mogobiz").withFallback(default)
-
-  val Interface = config getString "spray.can.server.interface"
-  val Port = config getInt "spray.can.server.port"
 
   val CookieTracking = config getString "mogobiz.cookie-tracking"
 
