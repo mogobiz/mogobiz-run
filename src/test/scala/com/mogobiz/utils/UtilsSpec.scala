@@ -1,6 +1,7 @@
 package com.mogobiz.utils
 
-import com.mogobiz.cart.domain.TicketType
+import com.mogobiz.run.cart.domain.TicketType
+import com.mogobiz.run.utils.Utils
 import org.joda.time.DateTime
 import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs

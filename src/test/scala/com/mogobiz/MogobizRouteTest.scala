@@ -1,13 +1,13 @@
 package com.mogobiz
 
-import com.mogobiz.es.EmbeddedElasticSearchNode
+import com.mogobiz.run.es.EmbeddedElasticSearchNode
 import com.mogobiz.system.MogobizSystem
 import org.specs2.mutable.Specification
 import org.specs2.time.NoTimeConversions
 import spray.testkit.Specs2RouteTest
 import spray.routing.HttpService
-import com.mogobiz.services.MogobizRoutes
-import com.mogobiz.actors.MogobizActors
+import com.mogobiz.run.services.MogobizRoutes
+import com.mogobiz.run.actors.MogobizActors
 import com.mogobiz.json.JsonUtil
 import org.specs2.matcher.JsonMatchers
 import scala.concurrent.duration._
