@@ -1,9 +1,19 @@
 package com.mogobiz.run.config
 
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import scalikejdbc.config._
 
 import scala.util.Try
+
+trait MogobizTypesafeConfig extends TypesafeConfig {
+
+  lazy val config: Config = ConfigFactory.load("mogobiz")
+}
+
+case class MogobizDBsWithEnv(envValue: String) extends DBs with TypesafeConfigReader with MogobizTypesafeConfig with EnvPrefix {
+
+  override val env = Option(envValue)
+}
 
 object Settings {
 
@@ -74,7 +84,7 @@ object Settings {
   val Dialect = if (config hasPath "dialect") config getString "dialect" else "test"
   val NextVal = config getString s"$Dialect.db.default.nextval"
 
-  DBsWithEnv(Dialect).setupAll()
+  MogobizDBsWithEnv(Dialect).setupAll()
 
   val EsHost = config getString "elastic.host"
   val EsHttpPort = config getInt "elastic.httpPort"
