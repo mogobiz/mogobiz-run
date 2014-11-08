@@ -1,13 +1,14 @@
 package com.mogobiz.run.cart
 
 import com.mogobiz.run.cart.domain.Coupon
+import com.mogobiz.run.config.MogobizDBsWithEnv
 import org.specs2.mutable.Specification
 import scalikejdbc.DB
 import scalikejdbc.config.DBsWithEnv
 
 class CouponSpec extends Specification {
 
-  DBsWithEnv("test").setupAll()
+  MogobizDBsWithEnv("test").setupAll()
 
   val companyId = 9
   val companyCode = "mogobiz"

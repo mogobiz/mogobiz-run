@@ -1,6 +1,7 @@
 package com.mogobiz.run.cart
 
 import com.mogobiz.run.cart.transaction.{TransactionStatus, BOCart}
+import com.mogobiz.run.config.MogobizDBsWithEnv
 import com.mogobiz.utils.GlobalUtil
 import org.joda.time.DateTime
 import org.specs2.mutable.Specification
@@ -10,7 +11,7 @@ import scalikejdbc.config.DBsWithEnv
 
 class BOCartSpec  extends Specification {
 
-  DBsWithEnv("test").setupAll()
+  MogobizDBsWithEnv("test").setupAll()
 
   "the BO DAO " should {
 

@@ -1,6 +1,7 @@
 package com.mogobiz.utils
 
 import com.mogobiz.run.cart.domain.TicketType
+import com.mogobiz.run.config.MogobizDBsWithEnv
 import com.mogobiz.run.utils.Utils
 import org.joda.time.DateTime
 import org.specs2.mutable.Specification
@@ -8,7 +9,7 @@ import scalikejdbc.config.DBs
 
 class UtilsSpec  extends Specification  {
 
-  DBs.setupAll()
+  MogobizDBsWithEnv("test").setupAll()
 
   "no ticket type, no date" in {
     val res = Utils.verifyAndExtractStartEndDate(None,None)

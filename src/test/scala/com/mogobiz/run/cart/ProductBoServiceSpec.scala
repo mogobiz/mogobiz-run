@@ -1,5 +1,6 @@
 package com.mogobiz.run.cart
 
+import com.mogobiz.run.config.MogobizDBsWithEnv
 import org.specs2.mutable.Specification
 import scalikejdbc.config.DBsWithEnv
 import com.mogobiz.run.cart.domain._
@@ -11,7 +12,7 @@ import com.mogobiz.run.cart.domain._
  */
 class ProductBoServiceSpec  extends Specification {
 
-  DBsWithEnv("test").setupAll()
+  MogobizDBsWithEnv("test").setupAll()
 
   val service = ProductBoService
 

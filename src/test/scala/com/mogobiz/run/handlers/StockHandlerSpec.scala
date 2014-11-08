@@ -2,6 +2,7 @@ package com.mogobiz.run.handlers
 
 import com.mogobiz.run.cart.ProductBoService
 import com.mogobiz.run.cart.domain.{StockCalendar, TicketType}
+import com.mogobiz.run.config.MogobizDBsWithEnv
 import org.joda.time.DateTime
 import org.specs2.mutable.Specification
 import scalikejdbc.config.DBs
@@ -14,7 +15,7 @@ class StockHandlerSpec extends Specification{
   val storeCode = "mogobiz"
 
 
-  DBs.setupAll()
+  MogobizDBsWithEnv("test").setupAll()
 
   "update method" should {
     "find the stock calendar and update the stock" in {

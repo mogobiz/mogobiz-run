@@ -1,5 +1,6 @@
 package com.mogobiz.run.cart
 
+import com.mogobiz.run.config.MogobizDBsWithEnv
 import org.specs2.mutable.Specification
 import scalikejdbc.config._
 import com.mogobiz.run.cart.domain.{TaxRate,Product}
@@ -10,7 +11,7 @@ import com.mogobiz.utils.GlobalUtil._
  */
 class TaxRateBoServiceSpec  extends Specification {
 
-  DBsWithEnv("test").setupAll()
+  MogobizDBsWithEnv("test").setupAll()
 
   val service = TaxRateBoService
   val taxRateId = 13

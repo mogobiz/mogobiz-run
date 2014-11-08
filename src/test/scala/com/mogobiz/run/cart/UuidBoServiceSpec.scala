@@ -1,5 +1,6 @@
 package com.mogobiz.run.cart
 
+import com.mogobiz.run.config.MogobizDBsWithEnv
 import org.specs2.mutable.Specification
 import java.util.UUID
 import scalikejdbc.config.DBsWithEnv
@@ -10,7 +11,7 @@ import scalikejdbc.config.DBsWithEnv
  */
 class UuidBoServiceSpec extends Specification {
 
-  DBsWithEnv("test").setupAll()
+  MogobizDBsWithEnv("test").setupAll()
 
   val service = UuidBoService
 
