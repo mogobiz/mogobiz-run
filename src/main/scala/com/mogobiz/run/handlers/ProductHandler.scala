@@ -158,56 +158,74 @@ class ProductHandler extends JsonUtil {
         params.categoryPath)
     ).flatten
 
-    val req = esearch4s in storeCode /*FIXME*/ types (List("category", "product", "brand", "tag"): _*)
+    def _req(_type:String) = {
+      val req = esearch4s in storeCode types _type
 
-    if (params.highlight) {
-      req highlighting ((fieldNames ::: highlightedFields).map(s => highlight(s)): _*)
-    }
-
-    if (filters.nonEmpty) {
-      if (filters.size > 1)
-        req query {
-          params.query
-        } query {
-          filteredQuery query {
-            params.query
-          } filter {
-            and(filters: _*)
-          }
-        }
-      else
-        req query {
-          params.query
-        } query {
-          filteredQuery query {
-            params.query
-          } filter filters(0)
-        }
-    }
-    else {
-      req query {
-        params.query
+      if (params.highlight) {
+        req highlighting ((fieldNames ::: highlightedFields).map(s => highlight(s)): _*)
       }
+
+      if (filters.nonEmpty) {
+        if (filters.size > 1)
+          req query {
+            params.query
+          } query {
+            filteredQuery query {
+              params.query
+            } filter {
+              and(filters: _*)
+            }
+          }
+        else
+          req query {
+            params.query
+          } query {
+            filteredQuery query {
+              params.query
+            } filter filters(0)
+          }
+      }
+      else {
+        req query {
+          params.query
+        }
+      }
+      req from 0 size params.size
+      req fields (fieldNames ::: fields: _*) sourceInclude (includedFields: _*)
     }
 
-    val json: JValue = EsClientOld.searchAllRaw(req fields (fieldNames ::: fields: _*) sourceInclude (includedFields: _*))
-
-    val hits = json \ "hits"
+    val response:List[SearchHits] = multiSearchRaw{
+      List(
+        _req("category"),
+        _req("product"),
+        _req("brand"),
+        _req("tag"))
+    }.toList.flatten
 
     val rawResult = if (params.highlight) {
+      for{
+        searchHits:SearchHits <- response
+        json:JValue = searchHits
+        hits = json \ "hits"
+      }yield
       for {
         JObject(result) <- hits.children.children
         JField("_type", JString(_type)) <- result
         JField("_source", JObject(_source)) <- result
         JField("highlight", JObject(highlight)) <- result
       } yield _type -> (_source ::: highlight)
-    } else {
+    }.flatten else {
+      for{
+        searchHits:SearchHits <- response
+        json:JValue = searchHits
+        hits = json \ "hits"
+      }yield
       for {
         JObject(result) <- hits.children.children
         JField("_type", JString(_type)) <- result
         JField("_source", JObject(_source)) <- result
       } yield _type -> _source
-    }
+    }.flatten
 
     rawResult.groupBy(_._1).map {
       case (_cat, v) => (_cat, v.map(_._2))

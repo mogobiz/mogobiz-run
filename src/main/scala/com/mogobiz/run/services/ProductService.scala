@@ -88,6 +88,7 @@ import scala.concurrent.duration._
         , 'country.?
         , 'query
         , 'highlight ? false
+        , 'size ? 10
         , 'categoryPath.?).as(FullTextSearchProductParameters) {
         params =>
           val request = QueryFindProductRequest(storeCode, params)
