@@ -43,8 +43,8 @@ class FacetHandler {
               Some(
                 must(
                   List(
-                    createNestedTermFilter("features",s"features.${lang}name.raw", Some(kv(0))),
-                    createNestedTermFilter("features",s"features.${lang}value.raw", Some(kv(1)))
+                    createNestedTermFilter("features",s"features.name.raw", Some(kv(0))),
+                    createNestedTermFilter("features",s"features.value.raw", Some(kv(1)))
                   ).flatten:_*
                 )
               )
@@ -65,20 +65,20 @@ class FacetHandler {
                 or(
                   must(
                     List(
-                      createTermFilter(s"skus.variation1.${lang}name.raw", Some(kv(0))),
-                      createTermFilter(s"skus.variation1.${lang}value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation1.name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation1.value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createTermFilter(s"skus.variation2.${lang}name.raw", Some(kv(0))),
-                      createTermFilter(s"skus.variation2.${lang}value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation2.name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation2.value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                   ,must(
                     List(
-                      createTermFilter(s"skus.variation3.${lang}name.raw", Some(kv(0))),
-                      createTermFilter(s"skus.variation3.${lang}value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation3.name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation3.value.raw", Some(kv(1)))
                     ).flatten:_*
                   )
                 )
@@ -167,9 +167,9 @@ class FacetHandler {
   def getCommentNotations(storeCode: String, productId: Option[Long]) : List[JValue] = {
 
     val filters = List(createTermFilter("productId", productId)).flatten
-    val req = (filterRequest((esearch4s in s"${storeCode}_comment" types "comment"), filters) aggs {
+    val req = filterRequest(esearch4s in s"${storeCode}_comment" types "comment", filters) aggs {
         agg terms "notations" field "notation"
-      } searchType SearchType.Count)
+      } searchType SearchType.Count
 
     val resagg = EsClientOld searchAgg req
     println("getCommentNotations resagg:",resagg)
