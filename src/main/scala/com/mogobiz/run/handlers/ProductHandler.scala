@@ -653,7 +653,9 @@ class ProductHandler extends JsonUtil {
         createRangeFilter("stopFeatureDate", Some(s"$today"), None)
       )
     }
-    List.empty
+    else{
+      List.empty
+    }
   }
 
   private def getCalendar(d: Date): Calendar = {
