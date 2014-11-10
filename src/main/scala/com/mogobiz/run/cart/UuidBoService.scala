@@ -42,8 +42,9 @@ object UuidBoService extends BoService {
         if (data.userUuid.orNull == userUuid.orNull || (userUuid.isDefined && data.userUuid.isEmpty)) {
           val parsed = parse(data.payload)
           val cart = parsed.extract[CartVO]
-          cart.copy(userUuid = userUuid)
-          Some(cart)
+          val cartRes = cart.copy(userUuid = userUuid)
+          setCart(cartRes)
+          Some(cartRes)
         }
         else {
           UuidDataDao.delete(uuid)
