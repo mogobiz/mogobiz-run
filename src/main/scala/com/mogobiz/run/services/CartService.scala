@@ -40,7 +40,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
     get {
       parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params => {
         optionalSession { optSession =>
-          val accountId = optSession.flatMap { session : Session =>session.sessionData.accountId }
+          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
           val request = QueryCartInitRequest(storeCode, uuid, params, accountId)
           complete {
             (actor ? request).mapTo[Map[String, Any]] map {
@@ -57,10 +57,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
     delete {
       parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) {
         params => {
-          val request = QueryCartClearRequest(storeCode, uuid, params)
-          complete {
-            (actor ? request).mapTo[Map[String, Any]] map {
-              response => response
+          optionalSession { optSession =>
+            val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+            val request = QueryCartClearRequest(storeCode, uuid, params, accountId)
+            complete {
+              (actor ? request).mapTo[Map[String, Any]] map {
+                response => response
+              }
             }
           }
         }
@@ -74,10 +77,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
         params =>
           entity(as[AddToCartCommand]) {
             cmd => {
-              val request = QueryCartItemAddRequest(storeCode, uuid, params, cmd)
-              complete {
-                (actor ? request).mapTo[Map[String, Any]] map {
-                  response => response
+              optionalSession { optSession =>
+                val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+                val request = QueryCartItemAddRequest(storeCode, uuid, params, cmd, accountId)
+                complete {
+                  (actor ? request).mapTo[Map[String, Any]] map {
+                    response => response
+                  }
                 }
               }
             }
@@ -98,10 +104,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
       params => {
         entity(as[UpdateCartItemCommand]) {
           cmd => {
-            val request = QueryCartItemUpdateRequest(storeCode, uuid, cartItemId, params, cmd)
-            complete {
-              (actor ? request).mapTo[Map[String, Any]] map {
-                response => response
+            optionalSession { optSession =>
+              val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+              val request = QueryCartItemUpdateRequest(storeCode, uuid, cartItemId, params, cmd, accountId)
+              complete {
+                (actor ? request).mapTo[Map[String, Any]] map {
+                  response => response
+                }
               }
             }
           }
@@ -113,10 +122,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   def cartRemove(cartItemId: String) = delete {
     parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) {
       params => {
-        val request = QueryCartItemRemoveRequest(storeCode, uuid, cartItemId, params)
-        complete {
-          (actor ? request).mapTo[Map[String, Any]] map {
-            response => response
+        optionalSession { optSession =>
+          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+          val request = QueryCartItemRemoveRequest(storeCode, uuid, cartItemId, params, accountId)
+          complete {
+            (actor ? request).mapTo[Map[String, Any]] map {
+              response => response
+            }
           }
         }
       }
@@ -135,10 +147,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   def couponAdd(couponCode: String) = post {
     parameters('currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) {
       params => {
-        val request = QueryCartCouponAddRequest(storeCode, uuid, couponCode, params)
-        complete {
-          (actor ? request).mapTo[Map[String, Any]] map {
-            response => response
+        optionalSession { optSession =>
+          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+          val request = QueryCartCouponAddRequest(storeCode, uuid, couponCode, params, accountId)
+          complete {
+            (actor ? request).mapTo[Map[String, Any]] map {
+              response => response
+            }
           }
         }
       }
@@ -148,10 +163,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   def couponRemove(couponCode: String) = delete {
     parameters('currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) {
       params => {
-        val request = QueryCartCouponDeleteRequest(storeCode, uuid, couponCode, params)
-        complete {
-          (actor ? request).mapTo[Map[String, Any]] map {
-            response => response
+        optionalSession { optSession =>
+          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+          val request = QueryCartCouponDeleteRequest(storeCode, uuid, couponCode, params, accountId)
+          complete {
+            (actor ? request).mapTo[Map[String, Any]] map {
+              response => response
+            }
           }
         }
       }
@@ -169,10 +187,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   lazy val paymentPrepare = path("prepare") {
     parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all", 'buyer).as(PrepareTransactionParameters) {
       params => {
-        val request = QueryCartPaymentPrepareRequest(storeCode, uuid, params)
-        complete {
-          (actor ? request).mapTo[Map[String, Any]] map {
-            response => response
+        optionalSession { optSession =>
+          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+          val request = QueryCartPaymentPrepareRequest(storeCode, uuid, params, accountId)
+          complete {
+            (actor ? request).mapTo[Map[String, Any]] map {
+              response => response
+            }
           }
         }
       }
@@ -182,10 +203,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   lazy val paymentCommit = path("commit") {
     parameters('transactionUuid).as(CommitTransactionParameters) {
       params => {
-        val request = QueryCartPaymentCommitRequest(storeCode, uuid, params)
-        complete {
-          (actor ? request).mapTo[Map[String, Any]] map {
-            response => response
+        optionalSession { optSession =>
+          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+          val request = QueryCartPaymentCommitRequest(storeCode, uuid, params, accountId)
+          complete {
+            (actor ? request).mapTo[Map[String, Any]] map {
+              response => response
+            }
           }
         }
       }
@@ -195,10 +219,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   lazy val paymentCancel = path("cancel") {
     parameters('currency.?, 'country.?, 'lang ? "_all").as(CancelTransactionParameters) {
       params => {
-        val request = QueryCartPaymentCancelRequest(storeCode, uuid, params)
-        complete {
-          (actor ? request).mapTo[Map[String, Any]] map {
-            response => response
+        optionalSession { optSession =>
+          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+          val request = QueryCartPaymentCancelRequest(storeCode, uuid, params, accountId)
+          complete {
+            (actor ? request).mapTo[Map[String, Any]] map {
+              response => response
+            }
           }
         }
       }

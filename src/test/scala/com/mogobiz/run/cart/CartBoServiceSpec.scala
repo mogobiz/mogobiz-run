@@ -34,7 +34,7 @@ class CartBoServiceSpec extends Specification {
     val uuid = generateUuid
 
     //method to test
-    val cart = service.initCart(uuid)
+    val cart = service.initCart(uuid, None)
 
     //assertions
     cart.uuid must_== uuid
@@ -47,7 +47,7 @@ class CartBoServiceSpec extends Specification {
   "addToCart a NO_DATE product" in {
     val uuid = generateUuid
 
-    val cart = service.initCart(uuid)
+    val cart = service.initCart(uuid, None)
     val ttid = 63
     val ticketType = TicketType.get(ttid)
 
@@ -77,7 +77,7 @@ class CartBoServiceSpec extends Specification {
   "addToCart should fail if quantity is too much" in {
     val uuid = generateUuid
 
-    val cart = service.initCart(uuid)
+    val cart = service.initCart(uuid, None)
     val ttid = 63
     val ticketType = TicketType.get(ttid)
     val quantity = 100
@@ -98,7 +98,7 @@ class CartBoServiceSpec extends Specification {
   "addToCart a product + another" in {
     val uuid = generateUuid
 
-    val cart = service.initCart(uuid)
+    val cart = service.initCart(uuid, None)
     val ttid58 = 63
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
@@ -156,7 +156,7 @@ class CartBoServiceSpec extends Specification {
   "updateCart change the quantity" in {
     //took 5 and update to 1
     val uuid = generateUuid
-    val cart = service.initCart(uuid)
+    val cart = service.initCart(uuid, None)
 
     val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
@@ -205,7 +205,7 @@ class CartBoServiceSpec extends Specification {
     val uuid = generateUuid
 
     var locale = Locale.getDefault
-    val cart = service.initCart(uuid)
+    val cart = service.initCart(uuid, None)
     val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
@@ -245,7 +245,7 @@ class CartBoServiceSpec extends Specification {
     val uuid = generateUuid
 
     var locale = Locale.getDefault
-    val cart = service.initCart(uuid)
+    val cart = service.initCart(uuid, None)
     val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
@@ -471,7 +471,7 @@ class CartBoServiceSpec extends Specification {
   private def prepareCartWith2items: CartVO = {
 
     val uuid = generateUuid
-    val cart = service.initCart(uuid)
+    val cart = service.initCart(uuid, None)
     val ttid58 = 72
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
@@ -536,7 +536,7 @@ class CartBoServiceSpec extends Specification {
     val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency, buyer)
 
     val cartService = CartBoService
-    val cart = cartService.initCart(preparedCart.uuid)
+    val cart = cartService.initCart(preparedCart.uuid, None)
     cart.inTransaction must beTrue
 
     val transactionUuid = UUID.randomUUID().toString
@@ -559,7 +559,7 @@ class CartBoServiceSpec extends Specification {
     val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency, buyer)
 
     val cartService = CartBoService
-    val cart = cartService.initCart(preparedCart.uuid)
+    val cart = cartService.initCart(preparedCart.uuid, None)
     cart.inTransaction must beTrue
 
     var locale = Locale.getDefault

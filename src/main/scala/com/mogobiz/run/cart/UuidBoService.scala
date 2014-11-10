@@ -39,29 +39,16 @@ object UuidBoService extends BoService {
 
     UuidDataDao.findByUuidAndXtype(uuid, QUEUE_XTYPE_CART) match {
       case Some(data) =>
-        if (data.userUuid.orNull == userUuid.orNull) {
+        if (data.userUuid.orNull == userUuid.orNull || (userUuid.isDefined && data.userUuid.isEmpty)) {
           val parsed = parse(data.payload)
           val cart = parsed.extract[CartVO]
+          cart.copy(userUuid = userUuid)
           Some(cart)
         }
         else {
           UuidDataDao.delete(uuid)
           None
         }
-      case _ => None
-    }
-  }
-
-  def getCart(uuid: String): Option[CartVO] = {
-    import Json4sProtocol._
-    import org.json4s.native.JsonMethods._
-
-
-    UuidDataDao.findByUuidAndXtype(uuid, QUEUE_XTYPE_CART) match {
-      case Some(data) =>
-        val parsed = parse(data.payload)
-        val cart = parsed.extract[CartVO]
-        Some(cart)
       case _ => None
     }
   }

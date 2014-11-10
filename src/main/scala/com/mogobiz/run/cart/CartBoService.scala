@@ -48,17 +48,6 @@ object CartBoService extends BoService {
     }
   }
 
-  def initCart(uuid: String): CartVO = {
-    val cartVO = uuidService.getCart(uuid)
-    cartVO match {
-      case Some(c) => c
-      case None =>
-        val c = CartVO(uuid = uuid, userUuid = None)
-        uuidService.setCart(c)
-        c
-    }
-  }
-
   def cleanExpiredCart: Unit = {
     uuidService.getExpired.map { c =>
       incrementProductsStock(c)

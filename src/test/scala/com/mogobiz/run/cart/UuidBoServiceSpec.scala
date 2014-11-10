@@ -21,7 +21,7 @@ class UuidBoServiceSpec extends Specification {
     val cart = new CartVO(uuid=uuid, userUuid = None)
     service.setCart(cart)
 
-    val data = service.getCart(uuid)
+    val data = service.getCart(uuid, None)
     println(data)
     data must not beNone
     val getCart = data.get
