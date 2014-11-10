@@ -20,9 +20,6 @@ object Settings {
 
   val config = ConfigFactory.load("mogobiz").withFallback(default)
 
-  val Interface = config getString "spray.can.server.interface"
-  val Port = config getInt "spray.can.server.port"
-
   val CookieTracking = config getString "mogobiz.cookie-tracking"
 
   //  val ApplicationSecret = config getString "session.application.secret"
