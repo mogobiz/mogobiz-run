@@ -1,9 +1,6 @@
 package com.mogobiz.run.model
 
 
-/**
- * Created by hayssams on 28/10/14.
- */
 object UserAction extends Enumeration {
   type UserAction = Value
   val Purchase = Value("purchase")
