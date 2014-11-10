@@ -17,14 +17,15 @@ object UuidBoService extends BoService {
    * @param payload content
    * @param xtype data type stored
    */
-  def createAndSave(uuid: String, userUuid: Option[Mogopay.Document], payload: String, xtype: String): Unit = {
+  private def createAndSave(uuid: String, userUuid: Option[Mogopay.Document], payload: String, xtype: String): Unit = {
     val lifetime = 60 * Settings.cart.lifetime
     val expireDate = DateTime.now.plusSeconds(lifetime)
 
-    val uuidData = UuidDataDao.findByUuidAndXtype(uuid, xtype)
-    if (uuidData.isDefined) {
+    val uuidDataNone = UuidDataDao.findByUuidAndXtype(uuid, None, xtype)
+    val uuidDataUser = if (userUuid.isDefined) UuidDataDao.findByUuidAndXtype(uuid, userUuid, xtype) else None
+    if (uuidDataUser.isDefined) {
       // update the existing UuidData
-      UuidDataDao.save(new UuidData(uuidData.get.id, uuid, userUuid, xtype, payload, uuidData.get.createdDate, expireDate))
+      UuidDataDao.save(new UuidData(uuidDataUser.get.id, uuid, userUuid, xtype, payload, uuidDataUser.get.createdDate, expireDate))
     }
     else {
       // create a new UuidData
@@ -32,12 +33,12 @@ object UuidBoService extends BoService {
     }
   }
 
-  def getCart(uuid: String, userUuid: Option[String]): Option[CartVO] = {
+  def getCart(uuid: String, userUuid: Option[Mogopay.Document]): Option[CartVO] = {
     import Json4sProtocol._
     import org.json4s.native.JsonMethods._
 
 
-    UuidDataDao.findByUuidAndXtype(uuid, QUEUE_XTYPE_CART) match {
+    UuidDataDao.findByUuidAndXtype(uuid, userUuid, QUEUE_XTYPE_CART) match {
       case Some(data) =>
         if (data.userUuid.orNull == userUuid.orNull || (userUuid.isDefined && data.userUuid.isEmpty)) {
           val parsed = parse(data.payload)
@@ -47,7 +48,7 @@ object UuidBoService extends BoService {
           Some(cartRes)
         }
         else {
-          UuidDataDao.delete(uuid)
+          UuidDataDao.delete(uuid, userUuid)
           None
         }
       case _ => None
@@ -63,7 +64,7 @@ object UuidBoService extends BoService {
   }
 
   def removeCart(cart: CartVO): Unit = {
-    UuidDataDao.delete(cart.uuid)
+    UuidDataDao.delete(cart.uuid, cart.userUuid)
   }
 
   def getExpired: List[CartVO] = {
@@ -90,9 +91,15 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
       expireDate = rs.get("expire_date"))
   }
 
-  def findByUuidAndXtype(uuid: String, xtype: String): Option[UuidData] = {
+  def findByUuidAndXtype(uuid: String, userUuid: Option[Mogopay.Document], xtype: String): Option[UuidData] = {
     DB readOnly { implicit session =>
-      sql"""select * from uuid_data where uuid=$uuid and xtype=$xtype""".map(rs => UuidDataDao(rs)).single().apply()
+      userUuid match {
+        case Some(userUuid) =>
+          sql"""select * from uuid_data where uuid=$uuid  and user_uuid=$userUuid and xtype=$xtype""".map(rs => UuidDataDao(rs)).single().apply()
+        case None =>
+          sql"""select * from uuid_data where uuid=$uuid and user_uuid is null and xtype=$xtype""".map(rs => UuidDataDao(rs)).single().apply()
+
+      }
     }
   }
 
@@ -110,9 +117,16 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
     }
   }
 
-  def delete(uuid: String): Unit = {
+  def delete(uuid: String, userUuid: Option[String]): Unit = {
     DB localTx { implicit session =>
-      sql""" delete from uuid_data where uuid=${uuid} """.update().apply()
+      userUuid match {
+        case Some(userUuid) =>
+          sql""" delete from uuid_data where uuid=${uuid} and user_uuid=${userUuid}""".update().apply()
+        case None =>
+          sql""" delete from uuid_data where uuid=${uuid} and user_uuid is null""".update().apply()
+
+      }
+
     }
   }
 
