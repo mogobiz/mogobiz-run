@@ -29,12 +29,12 @@ class ProductHandler extends JsonUtil {
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
 
   def queryProductsByCriteria(storeCode: String, productRequest: ProductRequest): JValue = {
-    val query = productRequest.name match {
+    val _query = productRequest.name match {
       case Some(s) =>
         esearch4s in storeCode -> "product" query {
           matchQuery("name", s)
         }
-      case None => esearch4s in storeCode -> "product"
+      case None => esearch4s in storeCode -> "product" query { matchall }
     }
 
     val lang = if (productRequest.lang == "_all") "" else s"${productRequest.lang}."
@@ -47,7 +47,7 @@ class ProductHandler extends JsonUtil {
       createNestedTermFilter("tags", "tags.name.raw", productRequest.tagName),
       createNestedTermFilter("notations", "notations.notation", productRequest.notations),
       createNumericRangeFilter("price", productRequest.priceMin, productRequest.priceMax),
-      createRangeFilter("creationDate", productRequest.creationDateMin, None),
+      createRangeFilter("dateCreated", productRequest.creationDateMin, None),
       createTermFilter("coupons.id", productRequest.promotionId)
     ) ::: createFeaturedRangeFilters(productRequest.featured.getOrElse(false))
       ::: List(/*property*/
@@ -125,7 +125,7 @@ class ProductHandler extends JsonUtil {
     val _sortOrder = productRequest.orderDirection.getOrElse("asc")
     lazy val currency = queryCurrency(storeCode, productRequest.currencyCode)
     val response: SearchHits = EsClientOld.searchAllRaw(
-      filterRequest(query, filters)
+      filterRequest(_query, filters)
         sourceExclude (fieldsToExclude: _*)
         from _from
         size _size

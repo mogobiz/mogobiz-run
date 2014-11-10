@@ -171,13 +171,16 @@ package object es {
 
   def createRangeFilter(field:String, _gte:Option[String], _lte: Option[String]) : Option[FilterDefinition] = {
     val req = _gte match{
-      case Some(s) => Some(rangeFilter(field) gte s)
-      case None => None
+      case Some(g) => _lte match {
+        case Some(l) => Some(rangeFilter(field) gte g lte l)
+        case _ => Some(rangeFilter(field) gte g)
+      }
+      case _ => _lte match {
+        case Some(l) => Some(rangeFilter(field) lte l)
+        case _ => None
+      }
     }
-    _lte match {
-      case Some(s) => if(req.isDefined) Some(req.get lte s) else Some(rangeFilter(field) lte s)
-      case None => None
-    }
+    req
   }
 
   def createNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {
