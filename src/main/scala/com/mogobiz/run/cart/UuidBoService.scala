@@ -1,5 +1,6 @@
 package com.mogobiz.run.cart
 
+import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.implicits.Json4sProtocol
 import org.joda.time.DateTime
@@ -16,24 +17,45 @@ object UuidBoService extends BoService {
    * @param payload content
    * @param xtype data type stored
    */
-  def createAndSave(uuid: String, payload: String, xtype: String): Unit = {
+  def createAndSave(uuid: String, userUuid: Option[Mogopay.Document], payload: String, xtype: String): Unit = {
     val lifetime = 60 * Settings.cart.lifetime
     val expireDate = DateTime.now.plusSeconds(lifetime)
 
     val uuidData = UuidDataDao.findByUuidAndXtype(uuid, xtype)
     if (uuidData.isDefined) {
       // update the existing UuidData
-      UuidDataDao.save(new UuidData(uuidData.get.id, uuid, xtype, payload, uuidData.get.createdDate, expireDate))
+      UuidDataDao.save(new UuidData(uuidData.get.id, uuid, userUuid, xtype, payload, uuidData.get.createdDate, expireDate))
     }
     else {
       // create a new UuidData
-      UuidDataDao.save(new UuidData(None, uuid, xtype, payload, DateTime.now, expireDate))
+      UuidDataDao.save(new UuidData(None, uuid, userUuid, xtype, payload, DateTime.now, expireDate))
+    }
+  }
+
+  def getCart(uuid: String, userUuid: Option[String]): Option[CartVO] = {
+    import Json4sProtocol._
+    import org.json4s.native.JsonMethods._
+
+
+    UuidDataDao.findByUuidAndXtype(uuid, QUEUE_XTYPE_CART) match {
+      case Some(data) =>
+        if (data.userUuid.orNull == userUuid.orNull) {
+          val parsed = parse(data.payload)
+          val cart = parsed.extract[CartVO]
+          Some(cart)
+        }
+        else {
+          UuidDataDao.delete(uuid)
+          None
+        }
+      case _ => None
     }
   }
 
   def getCart(uuid: String): Option[CartVO] = {
     import Json4sProtocol._
     import org.json4s.native.JsonMethods._
+
 
     UuidDataDao.findByUuidAndXtype(uuid, QUEUE_XTYPE_CART) match {
       case Some(data) =>
@@ -49,7 +71,7 @@ object UuidBoService extends BoService {
     import org.json4s.native.Serialization.write
 
     val payload = write(cart)
-    createAndSave(cart.uuid, payload, QUEUE_XTYPE_CART)
+    createAndSave(cart.uuid, cart.userUuid, payload, QUEUE_XTYPE_CART)
   }
 
   def removeCart(cart: CartVO): Unit = {
@@ -66,17 +88,18 @@ object UuidBoService extends BoService {
   }
 }
 
-case class UuidData(id:Option[Int],uuid:String, xtype:String, payload:String, createdDate: DateTime, expireDate: DateTime)
+case class UuidData(id: Option[Int], uuid: String, userUuid: Option[String], xtype: String, payload: String, createdDate: DateTime, expireDate: DateTime)
 
 object UuidDataDao extends SQLSyntaxSupport[UuidData] {
 
-  def apply(rs:WrappedResultSet): UuidData = {
-    new UuidData(id=Some(rs.int("id")),
-      uuid=rs.string("uuid"),
+  def apply(rs: WrappedResultSet): UuidData = {
+    new UuidData(id = Some(rs.int("id")),
+      uuid = rs.string("uuid"),
+      userUuid = Option(rs.string("userUuid")),
       xtype = rs.string("xtype"),
-      payload=rs.string("payload"),
-      createdDate=rs.get("date_created"),
-      expireDate=rs.get("expire_date"))
+      payload = rs.string("payload"),
+      createdDate = rs.get("date_created"),
+      expireDate = rs.get("expire_date"))
   }
 
   def findByUuidAndXtype(uuid: String, xtype: String): Option[UuidData] = {
@@ -88,11 +111,11 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
   def save(entity: UuidData): Int = {
     DB localTx { implicit session =>
       if (entity.id.isEmpty) {
-        sql"""insert into uuid_data(id,date_created, expire_date, last_updated, payload, uuid, xtype)
-           values (${UuidBoService.newId()},${DateTime.now},${entity.expireDate},${DateTime.now},${entity.payload},${entity.uuid},${entity.xtype})""".
+        sql"""insert into uuid_data(id,date_created, expire_date, last_updated, payload, uuid, xtype, user_uuid)
+           values (${UuidBoService.newId()},${DateTime.now},${entity.expireDate},${DateTime.now},${entity.payload},${entity.uuid},${entity.xtype}, {$entity.userUuid.orNull})""".
           update().apply()
       }
-    else {
+      else {
         sql"""update uuid_data set expire_date=${entity.expireDate},last_updated=${DateTime.now},payload=${entity.payload} where id=${entity.id}""".
           update().apply()
       }
@@ -105,7 +128,7 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
     }
   }
 
-  def getExpired : List[UuidData] = {
+  def getExpired: List[UuidData] = {
     DB readOnly { implicit session =>
       sql"""select * from uuid_data where expire_date < ${DateTime.now} """.map(rs => UuidDataDao(rs)).list().apply()
     }
