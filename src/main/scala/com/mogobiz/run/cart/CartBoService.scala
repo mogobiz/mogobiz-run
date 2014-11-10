@@ -2,6 +2,7 @@ package com.mogobiz.run.cart
 
 import java.io.ByteArrayOutputStream
 import java.util.{Date, Locale}
+import com.mogobiz.run.config.{Settings, MogobizDBsWithEnv}
 import com.mogobiz.run.model.Currency
 import com.mogobiz.run.cart.CustomTypes.CartErrors
 import com.mogobiz.run.cart.ProductType.ProductType
@@ -27,7 +28,7 @@ object CartBoService extends BoService {
 
   type CouponVO = Coupon
 
-  //DBs.setupAll()
+  MogobizDBsWithEnv(Settings.Dialect).setupAll()
 
   private val logger = Logger(LoggerFactory.getLogger("CartBoService"))
 
