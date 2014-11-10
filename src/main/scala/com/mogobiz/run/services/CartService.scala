@@ -1,22 +1,23 @@
 package com.mogobiz.run.services
 
 import akka.actor.ActorRef
+import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import com.mogobiz.run.actors.CartActor._
 import com.mogobiz.run.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.run.model._
+import com.mogobiz.session.Session
 import spray.routing.Directives
-
+import com.mogobiz.session.SessionESDirectives._
 import scala.concurrent.ExecutionContext
-
 
 class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
 
   import akka.pattern.ask
   import akka.util.Timeout
 
-import scala.concurrent.duration._
+  import scala.concurrent.duration._
 
   implicit val timeout = Timeout(2.seconds)
 
@@ -37,15 +38,17 @@ import scala.concurrent.duration._
 
   lazy val cartInit = pathEnd {
     get {
-      parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) {
-        params => {
-          val request = QueryCartInitRequest(storeCode, uuid, params)
+      parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params => {
+        optionalSession { optSession =>
+          val accountId = optSession.flatMap { session : Session =>session.sessionData.accountId }
+          val request = QueryCartInitRequest(storeCode, uuid, params, accountId)
           complete {
             (actor ? request).mapTo[Map[String, Any]] map {
               response => response
             }
           }
         }
+      }
       }
     }
   }
