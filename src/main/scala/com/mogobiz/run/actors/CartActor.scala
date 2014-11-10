@@ -1,7 +1,6 @@
 package com.mogobiz.run.actors
 
 import akka.actor.Actor
-import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.actors.CartActor._
 import com.mogobiz.run.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.run.config.HandlersConfig
@@ -10,7 +9,7 @@ import com.mogobiz.run.model._
 
 object CartActor {
 
-  case class QueryCartInitRequest(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document])
+  case class QueryCartInitRequest(storeCode: String, uuid: String, params: CartParameters)
   case class QueryCartClearRequest(storeCode: String, uuid: String, params: CartParameters)
   case class QueryCartItemAddRequest(storeCode: String, uuid: String, params: CartParameters, cmd: AddToCartCommand)
   case class QueryCartItemUpdateRequest(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, cmd: UpdateCartItemCommand)
@@ -26,7 +25,7 @@ object CartActor {
 class CartActor extends Actor {
   def receive = {
     case q: QueryCartInitRequest =>
-      sender ! cartHandler.queryCartInit(q.storeCode,q.uuid, q.params, q.accountId)
+      sender ! cartHandler.queryCartInit(q.storeCode,q.uuid, q.params)
 
     case q: QueryCartClearRequest =>
       sender ! cartHandler.queryCartClear(q.storeCode,q.uuid, q.params)

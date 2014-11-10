@@ -18,7 +18,7 @@ class UuidBoServiceSpec extends Specification {
   "store and get the stored cart" in {
     val uuid = UUID.randomUUID.toString
     //println(s"uuid=${uuid}")
-    val cart = new CartVO(uuid=uuid, userUuid = None)
+    val cart = new CartVO(uuid=uuid)
     service.setCart(cart)
 
     val data = service.getCart(uuid)

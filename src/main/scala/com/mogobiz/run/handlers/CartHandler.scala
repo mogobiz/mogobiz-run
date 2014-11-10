@@ -13,9 +13,9 @@ class CartHandler {
   val cartRenderService = CartRenderService
 
 
-  def queryCartInit(storeCode: String, uuid: String, params: CartParameters, accountId:Option[String]): Map[String, Any] = {
+  def queryCartInit(storeCode: String, uuid: String, params: CartParameters): Map[String, Any] = {
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(uuid)
 
     val lang: String = if (params.lang == "_all") "fr" else params.lang //FIXME with default Lang
     //val locale = Locale.forLanguageTag(lang)
