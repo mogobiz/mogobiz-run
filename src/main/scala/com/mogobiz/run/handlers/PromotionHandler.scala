@@ -17,8 +17,10 @@ import org.json4s._
 
 class PromotionHandler {
 
-  def queryPromotion(storeCode: String, req: PromotionRequest): JValue = {
-    val _size: Int = req.maxItemPerPage.getOrElse(100)
+  private val defaultMaxItemPerPage = 100
+
+  private def queryPromotion(storeCode: String, req: PromotionRequest, includeSource:Boolean = true):SearchHits= {
+    val _size: Int = req.maxItemPerPage.getOrElse(defaultMaxItemPerPage)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
     val _sort = req.orderBy.getOrElse("startDate")
     val _sortOrder = req.orderDirection.getOrElse("asc")
@@ -49,14 +51,26 @@ class PromotionHandler {
       rangeFilter("startDate") lte now,
       rangeFilter("endDate") gte now
     )
-    val response:SearchHits = EsClientOld.searchAllRaw(
+
+    EsClientOld.searchAllRaw(
       filterRequest(esearch4s in storeCode -> "coupon", filters, _query)
         from _from
         size _size
         sort {
         by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
-      }
+      } fetchSource includeSource
     )
+  }
+
+  def getPromotions(storeCode: String, req: PromotionRequest): JValue = {
+    val response = this.queryPromotion(storeCode,req)
     Paging.wrap(response.getTotalHits.toInt, response.getHits, req)
+  }
+
+  def getPromotionIds(storeCode: String): Array[String] = {
+    val response = this.queryPromotion(storeCode,new PromotionRequest(None,None,None,None,None,""),false)
+    response.hits().map {
+      h => h.getId
+    }
   }
 }

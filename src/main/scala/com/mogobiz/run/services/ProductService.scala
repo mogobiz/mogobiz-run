@@ -46,32 +46,46 @@ import scala.concurrent.duration._
     }
   }
 
+  import shapeless._
+
   lazy val products = pathEnd {
     get {
-      parameters(
-        'maxItemPerPage.?
-        , 'pageOffset.?
-        , 'xtype.?
-        , 'name.?
-        , 'code.?
-        , 'categoryPath.?
-        , 'brandId.?
-        , 'tagName.?
-        , 'notations.?
-        , 'priceMin.?
-        , 'priceMax.?
-        , 'creationDateMin.?
-        , 'featured.?
-        , 'orderBy.?
-        , 'orderDirection.?
-        , 'lang ? "_all"
-        , 'currency.?
-        , 'country.?
-        , 'promotionId.?
-        , 'property.?
-        , 'feature.?
-        , 'variations.?).as(ProductRequest) {
-        params =>
+      val productsParams = parameters(
+
+        'maxItemPerPage.?.as[Option[Int]] ::
+          'pageOffset.?.as[Option[Int]] ::
+          'xtype.? ::
+          'name.? ::
+          'code.? ::
+          'categoryPath.? ::
+          'brandId.?.as[Option[Int]] ::
+          'tagName.? ::
+          'notations.? ::
+          'priceMin.?.as[Option[Long]] ::
+          'priceMax.?.as[Option[Long]] ::
+          'creationDateMin.? ::
+          'featured.?.as[Option[Boolean]] ::
+          'orderBy.? ::
+          'orderDirection.? ::
+          'lang ? "_all" ::
+          'currency.? ::
+          'country.? ::
+          'promotionId.? ::
+          'hasPromotion.?.as[Option[Boolean]] ::
+          'property.? ::
+          'feature.? ::
+          'variations.? :: HNil
+      )
+
+      productsParams.happly{
+          case (maxItemPerPage :: pageOffset  :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceMin :: priceMax :: creationDateMin
+          :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: property :: feature :: variations :: HNil) =>
+
+        val params = new ProductRequest(
+          maxItemPerPage,pageOffset,xtype,name,code,categoryPath,
+          brandId, tagName, notations, priceMin, priceMax, creationDateMin,
+          featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionId, hasPromotion, property, feature, variations
+        )
           val request = QueryProductRequest(storeCode, params)
           complete {
             (actor ? request).mapTo[JValue]
