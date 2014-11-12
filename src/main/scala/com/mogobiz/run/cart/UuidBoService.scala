@@ -3,6 +3,7 @@ package com.mogobiz.run.cart
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.implicits.Json4sProtocol
+import com.mogobiz.run.model.StoreCart
 import org.joda.time.DateTime
 import scalikejdbc._
 
@@ -21,11 +22,10 @@ object UuidBoService extends BoService {
     val lifetime = 60 * Settings.cart.lifetime
     val expireDate = DateTime.now.plusSeconds(lifetime)
 
-    val uuidDataNone = UuidDataDao.findByUuidAndXtype(uuid, None, xtype)
-    val uuidDataUser = if (userUuid.isDefined) UuidDataDao.findByUuidAndXtype(uuid, userUuid, xtype) else None
-    if (uuidDataUser.isDefined) {
+    val uuidData = UuidDataDao.findByUuidAndXtype(uuid, userUuid, xtype)
+    if (uuidData.isDefined) {
       // update the existing UuidData
-      UuidDataDao.save(new UuidData(uuidDataUser.get.id, uuid, userUuid, xtype, payload, uuidDataUser.get.createdDate, expireDate))
+      UuidDataDao.save(new UuidData(uuidData.get.id, uuid, userUuid, xtype, payload, uuidData.get.createdDate, expireDate))
     }
     else {
       // create a new UuidData
@@ -33,29 +33,20 @@ object UuidBoService extends BoService {
     }
   }
 
-  def getCart(uuid: String, userUuid: Option[Mogopay.Document]): Option[CartVO] = {
+  def getCart(uuid: String, userUuid: Option[Mogopay.Document]): Option[StoreCart] = {
     import Json4sProtocol._
     import org.json4s.native.JsonMethods._
 
-
     UuidDataDao.findByUuidAndXtype(uuid, userUuid, QUEUE_XTYPE_CART) match {
       case Some(data) =>
-        if (data.userUuid.orNull == userUuid.orNull || (userUuid.isDefined && data.userUuid.isEmpty)) {
-          val parsed = parse(data.payload)
-          val cart = parsed.extract[CartVO]
-          val cartRes = cart.copy(userUuid = userUuid)
-          setCart(cartRes)
-          Some(cartRes)
-        }
-        else {
-          UuidDataDao.delete(uuid, userUuid)
-          None
-        }
+        val parsed = parse(data.payload)
+        val cart = parsed.extract[StoreCart]
+        Some(cart)
       case _ => None
     }
   }
 
-  def setCart(cart: CartVO): Unit = {
+  def setCart(cart: StoreCart): Unit = {
     import Json4sProtocol._
     import org.json4s.native.Serialization.write
 
@@ -63,16 +54,16 @@ object UuidBoService extends BoService {
     createAndSave(cart.uuid, cart.userUuid, payload, QUEUE_XTYPE_CART)
   }
 
-  def removeCart(cart: CartVO): Unit = {
+  def removeCart(cart: StoreCart): Unit = {
     UuidDataDao.delete(cart.uuid, cart.userUuid)
   }
 
-  def getExpired: List[CartVO] = {
+  def getExpired: List[StoreCart] = {
     import Json4sProtocol._
     import org.json4s.native.JsonMethods._
 
     UuidDataDao.getExpired.map {
-      d => parse(d.payload).extract[CartVO]
+      d => parse(d.payload).extract[StoreCart]
     }
   }
 }
@@ -84,7 +75,7 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
   def apply(rs: WrappedResultSet): UuidData = {
     new UuidData(id = Some(rs.int("id")),
       uuid = rs.string("uuid"),
-      userUuid = Option(rs.string("userUuid")),
+      userUuid = Option(rs.string("user_uuid")),
       xtype = rs.string("xtype"),
       payload = rs.string("payload"),
       createdDate = rs.get("date_created"),
@@ -107,7 +98,7 @@ object UuidDataDao extends SQLSyntaxSupport[UuidData] {
     DB localTx { implicit session =>
       if (entity.id.isEmpty) {
         sql"""insert into uuid_data(id,date_created, expire_date, last_updated, payload, uuid, xtype, user_uuid)
-           values (${UuidBoService.newId()},${DateTime.now},${entity.expireDate},${DateTime.now},${entity.payload},${entity.uuid},${entity.xtype}, {$entity.userUuid.orNull})""".
+           values (${UuidBoService.newId()},${DateTime.now},${entity.expireDate},${DateTime.now},${entity.payload},${entity.uuid},${entity.xtype}, ${entity.userUuid.orNull})""".
           update().apply()
       }
       else {

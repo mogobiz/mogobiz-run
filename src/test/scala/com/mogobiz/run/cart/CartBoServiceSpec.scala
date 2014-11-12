@@ -2,8 +2,10 @@ package com.mogobiz.run.cart
 
 import java.util.{Locale, UUID}
 
+import com.mogobiz.MogobizRouteTest
 import com.mogobiz.run.config.MogobizDBsWithEnv
-import com.mogobiz.run.model.Currency
+import com.mogobiz.run.es.EmbeddedElasticSearchNode
+import com.mogobiz.run.model._
 import com.mogobiz.run.cart.domain._
 import org.specs2.mutable.Specification
 import scalikejdbc.config.DBsWithEnv
@@ -12,16 +14,22 @@ import scalikejdbc.config.DBsWithEnv
  *
  * Created by Christophe on 06/05/2014.
  */
-class CartBoServiceSpec extends Specification {
+class CartBoServiceSpec extends MogobizRouteTest {
 
   MogobizDBsWithEnv("test").setupAll()
 
+  sequential
+
   val service = CartBoService
+  val uuidService = UuidBoService
+
   val renderService = CartRenderService
 
   val defaultCurrency = new Currency(2, 0.01, "EUR", "euro")
   val cur = "EUR"
   val buyer = "christophe.galant@ebiznext.com"
+
+  node.client().admin().indices().prepareRefresh().execute().actionGet()
 
   private def generateUuid = {
     val uuid = UUID.randomUUID.toString
@@ -38,10 +46,119 @@ class CartBoServiceSpec extends Specification {
 
     //assertions
     cart.uuid must_== uuid
-    cart.finalPrice must_== 0
-    cart.count must_== 0
-    cart.cartItemVOs.length must_== 0
+    cart.cartItems.length must_== 0
     cart.coupons.length must_== 0
+  }
+
+  "init cart can retreive authenticate cart" in {
+    // prepare test
+    val uuid = generateUuid
+    val userUuid = generateUuid
+    val authenticateCart = StoreCart(uuid, Some(userUuid), List(StoreCartItem("1", 61, "TV 100\" Full HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 63, "Standard", 1, 1000, None, None, List(), None)))
+    uuidService.setCart(authenticateCart)
+
+    // method to test
+    val cart = service.initCart(uuid, Some(userUuid))
+
+    //assertions
+    cart.uuid must_== uuid
+    cart.userUuid must_== Some(userUuid)
+    cart.cartItems.length must_== 1
+    cart.coupons.length must_== 0
+  }
+
+
+  "init cart can fusion authenticate and anonyme cart" in {
+    // prepare test
+    val uuid = generateUuid
+    val userUuid = generateUuid
+    val authenticateCart = StoreCart(uuid, Some(userUuid), List(
+      StoreCartItem("1", 61, "TV 100\" Full HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 63, "Standard", 2, 1500, None, None, List(), None),
+      StoreCartItem("2", 70, "TV 100\" HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 72, "Standard", 1, 1000, None, None, List(), None)
+    ))
+    uuidService.setCart(authenticateCart)
+    val anonymeCart = StoreCart(uuid, None, List(
+      StoreCartItem("1", 61, "TV 100\" Full HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 63, "Standard", 1, 1500, None, None, List(), None),
+      StoreCartItem("2", 79, "TV 90\"", ProductType.PRODUCT, ProductCalendar.NO_DATE, 81, "Standard", 1, 750, None, None, List(), None)
+    ))
+    uuidService.setCart(anonymeCart)
+
+    // method to test
+    val cart = service.initCart(uuid, Some(userUuid))
+    val cart2 = service.initCart(uuid, None)
+
+    //assertions
+    cart.uuid must_== uuid
+    cart.userUuid must_== Some(userUuid)
+    cart.cartItems.length must_== 3
+    cart.cartItems.foreach(cartItem => {
+      if (cartItem.productId == 61) cartItem.quantity must_== 3
+      else if (cartItem.productId == 70) cartItem.quantity must_== 1
+      else if (cartItem.productId == 79) cartItem.quantity must_== 1
+    })
+    cart.coupons.length must_== 0
+
+    cart2.uuid must_== uuid
+    cart2.userUuid must_== None
+    cart2.cartItems.length must_== 0
+    cart2.coupons.length must_== 0
+  }
+
+  "service can computeStoreCart and return fill cart" in {
+    // prepare test
+    val uuid = generateUuid
+    val userUuid = generateUuid
+    val authenticateCart = StoreCart(uuid, Some(userUuid), List(
+      StoreCartItem("1", 61, "TV 100\" Full HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 63, "Standard", 3, 30000, None, None, List(), None),
+      StoreCartItem("2", 70, "TV 100\" HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 72, "Standard", 2, 35000, None, None, List(), None),
+      StoreCartItem("3", 114, "TShirt Puma", ProductType.PRODUCT, ProductCalendar.NO_DATE, 116, "Blanc taille M", 6, 1500, None, None, List(), None)
+    ), List(StoreCoupon(4512, "TEST2")))
+
+    // method to test
+    val cart = service.computeStoreCart("mogobiz", authenticateCart, Some("FR"), None)
+
+    //assertions
+    cart.uuid must_== uuid
+    cart.userUuid must_== Some(userUuid)
+    cart.cartItemVOs.length must_== 3
+    cart.cartItemVOs.foreach(cartItem => {
+      if (cartItem.productId == 61) {
+        cartItem.price must_== 30000
+        cartItem.endPrice must beSome(35880)
+        cartItem.tax must beSome(19.6f)
+        cartItem.totalPrice must_== 90000
+        cartItem.totalEndPrice must beSome(107640)
+      }
+      else if (cartItem.productId == 70) {
+        cartItem.price must_== 35000
+        cartItem.endPrice must beSome(41860)
+        cartItem.tax must beSome(19.6f)
+        cartItem.totalPrice must_== 70000
+        cartItem.totalEndPrice must beSome(83720)
+      }
+      else if (cartItem.productId == 114) {
+        cartItem.price must_== 1500
+        cartItem.endPrice must beSome(1794)
+        cartItem.tax must beSome(19.6f)
+        cartItem.totalPrice must_== 9000
+        cartItem.totalEndPrice must beSome(10764)
+      }
+    })
+    cart.coupons.length must_== 2
+    cart.coupons.foreach(coupon => {
+      if (coupon.code == "TEST2") {
+        coupon.active must beTrue
+        coupon.price must_== 19136 // le coupon TEST2 ne s'applique que sur les TV
+      }
+      else {
+        coupon.active must beTrue
+        coupon.price must_== 3588
+      }
+    })
+    cart.price must_== 169000
+    cart.endPrice must beSome(202124)
+    cart.reduction must_== 22724
+    cart.finalPrice must_== 179400
   }
 
   "addToCart a NO_DATE product" in {
@@ -58,12 +175,10 @@ class CartBoServiceSpec extends Specification {
     val dateTime = None
 
 
-    val resCart = service.addItem(Locale.getDefault, cur, cart, ttid, quantity, dateTime, List())
-    val item = resCart.cartItemVOs(0)
+    val resCart = service.addItem(cart, ttid, quantity, dateTime, List())
+    val item = resCart.cartItems(0)
 
-    println("cart.price=" + resCart.price)
-    resCart.count must be_==(1)
-    resCart.cartItemVOs.size must be_==(1)
+    resCart.cartItems.size must be_==(1)
     item.shipping must beSome[ShippingVO]
     val shipping = item.shipping.get
     shipping.id must_== expectedShipping.id
@@ -82,14 +197,8 @@ class CartBoServiceSpec extends Specification {
     val ticketType = TicketType.get(ttid)
     val quantity = 100
     val dateTime = None
-    service.addItem(Locale.getDefault, cur, cart, ttid, quantity, dateTime, List()) must throwA[AddCartItemException]
+    service.addItem(cart, ttid, quantity, dateTime, List()) must throwA[AddCartItemException]
 
-    /*
-    service.addItem(Locale.getDefault,cur,cart,ttid,quantity,dateTime, List()) must throwA[Exception] like {
-      case AddCartItemException(errors) => errors.contains("AddCartItemException")
-      case _ => false
-    } must beTrue
-    */
     //TODO check the message
 
   }
@@ -103,23 +212,15 @@ class CartBoServiceSpec extends Specification {
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
     val dateTime = None
-    val resCart = service.addItem(Locale.getDefault, cur, cart, ttid58, quantity, dateTime, List())
+    val resCart = service.addItem(cart, ttid58, quantity, dateTime, List())
 
-    println("1. cart.price=" + resCart.price)
-    resCart.price must be_==(tt58.price)
-    resCart.price must be_==(30000)
-    resCart.count must be_==(1)
-    resCart.cartItemVOs.size must be_==(1)
+    resCart.cartItems.size must be_==(1)
 
     val ttid51 = 72
     val tt51 = TicketType.get(ttid51)
-    val resCart2 = service.addItem(Locale.getDefault, cur, resCart, ttid51, quantity, dateTime, List())
+    val resCart2 = service.addItem(resCart, ttid51, quantity, dateTime, List())
 
-    println("2. cart.price=" + resCart2.price)
-    resCart2.price must be_==(tt58.price + tt51.price)
-    resCart2.price must be_==(35000 + 30000)
-    resCart2.count must be_==(2)
-    resCart2.cartItemVOs.size must be_==(2)
+    resCart2.cartItems.size must be_==(2)
 
   }
   /*
@@ -164,22 +265,14 @@ class CartBoServiceSpec extends Specification {
     val quantity = 5
     val dateTime = None
     //try{
-    val resCart = service.addItem(Locale.getDefault, cur, cart, ttid58, quantity, dateTime, List())
-    println("1. cart.price=" + resCart.price)
-    resCart.price must be_==(tt58.price * 5)
-    resCart.price must be_==(35000 * 5)
-    resCart.count must be_==(1)
-    resCart.cartItemVOs.size must be_==(1)
+    val resCart = service.addItem(cart, ttid58, quantity, dateTime, List())
+    resCart.cartItems.size must be_==(1)
 
-    val itemId = resCart.cartItemVOs(0).id
+    val itemId = resCart.cartItems(0).id
 
-    val resCart2 = service.updateItem(Locale.getDefault, cur, resCart, itemId, 1)
-    println("2. cart.price=" + resCart2.price)
-    println("2. item: " + resCart2.cartItemVOs(0))
-    resCart2.price must be_==(tt58.price * 1)
-    resCart2.price must be_==(35000 * 1)
-    resCart2.count must be_==(1)
-    resCart2.cartItemVOs.size must be_==(1)
+    val resCart2 = service.updateItem(resCart, itemId, 1)
+    println("2. item: " + resCart2.cartItems(0))
+    resCart2.cartItems.size must be_==(1)
     /*
     }catch{
       case AddCartItemException(errors) => {
@@ -210,32 +303,20 @@ class CartBoServiceSpec extends Specification {
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
     val dateTime = None
-    val resCart = service.addItem(locale, cur, cart, ttid58, quantity, dateTime, List())
+    val resCart = service.addItem(cart, ttid58, quantity, dateTime, List())
 
-    val itemId58 = resCart.cartItemVOs(0).id
+    val itemId58 = resCart.cartItems(0).id
 
-    println("1. cart.price=" + resCart.price)
-    resCart.price must be_==(tt58.price)
-    resCart.price must be_==(35000)
-    resCart.count must be_==(1)
-    resCart.cartItemVOs.size must be_==(1)
+    resCart.cartItems.size must be_==(1)
 
     val ttid51 = 63
     val tt51 = TicketType.get(ttid51)
-    val resCart2 = service.addItem(locale, cur, resCart, ttid51, quantity, dateTime, List())
+    val resCart2 = service.addItem(resCart, ttid51, quantity, dateTime, List())
 
-    println("2. cart.price=" + resCart2.price)
-    resCart2.price must be_==(tt58.price + tt51.price)
-    resCart2.price must be_==(35000 + 30000)
-    resCart2.count must be_==(2)
-    resCart2.cartItemVOs.size must be_==(2)
+    resCart2.cartItems.size must be_==(2)
 
-    val resCart3 = service.removeItem(locale, cur, resCart2, itemId58)
-    println("3. cart.price=" + resCart3.price)
-    resCart3.price must be_==(tt51.price)
-    resCart3.price must be_==(30000)
-    resCart3.count must be_==(1)
-    resCart3.cartItemVOs.size must be_==(1)
+    val resCart3 = service.removeItem(resCart2, itemId58)
+    resCart3.cartItems.size must be_==(1)
 
   }
 
@@ -250,31 +331,20 @@ class CartBoServiceSpec extends Specification {
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
     val dateTime = None
-    val resCart = service.addItem(locale, cur, cart, ttid58, quantity, dateTime, List())
+    val resCart = service.addItem(cart, ttid58, quantity, dateTime, List())
 
-    val itemId58 = resCart.cartItemVOs(0).id
+    val itemId58 = resCart.cartItems(0).id
 
-    println("1. cart.price=" + resCart.price)
-    resCart.price must be_==(tt58.price)
-    resCart.price must be_==(35000)
-    resCart.count must be_==(1)
-    resCart.cartItemVOs.size must be_==(1)
+    resCart.cartItems.size must be_==(1)
 
     val ttid51 = 63
     val tt51 = TicketType.get(ttid51)
-    val resCart2 = service.addItem(locale, cur, resCart, ttid51, quantity, dateTime, List())
+    val resCart2 = service.addItem(resCart, ttid51, quantity, dateTime, List())
 
-    println("2. cart.price=" + resCart2.price)
-    resCart2.price must be_==(tt58.price + tt51.price)
-    resCart2.price must be_==(35000 + 30000)
-    resCart2.count must be_==(2)
-    resCart2.cartItemVOs.size must be_==(2)
+    resCart2.cartItems.size must be_==(2)
 
-    val resCart3 = service.clear(locale, cur, resCart2)
-    println("3. cart.price=" + resCart3.price)
-    resCart3.price must be_==(0)
-    resCart3.count must be_==(0)
-    resCart3.cartItemVOs.size must be_==(0)
+    val resCart3 = service.clear(resCart2)
+    resCart3.cartItems.size must be_==(0)
 
   }
 
@@ -468,7 +538,7 @@ class CartBoServiceSpec extends Specification {
    * Prepare data for  tests
    * @return
    */
-  private def prepareCartWith2items: CartVO = {
+  private def prepareCartWith2items: StoreCart = {
 
     val uuid = generateUuid
     val cart = service.initCart(uuid, None)
@@ -476,23 +546,15 @@ class CartBoServiceSpec extends Specification {
     val tt58 = TicketType.get(ttid58)
     val quantity = 1
     val dateTime = None
-    val resCart = service.addItem(Locale.getDefault, cur, cart, ttid58, quantity, dateTime, List())
+    val resCart = service.addItem(cart, ttid58, quantity, dateTime, List())
 
-    println("1. cart.price=" + resCart.price)
-    resCart.price must be_==(tt58.price)
-    resCart.price must be_==(35000)
-    resCart.count must be_==(1)
-    resCart.cartItemVOs.size must be_==(1)
+    resCart.cartItems.size must be_==(1)
 
     val ttid51 = 63
     val tt51 = TicketType.get(ttid51)
-    val resCart2 = service.addItem(Locale.getDefault, cur, resCart, ttid51, quantity, dateTime, List())
+    val resCart2 = service.addItem(resCart, ttid51, quantity, dateTime, List())
 
-    println("2. cart.price=" + resCart2.price)
-    resCart2.price must be_==(tt58.price + tt51.price)
-    resCart2.price must be_==(35000 + 30000)
-    resCart2.count must be_==(2)
-    resCart2.cartItemVOs.size must be_==(2)
+    resCart2.cartItems.size must be_==(2)
 
     resCart2
   }
@@ -505,7 +567,7 @@ class CartBoServiceSpec extends Specification {
     val currency = defaultCurrency
     val cart = prepareCartWith2items
 
-    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, cart, currency, buyer)
+    val data = service.prepareBeforePayment(companyCode, Some(countryCode), state, currency, cart, buyer)
 
 
     /*
@@ -533,7 +595,7 @@ class CartBoServiceSpec extends Specification {
     val currency = defaultCurrency
     val preparedCart = prepareCartWith2items
 
-    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency, buyer)
+    val data = service.prepareBeforePayment(companyCode, Some(countryCode), state, currency, preparedCart, buyer)
 
     val cartService = CartBoService
     val cart = cartService.initCart(preparedCart.uuid, None)
@@ -556,7 +618,7 @@ class CartBoServiceSpec extends Specification {
     val currency = defaultCurrency
     val preparedCart = prepareCartWith2items
 
-    val data = service.prepareBeforePayment(companyCode, countryCode, state, currency.code, preparedCart, currency, buyer)
+    val data = service.prepareBeforePayment(companyCode, Some(countryCode), state, currency, preparedCart, buyer)
 
     val cartService = CartBoService
     val cart = cartService.initCart(preparedCart.uuid, None)

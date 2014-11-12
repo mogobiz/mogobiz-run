@@ -3,7 +3,6 @@ package com.mogobiz.run.cart
 import com.mogobiz.run.cart.ProductCalendar._
 import com.mogobiz.run.cart.ProductType._
 import com.mogobiz.run.cart.domain.ReductionRuleType.ReductionRuleType
-import com.mogobiz.utils.GlobalUtil
 import org.joda.time.DateTime
 import scalikejdbc._
 /**
@@ -308,7 +307,7 @@ package object domain {
         val now = DateTime.now
         DB readOnly {
           implicit session =>
-            sql""" select c.* from coupon c inner join coupon_reduction_rule crr on crr.rules_fk = c.id inner join reduction_rule rr on crr.reduction_rule_id = rr.id and rr.xtype = 'X_PURCHASED_Y_OFFERED' where company_fk=9 and start_date<=${now} and end_date>=${now} and anonymous=true """.map(rs => Coupon(rs)).list().apply()
+            sql""" select c.* from coupon c inner join company co on c.company_fk = co.id inner join coupon_reduction_rule crr on crr.rules_fk = c.id inner join reduction_rule rr on crr.reduction_rule_id = rr.id and rr.xtype = 'X_PURCHASED_Y_OFFERED' where co.code=${companyCode} and c.start_date<=${now} and c.end_date>=${now} and c.anonymous=true """.map(rs => Coupon(rs)).list().apply()
             /*
             withSQL {
               select.from(Coupon as c).where.eq(c.companyFk,compagny.get.id).and.eq(c.anonymous, true).and.lt(c.startDate,now).and.gt(c.endDate)
