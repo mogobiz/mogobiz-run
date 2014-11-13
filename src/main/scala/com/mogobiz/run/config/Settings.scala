@@ -6,7 +6,8 @@ import scalikejdbc.config._
 import scala.util.Try
 
 trait MogobizTypesafeConfig extends TypesafeConfig {
-  lazy val config: Config = ConfigFactory.load("mogobiz")
+
+  lazy val config: Config = ConfigFactory.load("mogobiz").withFallback(ConfigFactory.load("default-mogobiz"))
 }
 
 case class MogobizDBsWithEnv(envValue: String) extends DBs with TypesafeConfigReader with MogobizTypesafeConfig with EnvPrefix {
@@ -16,9 +17,9 @@ case class MogobizDBsWithEnv(envValue: String) extends DBs with TypesafeConfigRe
 
 object Settings {
 
-  val default = ConfigFactory.load()
+  //val default = ConfigFactory.load()
 
-  val config = ConfigFactory.load("mogobiz").withFallback(default)
+  lazy val config: Config = ConfigFactory.load("mogobiz").withFallback(ConfigFactory.load("default-mogobiz"))
 
   val CookieTracking = config getString "mogobiz.cookie-tracking"
 

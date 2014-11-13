@@ -11,6 +11,12 @@ import scalikejdbc._
  */
 object Utils {
 
+  def remove[A](list: List[A], item:A) : List[A] = {
+    if (list.isEmpty) list
+    else if (list.head == item) list.tail
+    else remove(list.tail, item) ::: List(list.head)
+  }
+
   def printJSON(o:Object)={
     import org.json4s.JsonDSL._
     import org.json4s.native.JsonMethods._

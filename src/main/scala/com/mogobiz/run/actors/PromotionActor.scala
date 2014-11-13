@@ -19,6 +19,6 @@ object PromotionActor {
 class PromotionActor extends Actor {
   def receive = {
     case q: QueryPromotionRequest =>
-      sender ! promotionHandler.queryPromotion(q.storeCode, q.params)
+      sender ! promotionHandler.getPromotions(q.storeCode, q.params)
   }
 }

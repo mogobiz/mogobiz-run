@@ -70,8 +70,8 @@ class ProductHandler extends JsonUtil {
               Some(
                 must(
                   List(
-                    createNestedTermFilter("features", s"features.${lang}name.raw", Some(kv(0))),
-                    createNestedTermFilter("features", s"features.${lang}value.raw", Some(kv(1)))
+                    createNestedTermFilter("features", s"features.name.raw", Some(kv(0))),
+                    createNestedTermFilter("features", s"features.value.raw", Some(kv(1)))
                   ).flatten: _*
                 )
               )
@@ -92,20 +92,20 @@ class ProductHandler extends JsonUtil {
                 or(
                   must(
                     List(
-                      createTermFilter(s"skus.variation1.${lang}name.raw", Some(kv(0))),
-                      createTermFilter(s"skus.variation1.${lang}value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation1.name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation1.value.raw", Some(kv(1)))
                     ).flatten: _*
                   )
                   , must(
                     List(
-                      createTermFilter(s"skus.variation2.${lang}name.raw", Some(kv(0))),
-                      createTermFilter(s"skus.variation2.${lang}value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation2.name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation2.value.raw", Some(kv(1)))
                     ).flatten: _*
                   )
                   , must(
                     List(
-                      createTermFilter(s"skus.variation3.${lang}name.raw", Some(kv(0))),
-                      createTermFilter(s"skus.variation3.${lang}value.raw", Some(kv(1)))
+                      createTermFilter(s"skus.variation3.name.raw", Some(kv(0))),
+                      createTermFilter(s"skus.variation3.value.raw", Some(kv(1)))
                     ).flatten: _*
                   )
                 )

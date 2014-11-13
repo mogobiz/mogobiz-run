@@ -21,10 +21,18 @@ class TaxRateBoServiceSpec  extends Specification {
   val taxRate = Some(defaultTaxRate)
 
 
+  "return taxRate from None" in {
+
+    val country = None
+    val state = None
+
+    val rate = service.findTaxRate(taxRate, country,state)
+    rate must beSome(19.6f)
+  }
 
   "return taxRate from FR" in {
 
-    val country = "FR"
+    val country = Some("FR")
     val state = None
 
     val rate = service.findTaxRate(taxRate,country,state)
@@ -32,7 +40,7 @@ class TaxRateBoServiceSpec  extends Specification {
   }
   "return taxRate from USA.AL" in {
 
-    val country = "USA"
+    val country = Some("USA")
     val state = Some("USA.AL")
 
     val rate = service.findTaxRate(taxRate,country,state)
@@ -41,7 +49,7 @@ class TaxRateBoServiceSpec  extends Specification {
 
   "return product tax rate" in {
 
-    val country = "FR"
+    val country = Some("FR")
     val state = None
     val product = new Product(id=47,uuid=newUUID, name="", stockDisplay = true,xtype=ProductType.PRODUCT, calendarType=ProductCalendar.NO_DATE,taxRateFk = Some(taxRateId),taxRate=Some(defaultTaxRate),shippingFk=None,startDate=None,stopDate=None,poiFk=None,companyFk=8)
 

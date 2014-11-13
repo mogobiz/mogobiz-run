@@ -1,6 +1,7 @@
 package com.mogobiz.run.cart
 
 import com.mogobiz.run.config.MogobizDBsWithEnv
+import com.mogobiz.run.model.StoreCart
 import org.specs2.mutable.Specification
 import java.util.UUID
 import scalikejdbc.config.DBsWithEnv
@@ -18,10 +19,10 @@ class UuidBoServiceSpec extends Specification {
   "store and get the stored cart" in {
     val uuid = UUID.randomUUID.toString
     //println(s"uuid=${uuid}")
-    val cart = new CartVO(uuid=uuid)
+    val cart = new StoreCart(uuid=uuid, userUuid = None)
     service.setCart(cart)
 
-    val data = service.getCart(uuid)
+    val data = service.getCart(uuid, None)
     println(data)
     data must not beNone
     val getCart = data.get

@@ -2,8 +2,10 @@ package com.mogobiz.run.cart
 
 import java.io.ByteArrayOutputStream
 import java.util.{Date, Locale}
+import com.mogobiz.pay.model.Mogopay
+import com.mogobiz.run
 import com.mogobiz.run.config.{Settings, MogobizDBsWithEnv}
-import com.mogobiz.run.model.Currency
+import com.mogobiz.run.model._
 import com.mogobiz.run.cart.CustomTypes.CartErrors
 import com.mogobiz.run.cart.ProductType.ProductType
 import com.mogobiz.run.cart.ProductCalendar.ProductCalendar
@@ -35,35 +37,115 @@ object CartBoService extends BoService {
   val uuidService = UuidBoService
   val productService = ProductBoService
   val taxRateService = TaxRateBoService
+  val couponService = CouponService
 
-  def initCart(uuid:String): CartVO = {
+  /**
+   * Retrouve un item parmi la liste des items du panier. L'item est recherche si le type
+   * n'est pas SERVICE et si l'id du produit et du sku sont identiques
+   * @param cart
+   * @param cartItem
+   * @return
+   */
+  private def _findCartItem(cart: StoreCart, cartItem : StoreCartItem) : Option[StoreCartItem] = {
+    if (cartItem.xtype == ProductType.SERVICE) None
+    else cart.cartItems.find {ci: StoreCartItem => ci.productId == cartItem.productId && ci.skuId == cartItem.skuId}
+  }
 
-    val cartVO = uuidService.getCart(uuid)
-    cartVO match {
-      case Some(c) => c
-      case None =>
-        val c = CartVO(uuid = uuid)
-        uuidService.setCart(c)
-        c
+  /**
+   * Ajoute un item au panier. Si un item existe déjà (sauf pour le SERVICE), la quantité
+   * de l'item existant est modifié
+   * @param cart
+   * @param cartItem
+   * @return
+   */
+  private def _addCartItemIntoCart(cart: StoreCart, cartItem : StoreCartItem) : StoreCart = {
+    val existCartItem = _findCartItem(cart, cartItem)
+    if (existCartItem.isDefined) {
+      val newCartItems = existCartItem.get.copy(quantity = existCartItem.get.quantity + cartItem.quantity) :: Utils.remove(cart.cartItems, existCartItem.get)
+      cart.copy(cartItems = newCartItems)
+    }
+    else {
+      val newCartItems = (cartItem :: cart.cartItems)
+      cart.copy(cartItems = newCartItems)
+    }
+  }
+
+  private def _findCoupon(cart: StoreCart, coupon: StoreCoupon) : Option[StoreCoupon] = {
+    cart.coupons.find {c: StoreCoupon => c.code == coupon.code}
+  }
+
+  private def _addCouponIntoCart(cart: StoreCart, coupon : StoreCoupon) : StoreCart = {
+    val existCoupon = _findCoupon(cart, coupon)
+    if (existCoupon.isDefined) {
+      cart
+    }
+    else {
+      val newCoupons = (coupon :: cart.coupons)
+      cart.copy(coupons = newCoupons)
+    }
+  }
+
+  private def _fusion(source: StoreCart, target: StoreCart) : StoreCart = {
+    def _fusionCartItem(source: List[StoreCartItem], target: StoreCart) : StoreCart = {
+      if (source.isEmpty) target
+      else _fusionCartItem(source.tail, _addCartItemIntoCart(target, source.head))
+    }
+    def _fusionCoupon(source: List[StoreCoupon], target: StoreCart) : StoreCart = {
+      if (source.isEmpty) target
+      else _fusionCoupon(source.tail, _addCouponIntoCart(target, source.head))
+    }
+    _fusionCoupon(source.coupons.toList, _fusionCartItem(source.cartItems.toList, target))
+  }
+
+  /**
+   * Récupère le panier correspondant au uuid et au compte client.
+   * La méthode gère le panier anonyme et le panier authentifié.
+   * @param uuid
+   * @param currentAccountId
+   * @return
+   */
+  def initCart(uuid: String, currentAccountId: Option[String]): StoreCart = {
+    def getOrCreateStoreCart(cart: Option[StoreCart]) : StoreCart = {
+      cart match {
+        case Some(c) => c
+        case None =>
+          val c = new StoreCart(uuid = uuid, userUuid = currentAccountId)
+          uuidService.setCart(c)
+          c
       }
     }
 
-  def cleanExpiredCart : Unit = {
-    uuidService.getExpired.map{ c =>
+    if (currentAccountId.isDefined) {
+      val cartAnonyme = uuidService.getCart(uuid, None);
+      val cartAuthentifie = getOrCreateStoreCart(uuidService.getCart(uuid, currentAccountId));
+
+      // S'il y a un panier anonyme, il est fusionné avec le panier authentifié et supprimé de la base
+      if (cartAnonyme.isDefined) {
+        uuidService.removeCart(cartAnonyme.get)
+        _fusion(cartAnonyme.get, cartAuthentifie)
+      }
+      else cartAuthentifie
+    }
+    else {
+      // Utilisateur anonyme
+      getOrCreateStoreCart(uuidService.getCart(uuid, None));
+    }
+  }
+
+  def cleanExpiredCart: Unit = {
+    uuidService.getExpired.map { c =>
       incrementProductsStock(c)
       uuidService.removeCart(c)
     }
   }
 
-  def addError(errors:CartErrors,key:String,msg:String,parameters:Seq[Any],locale:Locale):CartErrors={
-    errors+(key+"."+msg -> parameters)
+  def addError(errors: CartErrors, key: String, msg: String, parameters: Seq[Any]): CartErrors = {
+    errors + (key + "." + msg -> parameters)
   }
 
   /**
-   *
-   * @param locale
-   * @param currencyCode
-   * @param cartVO
+   * Crée et ajoute un item au panier
+   * @param cart
    * @param ticketTypeId
    * @param quantity
    * @param dateTime
@@ -71,383 +153,285 @@ object CartBoService extends BoService {
    * @return send back the new cart with the added item
    */
   @throws[AddCartItemException]
-  def addItem(locale:Locale , currencyCode:String , cartVO:CartVO , ticketTypeId:Long, quantity:Int, dateTime:Option[DateTime], registeredCartItems:List[RegisteredCartItemVO]):CartVO  = {
-
-    assert(!currencyCode.isEmpty,"currencyCode should not be empty")
-    assert(!locale.getCountry.isEmpty,"locale.getCountry should not be empty")
-
+  def addItem(cart: StoreCart, ticketTypeId: Long, quantity: Int, dateTime: Option[DateTime], registeredCartItems: List[RegisteredCartItemVO]): StoreCart = {
     logger.info(s"addItem dateTime : $dateTime")
     println("+++++++++++++++++++++++++++++++++++++++++")
     println(s"dateTime=$dateTime")
     println("+++++++++++++++++++++++++++++++++++++++++")
 
     // init local vars
-    val ticketType:TicketType = TicketType.get(ticketTypeId) //TODO error management
+    val ticketType: TicketType = TicketType.get(ticketTypeId) //TODO error management
 
     val product = ticketType.product.get
     val startEndDate = Utils.verifyAndExtractStartEndDate(Some(ticketType), dateTime)
 
-    var errors:CartErrors = Map()
+    var errors: CartErrors = Map()
 
-    if (ticketType.minOrder > quantity || (ticketType.maxOrder < quantity && ticketType.maxOrder > -1))
-    {
-      println(ticketType.minOrder+">"+quantity)
-      println(ticketType.maxOrder+"<"+quantity)
-      errors = addError(errors, "quantity", "min.max.error", List(ticketType.minOrder, ticketType.maxOrder), locale)
+    if (ticketType.minOrder > quantity || (ticketType.maxOrder < quantity && ticketType.maxOrder > -1)) {
+      println(ticketType.minOrder + ">" + quantity)
+      println(ticketType.maxOrder + "<" + quantity)
+      errors = addError(errors, "quantity", "min.max.error", List(ticketType.minOrder, ticketType.maxOrder))
     }
 
-    if (!dateTime.isDefined && !ProductCalendar.NO_DATE.equals(product.calendarType))
-    {
-      errors = addError(errors, "dateTime", "nullable.error", null, locale)
+    if (!dateTime.isDefined && !ProductCalendar.NO_DATE.equals(product.calendarType)) {
+      errors = addError(errors, "dateTime", "nullable.error", null)
     }
-    else if (dateTime.isDefined && startEndDate == (None,None))
-    {
-      errors = addError(errors, "dateTime", "unsaleable.error", null, locale)
+    else if (dateTime.isDefined && startEndDate ==(None, None)) {
+      errors = addError(errors, "dateTime", "unsaleable.error", null)
     }
     if (product.xtype == ProductType.SERVICE) {
       if (registeredCartItems.size != quantity) {
-        errors = addError(errors, "registeredCartItems", "size.error", null, locale)
+        errors = addError(errors, "registeredCartItems", "size.error", null)
       }
       else {
         val emptyMails = for {
           item <- registeredCartItems
           if item.email.isEmpty
-        }yield item
-        if(emptyMails.nonEmpty)
-          errors = addError(errors, "registeredCartItems", "email.error", null, locale)
+        } yield item
+        if (emptyMails.nonEmpty)
+          errors = addError(errors, "registeredCartItems", "email.error", null)
       }
     }
 
-    if(errors.size>0)
+    if (errors.size > 0)
       throw new AddCartItemException(errors)
 
     // decrement stock
-    productService.decrementStock(ticketType,quantity,startEndDate._1)
-
-    //resume existing items
-    var oldCartPrice = 0l
-    var oldCartEndPrice: Option[Long] = Some(0l)
-    cartVO.cartItemVOs.foreach{
-      item => {
-        (oldCartEndPrice,item.totalEndPrice) match{
-          case (Some(o),Some(t)) =>
-            oldCartEndPrice = Some(o+t)
-          case _ => oldCartEndPrice = None
-        }
-        oldCartPrice += item.totalPrice
-      }
-    }
-
-    // value cartItem
-    val itemPrice = ticketType.price
-    val tax = taxRateService.findTaxRateByProduct(product, locale.getCountry) //TODO revoir la validité de ce dernier paramètre par rapports aux appels
-    val endPrice = taxRateService.calculateEndPrix(itemPrice, tax)
-    val totalPrice = quantity * itemPrice
-    val totalEndPrice = endPrice match {
-      case Some(p) => Some(quantity * endPrice.get)
-      case _ => None
-    }
+    productService.decrementStock(ticketType, quantity, startEndDate._1)
 
     val newItemId = new Date().getTime.toString
-    val registeredItems = registeredCartItems.map{
-      item => new RegisteredCartItemVO(newItemId, item.id,item.email,item.firstname,item.lastname,item.phone,item.birthdate)
-    }
+    val registeredItems = registeredCartItems.map { item => item.copy(cartItemId = newItemId)}
 
     // shipping
     val shipping = product.shipping
 
-    val item = CartItemVO(newItemId,product.id,product.name,product.xtype,product.calendarType,ticketType.id,ticketType.name,quantity,
-      itemPrice,endPrice,tax,totalPrice,totalEndPrice,startEndDate._1,startEndDate._2,registeredItems.toArray,shipping)
+    val cartItem = StoreCartItem(newItemId, product.id, product.name, product.xtype, product.calendarType, ticketType.id, ticketType.name, quantity,
+      ticketType.price, startEndDate._1, startEndDate._2, registeredItems, shipping)
 
-    //val items = cartVO.cartItemVOs:+item //WARNING not optimal
-    val items = item::cartVO.cartItemVOs.toList
-
-    val newEndPrice = (oldCartEndPrice,item.totalEndPrice) match {
-      case (Some(o),Some(t))=> Some(o+t)
-      case _ => None
-    }
-    val newcart = cartVO.copy(
-      price = oldCartPrice + item.totalPrice,//(cartVO.price + item.totalPrice),
-      endPrice = newEndPrice,
-      count = items.size,
-      cartItemVOs = items.toArray)
-
+    val newcart = _addCartItemIntoCart(cart, cartItem)
     uuidService.setCart(newcart)
     newcart
   }
 
   /**
    * Met à jour l'item dans le panier avec la nouvelle quantité voulu
-   * @param locale
-   * @param currencyCode
-   * @param cartVO
+   * @param cart
    * @param cartItemId
    * @param quantity the new value wanted
    * @return
    */
   @throws[UpdateCartItemException]
-  def updateItem(locale:Locale, currencyCode:String, cartVO:CartVO , cartItemId:String , quantity:Int ) : CartVO = {
-
-    val errors:CartErrors = Map()
+  def updateItem(cart: StoreCart, cartItemId: String, quantity: Int): StoreCart = {
+    val errors: CartErrors = Map()
 
     //    if (result.success) {
     //TODO ou faire un map et qd id == renvoyé l'item modifié
-    val optCartItem = cartVO.cartItemVOs.find{ item => item.id == cartItemId }
+    val optCartItem = cart.cartItems.find { item => item.id == cartItemId}
 
-    if(optCartItem .isDefined) {
-      val cartItem = optCartItem.get
-      if(ProductType.SERVICE != cartItem.xtype && cartItem.quantity != quantity) {
+    if (optCartItem.isDefined) {
+      val existCartItem = optCartItem.get
+      if (ProductType.SERVICE != existCartItem.xtype && existCartItem.quantity != quantity) {
 
-        val sku = TicketType.get(cartItem.skuId)
+        val sku = TicketType.get(existCartItem.skuId)
 
-        if (sku.minOrder > quantity || (sku.maxOrder < quantity && sku.maxOrder > -1))
-        {
-          addError(errors, "quantity", "min.max.error", List(sku.minOrder, sku.maxOrder), locale)
+        if (sku.minOrder > quantity || (sku.maxOrder < quantity && sku.maxOrder > -1)) {
+          addError(errors, "quantity", "min.max.error", List(sku.minOrder, sku.maxOrder))
           throw new UpdateCartItemException(errors)
         }
 
-        val oldQuantity = cartItem.quantity
-        val oldTotalPrice = cartItem.totalPrice
-        val oldTotalEndPrice = cartItem.totalEndPrice
-        if (oldQuantity < quantity) {
-          try
-          {
+        // Gestion du stock
+        if (existCartItem.quantity < quantity) {
+          try {
             // On décrémente le stock
-            productService.decrementStock(sku, quantity - oldQuantity, cartItem.startDate)
+            productService.decrementStock(sku, quantity - existCartItem.quantity, existCartItem.startDate)
           }
           catch {
-            case ex:InsufficientStockException =>
-              addError(errors, "quantity", "stock.error", null, locale)
+            case ex: InsufficientStockException =>
+              addError(errors, "quantity", "stock.error", null)
               throw new UpdateCartItemException(errors)
-            }
           }
-        else
-        {
+        }
+        else {
           // On incrémente le stock
-          productService.incrementStock(sku, oldQuantity - quantity, cartItem.startDate)
+          productService.incrementStock(sku, existCartItem.quantity - quantity, existCartItem.startDate)
         }
 
-        val item = cartItem
-        /*
-         val updatedItem = CartItemVO(
-           id=item.id,productId=item.productId,productName = item.productName, xtype = item.xtype, calendarType = item.calendarType, skuId = item.skuId, skuName = item.skuName,
-           quantity = quantity, price = item.price, endPrice = item.endPrice,tax = item.tax, totalPrice = (quantity * item.price),
-           totalEndPrice = if(item.totalEndPrice.isDefined && item.endPrice.isDefined){Some(quantity * item.endPrice.get)}else{None},
-           startDate = item.startDate, endDate = item.endDate, registeredCartItemVOs = item.registeredCartItemVOs,shipping = item.shipping
-         )*/
-        val newTotalEndPrice = item.endPrice match {
-          case Some(endPrice) => Some(endPrice * quantity)
-          case None => None
-        }
-        val updatedItem = item.copy(
-          quantity = quantity,
-          totalPrice = quantity * item.price,
-          totalEndPrice = newTotalEndPrice)
-
-
-        /* iper
-        if (oldTotalEndPrice != null && cartVO.endPrice != null && cartItem.endPrice != null) {
-          cartItem.totalEndPrice = quantity * cartItem.endPrice;
-          cartVO.endPrice = cartVO.endPrice - oldTotalEndPrice + cartItem.totalEndPrice;
-        }*/
-        val updatedItems = cartVO.cartItemVOs.map{ it => if(it.id==updatedItem.id) updatedItem else it}
-
-        /*
-        val updatedCart = CartVO(
-          price = (cartVO.price - oldTotalPrice + cartItem.totalPrice),
-          endPrice = if(item.totalEndPrice.isDefined && oldTotalEndPrice.isDefined){ cartVO.endPrice - oldTotalEndPrice.get + item.totalEndPrice.get}else{cartVO.endPrice},
-          reduction = cartVO.reduction,finalPrice=cartVO.finalPrice,count=cartVO.count,uuid=cartVO.uuid, cartItemVOs = updatedItems,coupons = cartVO.coupons )
-        */
-        val newEndPrice = (cartVO.endPrice,oldTotalEndPrice,newTotalEndPrice) match{
-          case (Some(ep),Some(otep),Some(ntep)) => Some(ep - otep + ntep)
-          case _ => None
-        }
-
-        val updatedCart = cartVO.copy(
-          price = cartVO.price - oldTotalPrice + updatedItem.totalPrice,
-          endPrice = newEndPrice,
-          cartItemVOs = updatedItems
-        )
+        // Modification du panier
+        val newCartItems = existCartItem.copy(quantity = quantity) :: Utils.remove(cart.cartItems, existCartItem)
+        val updatedCart = cart.copy(cartItems = newCartItems)
 
         uuidService.setCart(updatedCart)
-        //cartVO.cartItemVOs.foreach(println)
         updatedCart
-      }else{
-        /*
-        addError(errors, "product", "item.notfound.error", null, locale)
-        throw new UpdateCartItemException(errors)
-        */
+      } else {
         println("silent op")
-        cartVO
+        cart
       }
-    }else{
-      addError(errors, "item", "item.notfound.error", null, locale)
+    } else {
+      addError(errors, "item", "item.notfound.error", null)
       throw new UpdateCartItemException(errors)
     }
-
-    //renvoie le panier tel que ???
-    //cartVO
   }
 
   @throws[RemoveCartItemException]
-  def removeItem(locale:Locale , currencyCode:String , cartVO:CartVO , cartItemId:String ) : CartVO = {
+  def removeItem(cart: StoreCart, cartItemId: String): StoreCart = {
+    val errors: CartErrors = Map()
 
-    val errors:CartErrors = Map()
+    val optCartItem = cart.cartItems.find { item => item.id == cartItemId}
+    if (optCartItem.isDefined) {
+      val existCartItem = optCartItem.get
 
-    val parts = cartVO.cartItemVOs.partition { cartItem  => cartItem.id == cartItemId }
-    val removed = parts._1.headOption
-    val items = parts._2
+      val sku = TicketType.get(existCartItem.skuId)
+      productService.incrementStock(sku, existCartItem.quantity, existCartItem.startDate)
 
+      val newCartItems = Utils.remove(cart.cartItems, existCartItem)
+      val updatedCart = cart.copy(cartItems = newCartItems)
 
-    val cartItem = removed.get //FIXME manage None.get
-
-    val sku = TicketType.get(cartItem.skuId)
-
-    productService.incrementStock(sku, cartItem.quantity, cartItem.startDate)
-
-    val newEndPrice:Option[Long] = (cartVO.endPrice,cartItem.totalEndPrice) match {
-      case (Some(cartendprice),Some(itemtotalendprice)) => Some(cartendprice - itemtotalendprice)
-      case _ => None
+      uuidService.setCart(updatedCart)
+      updatedCart
     }
-    val updatedCart = cartVO.copy(cartItemVOs = items, price = cartVO.price - cartItem.totalPrice, endPrice = newEndPrice, count = cartVO.count - 1)
-    uuidService.setCart(updatedCart)
-
-    updatedCart
+    else cart
   }
 
-  private def incrementProductsStock(c:CartVO): Unit = {
-    c.cartItemVOs.foreach { cartItem =>
+  private def incrementProductsStock(c: StoreCart): Unit = {
+    c.cartItems.foreach { cartItem =>
       val sku = TicketType.get(cartItem.skuId)
       productService.incrementStock(sku, cartItem.quantity, cartItem.startDate)
     }
   }
 
   @throws[ClearCartException]
-  def clear(locale:Locale, currencyCode:String, cartVO:CartVO ) : CartVO = {
-    val errors:CartErrors = Map()
+  def clear(cart: StoreCart): StoreCart = {
+    val errors: CartErrors = Map()
 
-    incrementProductsStock(cartVO)
+    incrementProductsStock(cart)
 
-    val updatedCart = new CartVO(uuid=cartVO.uuid)
+    val updatedCart = new StoreCart(uuid = cart.uuid, userUuid = cart.userUuid)
     uuidService.setCart(updatedCart)
     updatedCart
   }
 
   @throws[AddCouponToCartException]
-  def addCoupon(companyCode:String, couponCode:String, cartVO:CartVO, locale:Locale, currencyCode:String) : CartVO = {
-    val errors:CartErrors = Map()
+  def addCoupon(companyCode: String, couponCode: String, cart: StoreCart): StoreCart = {
+    val errors: CartErrors = Map()
 
     val optCoupon = Coupon.findByCode(companyCode, couponCode)
 
-    val updatedCart = optCoupon match {
-      case Some(coupon) =>
-        if(cartVO.coupons.exists{ c => couponCode == c.code }){
-          addError(errors, "coupon", "already.exist", null, locale)
-          throw new AddCouponToCartException(errors)
-        }else if (!CouponService.consumeCoupon(coupon)) {
-          addError(errors, "coupon", "stock.error", null, locale)
-          throw new AddCouponToCartException(errors)
-        }
-        else {
+    if (optCoupon.isDefined) {
+      val coupon = optCoupon.get
 
-          val coupons = CouponVO(coupon):: cartVO.coupons.toList
-          val cart = cartVO.copy( coupons = coupons.toArray)
-          uuidService.setCart(cart)
-          cart
-        }
-      case None =>
-        addError(errors, "coupon", "unknown.error", null, locale)
+      if (cart.coupons.exists { c => couponCode == c.code}) {
+        addError(errors, "coupon", "already.exist", null)
+        throw new AddCouponToCartException(errors)
+      } else if (!CouponService.consumeCoupon(coupon)) {
+        addError(errors, "coupon", "stock.error", null)
         throw new AddCouponToCartException(errors)
       }
+      else {
+        val newCoupon = StoreCoupon(id = coupon.id, code = coupon.code)
 
-    updatedCart
+        val coupons = newCoupon :: cart.coupons
+        val updatedCart = cart.copy(coupons = coupons)
+        uuidService.setCart(updatedCart)
+        updatedCart
+      }
+    }
+    else {
+      addError(errors, "coupon", "unknown.error", null)
+      throw new AddCouponToCartException(errors)
+    }
   }
 
 
   /**
    * Remove the coupon from the cart
    * @param companyCode
-   * @param locale
-   * @param currencyCode
-   * @param cartVO
    * @param couponCode
+   * @param cart
    * @return
    */
   @throws[RemoveCouponFromCartException]
-  def removeCoupon(companyCode:String, couponCode:String, cartVO:CartVO,locale:Locale, currencyCode: String ):CartVO = {
-    val errors:CartErrors = Map()
+  def removeCoupon(companyCode: String, couponCode: String, cart: StoreCart): StoreCart = {
+    val errors: CartErrors = Map()
 
     val optCoupon = Coupon.findByCode(companyCode, couponCode)
-    val updatedCart = optCoupon match {
-      case None =>
-        addError(errors, "coupon", "unknown.error", null, locale)
+
+    if (optCoupon.isDefined) {
+      val existCoupon = cart.coupons.find { c => couponCode == c.code}
+      if (existCoupon.isEmpty) {
+        addError(errors, "coupon", "unknown.error", null)
         throw new RemoveCouponFromCartException(errors)
-      case Some(coupon) =>
-        if(!cartVO.coupons.exists{ c => couponCode == c.code }){
-          addError(errors, "coupon", "unknown.error", null, locale)
-          throw new RemoveCouponFromCartException(errors)
-        }else {
-          CouponService.releaseCoupon(coupon)
-
-          // reprise des items existants sauf celui à supprimer
-          val coupons = cartVO.coupons.filter{ c => couponCode != c.code }
-          val cart = cartVO.copy( coupons = coupons.toArray)
-          uuidService.setCart(cart)
-          cart
-        }
       }
+      else {
+        CouponService.releaseCoupon(optCoupon.get)
 
-    updatedCart
-
-  }
-
-  /**
-   * Calcul des montants TTC
-   * @param cartVO
-   * @param countryCode
-   * @param stateCode
-   * @return
-   */
-  private def calculAmountAllTaxIncluded(cartVO: CartVO,countryCode:String, stateCode:Option[String]) : CartVO = {
-    assert(!countryCode.isEmpty)
-
-    var newEndPrice = 0l
-    val newCartItemVOs = cartVO.cartItemVOs.map { cartItem =>
-      val product = Product.get(cartItem.productId).get
-
-      val tax = taxRateService.findTaxRateByProduct(product, countryCode, stateCode)
-      val endPrice = taxRateService.calculateEndPrix(cartItem.price, tax)
-      val totalEndPrice = endPrice match {
-        case Some(p) => Some(cartItem.quantity * p)
-        case _ => None
+        // reprise des items existants sauf celui à supprimer
+        val coupons = Utils.remove(cart.coupons, existCoupon.get)
+        val updatedCart = cart.copy(coupons = coupons)
+        uuidService.setCart(updatedCart)
+        updatedCart
       }
-      newEndPrice = newEndPrice + totalEndPrice.getOrElse(0l)
-
-      cartItem.copy(endPrice = endPrice, totalEndPrice = totalEndPrice, tax = tax)
     }
-
-    cartVO.copy(endPrice = Some(newEndPrice), cartItemVOs = newCartItemVOs)
+    else {
+      addError(errors, "coupon", "unknown.error", null)
+      throw new RemoveCouponFromCartException(errors)
+    }
   }
 
-  def prepareBeforePayment(companyCode:String, countryCode:String, stateCode:Option[String], currencyCode:String, cartVO:CartVO,rate:Currency, buyer:String) = { //:Map[String,Any]=
+  private def _computeCartItem(cartItems: List[StoreCartItem], countryCode: Option[String], result: (Long, Option[Long], List[CartItemVO])) : (Long, Option[Long], List[CartItemVO]) = {
+    if (cartItems.isEmpty) result
+    else {
+      val cartItem = cartItems.head
+      val product = Product.get(cartItem.productId).get
+      val tax = taxRateService.findTaxRateByProduct(product, countryCode)
+      val endPrice = taxRateService.calculateEndPrix(cartItem.price, tax)
+      val totalPrice = cartItem.quantity * cartItem.price
+      val totalEndPrice = if (endPrice.isDefined) Some(cartItem.quantity * endPrice.get) else None
 
-    assert(!companyCode.isEmpty)
-    assert(!countryCode.isEmpty)
-    assert(!currencyCode.isEmpty)
+      val newCartItem = CartItemVO(cartItem.id, cartItem.productId, cartItem.productName, cartItem.xtype, cartItem.calendarType,
+        cartItem.skuId, cartItem.skuName, cartItem.quantity, cartItem.price, endPrice, tax, totalPrice, totalEndPrice,
+        cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping)
 
-    val errors:CartErrors = Map()
+
+      val newResultTotalEndPrice = if (result._2.isDefined && totalEndPrice.isDefined) Some(result._2.get + totalEndPrice.get)
+      else if (result._2.isDefined) result._2
+      else totalEndPrice
+      _computeCartItem(cartItems.tail, countryCode, (result._1 + totalPrice, newResultTotalEndPrice, newCartItem :: result._3))
+    }
+  }
+
+  def computeStoreCart(companyCode: String, cart: StoreCart, countryCode: Option[String], stateCode: Option[String]) : CartVO = {
+    val priceEndPriceCartItems = _computeCartItem(cart.cartItems, countryCode, (0, None, List()))
+    val price = priceEndPriceCartItems._1
+    val endPrice = priceEndPriceCartItems._2
+    val cartItems = priceEndPriceCartItems._3
+
+    val reductionCoupons = couponService.computeCoupons(cart.coupons, cartItems, (0, List()))
+
+    val promoAvailable = Coupon.findPromotionsThatOnlyApplyOnCart(companyCode)
+    val reductionCouponsAndPromotions = couponService.computePromotions(promoAvailable, cartItems, reductionCoupons)
+
+    val reduction = reductionCouponsAndPromotions._1
+    val coupons = reductionCouponsAndPromotions._2
+
+    val finalPrice = if (endPrice.isDefined) endPrice.get - reduction else price - reduction
+
+    CartVO(price, endPrice, reduction, finalPrice, cartItems.length, cart.uuid, cart.userUuid,
+      cartItems.toArray, coupons.toArray, cart.inTransaction)
+  }
+
+  def prepareBeforePayment(companyCode: String, countryCode: Option[String], stateCode: Option[String], rate: Currency, cart: StoreCart, buyer: String) = {
+    val errors: CartErrors = Map()
 
     // récup du companyId à partir du storeCode
     val companyId = Company.findByCode(companyCode).get.id
 
-    // Calcul des montants TTC
-    val cartTTC = calculAmountAllTaxIncluded(cartVO,countryCode, stateCode)
+    // Calcul des données du panier
+    val cartTTC = computeStoreCart(companyCode, cart, countryCode, stateCode)
 
     //TRANSACTION 1 : SUPPRESSIONS
     DB localTx { implicit session =>
 
       if (cartTTC.inTransaction) {
-        //if (cartTTC.uuid) {
         // On supprime tout ce qui concerne l'ancien BOCart (s'il est en attente)
         val boCart = BOCart.findByTransactionUuidAndStatus(cartTTC.uuid, TransactionStatus.PENDING)
         if (boCart.isDefined) {
@@ -459,7 +443,7 @@ object CartBoService extends BoService {
               sql"delete from b_o_cart_item_b_o_product where boproduct_id=${boProduct.id}".update.apply()
 
               //Product product = boProduct.product;
-              BOTicketType.findByBOProduct(boProduct.id).foreach {  boTicketType =>
+              BOTicketType.findByBOProduct(boProduct.id).foreach { boTicketType =>
                 boTicketType.delete()
               }
               boProduct.delete()
@@ -471,7 +455,8 @@ object CartBoService extends BoService {
       }
     }
 
-    val updatedCart = cartTTC.copy(inTransaction = true)
+    val updatedCart = cart.copy(inTransaction = true)
+    val updatedCartTTC = cartTTC.copy(inTransaction = true)
 
     //TRANSACTION 2 : INSERTIONS
     DB localTx { implicit session =>
@@ -483,7 +468,7 @@ object CartBoService extends BoService {
         xdate = DateTime.now,
         price = cartTTC.price,
         status = TransactionStatus.PENDING,
-        currencyCode = currencyCode,
+        currencyCode = rate.code,
         currencyRate = rate.rate,
         companyFk = companyId
       )
@@ -503,7 +488,7 @@ object CartBoService extends BoService {
             // Création des BOTicketType (SKU)
             var boTicketId = 0
             val boTicketTmp = BOTicketType(id = boTicketId,
-              quantity = 1, price = cartItem.totalEndPrice.getOrElse(-1),shortCode = None,
+              quantity = 1, price = cartItem.totalEndPrice.getOrElse(-1), shortCode = None,
               ticketType = Some(ticketType.name), firstname = registeredCartItem.firstname,
               lastname = registeredCartItem.lastname, email = registeredCartItem.email,
               phone = registeredCartItem.phone, age = 0,
@@ -515,12 +500,12 @@ object CartBoService extends BoService {
 
             withSQL {
               val b = BOTicketType.column
-              boTicketId =  newId()
+              boTicketId = newId()
 
               //génération du qr code uniquement pour les services
               val product = Product.get(cartItem.productId).get
 
-              val boTicket = product.xtype match{
+              val boTicket = product.xtype match {
                 case ProductType.SERVICE =>
                   val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
 
@@ -536,7 +521,7 @@ object CartBoService extends BoService {
                   val qrCodeBase64 = Base64.encode(output.toByteArray)
 
                   boTicketTmp.copy(id = boTicketId, shortCode = Some(shortCode), qrcode = Some(qrCodeBase64), qrcodeContent = Some(encryptedQrCodeContent))
-                case _ => boTicketTmp.copy(id=boTicketId)
+                case _ => boTicketTmp.copy(id = boTicketId)
               }
 
               insert.into(BOTicketType).namedValues(
@@ -600,33 +585,20 @@ object CartBoService extends BoService {
 
     uuidService.setCart(updatedCart)
 
-    val renderedCart = CartRenderService.renderTransactionCart(updatedCart, companyCode, rate)
-    /*
-        implicit def json4sFormats: Formats = DefaultFormats
-        import org.json4s.native.JsonMethods._
-        import org.json4s.JsonDSL._
-
-
-        println("-----------------------------------------------------------------------------------------------")
-        val prettyJsonCart = pretty(render(write(renderedCart)))
-        println(prettyJsonCart)
-        println("-----------------------------------------------------------------------------------------------")
-        */
-    val data = Map(
-      "amount" ->  renderedCart("finalPrice"), //RateBoService.calculateAmount(updatedCart.finalPrice, rate),
-      "currencyCode" -> currencyCode,
+    val renderedCart = CartRenderService.renderTransactionCart(updatedCartTTC, rate)
+    Map(
+      "amount" -> renderedCart("finalPrice"),
+      "currencyCode" -> rate.code,
       "currencyRate" -> rate.rate.doubleValue(),
-      "transactionExtra" ->  renderedCart
+      "transactionExtra" -> renderedCart
     )
-    data
   }
 
-  def commit(cartVO:CartVO, transactionUuid:String ):List[Map[String,Any]]=
-  {
+  def commit(cart: StoreCart, transactionUuid: String): List[Map[String, Any]] = {
 
-    assert(!transactionUuid.isEmpty,"transactionUuid should not be empty")
+    assert(!transactionUuid.isEmpty, "transactionUuid should not be empty")
 
-    BOCart.findByTransactionUuid(cartVO.uuid) match {
+    BOCart.findByTransactionUuid(cart.uuid) match {
       case Some(boCart) =>
 
         val boCartItems = BOCartItem.findByBOCart(boCart)
@@ -635,17 +607,17 @@ object CartBoService extends BoService {
           //browse boTicketType to send confirmation mails
           BOCartItem.bOProducts(boCartItem).map { boProduct =>
             val product = boProduct.product
-            BOTicketType.findByBOProduct(boProduct.id).map {  boTicketType =>
-              var map :Map[String,Any]= Map()
-              map+=("email" -> boTicketType.email)
-              map+=("eventName" -> product.name)
-              map+=("startDate" -> boTicketType.startDate)
-              map+=("stopDate" -> boTicketType.endDate)
-              map+=("location" -> toEventLocationVO(product.poi))
-              map+=("type" -> boTicketType.ticketType)
-              map+=("price" ->boTicketType.price)
-              map+=("qrcode" -> boTicketType.qrcodeContent)
-              map+=("shortCode" -> boTicketType.shortCode)
+            BOTicketType.findByBOProduct(boProduct.id).map { boTicketType =>
+              var map: Map[String, Any] = Map()
+              map += ("email" -> boTicketType.email)
+              map += ("eventName" -> product.name)
+              map += ("startDate" -> boTicketType.startDate)
+              map += ("stopDate" -> boTicketType.endDate)
+              map += ("location" -> toEventLocationVO(product.poi))
+              map += ("type" -> boTicketType.ticketType)
+              map += ("price" -> boTicketType.price)
+              map += ("qrcode" -> boTicketType.qrcodeContent)
+              map += ("shortCode" -> boTicketType.shortCode)
 
               map
             }
@@ -668,10 +640,10 @@ object CartBoService extends BoService {
             productService.incrementSales(ticketType, boCartItem.quantity)
           }
         }
-        val updatedCart = CartVO(uuid = cartVO.uuid)
+        val updatedCart = StoreCart(uuid = cart.uuid, userUuid = cart.userUuid)
         uuidService.setCart(updatedCart)
         emailingData
-      case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
+      case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
     }
   }
 
@@ -679,15 +651,15 @@ object CartBoService extends BoService {
    * @param poiOpt
    * @return formated location
    */
-  private def toEventLocationVO(poiOpt:Option[Poi]) = poiOpt match{
+  private def toEventLocationVO(poiOpt: Option[Poi]) = poiOpt match {
     case Some(poi) =>
-      poi.road1.getOrElse("")+" "+
-        poi.road2.getOrElse("")+" "+
-        poi.city.getOrElse("")+" "+
-        poi.postalCode.getOrElse("")+" "+
-        poi.state.getOrElse("")+" "+
-        poi.city.getOrElse("")+" "+
-        poi.countryCode.getOrElse("")+" "
+      poi.road1.getOrElse("") + " " +
+        poi.road2.getOrElse("") + " " +
+        poi.city.getOrElse("") + " " +
+        poi.postalCode.getOrElse("") + " " +
+        poi.state.getOrElse("") + " " +
+        poi.city.getOrElse("") + " " +
+        poi.countryCode.getOrElse("") + " "
     case None => ""
     /*
   if (poi){
@@ -700,8 +672,8 @@ object CartBoService extends BoService {
   }*/
   }
 
-  def cancel(cartVO:CartVO ):CartVO = {
-    BOCart.findByTransactionUuid(cartVO.uuid) match {
+  def cancel(cart: StoreCart): StoreCart = {
+    BOCart.findByTransactionUuid(cart.uuid) match {
       case Some(boCart) =>
         DB localTx { implicit session =>
           // Mise à jour du statut et du transactionUUID
@@ -713,32 +685,32 @@ object CartBoService extends BoService {
           }.update.apply()
         }
 
-        val updatedCart = cartVO.copy(inTransaction = false) //cartVO.uuid = null;
+        val updatedCart = cart.copy(inTransaction = false) //cartVO.uuid = null;
         uuidService.setCart(updatedCart)
         updatedCart
-      case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cartVO.uuid + " into BO. It has not been initialized or has already been validated")
+      case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
     }
   }
 }
 
 object CustomTypes {
-  type CartErrors = Map[String,Seq[Any]]
+  type CartErrors = Map[String, Seq[Any]]
 
 }
 
-class CartException(val errors:CartErrors) extends Exception {
+class CartException(val errors: CartErrors) extends Exception {
 
   val bundle = ResourceBundle("i18n.errors")
 
-  def getErrors(locale:Locale): List[String] = {
+  def getErrors(locale: Locale): List[String] = {
 
     val res = for {
-      (key,value) <- errors
+      (key, value) <- errors
     } yield {
-      if(value==null)
-        bundle.get(key,locale)
+      if (value == null)
+        bundle.get(key, locale)
       else
-        bundle.getWithParams(key,locale,value)
+        bundle.getWithParams(key, locale, value)
     }
 
     res.toList
@@ -746,25 +718,28 @@ class CartException(val errors:CartErrors) extends Exception {
   }
 }
 
-case class AddCartItemException (override val errors:CartErrors) extends CartException(errors) {
+case class AddCartItemException(override val errors: CartErrors) extends CartException(errors) {
   override def toString = errors.toString()
 }
 
-case class UpdateCartItemException (override val errors:CartErrors) extends CartException(errors)
+case class UpdateCartItemException(override val errors: CartErrors) extends CartException(errors)
 
-case class RemoveCartItemException (override val errors:CartErrors) extends CartException(errors)
+case class RemoveCartItemException(override val errors: CartErrors) extends CartException(errors)
 
-case class ClearCartException (override val errors:CartErrors) extends CartException(errors)
+case class ClearCartException(override val errors: CartErrors) extends CartException(errors)
 
-case class AddCouponToCartException (override val errors:CartErrors) extends CartException(errors)
+case class AddCouponToCartException(override val errors: CartErrors) extends CartException(errors)
 
-case class RemoveCouponFromCartException (override val errors:CartErrors) extends CartException(errors)
+case class RemoveCouponFromCartException(override val errors: CartErrors) extends CartException(errors)
 
 case class CartVO(price: Long = 0, endPrice: Option[Long] = Some(0), reduction: Long = 0, finalPrice: Long = 0, count: Int = 0, uuid: String,
-                  cartItemVOs: Array[CartItemVO]=Array(), coupons: Array[CouponVO]=Array(), inTransaction:Boolean = false)
+                  userUuid: Option[Mogopay.Document],
+                  cartItemVOs: Array[CartItemVO] = Array(), coupons: Array[CouponVO] = Array(), inTransaction: Boolean = false)
 
 object ProductType extends Enumeration {
+
   class ProductTypeType(s: String) extends Val(s)
+
   type ProductType = ProductTypeType
   val SERVICE = new ProductTypeType("SERVICE")
   val PRODUCT = new ProductTypeType("PRODUCT")
@@ -772,32 +747,34 @@ object ProductType extends Enumeration {
   val PACKAGE = new ProductTypeType("PACKAGE")
   val OTHER = new ProductTypeType("OTHER")
 
-  def valueOf(str:String):ProductType = str match {
-    case "SERVICE"=> SERVICE
-    case "PRODUCT"=> PRODUCT
-    case "DOWNLOADABLE"=> DOWNLOADABLE
-    case "PACKAGE"=> PACKAGE
-    case _=> OTHER
+  def valueOf(str: String): ProductType = str match {
+    case "SERVICE" => SERVICE
+    case "PRODUCT" => PRODUCT
+    case "DOWNLOADABLE" => DOWNLOADABLE
+    case "PACKAGE" => PACKAGE
+    case _ => OTHER
   }
 
 }
 
 object ProductCalendar extends Enumeration {
+
   class ProductCalendarType(s: String) extends Val(s)
+
   type ProductCalendar = ProductCalendarType
   val NO_DATE = new ProductCalendarType("NO_DATE")
   val DATE_ONLY = new ProductCalendarType("DATE_ONLY")
   val DATE_TIME = new ProductCalendarType("DATE_TIME")
 
-  def valueOf(str:String):ProductCalendar = str match {
-    case "DATE_ONLY"=> DATE_ONLY
-    case "DATE_TIME"=> DATE_TIME
-    case _=> NO_DATE
+  def valueOf(str: String): ProductCalendar = str match {
+    case "DATE_ONLY" => DATE_ONLY
+    case "DATE_TIME" => DATE_TIME
+    case _ => NO_DATE
   }
 }
 
 case class RegisteredCartItemVO
-(cartItemId: String = "", id: String, email: Option[String], firstname: Option[String]=None, lastname: Option[String]=None, phone: Option[String]=None, birthdate: Option[DateTime]=None)
+(cartItemId: String = "", id: String, email: Option[String], firstname: Option[String] = None, lastname: Option[String] = None, phone: Option[String] = None, birthdate: Option[DateTime] = None)
 
 case class CartItemVO
 (id: String, productId: Long, productName: String, xtype: ProductType, calendarType: ProductCalendar, skuId: Long, skuName: String,
@@ -806,27 +783,31 @@ case class CartItemVO
 
 
 object WeightUnit extends Enumeration {
+
   class WeightUnitType(s: String) extends Val(s)
+
   type WeightUnit = WeightUnitType
   val KG = new WeightUnitType("KG")
   val LB = new WeightUnitType("LB")
   val G = new WeightUnitType("G")
 
-  def apply(str:String) = str match{
+  def apply(str: String) = str match {
     case "KG" => KG
     case "LB" => LB
-    case "G"  => G
+    case "G" => G
     case _ => throw new RuntimeException("unexpected WeightUnit value")
   }
 }
 
 object LinearUnit extends Enumeration {
+
   class LinearUnitType(s: String) extends Val(s)
+
   type LinearUnit = LinearUnitType
   val CM = new LinearUnitType("CM")
   val IN = new LinearUnitType("IN")
 
-  def apply(str:String) = str match{
+  def apply(str: String) = str match {
     case "CM" => CM
     case "IN" => IN
     case _ => throw new RuntimeException("unexpected LinearUnit value")
@@ -834,18 +815,19 @@ object LinearUnit extends Enumeration {
 }
 
 case class ShippingVO
-(id:Long, weight: Long, weightUnit: WeightUnit, width: Long, height: Long, depth: Long, linearUnit: LinearUnit, amount: Long, free: Boolean)
+(id: Long, weight: Long, weightUnit: WeightUnit, width: Long, height: Long, depth: Long, linearUnit: LinearUnit, amount: Long, free: Boolean)
 
-case class ReductionSold(id:Long,sold:Long=0,dateCreated:DateTime = DateTime.now, lastUpdated:DateTime = DateTime.now
-                         , override val uuid : String  = java.util.UUID.randomUUID().toString) extends Entity with DateAware
+case class ReductionSold(id: Long, sold: Long = 0, dateCreated: DateTime = DateTime.now, lastUpdated: DateTime = DateTime.now
+                         , override val uuid: String = java.util.UUID.randomUUID().toString) extends Entity with DateAware
+
 //TODO find a way to avoid repeating the uuid here and compliant with ScalikeJDBC SQLSyntaxSupport
 
 object ReductionSold extends SQLSyntaxSupport[ReductionSold] {
 
-  def apply(rn: ResultName[ReductionSold])(rs:WrappedResultSet): ReductionSold = ReductionSold(
-    id=rs.get(rn.id),sold=rs.get(rn.sold), dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
+  def apply(rn: ResultName[ReductionSold])(rs: WrappedResultSet): ReductionSold = ReductionSold(
+    id = rs.get(rn.id), sold = rs.get(rn.sold), dateCreated = rs.get(rn.dateCreated), lastUpdated = rs.get(rn.lastUpdated))
 
-  def get(id:Long)(implicit session: DBSession):Option[ReductionSold]={
+  def get(id: Long)(implicit session: DBSession): Option[ReductionSold] = {
     val c = ReductionSold.syntax("c")
     //DB readOnly { implicit session =>
     withSQL {
@@ -853,6 +835,7 @@ object ReductionSold extends SQLSyntaxSupport[ReductionSold] {
     }.map(ReductionSold(c.resultName)).single().apply()
     //}
   }
+
   /*
   def create = {
     withSQL {
@@ -864,10 +847,11 @@ object ReductionSold extends SQLSyntaxSupport[ReductionSold] {
 
 }
 
-case class CouponVO(id:Long, name:String,code:String, startDate:Option[DateTime] = None, endDate:Option[DateTime] = None, active:Boolean = false, price:Long = 0)
+case class CouponVO(id: Long, name: String, code: String, startDate: Option[DateTime] = None, endDate: Option[DateTime] = None, active: Boolean = false, price: Long = 0)
+
 object CouponVO {
-  def apply(coupon:Coupon):CouponVO = {
-    CouponVO( id = coupon.id, name = coupon.name, code = coupon.code, startDate = coupon.startDate, endDate = coupon.endDate, active = coupon.active)
+  def apply(coupon: Coupon): CouponVO = {
+    CouponVO(id = coupon.id, name = coupon.name, code = coupon.code, startDate = coupon.startDate, endDate = coupon.endDate, active = coupon.active)
   }
 }
 
@@ -948,7 +932,7 @@ object CouponService extends BoService {
     }
   }
 
-  def getTicketTypesIdsWhereCouponApply(couponId: Long) : List[Long] = DB readOnly {
+  def getTicketTypesIdsWhereCouponApply(couponId: Long): List[Long] = DB readOnly {
     implicit session => {
       sql"""
          select id from ticket_type tt
@@ -958,6 +942,104 @@ object CouponService extends BoService {
     }
   }
 
+  def computePromotions(coupons: List[Coupon], cartItems: List[CartItemVO], result: (Long, List[run.cart.CouponVO])): (Long, List[run.cart.CouponVO]) = {
+    if (coupons.isEmpty) result
+    else {
+      val coupon = coupons.head
+
+      val couponVO = _computeCoupon(coupon, cartItems)
+      (result._1 + couponVO.price, couponVO :: result._2)
+    }
+  }
+
+  def computeCoupons(coupons: List[StoreCoupon], cartItems: List[CartItemVO], result: (Long, List[run.cart.CouponVO])): (Long, List[run.cart.CouponVO]) = {
+    if (coupons.isEmpty) result
+    else {
+      val c : StoreCoupon = coupons.head
+      val coupon = Coupon.get(c.id).get
+
+      val couponVO = _computeCoupon(coupon, cartItems)
+      (result._1 + couponVO.price, couponVO :: result._2)
+    }
+  }
+
+  private def _computeCoupon(coupon: Coupon, cartItems: List[CartItemVO]): run.cart.CouponVO = {
+    if (_isCouponActive(coupon)) {
+      val listTicketTypeIds = getTicketTypesIdsWhereCouponApply(coupon.id)
+
+      if (listTicketTypeIds.size > 0) {
+        // Méthode de calcul de la quantity et du prix à utiliser pour les règles
+        def _searchReductionQuantityAndPrice(cartItems: List[CartItemVO], result : (Long, Long, Long)) : (Long, Long, Long) = {
+          if (cartItems.isEmpty) if (result._2 == java.lang.Long.MAX_VALUE) (result._1, 0, result._3) else result
+          else {
+            val cartItem = cartItems.head
+            if (listTicketTypeIds.contains(cartItem.skuId)) {
+              val price = if (cartItem.endPrice.getOrElse(0l) > 0) Math.min(result._2, cartItem.endPrice.get) else result._2
+              val totalPrice = result._3 + cartItem.totalEndPrice.getOrElse(0l)
+
+              _searchReductionQuantityAndPrice(cartItems.tail, (result._1 + cartItem.quantity, price, totalPrice))
+            }
+            else _searchReductionQuantityAndPrice(cartItems.tail, result)
+          }
+        }
+
+        val quantityAndPrice = _searchReductionQuantityAndPrice(cartItems, (0, java.lang.Long.MAX_VALUE, 0))
+        if (quantityAndPrice._1 > 0) {
+          // Calcul la sommes des réductions de chaque règle du coupon
+          def _calculateReduction(rules: List[ReductionRule]) : Long = {
+            if (rules.isEmpty) 0
+            else _calculateReduction(rules.tail) + _applyReductionRule(rules.head, quantityAndPrice._1, quantityAndPrice._2, quantityAndPrice._3)
+          }
+
+          val couponPrice = _calculateReduction(coupon.rules)
+          _createCouponVOFromCoupon(coupon, true, couponPrice)
+        }
+        else {
+          // Par de quantité, cela signifie que la réduction ne s'applique pas donc prix = 0
+          _createCouponVOFromCoupon(coupon, true, 0)
+        }
+      }
+      else {
+        // Le coupon ne s'applique sur aucun SKU, donc prix = 0
+        _createCouponVOFromCoupon(coupon, true, 0)
+      }
+    }
+    else {
+      // Le coupon n'est pas actif, donc prix = 0 et active = false
+      _createCouponVOFromCoupon(coupon, false, 0)
+    }
+  }
+
+
+  private def _createCouponVOFromCoupon(coupon: Coupon, active: Boolean, price: Long) : CouponVO = {
+    CouponVO(id = coupon.id, name = coupon.name, code = coupon.code, startDate = coupon.startDate, endDate = coupon.endDate, active = active, price = price)
+  }
+
+  private def _isCouponActive(coupon : Coupon) : Boolean = {
+    if (coupon.startDate.isEmpty && coupon.endDate.isEmpty) true
+    else if (coupon.startDate.isDefined && coupon.endDate.isEmpty) coupon.startDate.get.isBeforeNow || coupon.startDate.get.isEqualNow
+    else if (coupon.startDate.isEmpty && coupon.endDate.isDefined) coupon.endDate.get.isAfterNow || coupon.endDate.get.isEqualNow
+    else (coupon.startDate.get.isBeforeNow || coupon.startDate.get.isEqualNow) && (coupon.endDate.get.isAfterNow || coupon.endDate.get.isEqualNow)
+  }
+
+  /**
+   * Applique la règle sur le montant total (DISCOUNT) ou sur le montant uniquement en fonction de la quantité (X_PURCHASED_Y_OFFERED)
+   * @param rule : règle à appliquer
+   * @param quantity : quantité
+   * @param price : prix unitaire
+   * @param totalPrice : prix total
+   * @return
+   */
+  private def _applyReductionRule(rule: ReductionRule, quantity: Long, price: Long, totalPrice: Long) : Long = {
+    rule.xtype match {
+      case ReductionRuleType.DISCOUNT =>
+        computeDiscount(rule.discount, totalPrice)
+      case ReductionRuleType.X_PURCHASED_Y_OFFERED =>
+        val multiple = quantity / rule.xPurchased.getOrElse(1L)
+        price * rule.yOffered.getOrElse(1L) * multiple
+      case _ => 0L
+    }
+  }
 
   /**
    * update the active attribute and calculate the reduction price
@@ -977,7 +1059,7 @@ object CouponService extends BoService {
     logger.info(s"updateCoupon: (${coupon.active} ${coupon.startDate} ${coupon.endDate})")
 
     //the coupon must be active with no date or with valid date between startDate and endDate
-    if ( (coupon.startDate.isEmpty && coupon.endDate.isEmpty) ||
+    if ((coupon.startDate.isEmpty && coupon.endDate.isEmpty) ||
       ((coupon.startDate.get.isBeforeNow || coupon.startDate.get.isEqualNow) && (coupon.endDate.get.isAfterNow || coupon.endDate.get.isEqualNow))) {
       val listTicketTypeIds = getTicketTypesIdsWhereCouponApply(c.id)
       logger.info(s"updateCoupon(${c.id}) listTicketTypeIds:$listTicketTypeIds")
@@ -1038,14 +1120,14 @@ object CouponService extends BoService {
   }
 
 
-  def getPromotions(cart: CartVO,companyCode:String): List[CouponVO] ={
+  def getPromotions(cart: CartVO, companyCode: String): List[CouponVO] = {
     val promoAvailable = Coupon.findPromotionsThatOnlyApplyOnCart(companyCode)
-    logger.info("getPromotions: "+promoAvailable.size)
+    logger.info("getPromotions: " + promoAvailable.size)
 
     //convert to CouponVO in order to be used by updateCoupon
     //not very effcient but that will do for the time being
     val couponsVO = promoAvailable.map(CouponVO(_))
-    val updatedPromo = couponsVO.map(updateCoupon(_,cart))
+    val updatedPromo = couponsVO.map(updateCoupon(_, cart))
 
     updatedPromo
   }
@@ -1057,28 +1139,24 @@ object CouponService extends BoService {
    * @return
    */
   //TODO translate variable label
-  def computeDiscount(discountRule: Option[String], prixDeBase: Long) = {
+  def computeDiscount(discountRule: Option[String], prixDeBase: Long) : Long = {
 
-    discountRule match{
+    discountRule match {
       case Some(regle) => {
-        if (regle.endsWith("%"))
-        {
-          val pourcentage = java.lang.Float.parseFloat(regle.substring(0, regle.length()-1))
+        if (regle.endsWith("%")) {
+          val pourcentage = java.lang.Float.parseFloat(regle.substring(0, regle.length() - 1))
           (prixDeBase * pourcentage / 100).toLong //TODO recheck the rounded value computed
         }
-        else if (regle.startsWith ("+"))
-        {
+        else if (regle.startsWith("+")) {
 
           val increment = java.lang.Long.parseLong(regle.substring(1))
           prixDeBase + increment
         }
-        else if (regle.startsWith ("-"))
-        {
-          val decrement = java.lang.Long.parseLong (regle.substring(1))
+        else if (regle.startsWith("-")) {
+          val decrement = java.lang.Long.parseLong(regle.substring(1))
           prixDeBase - decrement
         }
-        else
-        {
+        else {
           java.lang.Long.parseLong(regle)
         }
       }
