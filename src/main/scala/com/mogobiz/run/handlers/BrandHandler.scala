@@ -13,11 +13,12 @@ import org.json4s._
 
 class BrandHandler extends JsonUtil {
 
-  def queryBrands(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String, promotionId:Option[String]): JValue = {
+  def queryBrands(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String, promotionId:Option[String], size:Option[Int]): JValue = {
     var filters:List[FilterDefinition] = List.empty
+    val _size = size.getOrElse(Integer.MAX_VALUE / 2)
     categoryPath match {
       case Some(s) =>
-        val req = esearch4s in storeCode -> "product"
+        val req = esearch4s in storeCode -> "product" from 0 size _size
         filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
         if(promotionId.isDefined) filters +:= createTermFilter("category.coupons", promotionId).get
         if(!hidden) filters :+= termFilter("brand.hide", "false")
@@ -29,7 +30,7 @@ class BrandHandler extends JsonUtil {
         ).getHits
         distinctById(r \ "brand")
       case None =>
-        val req = esearch4s in storeCode -> "brand"
+        val req = esearch4s in storeCode -> "brand" from 0 size _size
         if(!hidden) filters :+= termFilter("hide", "false")
         val r : JArray = EsClientOld.searchAllRaw(
           filterRequest(req, filters)

@@ -7,13 +7,13 @@ import HandlersConfig._
 
 object BrandActor {
 
-  case class QueryBrandRequest(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String, promotionId:Option[String])
+  case class QueryBrandRequest(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String, promotionId:Option[String], size: Option[Int])
 
 }
 
 class BrandActor extends Actor {
   def receive = {
     case q: QueryBrandRequest =>
-      sender ! brandHandler.queryBrands(q.storeCode, q.hidden, q.categoryPath, q.lang, q.promotionId)
+      sender ! brandHandler.queryBrands(q.storeCode, q.hidden, q.categoryPath, q.lang, q.promotionId, q.size)
   }
 }

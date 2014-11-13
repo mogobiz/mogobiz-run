@@ -26,9 +26,9 @@ import scala.concurrent.duration._
 
   lazy val tags = pathEnd {
     get {
-      parameters('hidden ? false, 'inactive ? false, 'lang ? "_all") {
-        (hidden, inactive, lang) =>
-          val request = QueryTagRequest(storeCode, hidden, inactive, lang)
+      parameters('hidden ? false, 'inactive ? false, 'lang ? "_all", 'size.as[Option[Int]]) {
+        (hidden, inactive, lang, size) =>
+          val request = QueryTagRequest(storeCode, hidden, inactive, lang, size)
           complete {
             (actor ? request).mapTo[JValue]
           }

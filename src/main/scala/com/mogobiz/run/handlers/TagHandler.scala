@@ -8,9 +8,10 @@ import org.json4s.JsonAST.JValue
 
 class TagHandler {
 
-  def queryTags(storeCode: String, hidden: Boolean, inactive: Boolean, lang: String): JValue = {
+  def queryTags(storeCode: String, hidden: Boolean, inactive: Boolean, lang: String, size: Option[Int]): JValue = {
+    val _size = size.getOrElse(Integer.MAX_VALUE / 2)
     EsClientOld.searchAllRaw(
-      esearch4s in storeCode -> "tag" sourceExclude(createExcludeLang(storeCode, lang) :+ "imported" :_*)
+      esearch4s in storeCode -> "tag" from 0 size _size sourceExclude(createExcludeLang(storeCode, lang) :+ "imported" :_*)
     ).getHits
   }
 

@@ -26,9 +26,9 @@ import scala.concurrent.duration._
 
   lazy val categories = pathEnd {
     get {
-      parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang?"_all", 'promotionId?) {
-        (hidden, parentId, brandId, categoryPath, lang, promotionId) =>
-          val request = QueryCategoryRequest(storeCode, hidden, parentId, brandId, categoryPath, lang, promotionId)
+      parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang?"_all", 'promotionId?, 'size.as[Option[Int]]) {
+        (hidden, parentId, brandId, categoryPath, lang, promotionId, size) =>
+          val request = QueryCategoryRequest(storeCode, hidden, parentId, brandId, categoryPath, lang, promotionId, size)
           complete {
             (actor ? request).mapTo[JValue]
           }
