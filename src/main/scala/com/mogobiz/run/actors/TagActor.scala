@@ -7,13 +7,13 @@ import HandlersConfig._
 
 object TagActor {
 
-  case class QueryTagRequest(storeCode: String, hidden: Boolean, inactive: Boolean, lang: String)
+  case class QueryTagRequest(storeCode: String, hidden: Boolean, inactive: Boolean, lang: String, size: Option[Int])
 
 }
 
 class TagActor extends Actor {
   def receive = {
     case q: QueryTagRequest =>
-      sender ! tagHandler.queryTags(q.storeCode, q.hidden, q.inactive, q.lang)
+      sender ! tagHandler.queryTags(q.storeCode, q.hidden, q.inactive, q.lang, q.size)
   }
 }

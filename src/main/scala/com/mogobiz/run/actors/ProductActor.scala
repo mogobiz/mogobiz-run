@@ -35,7 +35,19 @@ object ProductActor {
 class ProductActor extends Actor {
   def receive = {
     case q: QueryProductRequest =>
-      sender ! productHandler.queryProductsByCriteria(q.storeCode, q.params)
+      val promotionIds = q.params.hasPromotion.map(v => {
+        if(v) {
+          val ids = promotionHandler.getPromotionIds(q.storeCode)
+          if(ids.isEmpty) None
+          else Some(ids.mkString("|"))
+        }else None
+      }) match {
+        case Some(ids) => ids
+        case _ => None
+      }
+
+      val params = q.params.copy(promotionId = promotionIds)
+      sender ! productHandler.queryProductsByCriteria(q.storeCode, params)
 
     case q: QueryFindProductRequest =>
       sender ! productHandler.queryProductsByFulltextCriteria(q.storeCode, q.params)
