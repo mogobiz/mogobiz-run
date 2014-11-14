@@ -20,6 +20,7 @@ object CartActor {
   case class QueryCartPaymentPrepareRequest(storeCode: String, uuid: String, params: PrepareTransactionParameters, accountId:Option[Mogopay.Document])
   case class QueryCartPaymentCommitRequest(storeCode: String, uuid: String, params: CommitTransactionParameters, accountId:Option[Mogopay.Document])
   case class QueryCartPaymentCancelRequest(storeCode: String, uuid: String, params: CancelTransactionParameters, accountId:Option[Mogopay.Document])
+  case class QueryCartValidateRequest(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document])
 
 }
 
@@ -54,5 +55,8 @@ class CartActor extends Actor {
 
     case q: QueryCartPaymentCancelRequest =>
       sender ! cartHandler.queryCartPaymentCancel(q.storeCode,q.uuid, q.params, q.accountId)
+
+    case q: QueryCartValidateRequest =>
+      sender ! cartHandler.queryCartValidate(q.storeCode,q.uuid, q.params, q.accountId)
   }
 }

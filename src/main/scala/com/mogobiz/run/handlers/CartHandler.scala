@@ -75,6 +75,39 @@ class CartHandler {
     }
   }
 
+  def queryCartValidate(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+
+    val cart = cartService.initCart(uuid, accountId)
+
+    val locale = _buildLocal(params.lang, params.country)
+    val currency = queryCurrency(storeCode, params.currency)
+
+    try {
+      val updatedCart = cartService.validateCart(cart)
+      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)
+      val data = cartRenderService.renderCart(computeCart, currency, locale)
+      val response = Map(
+        "success" -> true,
+        "data" -> data,
+        "errors" -> List()
+      )
+
+      response
+
+    } catch {
+      case e: ValidateCartException =>
+        val response = Map(
+          "success" -> false,
+          "data" -> cart,
+          "errors" -> e.getErrors(locale)
+        )
+        response
+      case t: Throwable =>
+        t.printStackTrace()
+        throw t
+    }
+  }
+
   def queryCartItemUpdate(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, cmd: UpdateCartItemCommand, accountId:Option[Mogopay.Document]): Map[String, Any] = {
 
     val cart = cartService.initCart(uuid, accountId)

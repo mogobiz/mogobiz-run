@@ -85,8 +85,9 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       }
     })
 
+
     val esNode: Node = NodeBuilder.nodeBuilder().local(false).clusterName(EsCluster).settings(
-      ImmutableSettings.settingsBuilder().put("path.data", tmpdir).put("script.disable_dynamic", false)
+      ImmutableSettings.settingsBuilder().put("path.data", "/usr/local/var/elasticsearch/").put("script.disable_dynamic", false)
     ).node()
 
     Runtime.getRuntime.addShutdownHook(new Thread() {

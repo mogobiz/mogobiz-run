@@ -33,7 +33,8 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
     cartInit ~
       cartClear ~
       cartAdd ~
-      cartUpdateRemove
+      cartUpdateRemove ~
+      cartValidate
   }
 
   lazy val cartInit = pathEnd {
@@ -128,6 +129,24 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
           complete {
             (actor ? request).mapTo[Map[String, Any]] map {
               response => response
+            }
+          }
+        }
+      }
+    }
+  }
+
+  lazy val cartValidate = path("validate") {
+    post {
+      parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) {
+        params => {
+          optionalSession { optSession =>
+            val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+            val request = QueryCartValidateRequest(storeCode, uuid, params, accountId)
+            complete {
+              (actor ? request).mapTo[Map[String, Any]] map {
+                response => response
+              }
             }
           }
         }

@@ -32,6 +32,7 @@ object Settings {
 
   object cart {
     val lifetime = 15
+    val EsIndex = config getString "mogobiz.cart.index"
   }
 
 

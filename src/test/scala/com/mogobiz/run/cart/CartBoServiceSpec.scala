@@ -5,6 +5,7 @@ import java.util.{Locale, UUID}
 import com.mogobiz.MogobizRouteTest
 import com.mogobiz.run.config.MogobizDBsWithEnv
 import com.mogobiz.run.es.EmbeddedElasticSearchNode
+import com.mogobiz.run.handlers.UuidHandler
 import com.mogobiz.run.model._
 import com.mogobiz.run.cart.domain._
 import org.specs2.mutable.Specification
@@ -21,7 +22,7 @@ class CartBoServiceSpec extends MogobizRouteTest {
   sequential
 
   val service = CartBoService
-  val uuidService = UuidBoService
+  val uuidService = new UuidHandler
 
   val renderService = CartRenderService
 
@@ -54,7 +55,7 @@ class CartBoServiceSpec extends MogobizRouteTest {
     // prepare test
     val uuid = generateUuid
     val userUuid = generateUuid
-    val authenticateCart = StoreCart(uuid, Some(userUuid), List(StoreCartItem("1", 61, "TV 100\" Full HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 63, "Standard", 1, 1000, None, None, List(), None)))
+    val authenticateCart = StoreCart(uuid, uuid, Some(userUuid), List(StoreCartItem("1", 61, "TV 100\" Full HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 63, "Standard", 1, 1000, None, None, List(), None)))
     uuidService.setCart(authenticateCart)
 
     // method to test
@@ -72,12 +73,12 @@ class CartBoServiceSpec extends MogobizRouteTest {
     // prepare test
     val uuid = generateUuid
     val userUuid = generateUuid
-    val authenticateCart = StoreCart(uuid, Some(userUuid), List(
+    val authenticateCart = StoreCart(uuid, uuid, Some(userUuid), List(
       StoreCartItem("1", 61, "TV 100\" Full HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 63, "Standard", 2, 1500, None, None, List(), None),
       StoreCartItem("2", 70, "TV 100\" HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 72, "Standard", 1, 1000, None, None, List(), None)
     ))
     uuidService.setCart(authenticateCart)
-    val anonymeCart = StoreCart(uuid, None, List(
+    val anonymeCart = StoreCart(uuid, uuid, None, List(
       StoreCartItem("1", 61, "TV 100\" Full HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 63, "Standard", 1, 1500, None, None, List(), None),
       StoreCartItem("2", 79, "TV 90\"", ProductType.PRODUCT, ProductCalendar.NO_DATE, 81, "Standard", 1, 750, None, None, List(), None)
     ))
@@ -108,18 +109,17 @@ class CartBoServiceSpec extends MogobizRouteTest {
     // prepare test
     val uuid = generateUuid
     val userUuid = generateUuid
-    val authenticateCart = StoreCart(uuid, Some(userUuid), List(
+    val authenticateCart = StoreCart(uuid, uuid, Some(userUuid), List(
       StoreCartItem("1", 61, "TV 100\" Full HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 63, "Standard", 3, 30000, None, None, List(), None),
       StoreCartItem("2", 70, "TV 100\" HD", ProductType.PRODUCT, ProductCalendar.NO_DATE, 72, "Standard", 2, 35000, None, None, List(), None),
       StoreCartItem("3", 114, "TShirt Puma", ProductType.PRODUCT, ProductCalendar.NO_DATE, 116, "Blanc taille M", 6, 1500, None, None, List(), None)
-    ), List(StoreCoupon(4512, "TEST2")))
+    ), List(StoreCoupon(4512, "TEST2", "mogobiz")))
 
     // method to test
     val cart = service.computeStoreCart("mogobiz", authenticateCart, Some("FR"), None)
 
     //assertions
     cart.uuid must_== uuid
-    cart.userUuid must_== Some(userUuid)
     cart.cartItemVOs.length must_== 3
     cart.cartItemVOs.foreach(cartItem => {
       if (cartItem.productId == 61) {

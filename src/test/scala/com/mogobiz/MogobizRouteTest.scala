@@ -1,5 +1,6 @@
 package com.mogobiz
 
+import com.mogobiz.run.boot.DBInitializer
 import com.mogobiz.run.es.EmbeddedElasticSearchNode
 import com.mogobiz.system.MogobizSystem
 import org.specs2.mutable.Specification
