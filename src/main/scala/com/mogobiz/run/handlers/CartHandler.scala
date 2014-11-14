@@ -2,11 +2,16 @@ package com.mogobiz.run.handlers
 
 import java.util.Locale
 
+import com.mogobiz.es.EsClient
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.cart._
+import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
+import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model._
+import com.sksamuel.elastic4s.ElasticDsl._
+import org.joda.time.DateTime
 
 
 class CartHandler {
@@ -301,4 +306,30 @@ class CartHandler {
     cartService.cleanExpiredCart
   }
 
+}
+
+object StoreCartDao {
+
+  val index = Settings.cart.EsIndex
+
+  def findByDataUuidAndUserUuid(dataUuid: String, userUuid: Option[Mogopay.Document]): Option[StoreCart] = {
+    val uuid = dataUuid + "--" + userUuid.getOrElse("None")
+    EsClient.load[StoreCart](index, uuid)
+  }
+
+  def save(entity: StoreCart): Boolean = {
+    EsClient.update[StoreCart](index, entity.copy(expireDate = DateTime.now.plusSeconds(60 * Settings.cart.lifetime)), true, false)
+  }
+
+  def delete(cart: StoreCart) : Unit = {
+    EsClient.delete[StoreCart](index, cart.uuid, false)
+  }
+
+  def getExpired() : List[StoreCart] = {
+    val req = search in index -> "StoreCart" filter and (
+      rangeFilter("expireDate") lt "now"
+    )
+
+    EsClient.searchAll[StoreCart](req).toList
+  }
 }

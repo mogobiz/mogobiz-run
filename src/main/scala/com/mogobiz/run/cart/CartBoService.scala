@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.run
 import com.mogobiz.run.config.{Settings, MogobizDBsWithEnv}
+import com.mogobiz.run.handlers.StoreCartDao
 import com.mogobiz.run.json.{JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer}
 import com.mogobiz.run.model._
 import com.mogobiz.run.cart.CustomTypes.CartErrors
@@ -171,7 +172,7 @@ object CartBoService extends BoService {
       }
 
       val updatedCart = cart.copy(validate = false)
-      uuidHandler.setCart(updatedCart)
+      StoreCartDao.save(updatedCart)
       updatedCart
     }
     else cart
@@ -205,26 +206,28 @@ object CartBoService extends BoService {
       cart match {
         case Some(c) => c
         case None =>
-          val c = new StoreCart(uuid = UUID.randomUUID().toString, dataUuid = uuid, userUuid = currentAccountId)
-          uuidHandler.setCart(c)
+          val c = new StoreCart(dataUuid = uuid, userUuid = currentAccountId)
+          StoreCartDao.save(c)
           c
       }
     }
 
     if (currentAccountId.isDefined) {
-      val cartAnonyme = uuidHandler.getCart(uuid, None);
-      val cartAuthentifie = getOrCreateStoreCart(uuidHandler.getCart(uuid, currentAccountId));
+      val cartAnonyme = StoreCartDao.findByDataUuidAndUserUuid(uuid, None);
+      val cartAuthentifie = getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(uuid, currentAccountId));
 
       // S'il y a un panier anonyme, il est fusionné avec le panier authentifié et supprimé de la base
       if (cartAnonyme.isDefined) {
-        uuidHandler.removeCart(cartAnonyme.get)
-        _fusion(cartAnonyme.get, cartAuthentifie)
+        StoreCartDao.delete(cartAnonyme.get)
+        val fusionCart = _fusion(cartAnonyme.get, cartAuthentifie)
+        StoreCartDao.save(fusionCart)
+        fusionCart
       }
       else cartAuthentifie
     }
     else {
       // Utilisateur anonyme
-      getOrCreateStoreCart(uuidHandler.getCart(uuid, None));
+      getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(uuid, None));
     }
   }
 
@@ -232,8 +235,8 @@ object CartBoService extends BoService {
    * Libère tous les paniers expirés
    */
   def cleanExpiredCart: Unit = {
-    uuidHandler.getExpiredCarts.map { cart =>
-      uuidHandler.removeCart(clear(cart))
+    StoreCartDao.getExpired.map { cart =>
+      StoreCartDao.delete(clear(cart))
     }
   }
 
@@ -300,7 +303,7 @@ object CartBoService extends BoService {
       ticketType.price, startEndDate._1, startEndDate._2, registeredItems, shipping)
 
     val newcart = _addCartItemIntoCart(_unvalidateCart(cart), cartItem)
-    uuidHandler.setCart(newcart)
+    StoreCartDao.save(newcart)
     newcart
   }
 
@@ -325,7 +328,7 @@ object CartBoService extends BoService {
         val newCartItems = existCartItem.copy(quantity = quantity) :: Utils.remove(cart.cartItems, existCartItem)
         val updatedCart = _unvalidateCart(cart).copy(cartItems = newCartItems)
 
-        uuidHandler.setCart(updatedCart)
+        StoreCartDao.save(updatedCart)
         updatedCart
       } else {
         println("silent op")
@@ -354,7 +357,7 @@ object CartBoService extends BoService {
       val newCartItems = Utils.remove(cart.cartItems, existCartItem)
       val updatedCart = _unvalidateCart(cart).copy(cartItems = newCartItems)
 
-      uuidHandler.setCart(updatedCart)
+      StoreCartDao.save(updatedCart)
       updatedCart
     }
     else cart
@@ -375,8 +378,8 @@ object CartBoService extends BoService {
       if (optCoupon.isDefined) CouponService.releaseCoupon(optCoupon.get)
     })
 
-    val updatedCart = new StoreCart(uuid = UUID.randomUUID().toString, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
-    uuidHandler.setCart(updatedCart)
+    val updatedCart = new StoreCart(dataUuid = cart.dataUuid, userUuid = cart.userUuid)
+    StoreCartDao.save(updatedCart)
     updatedCart
   }
 
@@ -408,7 +411,7 @@ object CartBoService extends BoService {
 
         val coupons = newCoupon :: cart.coupons
         val updatedCart = _unvalidateCart(cart).copy(coupons = coupons)
-        uuidHandler.setCart(updatedCart)
+        StoreCartDao.save(updatedCart)
         updatedCart
       }
     }
@@ -444,7 +447,7 @@ object CartBoService extends BoService {
         // reprise des items existants sauf celui à supprimer
         val coupons = Utils.remove(cart.coupons, existCoupon.get)
         val updatedCart = _unvalidateCart(cart).copy(coupons = coupons)
-        uuidHandler.setCart(updatedCart)
+        StoreCartDao.save(updatedCart)
         updatedCart
       }
     }
@@ -478,8 +481,8 @@ object CartBoService extends BoService {
 
     val finalPrice = if (endPrice.isDefined) endPrice.get - reduction else price - reduction
 
-    CartVO(price, endPrice, reduction, finalPrice, cartItems.length, cart.uuid,
-      cartItems.toArray, coupons.toArray, cart.inTransaction)
+    CartVO(price, endPrice, reduction, finalPrice, cartItems.length, cart.transactionUuid,
+      cartItems.toArray, coupons.toArray)
   }
 
   /**
@@ -517,7 +520,7 @@ object CartBoService extends BoService {
       if (errors.size > 0) throw new ValidateCartException(errors)
 
       val updatedCart = cart.copy(validate = true)
-      uuidHandler.setCart(updatedCart)
+      StoreCartDao.save(updatedCart)
       updatedCart
     }
     else cart
@@ -549,7 +552,7 @@ object CartBoService extends BoService {
     //TRANSACTION 1 : SUPPRESSIONS
     DB localTx { implicit session =>
 
-      if (cartTTC.inTransaction) {
+      if (cart.inTransaction) {
         // On supprime tout ce qui concerne l'ancien BOCart (s'il est en attente)
         val boCart = BOCart.findByTransactionUuidAndStatus(cartTTC.uuid, TransactionStatus.PENDING)
         if (boCart.isDefined) {
@@ -574,7 +577,6 @@ object CartBoService extends BoService {
     }
 
     val updatedCart = valideCart.copy(inTransaction = true)
-    val updatedCartTTC = cartTTC.copy(inTransaction = true)
 
     //TRANSACTION 2 : INSERTIONS
     DB localTx { implicit session =>
@@ -701,9 +703,9 @@ object CartBoService extends BoService {
       }
     }
 
-    uuidHandler.setCart(updatedCart)
+    StoreCartDao.save(updatedCart)
 
-    val renderedCart = CartRenderService.renderTransactionCart(updatedCartTTC, rate)
+    val renderedCart = CartRenderService.renderTransactionCart(cartTTC, rate)
     Map(
       "amount" -> renderedCart("finalPrice"),
       "currencyCode" -> rate.code,
@@ -764,8 +766,8 @@ object CartBoService extends BoService {
             productService.incrementSales(ticketType, boCartItem.quantity)
           }
         }
-        val updatedCart = StoreCart(uuid = UUID.randomUUID().toString, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
-        uuidHandler.setCart(updatedCart)
+        val updatedCart = StoreCart(dataUuid = cart.dataUuid, userUuid = cart.userUuid)
+        StoreCartDao.save(updatedCart)
         emailingData
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
     }
@@ -789,8 +791,8 @@ object CartBoService extends BoService {
           }.update.apply()
         }
 
-        val updatedCart = cart.copy(uuid = UUID.randomUUID().toString, inTransaction = false) //cartVO.uuid = null;
-        uuidHandler.setCart(updatedCart)
+        val updatedCart = cart.copy(inTransaction = false) //cartVO.uuid = null;
+        StoreCartDao.save(updatedCart)
         updatedCart
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
     }
@@ -839,7 +841,7 @@ case class RemoveCouponFromCartException(override val errors: CartErrors) extend
 case class ValidateCartException(override val errors: CartErrors) extends CartException(errors)
 
 case class CartVO(price: Long = 0, endPrice: Option[Long] = Some(0), reduction: Long = 0, finalPrice: Long = 0, count: Int = 0, uuid: String,
-                  cartItemVOs: Array[CartItemVO] = Array(), coupons: Array[CouponVO] = Array(), inTransaction: Boolean = false)
+                  cartItemVOs: Array[CartItemVO] = Array(), coupons: Array[CouponVO] = Array())
 
 object ProductType extends Enumeration {
 
