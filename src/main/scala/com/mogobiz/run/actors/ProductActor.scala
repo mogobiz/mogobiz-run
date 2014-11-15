@@ -35,6 +35,7 @@ object ProductActor {
 class ProductActor extends Actor {
   def receive = {
     case q: QueryProductRequest =>
+      val promotionId = q.params.promotionId
       val promotionIds = q.params.hasPromotion.map(v => {
         if(v) {
           val ids = promotionHandler.getPromotionIds(q.storeCode)
@@ -42,8 +43,8 @@ class ProductActor extends Actor {
           else Some(ids.mkString("|"))
         }else None
       }) match {
-        case Some(ids) => ids
-        case _ => None
+        case Some(s) => s
+        case _ => promotionId
       }
 
       val params = q.params.copy(promotionId = promotionIds)
