@@ -18,7 +18,7 @@ object Mapping extends App {
 
   def set() {
     def route(url: String) = "http://" + com.mogobiz.es.Settings.ElasticSearch.FullUrl + url
-    def mappingFor(name: String) = new File(this.getClass.getClassLoader.getResource(s"es/mappings/$name.json").toURI)
+    def mappingFor(name: String) = new File(this.getClass.getClassLoader.getResource(s"es/run/mappings/$name.json").toURI)
 
     implicit val system = akka.actor.ActorSystem("mogobiz-boot")
     val pipeline: HttpRequest => scala.concurrent.Future[HttpResponse] = sendReceive
@@ -40,7 +40,7 @@ object Mapping extends App {
 
 
   private def mappingFiles = {
-    val dir = new File(this.getClass.getClassLoader.getResource(s"es/mappings").toURI)
+    val dir = new File(this.getClass.getClassLoader.getResource(s"es/run/mappings").toURI)
     dir.listFiles.map(_.getName.split('.')(0))
   }
 }
