@@ -97,7 +97,7 @@ class CategorySpec extends MogobizRouteTest {
   def checkCategoryHightech(category: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
     category \ "id" must be_==(JInt(20))
     category \ "parentId" must be_==(JNull)
-    category \ "keywords" must be_==(JNull)
+    category \ "keywords" must be_==(JString(""))
     category \ "hide" must be_==(JBool(false))
     category \ "description" must be_==(JNull)
     category \ "name" must be_==(JString("Hightech"))
@@ -123,17 +123,21 @@ class CategorySpec extends MogobizRouteTest {
   }
 
   def checkCategoryTelevisions(category: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
+    println("++++++++++++++++++++++++++")
+    println(category)
+    println("++++++++++++++++++++++++++")
+
     category \ "id" must be_==(JInt(21))
     category \ "parentId" must be_==(JInt(20))
     category \ "keywords" must be_==(JString("TV télé télévision HD"))
     category \ "hide" must be_==(JBool(false))
-    category \ "description" must be_==(JNull)
+    category \ "description" must be_==(JString(""))
     category \ "name" must be_==(JString("Télévisions"))
     category \ "path" must be_==(JString("hightech/televisions"))
     category \ "increments" must be_==(JInt(0))
-    category \ "uuid" must be_==(JString("77057fd0-0709-4320-a14e-2957bc96946c"))
+    category \ "uuid" must be_==(JString("59bcb084-090f-4686-b1fd-1596865cb4ac")) //(JString("77057fd0-0709-4320-a14e-2957bc96946c"))
     category \ "imported" must be_==(JNothing)
-    checkLang(category, checkOnlyLang, "fr", JString("Télévisions"), JNull, JString("TV télé télévision HD"))
+    checkLang(category, checkOnlyLang, "fr", JString("Télévisions"), JString(""), JString("TV télé télévision HD"))
     checkLang(category, checkOnlyLang, "en", JString("Televisions"), JNothing, JNothing)
   }
 
