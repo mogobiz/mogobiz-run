@@ -12,8 +12,6 @@ class ProductSpec extends MogobizRouteTest{
 
   "The product service" should {
 
-    node.client().admin().indices().prepareRefresh().execute().actionGet()
-
     "return products, categories, brands and tags for suggestions" in {
       Get("/store/" + STORE + "/products/find?query=hab") ~> sealRoute(routes) ~> check {
         val suggestions: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))

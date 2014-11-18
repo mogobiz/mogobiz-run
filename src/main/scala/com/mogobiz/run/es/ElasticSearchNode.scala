@@ -26,8 +26,14 @@ import org.slf4j.LoggerFactory
  */
 trait ElasticSearchNode {
 
-  def start():Unit
+  def prepareRefresh(node: Node): Unit = {
+    node.client().admin().cluster().prepareHealth().setWaitForYellowStatus().execute().actionGet();
+    node.client().admin().indices().prepareRefresh().execute().actionGet()
+  }
 
+  def startES() : Node
+
+  def stopES(node: Node) : Unit
 }
 
 trait EmbeddedElasticSearchNode extends ElasticSearchNode {
@@ -38,7 +44,9 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
   val icuPlugin = "elasticsearch/elasticsearch-analysis-icu/2.2.0"
   val plugins = Seq(esHeadPlugin)
 
-  lazy val node:Node = {
+  def startES() : Node = {
+    logger.info("ES is starting...")
+    // Prépare les plugins
     val initialSettings : Tuple[Settings, Environment]= InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true)
     if (!initialSettings.v2().pluginsFile().exists()) {
       FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile())
@@ -55,19 +63,13 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       })
     }
 
+    // Copie le jeu de données dans un répertoire temporaire
     val tmpdir:String = s"${System.getProperty("java.io.tmpdir")}${System.currentTimeMillis()}/data"
-    logger.debug(tmpdir)
-//    println("tmpdir="+tmpdir)
     new File(tmpdir).mkdirs()
 
     implicit def toPath (filename: String) = {
-//      println("toPath => filename="+filename)
-//      println("os.name="+System.getProperty("os.name"))
-//      println(File.separator)
       val c = filename.charAt(0)
-
-      if((c== '/' || c=='\\') && c.toString!=File.separator)
-        get(filename.substring(1))
+      if ((c== '/' || c=='\\') && c.toString!=File.separator) get(filename.substring(1))
       else get(filename)
     }
 
@@ -85,32 +87,24 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       }
     })
 
-
     val esNode: Node = NodeBuilder.nodeBuilder().local(false).clusterName(EsCluster).settings(
-      ImmutableSettings.settingsBuilder().put("path.data", "/usr/local/var/elasticsearch/").put("script.disable_dynamic", false)
+      ImmutableSettings.settingsBuilder().put("path.data", tmpdir).put("script.disable_dynamic", false)
     ).node()
 
-    Runtime.getRuntime.addShutdownHook(new Thread() {
-      override def run() : Unit = {
-        if(!node.isClosed){
-          node.close()
-          logger.info("ES is stopped.")
-        }
-        new File(node.settings().get("path.data")).delete()
-      }
-    })
+    // On attend que ES est bien démarré
+    esNode.client().admin().cluster().prepareHealth().setWaitForYellowStatus().execute().actionGet();
 
-    esNode.client().admin().indices().prepareRefresh().execute().actionGet()
-
+    logger.info(s"ES is started.")
     esNode
   }
 
-  override def start() : Unit = {
-    if(node.isClosed){
-      node.start()
-      logger.info("ES is starting...")
+  def stopES(node: Node) : Unit = {
+    logger.info("ES is stopping...")
+    if (!node.isClosed) {
+      node.close()
     }
-    logger.info("ES is started")
+    new File(node.settings().get("path.data")).delete()
+    logger.info("ES is stopped.")
   }
 
 }

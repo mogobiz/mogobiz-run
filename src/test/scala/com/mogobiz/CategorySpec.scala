@@ -16,8 +16,6 @@ class CategorySpec extends MogobizRouteTest {
 
   "The Category service" should {
 
-    //node.client().admin().indices().prepareRefresh().execute().actionGet()
-
     "return not hidden categories" in {
       Get("/store/" + STORE + "/categories") ~> sealRoute(routes) ~> check {
         val categories: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
