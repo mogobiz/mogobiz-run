@@ -1,4 +1,4 @@
-package com.mogobiz.run.vo
+package com.mogobiz.run.utils
 
 import org.json4s.JsonAST.JValue
 import org.json4s._
