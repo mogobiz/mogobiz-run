@@ -6,8 +6,8 @@ import java.util.Date
 import com.mogobiz.run.es._
 import com.mogobiz.run.es.EsClientOld
 import EsClientOld._
-import com.mogobiz.run.model.Promotion._
-import com.mogobiz.run.vo.Paging
+import com.mogobiz.run.model.RequestParameters.PromotionRequest
+import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import org.elasticsearch.search.SearchHits

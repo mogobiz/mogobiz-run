@@ -4,12 +4,10 @@ import akka.actor.Actor
 import com.mogobiz.run.config.HandlersConfig
 import HandlersConfig._
 import PromotionActor._
-import com.mogobiz.run.model.Promotion._
+import com.mogobiz.run.model.RequestParameters.PromotionRequest
 
-/**
- *
- * Created by smanciot on 20/09/14.
- */
+import scala.util.Try
+
 object PromotionActor {
 
   case class QueryPromotionRequest(storeCode: String, params:PromotionRequest)
@@ -19,6 +17,6 @@ object PromotionActor {
 class PromotionActor extends Actor {
   def receive = {
     case q: QueryPromotionRequest =>
-      sender ! promotionHandler.getPromotions(q.storeCode, q.params)
+      sender ! Try(promotionHandler.getPromotions(q.storeCode, q.params))
   }
 }

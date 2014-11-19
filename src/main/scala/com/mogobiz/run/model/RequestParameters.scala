@@ -1,15 +1,13 @@
 package com.mogobiz.run.model
 
-import com.mogobiz.run.vo.PagingParams
+import com.mogobiz.run.utils.PagingParams
 
-/**
- *
- * Created by smanciot on 20/09/14.
- */
-object Promotion {
+object RequestParameters {
 
-  case class PromotionRequest(override val maxItemPerPage: Option[Int]
-                              , override val  pageOffset: Option[Int]
+  case class Prefs(productsNumber: Integer)
+
+  case class PromotionRequest(  override val maxItemPerPage: Option[Int]
+                              , override val pageOffset: Option[Int]
                               , orderBy:Option[String]
                               , orderDirection: Option[String]
                               , categoryPath: Option[String]
