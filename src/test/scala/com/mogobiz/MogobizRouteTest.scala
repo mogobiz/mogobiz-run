@@ -1,6 +1,5 @@
 package com.mogobiz
 
-import com.mogobiz.run.boot.DBInitializer
 import com.mogobiz.run.es.EmbeddedElasticSearchNode
 import com.mogobiz.system.MogobizSystem
 import org.elasticsearch.node.Node
@@ -35,5 +34,4 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
     case JArray(a) => a
     case _ => List(j)
   }
-
 }
