@@ -12,3 +12,4 @@ src/main/resources/rebel.xml
 plugins/*
 src/main/resources/es
 *.jar
+*.iml
