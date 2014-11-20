@@ -6,6 +6,7 @@ import com.mogobiz.run.actors.CartActor._
 import com.mogobiz.run.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.run.config.HandlersConfig
 import HandlersConfig._
+import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 
 object CartActor {

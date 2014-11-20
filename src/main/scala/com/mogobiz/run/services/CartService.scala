@@ -6,6 +6,7 @@ import com.mogobiz.run.actors.CartActor._
 import com.mogobiz.run.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
+import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.session.Session
 import spray.routing.Directives
