@@ -3,9 +3,9 @@ package com.mogobiz.run.handlers
 
 import com.mogobiz.run.es._
 import com.mogobiz.run.es.EsClientOld
+import com.mogobiz.run.model.RequestParameters.FacetRequest
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s}
 import com.sksamuel.elastic4s.{SearchType, FilterDefinition}
-import com.mogobiz.run.model.FacetRequest
 import org.json4s._
 import org.json4s.JsonAST.{JObject, JValue}
 import com.mogobiz.es.aggregations.Aggregations._
@@ -172,7 +172,7 @@ class FacetHandler {
       } searchType SearchType.Count
 
     val resagg = EsClientOld searchAgg req
-    println("getCommentNotations resagg:",resagg)
+//    println("getCommentNotations resagg:",resagg)
 
     val keyValue = for {
       JArray(buckets) <- resagg \ "notations" \ "buckets"
@@ -181,7 +181,7 @@ class FacetHandler {
       JField("doc_count", JInt(value)) <- bucket
     } yield  JObject(List(JField("notation", JString(key)), JField("nbcomments", JInt(value))))
 
-    println("getCommentNotations keyValue:",keyValue)
+//    println("getCommentNotations keyValue:",keyValue)
     keyValue
 
   }
