@@ -7,9 +7,10 @@ import com.mogobiz.run.es._
 import com.mogobiz.run.es.EsClientOld._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
 import com.mogobiz.run.learning.UserActionRegistration
+import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
-import com.mogobiz.run.vo.Paging
+import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s, search => esearch4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import org.elasticsearch.action.get.MultiGetItemResponse
@@ -335,7 +336,7 @@ class ProductHandler extends JsonUtil {
     queryProductById(store, productId, params)
   }
 
-  def getProductDates(storeCode: String, params: ProductDatesRequest, productId: Long, uuid: String): JValue = {
+  def getProductDates(storeCode: String, date:Option[String], productId: Long, uuid: String): JValue = {
     val filters: List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
     val hits: SearchHits = EsClientOld.searchAllRaw(
       filterRequest(esearch4s in storeCode -> "product", filters) sourceInclude (List("datePeriods", "intraDayPeriods"): _*)
@@ -345,7 +346,7 @@ class ProductHandler extends JsonUtil {
     //date or today
     val now = Calendar.getInstance().getTime
     val today = getCalendar(sdf.parse(sdf.format(now)))
-    var startCalendar = getCalendar(sdf.parse(params.date.getOrElse(sdf.format(now))))
+    var startCalendar = getCalendar(sdf.parse(date.getOrElse(sdf.format(now))))
     if (startCalendar.compareTo(today) < 0) {
       startCalendar = today
     }
@@ -367,14 +368,14 @@ class ProductHandler extends JsonUtil {
     checkDate(getCalendar(startCalendar.getTime), endCalendar, List()).reverse
   }
 
-  def getProductTimes(storeCode: String, params: ProductTimesRequest, productId: Long, uuid: String): JValue = {
+  def getProductTimes(storeCode: String, date:Option[String], productId: Long, uuid: String): JValue = {
     val filters: List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
     val hits: SearchHits = EsClientOld.searchAllRaw(
       filterRequest(esearch4s in storeCode -> "product", filters) sourceInclude (List("intraDayPeriods"): _*)
     )
     val intraDayPeriods: List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
     //date or today
-    val day = getCalendar(sdf.parse(params.date.getOrElse(sdf.format(Calendar.getInstance().getTime))))
+    val day = getCalendar(sdf.parse(date.getOrElse(sdf.format(Calendar.getInstance().getTime))))
     implicit def json4sFormats: Formats = DefaultFormats
     //TODO refacto this part with the one is in isIncluded method
     intraDayPeriods.filter {
@@ -479,7 +480,7 @@ class ProductHandler extends JsonUtil {
     Extraction.decompose(paging)
   }
 
-  def getProductHistory(storeCode: String, req: VisitorHistoryRequest, sessionId: String): List[JValue] = {
+  def getProductHistory(storeCode: String, sessionId: String, currency: Option[String], country: Option[String], lang: String): List[JValue] = {
     implicit def json4sFormats: Formats = DefaultFormats
     val ids: List[Long] =
       EsClientOld.loadRaw(get id sessionId from(historyIndex(storeCode), "history")) match {
@@ -488,7 +489,7 @@ class ProductHandler extends JsonUtil {
       }
     if (ids.isEmpty) List()
     else getProductsByIds(
-      storeCode, ids, ProductDetailsRequest(historize = false, None, req.currency, req.country, req.lang)
+      storeCode, ids, ProductDetailsRequest(historize = false, None, currency, country, lang)
     )
   }
 

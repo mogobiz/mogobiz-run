@@ -5,7 +5,10 @@ import com.mogobiz.run.actors.EsUpdateActor.ProductNotationsUpdateRequest
 import com.mogobiz.run.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductDetailsRequest, QueryProductRequest, _}
 import com.mogobiz.run.config.HandlersConfig
 import HandlersConfig._
+import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
+
+import scala.util.Try
 
 object ProductActor {
 
@@ -17,9 +20,9 @@ object ProductActor {
 
   case class QueryProductDetailsRequest(storeCode: String, params: ProductDetailsRequest, productId: Long, uuid: String)
 
-  case class QueryProductDatesRequest(storeCode: String, params: ProductDatesRequest, productId: Long, uuid: String)
+  case class QueryProductDatesRequest(storeCode: String, date:Option[String], productId: Long, uuid: String)
 
-  case class QueryProductTimesRequest(storeCode: String, params: ProductTimesRequest, productId: Long, uuid: String)
+  case class QueryProductTimesRequest(storeCode: String, date:Option[String], productId: Long, uuid: String)
 
   case class QueryUpdateCommentRequest(storeCode: String, productId: Long, commentId: String, useful: Boolean)
 
@@ -27,7 +30,7 @@ object ProductActor {
 
   case class QueryCreateCommentRequest(storeCode: String, productId: Long, req: CommentRequest)
 
-  case class QueryVisitedProductRequest(storeCode: String, req: VisitorHistoryRequest,  uuid: String)
+  case class QueryVisitedProductRequest(storeCode: String, uuid: String, currency: Option[String], country: Option[String], lang: String)
 
   case class QueryNotationProductRequest(storeCode: String, lang: String)
 }
@@ -48,25 +51,25 @@ class ProductActor extends Actor {
       }
 
       val params = q.params.copy(promotionId = promotionIds)
-      sender ! productHandler.queryProductsByCriteria(q.storeCode, params)
+      sender ! Try(productHandler.queryProductsByCriteria(q.storeCode, params))
 
     case q: QueryFindProductRequest =>
-      sender ! productHandler.queryProductsByFulltextCriteria(q.storeCode, q.params)
+      sender ! Try(productHandler.queryProductsByFulltextCriteria(q.storeCode, q.params))
 
     case q: QueryCompareProductRequest =>
-      sender ! productHandler.getProductsFeatures(q.storeCode, q.params)
+      sender ! Try(productHandler.getProductsFeatures(q.storeCode, q.params))
 
     case q: QueryProductDetailsRequest =>
-      sender ! productHandler.getProductDetails(q.storeCode, q.params, q.productId, q.uuid)
+      sender ! Try(productHandler.getProductDetails(q.storeCode, q.params, q.productId, q.uuid))
 
     case q: QueryProductDatesRequest =>
-      sender ! productHandler.getProductDates(q.storeCode, q.params, q.productId, q.uuid)
+      sender ! Try(productHandler.getProductDates(q.storeCode, q.date, q.productId, q.uuid))
 
     case q: QueryProductTimesRequest =>
-      sender ! productHandler.getProductTimes(q.storeCode, q.params, q.productId, q.uuid)
+      sender ! Try(productHandler.getProductTimes(q.storeCode, q.date, q.productId, q.uuid))
 
     case q: QueryCreateCommentRequest =>
-      val comment = productHandler.createComment(q.storeCode, q.productId, q.req)
+      val comment = Try(productHandler.createComment(q.storeCode, q.productId, q.req))
 
       val updateActor = context.actorOf(Props[EsUpdateActor])
       updateActor ! ProductNotationsUpdateRequest(q.storeCode, q.productId)
@@ -74,16 +77,16 @@ class ProductActor extends Actor {
       sender ! comment
 
     case q: QueryGetCommentRequest =>
-      sender ! productHandler.getComment(q.storeCode, q.productId, q.req)
+      sender ! Try(productHandler.getComment(q.storeCode, q.productId, q.req))
 
     case q: QueryUpdateCommentRequest =>
-      sender ! productHandler.updateComment(q.storeCode, q.productId, q.commentId, q.useful)
+      sender ! Try(productHandler.updateComment(q.storeCode, q.productId, q.commentId, q.useful))
 
     case q: QueryVisitedProductRequest =>
-      sender ! productHandler.getProductHistory(q.storeCode, q.req, q.uuid)
+      sender ! Try(productHandler.getProductHistory(q.storeCode, q.uuid, q.currency, q.country,  q.lang))
 
     case q: QueryNotationProductRequest =>
-      sender ! productHandler.getProductsByNotation(q.storeCode, q.lang)
+      sender ! Try(productHandler.getProductsByNotation(q.storeCode, q.lang))
   }
 
 }
