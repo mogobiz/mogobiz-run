@@ -4,9 +4,12 @@ import com.mogobiz.MogobizRouteTest
 import org.specs2.matcher._
 import org.json4s.native.JsonParser
 import org.json4s.JsonAST._
-import spray.http.HttpEntity
+import spray.http.{HttpHeaders, HttpCookie, HttpEntity}
 
 class ProductServiceSpec extends MogobizRouteTest {
+
+  val cookies = Seq(new HttpCookie("mogobiz_uuid", "UNIT_TEST"), new HttpCookie("Path","/store/"+STORE))
+  val request_headers = List(HttpHeaders.Cookie(cookies))
 
   "The products route of Product service" should {
     "return products on default criteria" in {
@@ -66,114 +69,112 @@ class ProductServiceSpec extends MogobizRouteTest {
     }
   }
 
-    "The 'notation' route of Product service" should {
-      "return all notations" in {
-        Get("/store/" + STORE + "/products/notation") ~> sealRoute(routes) ~> check {
-          val res: JValue = JsonParser.parse(responseAs[String])
-          println("notation result: ", res)
-          response.status.intValue must be_==(200)
-        }
+  "The 'notation' route of Product service" should {
+    "return all notations" in {
+      Get("/store/" + STORE + "/products/notation") ~> sealRoute(routes) ~> check {
+        val res: JValue = JsonParser.parse(responseAs[String])
+        println("notation result: ", res)
+        response.status.intValue must be_==(200)
+      }
+    }
+  }
+
+  "The 'product' route of Product service" should {
+    "return product detail with default parameters (historize=false)" in {
+      Get("/store/" + STORE + "/products/61") ~> sealRoute(routes) ~> check {
+        val res: JValue = JsonParser.parse(responseAs[String])
+        println("product detail(61): ", res)
+        //JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)),
+        // (features,JArray(List(JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Fabriqué en)), (domain,JString()), (value,JString(Chine)), (fr,JObject(List((name,JString(Fabriqué en)), (value,JString(Chine))))), (en,JObject(List((name,JString(Made in)), (value,JString(China))))), (uuid,JString(4aaddee3-bd1d-4e5b-84fd-2f8bc7412dd1)), (es,JObject(List((name,JString(Made in)), (value,JString(China))))))), JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Size)), (domain,JString()), (value,JString(100")), (fr,JObject(List((name,JString(Size)), (value,JString(100"))))), (uuid,JString(f2dbd97f-d5ff-49bf-a4dc-eba217a82e70)))), JObject(List((position,JInt(1)), (hide,JBool(false)), (name,JString(Resulution)), (domain,JString()), (value,JString(Full HD)), (fr,JObject(List((name,JString(Resulution)), (value,JString(Full HD))))), (uuid,JString(e0b85911-809f-4908-a7ce-3c0f72171b6e))))))), (availabilityDate,JNull), (fr,JObject(List((name,JString(TV 100" Full HD)), (description,JString(Full HD 100" Television)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString())))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()),
+        // (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(21)),
+        // (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((name,JString(Télévisions)), (description,JString()), (keywords,JString(TV télé télévision HD))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)),
+        // (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((name,JString(Samsung)), (website,JString(http://www.samsung.com/fr))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))),
+        // (skus,JArray(List(JObject(List((position,JNull), (startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (xprivate,JNull), (variation3,JObject(List())), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (id,JInt(63)), (picture,JNull), (nbSales,JInt(0)),
+        // (coupons,JArray(List(JObject(List((id,JInt(159))))))), (price,JInt(30000)), (minOrder,JInt(1)), (description,JString()), (name,JString(Standard)), (fr,JObject(List((name,JString(Standard)), (description,JString())))), (maxOrder,JInt(10)), (variation2,JObject(List())), (variation1,JObject(List())), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)),
+        // (stocks,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (initialStock,JInt(100)), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (stockOutSelling,JBool(false)), (imported,JString(2014-09-26T07:32:22Z)), (productId,JInt(61)), (productUuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (id,JInt(63)), (calendarType,JString(NO_DATE)), (stock,JInt(100)), (stockUnlimited,JBool(false)), (availabilityDate,JNull), (dateCreated,JString(2014-09-26T07:31:52Z)),
+        // (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))))))
+        response.status.intValue must be_==(200)
+
+        res \ "id" must be_==(JInt(61))
+        res \ "name" must be_==(JString("""TV 100" Full HD"""))
+        res \ "description" must be_==(JString("""Full HD 100" Television"""))
+      }
+    }
+    //TODO tests with parameters: historize, visitorId (lang, currency, country)
+
+
+
+    "return dates for product 61" in {
+      Get("/store/" + STORE + "/products/61/dates") ~> sealRoute(routes) ~> check {
+        val res: JValue = JsonParser.parse(responseAs[String])
+        println("product dates(61): ", res)
+        //JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)), (features,JArray(List(JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Fabriqué en)), (domain,JString()), (value,JString(Chine)), (fr,JObject(List((name,JString(Fabriqué en)), (value,JString(Chine))))), (en,JObject(List((name,JString(Made in)), (value,JString(China))))), (uuid,JString(4aaddee3-bd1d-4e5b-84fd-2f8bc7412dd1)), (es,JObject(List((name,JString(Made in)), (value,JString(China))))))), JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Size)), (domain,JString()), (value,JString(100")), (fr,JObject(List((name,JString(Size)), (value,JString(100"))))), (uuid,JString(f2dbd97f-d5ff-49bf-a4dc-eba217a82e70)))), JObject(List((position,JInt(1)), (hide,JBool(false)), (name,JString(Resulution)), (domain,JString()), (value,JString(Full HD)), (fr,JObject(List((name,JString(Resulution)), (value,JString(Full HD))))), (uuid,JString(e0b85911-809f-4908-a7ce-3c0f72171b6e))))))), (availabilityDate,JNull), (fr,JObject(List((name,JString(TV 100" Full HD)), (description,JString(Full HD 100" Television)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString())))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(21)), (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((name,JString(Télévisions)), (description,JString()), (keywords,JString(TV télé télévision HD))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((name,JString(Samsung)), (website,JString(http://www.samsung.com/fr))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))), (skus,JArray(List(JObject(List((position,JNull), (startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (xprivate,JNull), (variation3,JObject(List())), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (id,JInt(63)), (picture,JNull), (nbSales,JInt(0)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (price,JInt(30000)), (minOrder,JInt(1)), (description,JString()), (name,JString(Standard)), (fr,JObject(List((name,JString(Standard)), (description,JString())))), (maxOrder,JInt(10)), (variation2,JObject(List())), (variation1,JObject(List())), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (stocks,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (initialStock,JInt(100)), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (stockOutSelling,JBool(false)), (imported,JString(2014-09-26T07:32:22Z)), (productId,JInt(61)), (productUuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (id,JInt(63)), (calendarType,JString(NO_DATE)), (stock,JInt(100)), (stockUnlimited,JBool(false)), (availabilityDate,JNull), (dateCreated,JString(2014-09-26T07:31:52Z)), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))))))
+        response.status.intValue must be_==(200)
+
+        //TODO complete assertion
+      }
+    }
+    "return times for product 61" in {
+      Get("/store/" + STORE + "/products/61/times") ~> sealRoute(routes) ~> check {
+        val res: JValue = JsonParser.parse(responseAs[String])
+        println("product times(61): ", res)
+        //JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)), (features,JArray(List(JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Fabriqué en)), (domain,JString()), (value,JString(Chine)), (fr,JObject(List((name,JString(Fabriqué en)), (value,JString(Chine))))), (en,JObject(List((name,JString(Made in)), (value,JString(China))))), (uuid,JString(4aaddee3-bd1d-4e5b-84fd-2f8bc7412dd1)), (es,JObject(List((name,JString(Made in)), (value,JString(China))))))), JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Size)), (domain,JString()), (value,JString(100")), (fr,JObject(List((name,JString(Size)), (value,JString(100"))))), (uuid,JString(f2dbd97f-d5ff-49bf-a4dc-eba217a82e70)))), JObject(List((position,JInt(1)), (hide,JBool(false)), (name,JString(Resulution)), (domain,JString()), (value,JString(Full HD)), (fr,JObject(List((name,JString(Resulution)), (value,JString(Full HD))))), (uuid,JString(e0b85911-809f-4908-a7ce-3c0f72171b6e))))))), (availabilityDate,JNull), (fr,JObject(List((name,JString(TV 100" Full HD)), (description,JString(Full HD 100" Television)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString())))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(21)), (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((name,JString(Télévisions)), (description,JString()), (keywords,JString(TV télé télévision HD))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((name,JString(Samsung)), (website,JString(http://www.samsung.com/fr))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))), (skus,JArray(List(JObject(List((position,JNull), (startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (xprivate,JNull), (variation3,JObject(List())), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (id,JInt(63)), (picture,JNull), (nbSales,JInt(0)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (price,JInt(30000)), (minOrder,JInt(1)), (description,JString()), (name,JString(Standard)), (fr,JObject(List((name,JString(Standard)), (description,JString())))), (maxOrder,JInt(10)), (variation2,JObject(List())), (variation1,JObject(List())), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (stocks,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (initialStock,JInt(100)), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (stockOutSelling,JBool(false)), (imported,JString(2014-09-26T07:32:22Z)), (productId,JInt(61)), (productUuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (id,JInt(63)), (calendarType,JString(NO_DATE)), (stock,JInt(100)), (stockUnlimited,JBool(false)), (availabilityDate,JNull), (dateCreated,JString(2014-09-26T07:31:52Z)), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))))))
+        response.status.intValue must be_==(200)
+
+        //TODO complete assertion
+      }
+    }
+  }
+
+  "The 'product comment' route in Product service" should {
+    "return new comment created for product 61" in {
+      val entity = HttpEntity(
+        """
+          |{
+          |    "userId": "userId_soapui",
+          |    "surname": "username_soapui",
+          |    "notation": 3,
+          |    "subject": "soap ui subject ___ ",
+          |    "comment": "dsfsdf dlsfnflsk dsf kdlf sd lkdsjfklsd ds dsfdff l lkj klj sdkklkjls fdskj kljlk  lj soapui failed after 2 weeks"
+          |}
+        """.stripMargin)
+      Post("/store/" + STORE + "/products/61/comments").withEntity(entity) ~> sealRoute(routes) ~> check {
+        val res: JValue = JsonParser.parse(responseAs[String])
+        println(res)
+        response.status.intValue must be_==(200)
       }
     }
 
-    "The 'product' route of Product service" should {
-      "return product detail with default parameters (historize=false)" in {
-        Get("/store/" + STORE + "/products/61") ~> sealRoute(routes) ~> check {
-          val res: JValue = JsonParser.parse(responseAs[String])
-          println("product detail(61): ", res)
-          //JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)),
-          // (features,JArray(List(JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Fabriqué en)), (domain,JString()), (value,JString(Chine)), (fr,JObject(List((name,JString(Fabriqué en)), (value,JString(Chine))))), (en,JObject(List((name,JString(Made in)), (value,JString(China))))), (uuid,JString(4aaddee3-bd1d-4e5b-84fd-2f8bc7412dd1)), (es,JObject(List((name,JString(Made in)), (value,JString(China))))))), JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Size)), (domain,JString()), (value,JString(100")), (fr,JObject(List((name,JString(Size)), (value,JString(100"))))), (uuid,JString(f2dbd97f-d5ff-49bf-a4dc-eba217a82e70)))), JObject(List((position,JInt(1)), (hide,JBool(false)), (name,JString(Resulution)), (domain,JString()), (value,JString(Full HD)), (fr,JObject(List((name,JString(Resulution)), (value,JString(Full HD))))), (uuid,JString(e0b85911-809f-4908-a7ce-3c0f72171b6e))))))), (availabilityDate,JNull), (fr,JObject(List((name,JString(TV 100" Full HD)), (description,JString(Full HD 100" Television)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString())))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()),
-          // (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(21)),
-          // (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((name,JString(Télévisions)), (description,JString()), (keywords,JString(TV télé télévision HD))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)),
-          // (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((name,JString(Samsung)), (website,JString(http://www.samsung.com/fr))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))),
-          // (skus,JArray(List(JObject(List((position,JNull), (startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (xprivate,JNull), (variation3,JObject(List())), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (id,JInt(63)), (picture,JNull), (nbSales,JInt(0)),
-          // (coupons,JArray(List(JObject(List((id,JInt(159))))))), (price,JInt(30000)), (minOrder,JInt(1)), (description,JString()), (name,JString(Standard)), (fr,JObject(List((name,JString(Standard)), (description,JString())))), (maxOrder,JInt(10)), (variation2,JObject(List())), (variation1,JObject(List())), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)),
-          // (stocks,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (initialStock,JInt(100)), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (stockOutSelling,JBool(false)), (imported,JString(2014-09-26T07:32:22Z)), (productId,JInt(61)), (productUuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (id,JInt(63)), (calendarType,JString(NO_DATE)), (stock,JInt(100)), (stockUnlimited,JBool(false)), (availabilityDate,JNull), (dateCreated,JString(2014-09-26T07:31:52Z)),
-          // (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))))))
-          response.status.intValue must be_==(200)
 
-          res \ "id" must be_==(JInt(61))
-          res \ "name" must be_==(JString("""TV 100" Full HD"""))
-          res \ "description" must be_==(JString("""Full HD 100" Television"""))
-        }
-      }
-      //TODO tests with parameters: historize, visitorId (lang, currency, country)
-
-
-
-      "return dates for product 61" in {
-        Get("/store/" + STORE + "/products/61/dates") ~> sealRoute(routes) ~> check {
-          val res: JValue = JsonParser.parse(responseAs[String])
-          println("product dates(61): ", res)
-          //JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)), (features,JArray(List(JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Fabriqué en)), (domain,JString()), (value,JString(Chine)), (fr,JObject(List((name,JString(Fabriqué en)), (value,JString(Chine))))), (en,JObject(List((name,JString(Made in)), (value,JString(China))))), (uuid,JString(4aaddee3-bd1d-4e5b-84fd-2f8bc7412dd1)), (es,JObject(List((name,JString(Made in)), (value,JString(China))))))), JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Size)), (domain,JString()), (value,JString(100")), (fr,JObject(List((name,JString(Size)), (value,JString(100"))))), (uuid,JString(f2dbd97f-d5ff-49bf-a4dc-eba217a82e70)))), JObject(List((position,JInt(1)), (hide,JBool(false)), (name,JString(Resulution)), (domain,JString()), (value,JString(Full HD)), (fr,JObject(List((name,JString(Resulution)), (value,JString(Full HD))))), (uuid,JString(e0b85911-809f-4908-a7ce-3c0f72171b6e))))))), (availabilityDate,JNull), (fr,JObject(List((name,JString(TV 100" Full HD)), (description,JString(Full HD 100" Television)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString())))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(21)), (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((name,JString(Télévisions)), (description,JString()), (keywords,JString(TV télé télévision HD))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((name,JString(Samsung)), (website,JString(http://www.samsung.com/fr))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))), (skus,JArray(List(JObject(List((position,JNull), (startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (xprivate,JNull), (variation3,JObject(List())), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (id,JInt(63)), (picture,JNull), (nbSales,JInt(0)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (price,JInt(30000)), (minOrder,JInt(1)), (description,JString()), (name,JString(Standard)), (fr,JObject(List((name,JString(Standard)), (description,JString())))), (maxOrder,JInt(10)), (variation2,JObject(List())), (variation1,JObject(List())), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (stocks,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (initialStock,JInt(100)), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (stockOutSelling,JBool(false)), (imported,JString(2014-09-26T07:32:22Z)), (productId,JInt(61)), (productUuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (id,JInt(63)), (calendarType,JString(NO_DATE)), (stock,JInt(100)), (stockUnlimited,JBool(false)), (availabilityDate,JNull), (dateCreated,JString(2014-09-26T07:31:52Z)), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))))))
-          response.status.intValue must be_==(200)
-
-          //TODO complete assertion
-        }
-      }
-      "return times for product 61" in {
-        Get("/store/" + STORE + "/products/61/times") ~> sealRoute(routes) ~> check {
-          val res: JValue = JsonParser.parse(responseAs[String])
-          println("product times(61): ", res)
-          //JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)), (features,JArray(List(JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Fabriqué en)), (domain,JString()), (value,JString(Chine)), (fr,JObject(List((name,JString(Fabriqué en)), (value,JString(Chine))))), (en,JObject(List((name,JString(Made in)), (value,JString(China))))), (uuid,JString(4aaddee3-bd1d-4e5b-84fd-2f8bc7412dd1)), (es,JObject(List((name,JString(Made in)), (value,JString(China))))))), JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Size)), (domain,JString()), (value,JString(100")), (fr,JObject(List((name,JString(Size)), (value,JString(100"))))), (uuid,JString(f2dbd97f-d5ff-49bf-a4dc-eba217a82e70)))), JObject(List((position,JInt(1)), (hide,JBool(false)), (name,JString(Resulution)), (domain,JString()), (value,JString(Full HD)), (fr,JObject(List((name,JString(Resulution)), (value,JString(Full HD))))), (uuid,JString(e0b85911-809f-4908-a7ce-3c0f72171b6e))))))), (availabilityDate,JNull), (fr,JObject(List((name,JString(TV 100" Full HD)), (description,JString(Full HD 100" Television)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString())))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(21)), (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((name,JString(Télévisions)), (description,JString()), (keywords,JString(TV télé télévision HD))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((name,JString(Samsung)), (website,JString(http://www.samsung.com/fr))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))), (skus,JArray(List(JObject(List((position,JNull), (startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (xprivate,JNull), (variation3,JObject(List())), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (id,JInt(63)), (picture,JNull), (nbSales,JInt(0)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (price,JInt(30000)), (minOrder,JInt(1)), (description,JString()), (name,JString(Standard)), (fr,JObject(List((name,JString(Standard)), (description,JString())))), (maxOrder,JInt(10)), (variation2,JObject(List())), (variation1,JObject(List())), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (stocks,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (initialStock,JInt(100)), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (stockOutSelling,JBool(false)), (imported,JString(2014-09-26T07:32:22Z)), (productId,JInt(61)), (productUuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (id,JInt(63)), (calendarType,JString(NO_DATE)), (stock,JInt(100)), (stockUnlimited,JBool(false)), (availabilityDate,JNull), (dateCreated,JString(2014-09-26T07:31:52Z)), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))))))
-          response.status.intValue must be_==(200)
-
-          //TODO complete assertion
-        }
+    "return comments for product 61" in {
+      Get("/store/" + STORE + "/products/61/comments") ~> sealRoute(routes) ~> check {
+        val res: JValue = JsonParser.parse(responseAs[String])
+        println("GET product comment: ", res)
+        response.status.intValue must be_==(200)
       }
     }
 
-    "The 'product comment' route in Product service" should {
-
-      /* */
-      "return new comment created for product 61" in {
-        val entity = HttpEntity(
-          """
-            |{
-            |    "userId": "userId_soapui",
-            |    "surname": "username_soapui",
-            |    "notation": 3,
-            |    "subject": "soap ui subject ___ ",
-            |    "comment": "dsfsdf dlsfnflsk dsf kdlf sd lkdsjfklsd ds dsfdff l lkj klj sdkklkjls fdskj kljlk  lj soapui failed after 2 weeks"
-            |}
-          """.stripMargin)
-        Post("/store/" + STORE + "/products/61/comments").withEntity(entity) ~> sealRoute(routes) ~> check {
-          val res: JValue = JsonParser.parse(responseAs[String])
-          println(res)
-          response.status.intValue must be_==(200)
-        }
-      }
-
-
-      "return comments for product 61" in {
-        Get("/store/" + STORE + "/products/61/comments") ~> sealRoute(routes) ~> check {
-          val res: JValue = JsonParser.parse(responseAs[String])
-          println("GET product comment: ", res)
-          response.status.intValue must be_==(200)
-        }
-      }
-
-      /*
-      "return updated comment for product 61" in {
-        val entity = 0
-        Post("/store/" + STORE + "/products/61/comments/").withEntity(entity) ~> sealRoute(routes) ~> check {
-          val res: JValue = JsonParser.parse(responseAs[String])
-          println(res)
-          response.status.intValue must be_==(200)
-        }
-      }*/
-    }
-
-
-  /*
-    "The 'history' route in Product service" should {
-      skipped("TODO implement")
-      "return " in {
-        Get("/store/" + STORE + "/products/") ~> sealRoute(routes) ~> check {
-          val res: JValue = JsonParser.parse(responseAs[String])
-          println(res)
-          response.status.intValue must be_==(200)
-        }
+    /*
+    "return updated comment for product 61" in {
+      val entity = 0
+      Post("/store/" + STORE + "/products/61/comments/").withEntity(entity) ~> sealRoute(routes) ~> check {
+        val res: JValue = JsonParser.parse(responseAs[String])
+        println(res)
+        response.status.intValue must be_==(200)
       }
     }*/
+  }
+
+
+  "The 'history' route in Product service" should {
+    "return products visited by the user from its history" in {
+      Get("/store/" + STORE + "/history").withHeaders(request_headers) ~> sealRoute(routes) ~> check {
+        val res: JValue = JsonParser.parse(responseAs[String])
+        println("product history: ", res)
+        response.status.intValue must be_==(200)
+
+        //TODO complete test with detail?historize=true
+      }
+    }
+  }
 }
