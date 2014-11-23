@@ -1,6 +1,5 @@
 package com.mogobiz.run.es
 
-import java.io.File
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.Settings
@@ -16,16 +15,17 @@ object Mapping extends App {
 
   def clear = Await.result(EsClient.client.execute(delete index Settings.cart.EsIndex), Duration.Inf)
 
+  def mappingNames = List()
   def set() {
     def route(url: String) = "http://" + com.mogobiz.es.Settings.ElasticSearch.FullUrl + url
-    def mappingFor(name: String) = new File(this.getClass.getClassLoader.getResource(s"es/run/mappings/$name.json").toURI)
+    def mappingFor(name: String) = getClass().getResourceAsStream(s"es/run/mappings/$name.json")
 
     implicit val system = akka.actor.ActorSystem("mogobiz-boot")
     val pipeline: HttpRequest => scala.concurrent.Future[HttpResponse] = sendReceive
 
-    mappingFiles foreach { name =>
+    mappingNames foreach { name =>
       val url = s"/${Settings.cart.EsIndex}/$name/_mapping"
-      val mapping = scala.io.Source.fromFile(mappingFor(name)).mkString
+      val mapping = scala.io.Source.fromInputStream(mappingFor(name)).mkString
       val x: Future[Any] = pipeline(Post(route(url), mapping)) map { response: HttpResponse =>
         response.status match {
           case StatusCodes.OK => System.err.println(s"The mapping for `$name` was successfully set.")
@@ -36,11 +36,5 @@ object Mapping extends App {
     }
 
     system.shutdown
-  }
-
-
-  private def mappingFiles = {
-    val dir = new File(this.getClass.getClassLoader.getResource(s"es/run/mappings").toURI)
-    dir.listFiles.map(_.getName.split('.')(0))
   }
 }
