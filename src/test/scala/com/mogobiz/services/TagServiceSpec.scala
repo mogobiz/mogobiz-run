@@ -12,11 +12,18 @@ class TagServiceSpec extends MogobizRouteTest{
       Get("/store/" + STORE + "/tags") ~> sealRoute(routes) ~> check {
         val tags: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
         tags must have size 4
+        println(tags)
+        //List(
+        // JObject(List((id,JInt(89)), (name,JString(THEATER)), (fr,JObject(List((name,JString(THEATER))))), (increments,JInt(0)))),
+        // JObject(List((id,JInt(87)), (name,JString(PULL)), (fr,JObject(List((name,JString(PULL))))), (increments,JInt(0)))),
+        // JObject(List((id,JInt(88)), (name,JString(TSHIRT)), (fr,JObject(List((name,JString(TSHIRT))))), (increments,JInt(0)))),
+        // JObject(List((id,JInt(141)), (name,JString(CINEMA)), (fr,JObject(List((name,JString(CINEMA))))), (increments,JInt(0)))))
 
-        checkTag(tags(0), 87, "PULL")
-        checkTag(tags(1), 88, "TSHIRT")
-        checkTag(tags(2), 141, "CINEMA")
-        checkTag(tags(3), 89, "THEATER")
+
+        checkTag(tags(0), 89, "THEATER")
+        checkTag(tags(1), 87, "PULL")
+        checkTag(tags(2), 88, "TSHIRT")
+        checkTag(tags(3), 141, "CINEMA")
       }
     }
   }
