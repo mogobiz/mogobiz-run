@@ -1,18 +1,16 @@
 package com.mogobiz.run.services
 
 import akka.actor.ActorRef
-import com.mogobiz.run.exceptions.CommentException
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.run.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductRequest, _}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
-import com.mogobiz.run.vo.MogoError
 import spray.http.StatusCodes
 import spray.routing.Directives
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Try, Failure, Success}
+import scala.util.{Try}
 
 class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
 
