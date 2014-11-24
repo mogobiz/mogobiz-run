@@ -3,10 +3,12 @@ package com.mogobiz.run.handlers
 import java.text.SimpleDateFormat
 import java.util.{Date, Calendar, Locale}
 
+import com.mogobiz.es.EsClient
 import com.mogobiz.run.es._
 import com.mogobiz.run.es.EsClientOld._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
 import com.mogobiz.run.learning.UserActionRegistration
+import com.mogobiz.run.model.Mogobiz.Sku
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.vo.Paging
@@ -709,6 +711,20 @@ class ProductHandler extends JsonUtil {
     periods.exists(period => {
       day.getTime.compareTo(period.startDate) >= 0 && day.getTime.compareTo(period.endDate) <= 0
     })
+  }
+
+}
+
+object ProductDao extends JsonUtil {
+
+  def getProductAndSku(storeCode: String, skuId: Long) : Option[(Mogobiz.Product, Sku)] = {
+    // Création de la requête
+    val req = esearch4s in storeCode -> "product" filter termFilter("product.skus.id", skuId)
+
+    // Lancement de la requête
+    val productOpt = EsClient.search[Mogobiz.Product](req);
+    if (productOpt.isDefined) Some((productOpt.get, productOpt.get.skus.find(sku => sku.id == skuId).get))
+    else None
   }
 
 }

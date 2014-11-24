@@ -27,7 +27,7 @@ class CartHandler {
   }
 
   def queryCartInit(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
@@ -37,7 +37,7 @@ class CartHandler {
   }
 
   def queryCartClear(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
@@ -49,7 +49,7 @@ class CartHandler {
 
   def queryCartItemAdd(storeCode: String, uuid: String, params: CartParameters, cmd: AddToCartCommand, accountId:Option[Mogopay.Document]): Map[String, Any] = {
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
@@ -82,7 +82,7 @@ class CartHandler {
 
   def queryCartValidate(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
@@ -115,7 +115,7 @@ class CartHandler {
 
   def queryCartItemUpdate(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, cmd: UpdateCartItemCommand, accountId:Option[Mogopay.Document]): Map[String, Any] = {
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
@@ -142,7 +142,7 @@ class CartHandler {
   }
 
   def queryCartItemRemove(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
@@ -173,7 +173,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
       val updatedCart = cartService.addCoupon(storeCode, couponCode, cart)
@@ -200,7 +200,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
       val updatedCart = cartService.removeCoupon(storeCode, couponCode, cart)
@@ -229,7 +229,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
       val data = cartService.prepareBeforePayment(storeCode, params.country, params.state, currency, cart, params.buyer)
@@ -252,7 +252,7 @@ class CartHandler {
   }
 
   def queryCartPaymentCommit(storeCode: String, uuid: String, params: CommitTransactionParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
     cart.cartItems.foreach { item =>
         UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase)
     }
@@ -279,7 +279,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
     try {
       val updatedCart = cartService.cancel(cart)
       val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)

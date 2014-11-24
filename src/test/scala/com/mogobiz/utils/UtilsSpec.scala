@@ -1,90 +1,93 @@
 package com.mogobiz.utils
 
-import com.mogobiz.run.cart.domain.TicketType
-import com.mogobiz.run.config.MogobizDBsWithEnv
+import com.mogobiz.MogobizRouteTest
+import com.mogobiz.run.handlers.ProductDao
 import com.mogobiz.run.utils.Utils
-import org.joda.time.DateTime
-import org.specs2.mutable.Specification
-import scalikejdbc.config.DBs
+import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.{DateTimeZone, DateTime}
 
-class UtilsSpec  extends Specification  {
+class UtilsSpec extends MogobizRouteTest  {
 
-  MogobizDBsWithEnv("test").setupAll()
+  "Utils " should {
 
-  "no ticket type, no date" in {
-    val res = Utils.verifyAndExtractStartEndDate(None,None)
-    res._1 must beNone
-    res._2 must beNone
+    "verifyAndExtractStartEndDate for no date product without date" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 63)
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, None)
+      res must beNone
+    }
+
+    "verifyAndExtractStartEndDate for no date product with date now" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 63)
+      val date = Some(DateTime.now)
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beNone
+    }
+
+    "verifyAndExtractStartEndDate for DATE_ONLY product with accepted date and weekday" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 139)
+      val date = Some(DateTime.parse("2014-09-06T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beSome[(DateTime, DateTime)]
+      res.get._1 mustEqual DateTime.parse("2014-09-06T00:00:00.000Z", ISODateTimeFormat.dateTimeParser()).toDateTime(DateTimeZone.UTC)
+      res.get._1 mustEqual DateTime.parse("2014-09-06T00:00:00.000Z", ISODateTimeFormat.dateTimeParser()).toDateTime(DateTimeZone.UTC)
+    }
+
+    "verifyAndExtractStartEndDate for DATE_ONLY product with unaccepted weekday" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 139)
+      val date = Some(DateTime.parse("2014-09-05T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beNone
+    }
+
+    "verifyAndExtractStartEndDate for DATE_ONLY product with unaccepted past date" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 139)
+      val date = Some(DateTime.parse("2013-09-01T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beNone
+    }
+
+    "verifyAndExtractStartEndDate for DATE_ONLY product with unaccepted future date" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 139)
+      val date = Some(DateTime.parse("2014-10-01T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beNone
+    }
+
+    "verifyAndExtractStartEndDate for DATE_TIME product with accepted date time and weekday" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 146)
+      val date = Some(DateTime.parse("2014-09-06T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beSome[(DateTime, DateTime)]
+      res.get._1 mustEqual DateTime.parse("2014-09-06T15:00:00.000Z", ISODateTimeFormat.dateTimeParser())
+      res.get._2 mustEqual DateTime.parse("2014-09-06T17:00:00.000Z", ISODateTimeFormat.dateTimeParser())
+    }
+
+    "verifyAndExtractStartEndDate for DATE_TIME product with unaccepted weekday" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 146)
+      val date = Some(DateTime.parse("2014-09-05T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beNone
+    }
+
+    "verifyAndExtractStartEndDate for DATE_TIME product with unaccepted time" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 146)
+      val date = Some(DateTime.parse("2014-09-06T10:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beNone
+    }
+
+    "verifyAndExtractStartEndDate for DATE_TIME product with unaccepted past date" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 146)
+      val date = Some(DateTime.parse("2014-08-31T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beNone
+    }
+
+    "verifyAndExtractStartEndDate for DATE_TIME product with unaccepted future date" in {
+      val productAndSku = ProductDao.getProductAndSku(STORE, 146)
+      val date = Some(DateTime.parse("2014-10-04T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
+      res must beNone
+    }
   }
-
-  "no ticket type, a date" in {
-    val date = Some(DateTime.now)
-    val res = Utils.verifyAndExtractStartEndDate(None,date)
-    res._1 must beNone
-    res._2 must beNone
-  }
-
-  "some ticket type, no date" in {
-    val ticketType = TicketType.get(63)
-    val res = Utils.verifyAndExtractStartEndDate(Some(ticketType),None)
-    res._1 must beNone
-    res._2 must beNone
-  }
-
-  "a NO_DATE ticket type, date is now" in {
-    val ticketType = TicketType.get(63)
-    val date = Some(DateTime.now)
-    val res = Utils.verifyAndExtractStartEndDate(Some(ticketType),date)
-    res._1 must beNone
-    res._2 must beNone
-  }
-
-  "a DATE_ONLY ticket type, date is now" in {
-    val ticketType = TicketType.get(139)
-    val date = Some(DateTime.now)
-    val res = Utils.verifyAndExtractStartEndDate(Some(ticketType),date)
-    res._1 must beSome[DateTime]
-    res._2 must beSome[DateTime]
-  }
-
-  "a DATE_ONLY ticket type, date is out of range (old)" in {
-    val ticketType = TicketType.get(139)
-    val date = Some(new DateTime(2013,10,1,0,0))
-    val res = Utils.verifyAndExtractStartEndDate(Some(ticketType),date)
-    res._1 must beNone
-    res._2 must beNone
-  }
-
-  "a DATE_ONLY ticket type, date is out of range (future)" in {
-    val ticketType = TicketType.get(139)
-    val date = Some(new DateTime(2015,10,1,0,0))
-    val res = Utils.verifyAndExtractStartEndDate(Some(ticketType),date)
-    res._1 must beNone
-    res._2 must beNone
-  }
-
-  "a DATE_TIME ticket type, with the right date & time" in {
-    val ticketType = TicketType.get(146)
-    val date = Some(new DateTime(2014,DateTime.now.monthOfYear().get(),24,15,0))
-    val res = Utils.verifyAndExtractStartEndDate(Some(ticketType),date)
-    res._1 must beSome[DateTime]
-    res._2 must beSome[DateTime]
-  }
-
-  "a DATE_TIME ticket type, with on old date & time" in {
-    val ticketType = TicketType.get(146)
-    val date = Some(new DateTime(2014,2,1,15,0))
-    val res = Utils.verifyAndExtractStartEndDate(Some(ticketType),date)
-    res._1 must beNone
-    res._2 must beNone
-  }
-
-  "a DATE_TIME ticket type, with on future date & time" in {
-    val ticketType = TicketType.get(146)
-    val date = Some(new DateTime(2014,11,1,15,0))
-    val res = Utils.verifyAndExtractStartEndDate(Some(ticketType),date)
-    res._1 must beNone
-    res._2 must beNone
-  }
-
 }

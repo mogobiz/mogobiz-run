@@ -1,5 +1,6 @@
 package com.mogobiz
 
+import com.mogobiz.run.boot.DBInitializer
 import com.mogobiz.run.es.EmbeddedElasticSearchNode
 import com.mogobiz.system.MogobizSystem
 import org.elasticsearch.node.Node
@@ -26,7 +27,7 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
   // Node ES utilisé pour chaque test. Il est créer puis détruit à chaque test
   var esNode : Node = null
 
-  override def map(fs: =>Fragments) = Step(esNode = startES()) ^ fs ^ Step(stopES(esNode))
+  override def map(fs: =>Fragments) = Step(esNode = startES()) ^ Step(DBInitializer()) ^ fs ^ Step(stopES(esNode))
 
   override def after = prepareRefresh(esNode)
 
@@ -34,4 +35,13 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
     case JArray(a) => a
     case _ => List(j)
   }
+}
+
+object StartEmbeddedElasticSearchNodeApp extends App with EmbeddedElasticSearchNode {
+  val esNode = startES()
+
+  println("Press Enter to quit")
+  System.in.read()
+
+  stopES(esNode)
 }

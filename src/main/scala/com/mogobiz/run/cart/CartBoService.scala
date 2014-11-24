@@ -9,8 +9,9 @@ import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.run
 import com.mogobiz.run.config.{Settings, MogobizDBsWithEnv}
-import com.mogobiz.run.handlers.StoreCartDao
+import com.mogobiz.run.handlers.{ProductDao, StoreCartDao}
 import com.mogobiz.run.json.{JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer}
+import com.mogobiz.run.model.Mogobiz.Shipping
 import com.mogobiz.run.model._
 import com.mogobiz.run.cart.CustomTypes.CartErrors
 import com.mogobiz.run.cart.ProductType.ProductType
@@ -142,18 +143,21 @@ object CartBoService extends BoService {
       val product = Product.get(cartItem.productId).get
       val tax = taxRateService.findTaxRateByProduct(product, countryCode)
       val endPrice = taxRateService.calculateEndPrix(cartItem.price, tax)
+      val saleEndPrice = taxRateService.calculateEndPrix(cartItem.salePrice, tax)
       val totalPrice = cartItem.quantity * cartItem.price
+      val totalSalePrice = cartItem.quantity * cartItem.salePrice
       val totalEndPrice = if (endPrice.isDefined) Some(cartItem.quantity * endPrice.get) else None
+      val totalSaleEndPrice = if (saleEndPrice.isDefined) Some(cartItem.quantity * saleEndPrice.get) else None
 
       val newCartItem = CartItemVO(cartItem.id, cartItem.productId, cartItem.productName, cartItem.xtype, cartItem.calendarType,
         cartItem.skuId, cartItem.skuName, cartItem.quantity, cartItem.price, endPrice, tax, totalPrice, totalEndPrice,
+        cartItem.salePrice, saleEndPrice, totalSalePrice, totalEndPrice,
         cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping)
 
-
-      val newResultTotalEndPrice = if (result._2.isDefined && totalEndPrice.isDefined) Some(result._2.get + totalEndPrice.get)
+      val newResultTotalEndPrice = if (result._2.isDefined && totalSaleEndPrice.isDefined) Some(result._2.get + totalSaleEndPrice.get)
       else if (result._2.isDefined) result._2
-      else totalEndPrice
-      _computeCartItem(cartItems.tail, countryCode, (result._1 + totalPrice, newResultTotalEndPrice, newCartItem :: result._3))
+      else totalSaleEndPrice
+      _computeCartItem(cartItems.tail, countryCode, (result._1 + totalSalePrice, newResultTotalEndPrice, newCartItem :: result._3))
     }
   }
 
@@ -201,12 +205,12 @@ object CartBoService extends BoService {
    * @param currentAccountId
    * @return
    */
-  def initCart(uuid: String, currentAccountId: Option[String]): StoreCart = {
+  def initCart(storeCode: String, uuid: String, currentAccountId: Option[String]): StoreCart = {
     def getOrCreateStoreCart(cart: Option[StoreCart]) : StoreCart = {
       cart match {
         case Some(c) => c
         case None =>
-          val c = new StoreCart(dataUuid = uuid, userUuid = currentAccountId)
+          val c = new StoreCart(storeCode = storeCode, dataUuid = uuid, userUuid = currentAccountId)
           StoreCartDao.save(c)
           c
       }
@@ -256,24 +260,29 @@ object CartBoService extends BoService {
     println(s"dateTime=$dateTime")
     println("+++++++++++++++++++++++++++++++++++++++++")
 
-    // init local vars
-    val ticketType: TicketType = TicketType.get(ticketTypeId) //TODO error management
-
-    val product = ticketType.product.get
-    val startEndDate = Utils.verifyAndExtractStartEndDate(Some(ticketType), dateTime)
-
     var errors: CartErrors = Map()
 
-    if (ticketType.minOrder > quantity || (ticketType.maxOrder < quantity && ticketType.maxOrder > -1)) {
-      println(ticketType.minOrder + ">" + quantity)
-      println(ticketType.maxOrder + "<" + quantity)
-      errors = addError(errors, "quantity", "min.max.error", List(ticketType.minOrder, ticketType.maxOrder))
+    // init local vars
+    val productAndSku = ProductDao.getProductAndSku(cart.storeCode, ticketTypeId)
+
+    if (productAndSku.isEmpty) {
+      errors = addError(errors, "ticketTypeId", "unknown", null)
+      throw new AddCartItemException(errors)
     }
 
+    val product = productAndSku.get._1
+    val sku = productAndSku.get._2
+    val startEndDate = Utils.verifyAndExtractStartEndDate(product, sku, dateTime)
+
+    if (sku.minOrder > quantity || (sku.maxOrder < quantity && sku.maxOrder > -1)) {
+      println(sku.minOrder + ">" + quantity)
+      println(sku.maxOrder + "<" + quantity)
+      errors = addError(errors, "quantity", "min.max.error", List(sku.minOrder, sku.maxOrder))
+    }
     if (!dateTime.isDefined && !ProductCalendar.NO_DATE.equals(product.calendarType)) {
       errors = addError(errors, "dateTime", "nullable.error", null)
     }
-    else if (dateTime.isDefined && startEndDate == (None, None)) {
+    else if (dateTime.isDefined && startEndDate == None) {
       errors = addError(errors, "dateTime", "unsaleable.error", null)
     }
     if (product.xtype == ProductType.SERVICE) {
@@ -293,14 +302,13 @@ object CartBoService extends BoService {
     if (errors.size > 0)
       throw new AddCartItemException(errors)
 
-    val newItemId = new Date().getTime.toString
+    val newItemId = UUID.randomUUID().toString
     val registeredItems = registeredCartItems.map { item => item.copy(cartItemId = newItemId)}
 
-    // shipping
-    val shipping = product.shipping
-
-    val cartItem = StoreCartItem(newItemId, product.id, product.name, product.xtype, product.calendarType, ticketType.id, ticketType.name, quantity,
-      ticketType.price, startEndDate._1, startEndDate._2, registeredItems, shipping)
+    val startDate = if (startEndDate.isDefined) Some(startEndDate.get._1) else None
+    val endDate = if (startEndDate.isDefined) Some(startEndDate.get._2) else None
+    val cartItem = StoreCartItem(newItemId, product.id, product.name, product.xtype, product.calendarType, sku.id, sku.name, quantity,
+      sku.price, sku.salePrice, startDate, endDate, registeredItems, product.shipping)
 
     val newcart = _addCartItemIntoCart(_unvalidateCart(cart), cartItem)
     StoreCartDao.save(newcart)
@@ -378,7 +386,7 @@ object CartBoService extends BoService {
       if (optCoupon.isDefined) CouponService.releaseCoupon(optCoupon.get)
     })
 
-    val updatedCart = new StoreCart(dataUuid = cart.dataUuid, userUuid = cart.userUuid)
+    val updatedCart = new StoreCart(storeCode = cart.storeCode, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
     StoreCartDao.save(updatedCart)
     updatedCart
   }
@@ -766,7 +774,7 @@ object CartBoService extends BoService {
             productService.incrementSales(ticketType, boCartItem.quantity)
           }
         }
-        val updatedCart = StoreCart(dataUuid = cart.dataUuid, userUuid = cart.userUuid)
+        val updatedCart = StoreCart(storeCode = cart.storeCode, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
         StoreCartDao.save(updatedCart)
         emailingData
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
@@ -915,7 +923,8 @@ case class RegisteredCartItemVO(cartItemId: String = "",
 case class CartItemVO
 (id: String, productId: Long, productName: String, xtype: ProductType, calendarType: ProductCalendar, skuId: Long, skuName: String,
  quantity: Int, price: Long, endPrice: Option[Long], tax: Option[Float], totalPrice: Long, totalEndPrice: Option[Long],
- startDate: Option[DateTime], endDate: Option[DateTime], registeredCartItemVOs: Array[RegisteredCartItemVO], shipping: Option[ShippingVO])
+ salePrice: Long, saleEndPrice: Option[Long], saleTotalPrice: Long, saleTotalEndPrice: Option[Long],
+ startDate: Option[DateTime], endDate: Option[DateTime], registeredCartItemVOs: Array[RegisteredCartItemVO], shipping: Option[Shipping])
 
 object WeightUnit extends Enumeration {
 
