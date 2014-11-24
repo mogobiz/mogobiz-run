@@ -307,8 +307,9 @@ object CartBoService extends BoService {
 
     val startDate = if (startEndDate.isDefined) Some(startEndDate.get._1) else None
     val endDate = if (startEndDate.isDefined) Some(startEndDate.get._2) else None
+    val salePrice = if (sku.salePrice > 0) sku.salePrice else sku.price
     val cartItem = StoreCartItem(newItemId, product.id, product.name, product.xtype, product.calendarType, sku.id, sku.name, quantity,
-      sku.price, sku.salePrice, startDate, endDate, registeredItems, product.shipping)
+      sku.price, salePrice, startDate, endDate, registeredItems, product.shipping)
 
     val newcart = _addCartItemIntoCart(_unvalidateCart(cart), cartItem)
     StoreCartDao.save(newcart)
