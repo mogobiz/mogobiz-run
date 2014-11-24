@@ -11,6 +11,16 @@ class ProductDaoSpec extends MogobizRouteTest {
 
   "ProductDao" should {
 
+    "Retrieve a product from a id" in {
+      val product = ProductDao.get(STORE, 135)
+      product must beSome
+    }
+
+    "Retrieve a product from a unknown id" in {
+      val product = ProductDao.get(STORE, 0)
+      product must beNone
+    }
+
     "Retrieve a product and sku from a sku's id" in {
       val productAndSku = ProductDao.getProductAndSku(STORE, 137)
 

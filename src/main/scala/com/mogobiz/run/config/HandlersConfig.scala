@@ -19,4 +19,6 @@ object HandlersConfig {
   val salesHandler = new SalesHandler
 
   val resourceHandler = new ResourceHandler
+  val taxRateHandler = new TaxRateHandler
+  val couponHandler = new CouponHandler
 }

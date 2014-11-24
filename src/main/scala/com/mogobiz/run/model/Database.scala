@@ -7,6 +7,8 @@ import com.mogobiz.run.cart.LinearUnit.LinearUnitType
 import com.mogobiz.run.cart.ProductCalendar._
 import com.mogobiz.run.cart.ProductType._
 import com.mogobiz.run.cart.WeightUnit.WeightUnitType
+import com.mogobiz.run.cart.domain.ReductionRuleRef
+import com.mogobiz.run.cart.domain.ReductionRuleType.ReductionRuleType
 import com.mogobiz.run.cart.{ProductCalendarRef, ProductTypeRef, LinearUnitRef, WeightUnitRef}
 import com.mogobiz.run.json.{JodaDateTimeOptionSerializer, JodaDateTimeOptionDeserializer, JodaDateTimeDeserializer, JodaDateTimeSerializer}
 import org.joda.time.DateTime
@@ -100,4 +102,30 @@ object Mogobiz {
                      intraDayPeriods:Option[List[IntraDayPeriod]],
                      datePeriods:Option[List[DatePeriod]])
 
+  case class ReductionRule(id:Long,
+                           @JsonScalaEnumeration(classOf[ReductionRuleRef])
+                           xtype: ReductionRuleType,
+                           quantityMin:Option[Long],
+                           quantityMax:Option[Long],
+                           discount:Option[String], //discount (or percent) if type is DISCOUNT (example : -1000 or 10%)
+                           xPurchased:Option[Long],
+                           yOffered:Option[Long])
+
+  case class Coupon(id: Long,
+                    name: String,
+                    code: String,
+                    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
+                    @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                    startDate: Option[DateTime],
+                    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
+                    @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                    endDate: Option[DateTime],
+                    numberOfUses:Option[Long],
+                    sold:Option[Long],
+                    rules:List[ReductionRule],
+                    active: Boolean,
+                    anonymous:Boolean = false,
+                    catalogWise:Boolean = false,
+                    description: String,
+                    pastille: String)
 }

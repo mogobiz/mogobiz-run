@@ -717,6 +717,14 @@ class ProductHandler extends JsonUtil {
 
 object ProductDao extends JsonUtil {
 
+  def get(storeCode: String, id: Long) : Option[Mogobiz.Product] = {
+    // Création de la requête
+    val req = esearch4s in storeCode -> "product" filter termFilter("product.id", id)
+
+    // Lancement de la requête
+    EsClient.search[Mogobiz.Product](req);
+  }
+
   def getProductAndSku(storeCode: String, skuId: Long) : Option[(Mogobiz.Product, Sku)] = {
     // Création de la requête
     val req = esearch4s in storeCode -> "product" filter termFilter("product.skus.id", skuId)

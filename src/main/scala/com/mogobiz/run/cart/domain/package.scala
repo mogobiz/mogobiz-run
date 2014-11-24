@@ -1,5 +1,6 @@
 package com.mogobiz.run.cart
 
+import com.fasterxml.jackson.core.`type`.TypeReference
 import com.mogobiz.run.cart.ProductCalendar._
 import com.mogobiz.run.cart.ProductType._
 import com.mogobiz.run.cart.domain.ReductionRuleType.ReductionRuleType
@@ -356,6 +357,8 @@ package object domain {
       case _ => throw new Exception("Not expected ReductionRuleType")
     }
   }
+
+  class ReductionRuleRef extends TypeReference[ReductionRuleType.type]
 
   case class ReductionRule(
                             id:Long,

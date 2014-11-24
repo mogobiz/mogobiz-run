@@ -1,10 +1,8 @@
 package com.mogobiz.run.cart
 
 import java.io.ByteArrayOutputStream
-import java.util.{UUID, Date, Locale}
-import com.fasterxml.jackson.core.JsonGenerator
+import java.util.{UUID, Locale}
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.databind.{SerializerProvider, JsonSerializer}
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.run
@@ -27,7 +25,6 @@ import com.typesafe.scalalogging.slf4j.Logger
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.slf4j.LoggerFactory
-import scalikejdbc.config.DBs
 import scalikejdbc._
 
 /**
@@ -45,7 +42,6 @@ object CartBoService extends BoService {
   private val logger = Logger(LoggerFactory.getLogger("CartBoService"))
 
   val productService = ProductBoService
-  val taxRateService = TaxRateBoService
   val couponService = CouponService
 
   /**
@@ -133,17 +129,18 @@ object CartBoService extends BoService {
    * Calcul les montant de la liste des StoreCartItem et renvoie (prix hors taxe du panier, prix taxé du panier, liste CartItemVO avec prix)
    * @param cartItems
    * @param countryCode
+   * @param stateCode
    * @param result
    * @return
    */
-  private def _computeCartItem(cartItems: List[StoreCartItem], countryCode: Option[String], result: (Long, Option[Long], List[CartItemVO])) : (Long, Option[Long], List[CartItemVO]) = {
+  private def _computeCartItem(storeCode: String, cartItems: List[StoreCartItem], countryCode: Option[String], stateCode: Option[String], result: (Long, Option[Long], List[CartItemVO])) : (Long, Option[Long], List[CartItemVO]) = {
     if (cartItems.isEmpty) result
     else {
       val cartItem = cartItems.head
-      val product = Product.get(cartItem.productId).get
-      val tax = taxRateService.findTaxRateByProduct(product, countryCode)
-      val endPrice = taxRateService.calculateEndPrix(cartItem.price, tax)
-      val saleEndPrice = taxRateService.calculateEndPrix(cartItem.salePrice, tax)
+      val product = ProductDao.get(storeCode, cartItem.productId).get
+      val tax = taxRateHandler.findTaxRateByProduct(product, countryCode, stateCode)
+      val endPrice = taxRateHandler.calculateEndPrice(cartItem.price, tax)
+      val saleEndPrice = taxRateHandler.calculateEndPrice(cartItem.salePrice, tax)
       val totalPrice = cartItem.quantity * cartItem.price
       val totalSalePrice = cartItem.quantity * cartItem.salePrice
       val totalEndPrice = if (endPrice.isDefined) Some(cartItem.quantity * endPrice.get) else None
@@ -157,7 +154,7 @@ object CartBoService extends BoService {
       val newResultTotalEndPrice = if (result._2.isDefined && totalSaleEndPrice.isDefined) Some(result._2.get + totalSaleEndPrice.get)
       else if (result._2.isDefined) result._2
       else totalSaleEndPrice
-      _computeCartItem(cartItems.tail, countryCode, (result._1 + totalSalePrice, newResultTotalEndPrice, newCartItem :: result._3))
+      _computeCartItem(storeCode, cartItems.tail, countryCode, stateCode, (result._1 + totalSalePrice, newResultTotalEndPrice, newCartItem :: result._3))
     }
   }
 
@@ -475,7 +472,7 @@ object CartBoService extends BoService {
    * @return
    */
   def computeStoreCart(companyCode: String, cart: StoreCart, countryCode: Option[String], stateCode: Option[String]) : CartVO = {
-    val priceEndPriceCartItems = _computeCartItem(cart.cartItems, countryCode, (0, None, List()))
+    val priceEndPriceCartItems = _computeCartItem(cart.storeCode, cart.cartItems, countryCode, stateCode, (0, None, List()))
     val price = priceEndPriceCartItems._1
     val endPrice = priceEndPriceCartItems._2
     val cartItems = priceEndPriceCartItems._3
