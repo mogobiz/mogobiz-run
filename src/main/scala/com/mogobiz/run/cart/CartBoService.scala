@@ -139,22 +139,24 @@ object CartBoService extends BoService {
       val cartItem = cartItems.head
       val product = ProductDao.get(storeCode, cartItem.productId).get
       val tax = taxRateHandler.findTaxRateByProduct(product, countryCode, stateCode)
-      val endPrice = taxRateHandler.calculateEndPrice(cartItem.price, tax)
-      val saleEndPrice = taxRateHandler.calculateEndPrice(cartItem.salePrice, tax)
-      val totalPrice = cartItem.quantity * cartItem.price
-      val totalSalePrice = cartItem.quantity * cartItem.salePrice
-      val totalEndPrice = if (endPrice.isDefined) Some(cartItem.quantity * endPrice.get) else None
-      val totalSaleEndPrice = if (saleEndPrice.isDefined) Some(cartItem.quantity * saleEndPrice.get) else None
+      val price = cartItem.price
+      val salePrice = cartItem.salePrice
+      val endPrice = taxRateHandler.calculateEndPrice(price, tax)
+      val saleEndPrice = taxRateHandler.calculateEndPrice(salePrice, tax)
+      val totalPrice = price * cartItem.quantity
+      val saleTotalPrice = salePrice * cartItem.quantity
+      val totalEndPrice = taxRateHandler.calculateEndPrice(totalPrice, tax)
+      val saleTotalEndPrice = taxRateHandler.calculateEndPrice(saleTotalPrice, tax)
 
       val newCartItem = CartItemVO(cartItem.id, cartItem.productId, cartItem.productName, cartItem.xtype, cartItem.calendarType,
-        cartItem.skuId, cartItem.skuName, cartItem.quantity, cartItem.price, endPrice, tax, totalPrice, totalEndPrice,
-        cartItem.salePrice, saleEndPrice, totalSalePrice, totalEndPrice,
+        cartItem.skuId, cartItem.skuName, cartItem.quantity, price, endPrice, tax, totalPrice, totalEndPrice,
+        salePrice, saleEndPrice, saleTotalPrice, saleTotalEndPrice,
         cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping)
 
-      val newResultTotalEndPrice = if (result._2.isDefined && totalSaleEndPrice.isDefined) Some(result._2.get + totalSaleEndPrice.get)
+      val newResultTotalEndPrice = if (result._2.isDefined && saleTotalEndPrice.isDefined) Some(result._2.get + saleTotalEndPrice.get)
       else if (result._2.isDefined) result._2
-      else totalSaleEndPrice
-      _computeCartItem(storeCode, cartItems.tail, countryCode, stateCode, (result._1 + totalSalePrice, newResultTotalEndPrice, newCartItem :: result._3))
+      else saleTotalEndPrice
+      _computeCartItem(storeCode, cartItems.tail, countryCode, stateCode, (result._1 + saleTotalPrice, newResultTotalEndPrice, newCartItem :: result._3))
     }
   }
 
