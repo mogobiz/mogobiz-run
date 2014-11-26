@@ -5,12 +5,12 @@ import java.util.{UUID, Calendar, Date}
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.pay.model.Mogopay
-import com.mogobiz.run.cart.ProductCalendar.ProductCalendar
-import com.mogobiz.run.cart.ProductType.ProductType
-import com.mogobiz.run.cart.{ProductCalendarRef, ProductTypeRef, RegisteredCartItemVO, ShippingVO}
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.json.{JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeDeserializer, JodaDateTimeSerializer}
-import com.mogobiz.run.model.Mogobiz.Shipping
+import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
+import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
+import com.mogobiz.run.model.Mogobiz.{ProductCalendarRef, ProductTypeRef, Shipping}
+import com.mogobiz.run.model.Render.RegisteredCartItem
 import org.joda.time.DateTime
 
 case class StoreCart(// Identifiant du panier (Sert à identifier l'entrée dans ES et l'unique BOTransaction correspondant).
@@ -51,8 +51,8 @@ case class StoreCartItem(id: String,
                          @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
                          @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                          endDate: Option[DateTime],
-                         registeredCartItems: List[RegisteredCartItemVO],
+                         registeredCartItems: List[RegisteredCartItem],
                          shipping: Option[Shipping])
 
-case class StoreCoupon(id: Long, code : String, companyCode: String)
+case class StoreCoupon(id: Long, code : String)
 

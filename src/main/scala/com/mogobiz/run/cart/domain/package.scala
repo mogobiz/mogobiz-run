@@ -1,9 +1,9 @@
 package com.mogobiz.run.cart
 
-import com.fasterxml.jackson.core.`type`.TypeReference
-import com.mogobiz.run.cart.ProductCalendar._
-import com.mogobiz.run.cart.ProductType._
-import com.mogobiz.run.cart.domain.ReductionRuleType.ReductionRuleType
+import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
+import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
+import com.mogobiz.run.model.Mogobiz.{ProductCalendar, ProductType, LinearUnit, WeightUnit}
+import com.mogobiz.run.model.Render.ShippingVO
 import org.joda.time.DateTime
 import scalikejdbc._
 /**
@@ -231,14 +231,6 @@ package object domain {
     }
   }
 
-  case class Coupon
-  (id: Long, name: String, code: String, companyFk: Long,startDate: Option[DateTime]=None, endDate: Option[DateTime]=None, //price: Long,
-   numberOfUses:Option[Long]=None, reductionSoldFk:Option[Long]=None,active: Boolean = true, anonymous:Boolean = false, catalogWise:Boolean = false,
-   dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
-
-    def rules = Coupon.getRules(this.id)
-  }
-
   case class Company(id: Long, name: String, code: String,aesPassword:String,dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware {
   }
 
@@ -270,116 +262,4 @@ package object domain {
     }
 
   }
-
-  object Coupon extends SQLSyntaxSupport[Coupon]{
-    def apply(rn: ResultName[Coupon])(rs:WrappedResultSet): Coupon = Coupon(
-      id=rs.get(rn.id),name = rs.get(rn.name), code=rs.get(rn.code), startDate=rs.get(rn.startDate),endDate=rs.get(rn.endDate),
-      numberOfUses = rs.get(rn.numberOfUses),companyFk = rs.get(rn.companyFk),reductionSoldFk=rs.get(rn.reductionSoldFk),
-      active = rs.get(rn.active), anonymous = rs.get(rn.anonymous), catalogWise = rs.get(rn.catalogWise),
-      dateCreated = rs.get(rn.dateCreated),lastUpdated = rs.get(rn.lastUpdated))
-
-    def apply(rs: WrappedResultSet):Coupon = Coupon(
-      id = rs.long("id"), name = rs.string("name"), code=rs.string("code"), startDate=rs.jodaDateTimeOpt("start_date"),endDate=rs.jodaDateTimeOpt("end_date"),
-      numberOfUses = rs.longOpt("number_of_uses"),companyFk = rs.long("company_fk"),reductionSoldFk=rs.longOpt("reduction_sold_fk"),
-      active = rs.boolean("active"), anonymous = rs.boolean("anonymous"), catalogWise = rs.boolean("catalog_wise"),
-      dateCreated = rs.jodaDateTime("date_created"),lastUpdated = rs.jodaDateTime("last_updated")
-    )
-
-
-    def findByCode(companyCode:String, couponCode:String):Option[Coupon]={
-      val compagny = Company.findByCode(companyCode)
-      if (compagny.isEmpty) None
-      else {
-        val c = Coupon.syntax("c")
-        DB readOnly {
-          implicit session =>
-            withSQL {
-              select.from(Coupon as c).where.eq(c.code, couponCode).and.eq(c.companyFk,compagny.get.id)
-            }.map(Coupon(c.resultName)).single().apply()
-        }
-      }
-    }
-
-    def findPromotionsThatOnlyApplyOnCart(companyCode:String):List[Coupon]={
-      val compagny = Company.findByCode(companyCode)
-      if (compagny.isEmpty) List()
-      else {
-        //val c = Coupon.syntax("c")
-        val now = DateTime.now
-        DB readOnly {
-          implicit session =>
-            sql""" select c.* from coupon c inner join company co on c.company_fk = co.id inner join coupon_reduction_rule crr on crr.rules_fk = c.id inner join reduction_rule rr on crr.reduction_rule_id = rr.id and rr.xtype = 'X_PURCHASED_Y_OFFERED' where co.code=${companyCode} and c.start_date<=${now} and c.end_date>=${now} and c.anonymous=true """.map(rs => Coupon(rs)).list().apply()
-            /*
-            withSQL {
-              select.from(Coupon as c).where.eq(c.companyFk,compagny.get.id).and.eq(c.anonymous, true).and.lt(c.startDate,now).and.gt(c.endDate)
-            }.map(Coupon(c.resultName)).list().apply()
-            */
-        }
-      }
-    }
-
-    def get(id: Long)/*(implicit session: DBSession)*/:Option[Coupon]={
-      val c = Coupon.syntax("c")
-      DB readOnly { implicit session =>
-        withSQL {
-          select.from(Coupon as c).where.eq(c.id, id)
-        }.map(Coupon(c.resultName)).single().apply()
-      }
-    }
-
-    def getRules(couponId:Long):List[ReductionRule]= DB readOnly {
-      implicit session => {
-        sql"""select rr.* from reduction_rule rr inner join coupon_reduction_rule crr on crr.reduction_rule_id = rr.id and rules_fk = ${couponId}"""
-          .map(rs => ReductionRule(rs)).list().apply()
-      }
-    }
-
-    /*
-    def getRules(couponId:Long):List[ReductionRule]={
-      val c = ReductionRule.syntax("c")
-      DB readOnly { implicit session =>
-        withSQL {
-          select.from(ReductionRule as c).where.eq(c.id, couponId)
-        }.map(ReductionRule(c.resultName)).list().apply()
-      }
-    }*/
-  }
-
-  object ReductionRuleType extends Enumeration {
-    class ReductionRuleTypeType(s: String) extends Val(s)
-    type ReductionRuleType = ReductionRuleTypeType
-    val DISCOUNT = new ReductionRuleTypeType("DISCOUNT")
-    val X_PURCHASED_Y_OFFERED = new ReductionRuleTypeType("X_PURCHASED_Y_OFFERED")
-
-    def apply(name:String) = name match{
-      case "DISCOUNT" => DISCOUNT
-      case "X_PURCHASED_Y_OFFERED" => X_PURCHASED_Y_OFFERED
-      case _ => throw new Exception("Not expected ReductionRuleType")
-    }
-  }
-
-  class ReductionRuleRef extends TypeReference[ReductionRuleType.type]
-
-  case class ReductionRule(
-                            id:Long,
-                            xtype: ReductionRuleType,
-                            quantityMin:Option[Long],
-                            quantityMax:Option[Long],
-                            discount:Option[String], //discount (or percent) if type is DISCOUNT (example : -1000 or * 10%)
-                            xPurchased:Option[Long], yOffered:Option[Long],
-                            dateCreated:DateTime = DateTime.now,lastUpdated:DateTime = DateTime.now) extends DateAware
-
-  object ReductionRule extends SQLSyntaxSupport[ReductionRule] {
-    def apply(rn: ResultName[ReductionRule])(rs: WrappedResultSet): ReductionRule = ReductionRule(
-      id = rs.get(rn.id), xtype = ReductionRuleType(rs.string("xtype")), quantityMin = rs.get(rn.quantityMin), quantityMax = rs.get(rn.quantityMax),
-      discount = rs.get(rn.discount), xPurchased = rs.get(rn.xPurchased), yOffered = rs.get(rn.yOffered),
-      dateCreated = rs.get(rn.dateCreated), lastUpdated = rs.get(rn.lastUpdated))
-
-    def apply(rs: WrappedResultSet):ReductionRule = ReductionRule(
-      id = rs.long("id"), xtype = ReductionRuleType(rs.string("xtype")),quantityMin = rs.longOpt("quantity_min"), quantityMax = rs.longOpt("quantity_max"),
-      discount = rs.stringOpt("discount"), xPurchased = rs.longOpt("x_purchased"), yOffered = rs.longOpt("y_offered"),
-      dateCreated = rs.get("date_created"), lastUpdated = rs.get("last_updated")
-    )
-  }
-
 }

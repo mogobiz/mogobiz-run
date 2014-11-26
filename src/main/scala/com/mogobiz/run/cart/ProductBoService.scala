@@ -3,9 +3,9 @@ package com.mogobiz.run.cart
 import java.util.Calendar
 import akka.actor.Props
 import com.mogobiz.run.actors.EsUpdateActor.{SalesUpdateRequest, StockCalendarUpdateRequest, StockUpdateRequest}
-import com.mogobiz.run.actors.{EsUpdateActor, CartActor, ActorSystemLocator}
+import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
 import com.mogobiz.run.cart.domain._
-import com.mogobiz.run.handlers.StockHandler
+import com.mogobiz.run.model.Mogobiz.ProductCalendar
 import com.mogobiz.utils.GlobalUtil._
 import scalikejdbc._
 import org.joda.time.DateTime

@@ -3,11 +3,9 @@ package com.mogobiz.run.cart
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.MogobizRouteTest
-import com.mogobiz.run.cart.ProductCalendar._
-import com.mogobiz.run.cart.ProductType._
 import com.mogobiz.run.handlers.StoreCartDao
 import com.mogobiz.run.json.{JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer}
-import com.mogobiz.run.model.Mogobiz.Shipping
+import com.mogobiz.run.model.Mogobiz.{ProductCalendar, ProductType, Shipping}
 import com.mogobiz.run.model.{StoreCoupon, StoreCartItem, StoreCart}
 import org.joda.time.DateTime
 
@@ -81,11 +79,11 @@ class CartBoServiceSpec extends MogobizRouteTest {
         List(),
         None)
 
-      val storeCoupon = new StoreCoupon(161, "Promotion", STORE)
+      val storeCoupon = new StoreCoupon(161, "Promotion")
 
       val storeCart = new StoreCart(STORE, "uuid", None, cartItems=List(storeCartItem1, storeCartItem2)) //, coupons = List(storeCoupon)
 
-      val cart = CartBoService.computeStoreCart(STORE, storeCart, Some("FR"), None)
+      val cart = CartBoService.computeStoreCart(storeCart, Some("FR"), None)
 
       cart.count mustEqual 2
       cart.price mustEqual 1791 * 2 + 900 * 3

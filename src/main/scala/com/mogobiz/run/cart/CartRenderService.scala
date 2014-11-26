@@ -2,9 +2,10 @@ package com.mogobiz.run.cart
 
 import java.util.Locale
 
-import com.mogobiz.run.cart.domain.Coupon
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.model.Currency
+import com.mogobiz.run.model.Mogobiz.ProductCalendar
+import com.mogobiz.run.model.Render.{CartItem, Coupon, Cart}
 import com.mogobiz.run.services.RateBoService
 import com.typesafe.scalalogging.slf4j.Logger
 import org.json4s.ext.JodaTimeSerializers
@@ -23,7 +24,7 @@ object CartRenderService {
 
   val rateService = RateBoService
 
-  def renderCart(cart:CartVO, currency:Currency, locale:Locale):Map[String,Any]={
+  def renderCart(cart:Cart, currency:Currency, locale:Locale):Map[String,Any]={
     logger.info(s"currency: ${currency.code}, ${currency.rate}")
     var map :Map[String,Any]= Map()
 
@@ -49,7 +50,7 @@ object CartRenderService {
    * @param rate
    * @return
    */
-  def renderTransactionCart(cart:CartVO, rate:Currency):Map[String,Any]={
+  def renderTransactionCart(cart:Cart, rate:Currency):Map[String,Any]={
 
     val items = cart.cartItemVOs.map(item => renderTransactionCartItem(item,rate))
 
@@ -76,8 +77,8 @@ object CartRenderService {
    * @param locale
    * @return
    */
-  def renderCoupon(coupon:CouponVO, currency:Currency, locale:Locale) = {
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
+  def renderCoupon(coupon:Coupon, currency:Currency, locale:Locale) = {
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItem]()
     val jsonCoupon = parse(write(coupon))
 
     //code from renderPriceCoupon
@@ -88,8 +89,8 @@ object CartRenderService {
     renderedCoupon
   }
 
-  def renderTransactionCoupon(coupon:CouponVO, rate:Currency) = {
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
+  def renderTransactionCoupon(coupon:Coupon, rate:Currency) = {
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItem]()
     val jsonCoupon = parse(write(coupon))
 
     val price = rateService.calculateAmount(coupon.price, rate)
@@ -106,12 +107,12 @@ object CartRenderService {
    * @param locale
    * @return
    */
-  def renderCartItem(item:CartItemVO,currency:Currency,locale:Locale) ={
+  def renderCartItem(item:CartItem,currency:Currency,locale:Locale) ={
 
     import org.json4s.native.JsonMethods._
     //import org.json4s.native.Serialization
     import org.json4s.native.Serialization.write
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar) ++ JodaTimeSerializers.all
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItem]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar) ++ JodaTimeSerializers.all
     val jsonItem = parse(write(item))
 
     val formatedPrice = rateService.format(item.price, currency.code, locale, currency.rate)
@@ -137,7 +138,7 @@ object CartRenderService {
     renderedItem
   }
 
-  def renderTransactionCartItem(item:CartItemVO,rate:Currency) ={
+  def renderTransactionCartItem(item:CartItem,rate:Currency) ={
 
     import org.json4s.native.JsonMethods._
     import org.json4s.native.Serialization.write
@@ -169,7 +170,7 @@ object CartRenderService {
    * @param locale
    * @return
    */
-  def renderPriceCart(cart:CartVO, currency:Currency,locale:Locale)={
+  def renderPriceCart(cart:Cart, currency:Currency,locale:Locale)={
     val formatedPrice = rateService.format(cart.price, currency.code, locale, currency.rate)
     val formatedEndPrice = cart.endPrice match{
       case Some(endprice) => rateService.format(endprice, currency.code, locale, currency.rate)
@@ -191,7 +192,7 @@ object CartRenderService {
     prices
   }
 
-  def renderTransactionPriceCart(cart:CartVO, rate:Currency)={
+  def renderTransactionPriceCart(cart:Cart, rate:Currency)={
 
     val price = rateService.calculateAmount(cart.price, rate)
     val endPrice = rateService.calculateAmount(cart.endPrice.getOrElse(0l), rate)

@@ -1,5 +1,6 @@
 package com.mogobiz.run.cart
 
+import com.mogobiz.run.model.Render.RegisteredCartItem
 import org.joda.time.DateTime
 
 /**
@@ -14,6 +15,6 @@ case class AddToCartCommand(
                              skuId:Long,
                              quantity:Int,
                              dateTime:Option[DateTime],
-                             registeredCartItems:List[RegisteredCartItemVO])
+                             registeredCartItems:List[RegisteredCartItem])
 
 case class UpdateCartItemCommand (quantity: Int)

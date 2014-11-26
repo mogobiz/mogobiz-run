@@ -1,14 +1,13 @@
 package com.mogobiz.run.implicits
 
-import com.mogobiz.run.cart.LinearUnit._
-import com.mogobiz.run.cart.ProductCalendar._
-import com.mogobiz.run.cart.ProductType._
-import com.mogobiz.run.cart.domain.ReductionRuleType
-import com.mogobiz.run.cart.domain.ReductionRuleType.ReductionRuleType
 import com.mogobiz.run.cart.transaction._
 import com.mogobiz.run.cart.transaction.TransactionStatus._
-import com.mogobiz.run.cart.WeightUnit._
-import com.mogobiz.run.cart._
+import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnit
+import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
+import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
+import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnit
+import com.mogobiz.run.model.Mogobiz._
+import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
 import org.json4s._
 import org.json4s.ext.JodaTimeSerializers
 import spray.httpx.Json4sSupport

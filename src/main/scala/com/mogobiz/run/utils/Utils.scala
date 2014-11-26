@@ -1,8 +1,6 @@
 package com.mogobiz.run.utils
 
-import com.mogobiz.run.cart.ProductCalendar
-import com.mogobiz.run.cart.domain.TicketType
-import com.mogobiz.run.model.Mogobiz.{IntraDayPeriod, Sku, Product}
+import com.mogobiz.run.model.Mogobiz.{ProductCalendar, IntraDayPeriod, Sku, Product}
 import org.joda.time.{DateTimeZone, DateTimeConstants, DateTime, LocalTime}
 import scalikejdbc._
 

@@ -1,16 +1,15 @@
 package com.mogobiz.run.model
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import com.mogobiz.run.cart.LinearUnit.LinearUnitType
-import com.mogobiz.run.cart.ProductCalendar._
-import com.mogobiz.run.cart.ProductType._
-import com.mogobiz.run.cart.WeightUnit.WeightUnitType
-import com.mogobiz.run.cart.domain.ReductionRuleRef
-import com.mogobiz.run.cart.domain.ReductionRuleType.ReductionRuleType
-import com.mogobiz.run.cart.{ProductCalendarRef, ProductTypeRef, LinearUnitRef, WeightUnitRef}
 import com.mogobiz.run.json.{JodaDateTimeOptionSerializer, JodaDateTimeOptionDeserializer, JodaDateTimeDeserializer, JodaDateTimeSerializer}
+import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnitType
+import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
+import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
+import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
+import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnitType
 import org.joda.time.DateTime
 
 /**
@@ -79,7 +78,10 @@ object Mogobiz {
                  startDate:Option[DateTime]=None,
                  @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
                  @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                 stopDate:Option[DateTime]=None)
+                 stopDate:Option[DateTime]=None,
+                 coupons: List[InnerCoupon])
+
+  case class InnerCoupon(id:Long)
 
   @JsonIgnoreProperties(ignoreUnknown=true)
   case class Product(id:Long,
@@ -111,6 +113,7 @@ object Mogobiz {
                            xPurchased:Option[Long],
                            yOffered:Option[Long])
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class Coupon(id: Long,
                     name: String,
                     code: String,
@@ -128,4 +131,85 @@ object Mogobiz {
                     catalogWise:Boolean = false,
                     description: String,
                     pastille: String)
+
+
+  object ProductType extends Enumeration {
+    class ProductTypeType(s: String) extends Val(s)
+    type ProductType = ProductTypeType
+    val SERVICE = new ProductTypeType("SERVICE")
+    val PRODUCT = new ProductTypeType("PRODUCT")
+    val DOWNLOADABLE = new ProductTypeType("DOWNLOADABLE")
+    val PACKAGE = new ProductTypeType("PACKAGE")
+    val OTHER = new ProductTypeType("OTHER")
+
+    def valueOf(str: String): ProductType = str match {
+      case "SERVICE" => SERVICE
+      case "PRODUCT" => PRODUCT
+      case "DOWNLOADABLE" => DOWNLOADABLE
+      case "PACKAGE" => PACKAGE
+      case _ => OTHER
+    }
+
+  }
+  class ProductTypeRef extends TypeReference[ProductType.type]
+
+  object ProductCalendar extends Enumeration {
+    class ProductCalendarType(s: String) extends Val(s)
+    type ProductCalendar = ProductCalendarType
+    val NO_DATE = new ProductCalendarType("NO_DATE")
+    val DATE_ONLY = new ProductCalendarType("DATE_ONLY")
+    val DATE_TIME = new ProductCalendarType("DATE_TIME")
+
+    def valueOf(str: String): ProductCalendar = str match {
+      case "DATE_ONLY" => DATE_ONLY
+      case "DATE_TIME" => DATE_TIME
+      case _ => NO_DATE
+    }
+  }
+  class ProductCalendarRef extends TypeReference[ProductCalendar.type]
+
+  object ReductionRuleType extends Enumeration {
+    class ReductionRuleTypeType(s: String) extends Val(s)
+    type ReductionRuleType = ReductionRuleTypeType
+    val DISCOUNT = new ReductionRuleTypeType("DISCOUNT")
+    val X_PURCHASED_Y_OFFERED = new ReductionRuleTypeType("X_PURCHASED_Y_OFFERED")
+
+    def apply(name:String) = name match{
+      case "DISCOUNT" => DISCOUNT
+      case "X_PURCHASED_Y_OFFERED" => X_PURCHASED_Y_OFFERED
+      case _ => throw new Exception("Not expected ReductionRuleType")
+    }
+  }
+  class ReductionRuleRef extends TypeReference[ReductionRuleType.type]
+
+  object WeightUnit extends Enumeration {
+    class WeightUnitType(s: String) extends Val(s)
+    type WeightUnit = WeightUnitType
+    val KG = new WeightUnitType("KG")
+    val LB = new WeightUnitType("LB")
+    val G = new WeightUnitType("G")
+
+    def apply(str: String) = str match {
+      case "KG" => KG
+      case "LB" => LB
+      case "G" => G
+      case _ => throw new RuntimeException("unexpected WeightUnit value")
+    }
+  }
+  class WeightUnitRef extends TypeReference[WeightUnit.type]
+
+  object LinearUnit extends Enumeration {
+    class LinearUnitType(s: String) extends Val(s)
+    type LinearUnit = LinearUnitType
+    val CM = new LinearUnitType("CM")
+    val IN = new LinearUnitType("IN")
+
+    def apply(str: String) = str match {
+      case "CM" => CM
+      case "IN" => IN
+      case _ => throw new RuntimeException("unexpected LinearUnit value")
+    }
+  }
+  class LinearUnitRef extends TypeReference[LinearUnit.type]
+
 }

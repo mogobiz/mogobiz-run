@@ -32,7 +32,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val computeCart = cartService.computeStoreCart(storeCode, cart, params.country, params.state)
+    val computeCart = cartService.computeStoreCart(cart, params.country, params.state)
     cartRenderService.renderCart(computeCart, currency, locale)
   }
 
@@ -43,7 +43,7 @@ class CartHandler {
     val currency = queryCurrency(storeCode, params.currency)
 
     val updatedCart = cartService.clear(cart)
-    val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, params.state)
+    val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
     cartRenderService.renderCart(computeCart, currency, locale)
   }
 
@@ -56,7 +56,7 @@ class CartHandler {
 
     try {
       val updatedCart = cartService.addItem(cart, cmd.skuId, cmd.quantity, cmd.dateTime, cmd.registeredCartItems)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, params.state)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -89,7 +89,7 @@ class CartHandler {
 
     try {
       val updatedCart = cartService.validateCart(cart)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, params.state)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -122,7 +122,7 @@ class CartHandler {
 
     try {
       val updatedCart = cartService.updateItem(cart, cartItemId, cmd.quantity)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, params.state)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -149,7 +149,7 @@ class CartHandler {
 
     try {
       val updatedCart = cartService.removeItem(cart, cartItemId)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, params.state)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -176,8 +176,8 @@ class CartHandler {
     val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
-      val updatedCart = cartService.addCoupon(storeCode, couponCode, cart)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, params.state)
+      val updatedCart = cartService.addCoupon(couponCode, cart)
+      val computeCart = cartService.computeStoreCart( updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -203,8 +203,8 @@ class CartHandler {
     val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
-      val updatedCart = cartService.removeCoupon(storeCode, couponCode, cart)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, params.state)
+      val updatedCart = cartService.removeCoupon(couponCode, cart)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -232,7 +232,7 @@ class CartHandler {
     val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
-      val data = cartService.prepareBeforePayment(storeCode, params.country, params.state, currency, cart, params.buyer)
+      val data = cartService.prepareBeforePayment(params.country, params.state, currency, cart, params.buyer)
 
       val response = Map(
         "success" -> true,
@@ -282,7 +282,7 @@ class CartHandler {
     val cart = cartService.initCart(storeCode, uuid, accountId)
     try {
       val updatedCart = cartService.cancel(cart)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, params.state)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
