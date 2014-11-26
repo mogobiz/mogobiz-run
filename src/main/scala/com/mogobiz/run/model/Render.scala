@@ -24,7 +24,17 @@ object Render {
    salePrice: Long, saleEndPrice: Option[Long], saleTotalPrice: Long, saleTotalEndPrice: Option[Long],
    startDate: Option[DateTime], endDate: Option[DateTime], registeredCartItemVOs: Array[RegisteredCartItem], shipping: Option[Shipping])
 
-  case class Coupon(id: Long, name: String, code: String, startDate: Option[DateTime] = None, endDate: Option[DateTime] = None, active: Boolean = false, price: Long = 0)
+  case class Coupon(id: Long,
+                    name: String,
+                    code: String,
+                    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
+                    @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                    startDate: Option[DateTime] = None,
+                    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
+                    @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                    endDate: Option[DateTime] = None,
+                    active: Boolean = false,
+                    price: Long = 0)
 
   case class RegisteredCartItem(cartItemId: String = "",
                                   id: String,

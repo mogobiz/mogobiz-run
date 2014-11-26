@@ -78,7 +78,7 @@ object CartRenderService {
    * @return
    */
   def renderCoupon(coupon:Coupon, currency:Currency, locale:Locale) = {
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItem]()
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Coupon]() ++ JodaTimeSerializers.all
     val jsonCoupon = parse(write(coupon))
 
     //code from renderPriceCoupon
@@ -90,7 +90,7 @@ object CartRenderService {
   }
 
   def renderTransactionCoupon(coupon:Coupon, rate:Currency) = {
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItem]()
+    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Coupon]() ++ JodaTimeSerializers.all
     val jsonCoupon = parse(write(coupon))
 
     val price = rateService.calculateAmount(coupon.price, rate)
