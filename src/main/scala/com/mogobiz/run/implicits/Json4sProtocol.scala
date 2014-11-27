@@ -1,10 +1,9 @@
 package com.mogobiz.run.implicits
 
-import com.mogobiz.run.cart.transaction._
-import com.mogobiz.run.cart.transaction.TransactionStatus._
 import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnit
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
+import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnit
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType

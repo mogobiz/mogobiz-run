@@ -1,7 +1,7 @@
 package com.mogobiz.run.utils
 
 import com.mogobiz.run.model.Mogobiz.{ProductCalendar, IntraDayPeriod, Sku, Product}
-import org.joda.time.{DateTimeZone, DateTimeConstants, DateTime, LocalTime}
+import org.joda.time._
 import scalikejdbc._
 
 /**
@@ -28,6 +28,14 @@ object Utils {
     println(prettyJson)
     println("-----------------------------------------------------------------------------------------------")
 
+  }
+
+  def computeAge(birthDate: Option[DateTime]) : Int = {
+    if (birthDate.isDefined) {
+      val period = new Period(birthDate.get.toLocalDate, DateTime.now().toLocalDate, PeriodType.years());
+      return period.getYears
+    }
+    else 0
   }
 
   /**

@@ -47,17 +47,4 @@ object Render {
                                   birthdate: Option[DateTime] = None)
 
 
-
-  case class ShippingVO(id: Long,
-                        weight: Long,
-                        @JsonScalaEnumeration(classOf[WeightUnitRef])
-                        weightUnit: WeightUnit,
-                        width: Long,
-                        height: Long,
-                        depth: Long,
-                        @JsonScalaEnumeration(classOf[LinearUnitRef])
-                        linearUnit: LinearUnit,
-                        amount: Long,
-                        free: Boolean)
-
 }

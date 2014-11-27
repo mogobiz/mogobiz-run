@@ -3,7 +3,6 @@ package com.mogobiz.run.cart
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
 import com.mogobiz.run.model.Mogobiz.{ProductCalendar, ProductType, LinearUnit, WeightUnit}
-import com.mogobiz.run.model.Render.ShippingVO
 import org.joda.time.DateTime
 import scalikejdbc._
 /**
@@ -20,34 +19,6 @@ package object domain {
   trait Entity {
     val uuid : String  = java.util.UUID.randomUUID().toString
   }
-
-  case class Poi(id:Long,road1:Option[String],road2:Option[String],city:Option[String],postalCode:Option[String],state:Option[String],countryCode:Option[String])
-  object Poi extends SQLSyntaxSupport[Poi] {
-
-    def apply(rn: ResultName[Poi])(rs: WrappedResultSet): Poi = Poi(
-      id = rs.get(rn.id),
-      road1 = rs.get(rn.road1),
-      road2 = rs.get(rn.road2),
-      city = rs.get(rn.city),
-      postalCode = rs.get(rn.postalCode),
-      state = rs.get(rn.state),
-      countryCode = rs.get(rn.countryCode)
-    )
-
-    def get(id:Long):Option[Poi] = {
-
-      val c = Poi.syntax("c")
-
-      val res = DB readOnly { implicit session =>
-        withSQL {
-          select.from(Poi as c).where.eq(c.id, id)
-        }.map(Poi(c.resultName)).single().apply()
-      }
-      res
-    }
-
-  }
-
 
   case class Stock(stock:Long=0,stockUnlimited:Boolean = true,stockOutSelling:Boolean = false)
   object Stock  extends SQLSyntaxSupport[Stock]{
@@ -81,16 +52,6 @@ package object domain {
                      startDate:Option[DateTime],stopDate:Option[DateTime] ){
 
     def company = Company.get(companyFk)
-
-    def shipping = shippingFk match {
-      case Some(shippingId) => Product.getShipping(shippingId)
-      case None => None
-    }
-
-    def poi = poiFk match {
-      case Some(id) => Poi.get(id)
-      case None => None
-    }
   }
 
   object Product extends SQLSyntaxSupport[Product]{
@@ -138,19 +99,6 @@ package object domain {
         //.map(Product(p.resultName)).single().apply()
       }
       res
-    }
-
-    /*
-
-    case class ShippingVO
-  (weight: Long, weightUnit: WeightUnit, width: Long, height: Long, depth: Long, linearUnit: LinearUnit, amount: Long, free: Boolean)
-
-     */
-    def getShipping(id:Long):Option[ShippingVO] = {
-      DB readOnly { implicit session =>
-        sql"select * from shipping where id=${id}".
-          map(rs => ShippingVO(id = rs.long("id"),weight = rs.long("weight"), weightUnit = WeightUnit(rs.string("weight_unit")),linearUnit = LinearUnit(rs.string("linear_unit")),width = rs.long("width"), height = rs.long("height"), depth = rs.long("depth"), amount = rs.long("amount"), free = rs.boolean("free") )).single().apply()
-      }
     }
   }
 

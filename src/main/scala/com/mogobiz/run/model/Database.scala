@@ -4,18 +4,43 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
+import com.mogobiz.run.cart.domain.{Product, DateAware, Entity}
 import com.mogobiz.run.json.{JodaDateTimeOptionSerializer, JodaDateTimeOptionDeserializer, JodaDateTimeDeserializer, JodaDateTimeSerializer}
 import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnitType
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
 import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
+import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnitType
 import org.joda.time.DateTime
+import scalikejdbc.DBSession
+
+import scala.Product
 
 /**
  * Created by yoannbaudy on 19/11/2014.
  */
 object Mogobiz {
+
+  case class Country(code: String,
+                     name: String)
+
+  case class Location(latitude: Double,
+                      longitude: Double,
+                      postalCode: Option[String],
+                      road1: Option[String],
+                      road2: Option[String],
+                      road3: Option[String],
+                      roadNum: Option[String],
+                      city: Option[String],
+                      country: Option[Country],
+                      state: Option[String])
+
+  case class Poi(description: String,
+                 name: String,
+                 picture: String,
+                 xtype: String,
+                 location: Location)
 
   case class LocalTaxRate(id:Long,
                           rate:Float,
@@ -102,7 +127,8 @@ object Mogobiz {
                      stopDate:Option[DateTime],
                      skus:List[Sku],
                      intraDayPeriods:Option[List[IntraDayPeriod]],
-                     datePeriods:Option[List[DatePeriod]])
+                     datePeriods:Option[List[DatePeriod]],
+                     poi: Option[Poi])
 
   case class ReductionRule(id:Long,
                            @JsonScalaEnumeration(classOf[ReductionRuleRef])
@@ -132,6 +158,88 @@ object Mogobiz {
                     description: String,
                     pastille: String)
 
+  case class BOCart(id:Long,
+                    buyer:String,
+                    companyFk:Long,
+                    currencyCode:String,
+                    currencyRate:Double,
+                    xdate:DateTime,
+                    dateCreated:DateTime,
+                    lastUpdated:DateTime,
+                    price:Long,
+                    status:TransactionStatus,
+                    transactionUuid:String,
+                    uuid: String)
+
+  case class BOProduct(id:Long,
+                       acquittement:Boolean,
+                       price:Long,
+                       principal:Boolean,
+                       productFk:Long,
+                       dateCreated:DateTime,
+                       lastUpdated:DateTime,
+                       uuid : String)
+
+  case class BOTicketType(id:Long,
+                          quantity:Int,
+                          price:Long,
+                          shortCode:Option[String],
+                          ticketType:Option[String],
+                          firstname:Option[String],
+                          lastname:Option[String],
+                          email:Option[String],
+                          phone:Option[String],
+                          age:Int,
+                          birthdate:Option[DateTime],
+                          startDate:Option[DateTime],
+                          endDate:Option[DateTime],
+                          qrcode:Option[String],
+                          qrcodeContent:Option[String],
+                          bOProductFk : Long,
+                          dateCreated:DateTime,
+                          lastUpdated:DateTime,
+                          uuid:String)
+
+  case class BOCartItem(id:Long,
+                        code:String,
+                        price:Long,
+                        tax:Double,
+                        endPrice:Long,
+                        totalPrice:Long,
+                        totalEndPrice:Long,
+                        hidden:Boolean,
+                        quantity:Int,
+                        startDate:Option[DateTime],
+                        endDate:Option[DateTime],
+                        ticketTypeFk:Long,
+                        bOCartFk : Long,
+                        dateCreated:DateTime,
+                        lastUpdated:DateTime,
+                        uuid : String)
+
+  object TransactionStatus extends Enumeration {
+    class TransactionStatusType(s: String) extends Val(s)
+    type TransactionStatus = TransactionStatusType
+    val PENDING = new TransactionStatusType("PENDING")
+    val PAYMENT_NOT_INITIATED = new TransactionStatusType("PAYMENT_NOT_INITIATED")
+    val FAILED = new TransactionStatusType("FAILED")
+    val COMPLETE = new TransactionStatusType("COMPLETE")
+
+    def valueOf(str:String):TransactionStatus = str match {
+      case "PENDING"=> PENDING
+      case "PAYMENT_NOT_INITIATED"=> PAYMENT_NOT_INITIATED
+      case "FAILED"=> FAILED
+      case "COMPLETE"=> COMPLETE
+    }
+
+    override def toString = this match {
+      case PENDING => "PENDING"
+      case PAYMENT_NOT_INITIATED => "PAYMENT_NOT_INITIATED"
+      case FAILED => "FAILED"
+      case COMPLETE => "COMPLETE"
+      case _ => "Invalid value"
+    }
+  }
 
   object ProductType extends Enumeration {
     class ProductTypeType(s: String) extends Val(s)
