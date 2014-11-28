@@ -9,7 +9,7 @@ import com.mogobiz.run.actors.EsUpdateActor.StockUpdateRequest
 import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
 import com.mogobiz.run.cart.BoService
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.{Stock => EsStock, ESStockCalendar, StockCalendar}
+import com.mogobiz.run.model.{Stock => EsStock, StockByDateTime, StockCalendar}
 import com.mogobiz.utils.GlobalUtil._
 import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate, insert => esinsert, _}
 import com.sksamuel.elastic4s.IndexesTypesDsl
@@ -93,7 +93,7 @@ class StockHandler extends IndexesTypesDsl {
           StockDao.update(storeCode, stock.copy(stockByDateTime = Some(newStockByDateTime)))
         case _ =>
           // Ajout d'un nouveau StockCalendar
-          val newESStockCalendar = ESStockCalendar(
+          val newESStockCalendar = StockByDateTime(
             stockCalendar.id,
             stockCalendar.uuid,
             dateCreated = stockCalendar.dateCreated.toDate,

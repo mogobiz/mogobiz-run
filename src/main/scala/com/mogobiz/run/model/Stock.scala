@@ -58,11 +58,11 @@ case class Stock(
                   @JsonScalaEnumeration(classOf[ProductCalendarRef])
                   calendarType:ProductCalendar,
                   stock:Option[Long],
-                  stockByDateTime:Option[Seq[ESStockCalendar]],
+                  stockByDateTime:Option[Seq[StockByDateTime]],
                   var lastUpdated: Date,
                   var dateCreated: Date)
 
-case class ESStockCalendar(
+case class StockByDateTime(
                           id:Long,
                           uuid:String,
                           var lastUpdated: Date,
