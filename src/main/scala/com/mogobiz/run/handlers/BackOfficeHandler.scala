@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream
 import java.util.UUID
 
 import com.mogobiz.run.cart.BoService
-import com.mogobiz.run.cart.domain.{Product, TicketType}
 import com.mogobiz.run.model.{Mogobiz, Render, Currency}
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
@@ -52,8 +51,8 @@ class BackOfficeHandler {
     }
   }
 
-  def createTransaction(storeCode: String, cart: Render.Cart, transactionUuid: String, rate: Currency, buyer: String, companyId: Long, aesPassword: String)(implicit session: DBSession) = {
-    val boCart = BOCartDao.create(buyer, companyId, rate, cart.finalPrice, transactionUuid)
+  def createTransaction(storeCode: String, cart: Render.Cart, transactionUuid: String, rate: Currency, buyer: String, company: Company)(implicit session: DBSession) = {
+    val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice, transactionUuid)
 
     cart.cartItemVOs.foreach { cartItem =>
       val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
@@ -75,7 +74,7 @@ class BackOfficeHandler {
               registeredCartItem.firstname.getOrElse("") + ";LastName:" + registeredCartItem.lastname.getOrElse("") +
               ";Phone:" + registeredCartItem.phone.getOrElse("") + ";TicketType:" + sku.name + ";shortCode:" + shortCode
 
-            val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, aesPassword, "AES")
+            val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, company.aesPassword, "AES")
             val output = new ByteArrayOutputStream()
             QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
             val qrCodeBase64 = Base64.encode(output.toByteArray)

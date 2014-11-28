@@ -245,7 +245,7 @@ class CartHandler {
         val response = Map(
           "success" -> false,
           "data" -> cart,
-          "errors" -> e.getMessage
+          "errors" -> List(e.getMessage)
         )
         response
     }
@@ -269,7 +269,7 @@ class CartHandler {
         val response = Map(
           "success" -> false,
           "data" -> cart,
-          "errors" -> e.getMessage
+          "errors" -> List(e.getMessage)
         )
         response
     }

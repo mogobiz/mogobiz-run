@@ -1,20 +1,16 @@
 package com.mogobiz.run.cart
 
-import java.io.ByteArrayOutputStream
 import java.util.{UUID, Locale}
 import com.mogobiz.run.config.{Settings, MogobizDBsWithEnv}
 import com.mogobiz.run.handlers._
-import com.mogobiz.run.model.Mogobiz.{TransactionStatus, ProductCalendar, ProductType}
+import com.mogobiz.run.model.Mogobiz.{InsufficientStockException, ProductCalendar, ProductType}
 import com.mogobiz.run.model.Render.{Cart, RegisteredCartItem, CartItem}
 import com.mogobiz.run.model._
 import com.mogobiz.run.cart.CustomTypes.CartErrors
-import com.mogobiz.run.cart.domain._
 import com.mogobiz.run.utils.Utils
 import com.mogobiz.utils._
-import com.sun.org.apache.xml.internal.security.utils.Base64
 import com.typesafe.scalalogging.slf4j.Logger
 import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import org.slf4j.LoggerFactory
 import scalikejdbc._
 
@@ -30,7 +26,7 @@ object CartBoService extends BoService {
 
   private val logger = Logger(LoggerFactory.getLogger("CartBoService"))
 
-  val productService = ProductBoService
+  //val productService = ProductBoService
 
   /**
    * Retrouve un item parmi la liste des items du panier. L'item est recherche si le type
@@ -157,8 +153,10 @@ object CartBoService extends BoService {
     if (cart.validate) {
       DB localTx { implicit session =>
         cart.cartItems.foreach { cartItem =>
-          val sku = TicketType.get(cartItem.skuId)
-          productService.incrementStock(sku, cartItem.quantity, cartItem.startDate)
+          val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
+          val product = productAndSku.get._1
+          val sku = productAndSku.get._2
+          stockHandler.incrementStock(cart.storeCode, product, sku, cartItem.quantity, cartItem.startDate)
         }
       }
 
@@ -492,9 +490,11 @@ object CartBoService extends BoService {
       try {
         DB localTx { implicit session =>
           cart.cartItems.foreach { cartItem =>
-            val sku = TicketType.get(cartItem.skuId)
             try {
-              productService.decrementStock(sku, cartItem.quantity, cartItem.startDate)
+              val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
+              val product = productAndSku.get._1
+              val sku = productAndSku.get._2
+              stockHandler.decrementStock(cart.storeCode, product, sku, cartItem.quantity, cartItem.startDate)
             }
             catch {
               case ex: InsufficientStockException => {
@@ -530,11 +530,7 @@ object CartBoService extends BoService {
    */
   @throws[ValidateCartException]
   def prepareBeforePayment(countryCode: Option[String], stateCode: Option[String], rate: Currency, cart: StoreCart, buyer: String) = {
-    // récup du companyId à partir du storeCode
-    val companyId = Company.findByCode(cart.storeCode).get.id
-
-    //TODO à faire
-    val easPassword = "123456789"
+    val company = CompanyDao.findByCode(cart.storeCode)
 
     // Validation du panier au cas où il ne l'était pas déjà
     val valideCart = validateCart(cart)
@@ -549,7 +545,7 @@ object CartBoService extends BoService {
 
     // Création de la transaction
     DB localTx { implicit session =>
-      backOfficeHandler.createTransaction(cart.storeCode, cartTTC, cart.transactionUuid, rate, buyer, companyId, easPassword)
+      backOfficeHandler.createTransaction(cart.storeCode, cartTTC, cart.transactionUuid, rate, buyer, company.get)
     }
 
     StoreCartDao.save(updatedCart)
@@ -600,8 +596,10 @@ object CartBoService extends BoService {
 
           //update nbSales
           boCartItems.map { boCartItem =>
-            val ticketType = TicketType.get(boCartItem.ticketTypeFk)
-            productService.incrementSales(ticketType, boCartItem.quantity)
+            val productAndSku = ProductDao.getProductAndSku(cart.storeCode, boCartItem.ticketTypeFk)
+            val product = productAndSku.get._1
+            val sku = productAndSku.get._2
+            salesHandler.incrementSales(cart.storeCode, product, sku, boCartItem.quantity)
           }
           val updatedCart = StoreCart(storeCode = cart.storeCode, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
           StoreCartDao.save(updatedCart)

@@ -1,127 +1,184 @@
 package com.mogobiz.run.handlers
 
-import java.util.Date
+import java.util.{UUID, Date}
 
-import com.mogobiz.run.cart.domain.{TicketType, StockCalendar}
-import com.mogobiz.run.es.EsClientOld
-import com.mogobiz.run.model.{StockCalendar => EsStockCalendar, Stock => EsStock}
-import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s}
-import com.sksamuel.elastic4s.ElasticDsl._
-import org.json4s.{DefaultFormats, Formats}
+import akka.actor.Props
+import com.mogobiz.es.EsClient
+import com.mogobiz.run.actors.EsUpdateActor.StockUpdateRequest
+import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
+import com.mogobiz.run.cart.BoService
+import com.mogobiz.run.model.Mogobiz._
+import com.mogobiz.run.model.{Stock => EsStock, ESStockCalendar, StockCalendar}
+import com.mogobiz.utils.GlobalUtil._
+import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate, insert => esinsert, _}
+import com.sksamuel.elastic4s.IndexesTypesDsl
+import org.joda.time.DateTime
+import scalikejdbc._
 
 /**
  * Handle the stock update in es
  */
-class StockHandler {
+class StockHandler extends IndexesTypesDsl {
 
-  def update(storeCode: String, uuid:String, sold: Long) = {
-    println("update ES stock")
+  @throws[InsufficientStockException]
+  def decrementStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date:Option[DateTime]):Unit = {
+    val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
+    stockOpt match {
+      case Some(stock) => DB localTx { implicit session =>
+        // Search the corresponding StockCalendar or create it if necessary
+        val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
+        val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
+        else StockCalendarDao.create(product, sku, stock, date)
 
-    val script = "ctx._source.stock = ctx._source.initialStock - sold"
-    val req = esupdate4s id uuid in s"${storeCode}/stock" script script params {"sold" -> s"$sold"} retryOnConflict 4
-    println(req)
-    EsClientOld.updateRaw(req)
+        // stock verification
+        if (!stock.stockUnlimited && !stock.stockOutSelling && stockCalendar.stock < (quantity + stockCalendar.sold)) {
+          throw new InsufficientStockException("The available stock is insufficient for the quantity required")
+        }
 
+        // sold increment
+        val newStockCalendar = StockCalendarDao.update(stockCalendar, quantity)
+
+        // Mise à jour du stock dans ES via un actor pour ne pas bloquer la méthode
+        fireUpdateEsStock(storeCode, product, sku, stock, newStockCalendar)
+      }
+      case None => // Pas de stock à gérer
+    }
   }
 
-  def update(storeCode: String, ticketType: TicketType, stockCalendar:StockCalendar):Boolean = {
-
-
-    def doUpdate(storeCode:String, newStock:EsStock):Boolean = {
-
-      println("update du stock:",newStock)
-
-      import org.json4s.native.Serialization.write
-      implicit def json4sFormats: Formats = DefaultFormats.lossless
-      val json = write(newStock)
-      EsClientOld.update2[EsStock](storeCode, newStock, json)
-    }
-
-    println("update ES stock with stockCalendar", stockCalendar)
-
-    //1. get the doc
-//    val wishlistList = EsClient.load[WishlistList](esStore(store), wishlistListId).getOrElse(throw NotFoundException(s"Unknown wishlistList $wishlistListId"))
-
-    val startDate = stockCalendar.startDate.get.toDate
-    val res = EsClientOld.load[EsStock](storeCode,ticketType.uuid)
-    println(res)
-
-    // Some(Stock(139,0ec602d5-3da8-4e64-9986-27e04e7b7fe1,f8a279fc-3836-4aed-93bd-64e1609598b0,135,07e020a0-5aaf-4def-a783-15edd33c360e,Wed Jan 01 01:00:00 CET 2014,Thu Jan 01 00:59:00 CET 2015,None,Thu Oct 02 02:54:15 CEST 2014,Thu Oct 02 02:54:15 CEST 2014,Fri Oct 03 02:10:01 CEST 2014,150,false,false,true,Some(DATE_ONLY),None,null))
-    res match {
+  def incrementStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date:Option[DateTime])(implicit session: DBSession):Unit = {
+    val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
+    stockOpt match {
       case Some(stock) =>
-        println(s"stock trouvé => recherche du stockCal avec startDate = ${startDate}")
-        val stockCals = stock.stockByDateTime match {
-          case Some(stocksByDateTime) =>
-            stocksByDateTime.filter {
-              stockCal =>
-                //println(stockCal)
-                //stockCal.startDate == startDate //pas de comparaison par date car la date récup de ES est désérialisé avec offset GMT
-                stockCal.uuid == stockCalendar.uuid
-            }
-          case _ => Seq()
-        }
-        //println("stockCals=",stockCals)
-        if(!stockCals.isEmpty){
-          println(s" stockCal trouvé => mise à jour du stock")
+        // Search the corresponding StockCalendar or create it if necessary
+        val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
+        val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
+        else StockCalendarDao.create(product, sku, stock, date)
 
-          val newEsStockCal = stockCals.head.copy(stock = stockCalendar.stock - stockCalendar.sold, lastUpdated = new Date)
-          val newStockByDateTime = stock.stockByDateTime.getOrElse(Seq()).map { stockCal =>
-            if(stockCal.uuid == stockCalendar.uuid)
-              newEsStockCal
-            else
-              stockCal
-          }
-          val newStock = stock.copy(stockByDateTime = Some(newStockByDateTime))
+        // sold increment
+        val newStockCalendar = StockCalendarDao.update(stockCalendar, -quantity)
 
-          doUpdate(storeCode, newStock)
-        } else {
-          println(s" stockCal non trouvé => ajout à la seq du stock")
-          val newEsStockCal = EsStockCalendar(
-            id = stockCalendar.id
-            ,uuid = stockCalendar.uuid
-            ,dateCreated = stockCalendar.dateCreated.toDate
-            ,lastUpdated = stockCalendar.lastUpdated.toDate
-            ,startDate = startDate
-            ,stock = stockCalendar.stock - stockCalendar.sold
+        // Mise à jour du stock dans ES via un actor pour ne pas bloquer la méthode
+        fireUpdateEsStock(storeCode, product, sku, stock, newStockCalendar)
+
+      case None => // Pas de stock à gérer
+    }
+  }
+
+  private def fireUpdateEsStock(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar) = {
+    val system = ActorSystemLocator.get
+    val stockActor = system.actorOf(Props[EsUpdateActor])
+    stockActor ! StockUpdateRequest(storeCode, product, sku, stock, stockCalendar)
+  }
+
+  def updateEsStock(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar:StockCalendar): Unit = {
+    if (stockCalendar.startDate.isEmpty) {
+      // Stock produit (sans date)
+      val script = "ctx._source.stock = ctx._source.initialStock - sold"
+      val req = esupdate id stock.uuid in s"$storeCode/stock" script script params {
+        "sold" -> s"${stockCalendar.sold}"
+      } retryOnConflict 4
+      EsClient().execute(req).getGetResult
+    }
+    else {
+      val esStockCalendarOpt = stock.stockByDateTime.getOrElse(Seq()).find(_.uuid == stockCalendar.uuid)
+      esStockCalendarOpt match {
+        case Some(esStockCalendar) =>
+          // Mise à jour du StockCalendar existant
+          val newESStockCalendar = esStockCalendar.copy(stock = stockCalendar.stock - stockCalendar.sold, lastUpdated = new Date)
+          val newStockByDateTime = stock.stockByDateTime.getOrElse(Seq()).map(s =>
+            if (s.uuid == stockCalendar.uuid) newESStockCalendar
+            else s
           )
-          val newStockByDateTime = stock.stockByDateTime.getOrElse(Seq()) :+ newEsStockCal
-          val newStock = stock.copy(stockByDateTime = Some(newStockByDateTime))
+          StockDao.update(storeCode, stock.copy(stockByDateTime = Some(newStockByDateTime)))
+        case _ =>
+          // Ajout d'un nouveau StockCalendar
+          val newESStockCalendar = ESStockCalendar(
+            stockCalendar.id,
+            stockCalendar.uuid,
+            dateCreated = stockCalendar.dateCreated.toDate,
+            lastUpdated = stockCalendar.lastUpdated.toDate,
+            startDate = stockCalendar.startDate.get,
+            stock = stockCalendar.stock - stockCalendar.sold
+          )
+          val newStockByDateTime = stock.stockByDateTime.getOrElse(Seq()) :+ newESStockCalendar
+          StockDao.update(storeCode, stock.copy(stockByDateTime = Some(newStockByDateTime)))
+      }
+    }
+  }
+}
 
-          doUpdate(storeCode, newStock)
-        }
+object StockDao {
 
-      case _ =>
-        println(s"stock non trouvé => insertion du stock")
-        val product = ticketType.product.get
-        val stock = ticketType.stock.get
-        val newStock = EsStock(
-          id = ticketType.id
-        , uuid = ticketType.uuid
-        , sku = ticketType.sku
-        , productId = product.id
-        , productUuid = product.uuid
-        , startDate = ticketType.startDate.get.toDate
-        , stopDate = ticketType.stopDate.get.toDate
-        , availabilityDate = ticketType.availabilityDate.map(_.toDate)
-        , initialStock = stock.stock
-        , stockUnlimited = stock.stockUnlimited
-        , stockOutSelling = stock.stockOutSelling
-        , stockDisplay = product.stockDisplay
-        , calendarType = Some(product.calendarType.toString)
-        , stock = None
-        , stockByDateTime = Some(Seq(EsStockCalendar(
-          id = stockCalendar.id
-          ,uuid = stockCalendar.uuid
-          ,dateCreated = stockCalendar.dateCreated.toDate
-          ,lastUpdated = stockCalendar.lastUpdated.toDate
-          ,startDate = startDate
-          ,stock = stockCalendar.stock - stockCalendar.sold
-        )))
-        )
+  def findByProductAndSku(storeCode: String, product: Product, sku: Sku) : Option[EsStock] = {
+    // Création de la requête
+    val req = search in storeCode -> "stock" filter and(
+      termFilter("stock.productId", product.id),
+      termFilter("stock.id", sku.id)
+    )
 
-        doUpdate(storeCode, newStock)
+    // Lancement de la requête
+    EsClient.search[EsStock](req);
+  }
 
+  def update(storeCode: String, stock: EsStock) = {
+    EsClient.update[EsStock](storeCode, stock, true, false)
+  }
+}
+
+object StockCalendarDao extends SQLSyntaxSupport[StockCalendar] with BoService {
+
+  override val tableName = "stock_calendar"
+
+  def apply(rs: WrappedResultSet) = StockCalendar(
+    rs.get("id"),
+    rs.get("date_created"),
+    rs.get("last_updated"),
+    rs.get("product_fk"),
+    rs.get("sold"),
+    rs.get("start_date"),
+    rs.get("stock"),
+    rs.get("ticket_type_fk"),
+    rs.get("uuid")
+  )
+
+  def findBySkuAndDate(sku: Sku, date:Option[DateTime])(implicit session: DBSession) : Option[StockCalendar] = {
+    if (date.isDefined) sql"""select * from stock_calendar where ticket_type_fk=${sku.id} and start_date=${date.get}""".map(rs => StockCalendarDao(rs)).single.apply()
+    else sql"""select * from stock_calendar where ticket_type_fk=${sku.id} and start_date is null""".map(rs => StockCalendarDao(rs)).single.apply()
+  }
+
+  def create(product:Product, sku: Sku, stock:EsStock, date:Option[DateTime])(implicit session: DBSession) : StockCalendar = {
+    val newStockCalendar = new StockCalendar(
+      newId(),
+      DateTime.now,
+      DateTime.now,
+      product.id,
+      0,
+      date,
+      stock.initialStock,
+      sku.id,
+      UUID.randomUUID().toString)
+
+    applyUpdate {
+      insert.into(StockCalendarDao).namedValues(
+        StockCalendarDao.column.id -> newStockCalendar.id,
+        StockCalendarDao.column.dateCreated -> newStockCalendar.dateCreated,
+        StockCalendarDao.column.lastUpdated -> newStockCalendar.lastUpdated,
+        StockCalendarDao.column.productFk -> newStockCalendar.productFk,
+        StockCalendarDao.column.sold -> newStockCalendar.sold,
+        StockCalendarDao.column.startDate -> newStockCalendar.startDate,
+        StockCalendarDao.column.stock -> newStockCalendar.stock,
+        StockCalendarDao.column.ticketTypeFk -> newStockCalendar.ticketTypeFk,
+        StockCalendarDao.column.uuid -> newStockCalendar.uuid
+      )
     }
 
+    newStockCalendar
   }
+
+  def update(stockCalendar:StockCalendar, addQuantity: Long)(implicit session:DBSession) : StockCalendar = {
+    val newStockCalendar = stockCalendar.copy(sold = Math.max(stockCalendar.sold + addQuantity, 0))
+    sql"update stock_calendar set sold = ${newStockCalendar.sold},last_updated = $now where id=${stockCalendar.id}".update().apply()
+    newStockCalendar
+  }
+
 }

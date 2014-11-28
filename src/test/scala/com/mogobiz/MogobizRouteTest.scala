@@ -10,7 +10,7 @@ import org.specs2.time.NoTimeConversions
 import spray.testkit.Specs2RouteTest
 import spray.routing.HttpService
 import com.mogobiz.run.services.MogobizRoutes
-import com.mogobiz.run.actors.MogobizActors
+import com.mogobiz.run.actors.{ActorSystemLocator, MogobizActors}
 import com.mogobiz.json.JsonUtil
 import org.specs2.matcher.JsonMatchers
 import scala.concurrent.duration._
@@ -21,6 +21,7 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
   val STORE = "mogobiz"
 
   def actorRefFactory = system // connect the DSL to the test ActorSystem
+  ActorSystemLocator(system)
 
   sequential
 

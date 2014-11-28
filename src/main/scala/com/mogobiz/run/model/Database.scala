@@ -1,10 +1,11 @@
 package com.mogobiz.run.model
 
+import java.util.Date
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import com.mogobiz.run.cart.domain.{Product, DateAware, Entity}
 import com.mogobiz.run.json.{JodaDateTimeOptionSerializer, JodaDateTimeOptionDeserializer, JodaDateTimeDeserializer, JodaDateTimeSerializer}
 import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnitType
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
@@ -13,9 +14,6 @@ import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnitType
 import org.joda.time.DateTime
-import scalikejdbc.DBSession
-
-import scala.Product
 
 /**
  * Created by yoannbaudy on 19/11/2014.
@@ -104,7 +102,8 @@ object Mogobiz {
                  @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
                  @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                  stopDate:Option[DateTime]=None,
-                 coupons: List[InnerCoupon])
+                 coupons: List[InnerCoupon],
+                 nbSales: Long)
 
   case class InnerCoupon(id:Long)
 
@@ -128,7 +127,10 @@ object Mogobiz {
                      skus:List[Sku],
                      intraDayPeriods:Option[List[IntraDayPeriod]],
                      datePeriods:Option[List[DatePeriod]],
-                     poi: Option[Poi])
+                     poi: Option[Poi],
+                     nbSales: Long,
+                     var lastUpdated: Date,
+                     var dateCreated: Date)
 
   case class ReductionRule(id:Long,
                            @JsonScalaEnumeration(classOf[ReductionRuleRef])
@@ -216,6 +218,13 @@ object Mogobiz {
                         dateCreated:DateTime,
                         lastUpdated:DateTime,
                         uuid : String)
+
+  @JsonIgnoreProperties(ignoreUnknown=true)
+  case class Company(id: Long,
+                      aesPassword: String,
+                      name: String,
+                      uuid: String,
+                      code: String)
 
   object TransactionStatus extends Enumeration {
     class TransactionStatusType(s: String) extends Val(s)
@@ -319,5 +328,7 @@ object Mogobiz {
     }
   }
   class LinearUnitRef extends TypeReference[LinearUnit.type]
+
+  class InsufficientStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
 
 }
