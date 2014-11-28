@@ -22,4 +22,5 @@ object HandlersConfig {
   val taxRateHandler = new TaxRateHandler
   val couponHandler = new CouponHandler
   val backOfficeHandler = new BackOfficeHandler
+  val forUpdateHandler = new ForUpdatePostgreHandler
 }

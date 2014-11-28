@@ -4,6 +4,7 @@ import java.util.{UUID, Date}
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
+import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.actors.EsUpdateActor.StockUpdateRequest
 import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
 import com.mogobiz.run.cart.BoService
@@ -142,8 +143,10 @@ object StockCalendarDao extends SQLSyntaxSupport[StockCalendar] with BoService {
   )
 
   def findBySkuAndDate(sku: Sku, date:Option[DateTime])(implicit session: DBSession) : Option[StockCalendar] = {
-    if (date.isDefined) sql"""select * from stock_calendar where ticket_type_fk=${sku.id} and start_date=${date.get}""".map(rs => StockCalendarDao(rs)).single.apply()
-    else sql"""select * from stock_calendar where ticket_type_fk=${sku.id} and start_date is null""".map(rs => StockCalendarDao(rs)).single.apply()
+    val req = if (date.isDefined) forUpdateHandler.selectStockCalendarBySkuAndDate(sku, date.get)
+    else forUpdateHandler.selectStockCalendarBySkuAndNullDate(sku)
+
+    req.map(rs => StockCalendarDao(rs)).single.apply()
   }
 
   def create(product:Product, sku: Sku, stock:EsStock, date:Option[DateTime])(implicit session: DBSession) : StockCalendar = {

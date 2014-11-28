@@ -18,10 +18,10 @@ class CouponHandler {
   }
 
   def consumeCoupon(storeCode: String, coupon: Mogobiz.Coupon): Boolean = {
-    DB localTx { implicit s =>
-      val numberModifyLine = sql""" update Coupon set consumed=consumed+1 where code=${coupon.code} and (number_of_uses is null or number_of_uses > consumed) and company_fk in (select c.id from Company c where c.code = ${storeCode}) """.update().apply()
-      numberModifyLine > 0
+    val numberModifyLine = DB localTx { implicit s =>
+      sql""" update Coupon set consumed=consumed+1 where code=${coupon.code} and (number_of_uses is null or number_of_uses > consumed) and company_fk in (select c.id from Company c where c.code = ${storeCode}) """.update().apply()
     }
+    numberModifyLine > 0
   }
 
   def computePromotions(storeCode: String, coupons: List[Mogobiz.Coupon], cartItems: List[Render.CartItem]): ReductionAndCouponsList = {
