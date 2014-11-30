@@ -1,6 +1,7 @@
 package com.mogobiz.run.handlers
 
 import akka.actor.Props
+import com.mogobiz.es.EsClient
 import com.mogobiz.json.JacksonConverter
 import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate, _}
 import com.mogobiz.run.actors.EsUpdateActor.SalesUpdateRequest
@@ -9,7 +10,6 @@ import com.mogobiz.run.model.Mogobiz.{Sku, Product}
 import com.sksamuel.elastic4s.source.DocumentSource
 import org.joda.time.DateTime
 import scalikejdbc._
-import com.mogobiz.run.es.EsClientOld
 
 class SalesHandler {
 
@@ -43,7 +43,7 @@ class SalesHandler {
     val req = esupdate id product.id in storeCode -> "product" doc new DocumentSource{
       override def json: String = js
     }
-    EsClientOld().execute(req)
+    EsClient().execute(req)
   }
 
 }

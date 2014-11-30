@@ -1,8 +1,7 @@
 package com.mogobiz.run.handlers
 
+import com.mogobiz.es.EsClient
 import com.mogobiz.run.es._
-import com.mogobiz.run.es.EsClientOld
-import EsClientOld._
 import com.mogobiz.json.JsonUtil
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
@@ -15,7 +14,7 @@ class CategoryHandler extends JsonUtil {
   def queryCategories(store: String, hidden: Boolean, parentId: Option[String], brandId: Option[String], categoryPath: Option[String], lang: String, promotionId: Option[String], size:Option[Int]): JValue = {
     var filters:List[FilterDefinition] = List.empty
     val _size = size.getOrElse(Integer.MAX_VALUE / 2)
-    def results(req:SearchDefinition):JValue = EsClientOld.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)).getHits
+    def results(req:SearchDefinition):JValue = EsClient.searchAllRaw(filterRequest(req, filters) sourceExclude(createExcludeLang(store, lang) :+ "imported" :_*)).getHits
     brandId match {
       case Some(s) =>
         filters +:= termFilter("brand.id", s)

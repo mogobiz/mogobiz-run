@@ -1,5 +1,6 @@
 package com.mogobiz.run.es
 
+/*
 import java.util.{Calendar, Date}
 
 import com.mogobiz.json.JacksonConverter
@@ -20,8 +21,9 @@ import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
 
 import scala.language.{implicitConversions, reflectiveCalls}
-
+*/
 object EsClientOld {
+  /*
   private val logger = Logger(LoggerFactory.getLogger("esClient"))
 
   val settings = ImmutableSettings.settingsBuilder().put("cluster.name", EsCluster).build()
@@ -60,8 +62,8 @@ object EsClientOld {
   }
 
 
-  def load[T: Manifest](store: String, uuid: String): Option[T] = {
-    val req = get id uuid from store -> manifest[T].runtimeClass.getSimpleName.toLowerCase
+  def load[T: Manifest](indexName: String, uuid: String): Option[T] = {
+    val req = get id uuid from indexName -> manifest[T].runtimeClass.getSimpleName.toLowerCase
     val res = EsClientOld().execute(req)
     if (res.isExists) Some(JacksonConverter.deserialize[T](res.getSourceAsString)) else None
   }
@@ -221,5 +223,5 @@ object EsClientOld {
   class StringSource(val str:String) extends DocumentSource {
     def json = str
   }
-
+*/
 }

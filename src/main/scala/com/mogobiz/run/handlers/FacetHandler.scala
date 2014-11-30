@@ -1,8 +1,8 @@
 package com.mogobiz.run.handlers
 
 
+import com.mogobiz.es.EsClient
 import com.mogobiz.run.es._
-import com.mogobiz.run.es.EsClientOld
 import com.mogobiz.run.model.RequestParameters.FacetRequest
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s}
 import com.sksamuel.elastic4s.{SearchType, FilterDefinition}
@@ -160,7 +160,7 @@ class FacetHandler {
     }
       searchType SearchType.Count)
 
-    EsClientOld searchAgg esq
+    EsClient searchAgg esq
   }
 
 
@@ -171,7 +171,7 @@ class FacetHandler {
         agg terms "notations" field "notation"
       } searchType SearchType.Count
 
-    val resagg = EsClientOld searchAgg req
+    val resagg = EsClient searchAgg req
 //    println("getCommentNotations resagg:",resagg)
 
     val keyValue = for {

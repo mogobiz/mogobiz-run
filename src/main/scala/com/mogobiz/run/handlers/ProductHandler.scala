@@ -4,8 +4,8 @@ import java.text.SimpleDateFormat
 import java.util.{Date, Calendar, Locale}
 
 import com.mogobiz.es.EsClient
+import com.mogobiz.es.EsClient._
 import com.mogobiz.run.es._
-import com.mogobiz.run.es.EsClientOld._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.RequestParameters._
@@ -126,7 +126,7 @@ class ProductHandler extends JsonUtil {
     val _sort = productRequest.orderBy.getOrElse("name")
     val _sortOrder = productRequest.orderDirection.getOrElse("asc")
     lazy val currency = queryCurrency(storeCode, productRequest.currencyCode)
-    val response: SearchHits = EsClientOld.searchAllRaw(
+    val response: SearchHits = EsClient.searchAllRaw(
       filterRequest(_query, filters)
         sourceExclude (fieldsToExclude: _*)
         from _from
@@ -243,7 +243,7 @@ class ProductHandler extends JsonUtil {
       getIncludedFieldWithPrefixAsList(storeCode, "features.", "name", params.lang) :::
       getIncludedFieldWithPrefixAsList(storeCode, "features.", "value", params.lang)
 
-    val docs: Array[MultiGetItemResponse] = EsClientOld.loadRaw(multiget(idList.map(id => get id id from storeCode -> "product" fields (includedFields: _*)): _*))
+    val docs: Array[MultiGetItemResponse] = EsClient.loadRaw(multiget(idList.map(id => get id id from storeCode -> "product" fields (includedFields: _*)): _*))
 
     var allLanguages: List[String] = getStoreLanguagesAsList(storeCode)
 
@@ -339,7 +339,7 @@ class ProductHandler extends JsonUtil {
 
   def getProductDates(storeCode: String, date:Option[String], productId: Long, uuid: String): JValue = {
     val filters: List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
-    val hits: SearchHits = EsClientOld.searchAllRaw(
+    val hits: SearchHits = EsClient.searchAllRaw(
       filterRequest(esearch4s in storeCode -> "product", filters) sourceInclude (List("datePeriods", "intraDayPeriods"): _*)
     )
     val inPeriods: List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
@@ -371,7 +371,7 @@ class ProductHandler extends JsonUtil {
 
   def getProductTimes(storeCode: String, date:Option[String], productId: Long, uuid: String): JValue = {
     val filters: List[FilterDefinition] = List(createTermFilter("id", Some(s"$id"))).flatten
-    val hits: SearchHits = EsClientOld.searchAllRaw(
+    val hits: SearchHits = EsClient.searchAllRaw(
       filterRequest(esearch4s in storeCode -> "product", filters) sourceInclude (List("intraDayPeriods"): _*)
     )
     val intraDayPeriods: List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
@@ -422,13 +422,13 @@ class ProductHandler extends JsonUtil {
     println(res)
     */
 
-    val res = EsClientOld.loadRaw(get(productId) from storeCode -> "product").get
+    val res = EsClient.loadRaw(get(productId) from storeCode -> "product").get
     val v1 = res.getVersion
     val product = response2JValue(res)
 
     val notations = JObject(("notations", JArray(values)))
     val updatedProduct = (product removeField { f => f._1 == "notations"}) merge notations
-    val res2 = EsClientOld.updateRaw(esupdate4s id productId in storeCode -> "product" doc updatedProduct retryOnConflict 4)
+    val res2 = EsClient.updateRaw(esupdate4s id productId in storeCode -> "product" doc updatedProduct retryOnConflict 4)
     //res2.getVersion > v1
     true
   }
@@ -439,7 +439,7 @@ class ProductHandler extends JsonUtil {
     val req = esupdate4s id commentId in s"${commentIndex(storeCode)}/comment" script script params {
       "useful" -> s"$useful"
     }
-    EsClientOld.updateRaw(req)
+    EsClient.updateRaw(req)
     true
   }
 
@@ -449,7 +449,7 @@ class ProductHandler extends JsonUtil {
     val comment = Try(Comment(None, req.userId, req.surname, req.notation, req.subject, req.comment, req.created, productId))
     comment match {
       case Success(s) =>
-        Comment(Some(EsClientOld.index[Comment](commentIndex(storeCode), s)), req.userId, req.surname, req.notation, req.subject, req.comment, req.created, productId)
+        Comment(Some(EsClient.index[Comment](commentIndex(storeCode), s)), req.userId, req.surname, req.notation, req.subject, req.comment, req.created, productId)
       case Failure(f) => throw f
     }
   }
@@ -465,7 +465,7 @@ class ProductHandler extends JsonUtil {
     val size = req.maxItemPerPage.getOrElse(100)
     val from = req.pageOffset.getOrElse(0) * size
     val filters: List[FilterDefinition] = List(createTermFilter("productId", Some(s"$productId"))).flatten
-    val hits: SearchHits = EsClientOld.searchAllRaw(
+    val hits: SearchHits = EsClient.searchAllRaw(
       filterRequest(esearch4s in commentIndex(storeCode) -> "comment", filters)
         from from
         size size
@@ -484,7 +484,7 @@ class ProductHandler extends JsonUtil {
   def getProductHistory(storeCode: String, sessionId: String, currency: Option[String], country: Option[String], lang: String): List[JValue] = {
     implicit def json4sFormats: Formats = DefaultFormats
     val ids: List[Long] =
-      EsClientOld.loadRaw(get id sessionId from(historyIndex(storeCode), "history")) match {
+      EsClient.loadRaw(get id sessionId from(historyIndex(storeCode), "history")) match {
         case Some(s) => (response2JValue(s) \ "productIds").extract[List[String]].map(_.toLong).reverse
         case None => List.empty
       }
@@ -495,7 +495,7 @@ class ProductHandler extends JsonUtil {
   }
 
   def getProductsByNotation(storeCode: String, lang: String): List[JValue] = {
-    val productsByNotation: SearchResponse = EsClientOld().execute(
+    val productsByNotation: SearchResponse = EsClient().execute(
       esearch4s in s"${storeCode}_comment" types "comment" aggs {
         aggregation terms "products" field "productId" order Terms.Order.aggregation("avg_notation", false) aggregations (
           aggregation avg "avg_notation" field "notation"
@@ -522,7 +522,7 @@ class ProductHandler extends JsonUtil {
    */
   private def getProductsByIds(store: String, ids: List[Long], req: ProductDetailsRequest): List[JValue] = {
     lazy val currency = queryCurrency(store, req.currency)
-    val products: List[MultiGetItemResponse] = EsClientOld.loadRaw(multiget(ids.map(id => get id id from store -> "product"): _*)).toList
+    val products: List[MultiGetItemResponse] = EsClient.loadRaw(multiget(ids.map(id => get id id from store -> "product"): _*)).toList
     for (product <- products if !product.isFailed) yield {
       val p: JValue = product.getResponse
       renderProduct(p, req.country, req.currency, req.lang, currency, List())
@@ -548,7 +548,7 @@ class ProductHandler extends JsonUtil {
 
     //add to the end because productIds is an ArrayList (performance issue if we use ArrayList.add(0,_) => so last is newer
     val script = "if(ctx._source.productIds.contains(pid)){ ctx._source.productIds.remove(ctx._source.productIds.indexOf(pid))}; ctx._source.productIds += pid"
-    EsClientOld.updateRaw(
+    EsClient.updateRaw(
       esupdate4s id sessionId in s"${historyIndex(store)}/history" script
         script
         params {

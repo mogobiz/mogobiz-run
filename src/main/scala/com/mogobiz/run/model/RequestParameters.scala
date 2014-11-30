@@ -101,15 +101,15 @@ object RequestParameters {
 
   //--- Cart
 
-  case class CartParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+  case class CartParameters(_currency:Option[String],_country:Option[String],state: Option[String], _lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
-  case class CouponParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+  case class CouponParameters(_currency:Option[String],_country:Option[String],state: Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
   case class PrepareTransactionParameters(_currency:Option[String],_country:Option[String],state:Option[String],_lang:String, buyer:String) extends CommonProductParameters(_lang,_currency,_country)
 
   case class CommitTransactionParameters(transactionUuid:String)
 
-  case class CancelTransactionParameters(_currency:Option[String],_country:Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
+  case class CancelTransactionParameters(_currency:Option[String],_country:Option[String],state: Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
 
 }
