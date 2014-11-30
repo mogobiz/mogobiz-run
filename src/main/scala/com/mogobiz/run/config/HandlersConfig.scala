@@ -1,6 +1,7 @@
 package com.mogobiz.run.config
 
 import com.mogobiz.run.handlers._
+import com.mogobiz.run.handlers.sql.ForUpdateHandler
 
 object HandlersConfig {
   val tagHandler = new TagHandler
@@ -22,5 +23,5 @@ object HandlersConfig {
   val taxRateHandler = new TaxRateHandler
   val couponHandler = new CouponHandler
   val backOfficeHandler = new BackOfficeHandler
-  val forUpdateHandler = new ForUpdatePostgreHandler
+  val forUpdateHandler = new ForUpdateHandler
 }
