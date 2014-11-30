@@ -1,8 +1,7 @@
 package com.mogobiz.run.utils
 
-import com.mogobiz.run.cart.ProductCalendar
-import com.mogobiz.run.cart.domain.TicketType
-import org.joda.time.{DateTime, LocalTime}
+import com.mogobiz.run.model.Mogobiz.{ProductCalendar, IntraDayPeriod, Sku, Product}
+import org.joda.time._
 import scalikejdbc._
 
 /**
@@ -11,13 +10,13 @@ import scalikejdbc._
  */
 object Utils {
 
-  def remove[A](list: List[A], item:A) : List[A] = {
+  def remove[A](list: List[A], item: A): List[A] = {
     if (list.isEmpty) list
     else if (list.head == item) list.tail
     else remove(list.tail, item) ::: List(list.head)
   }
 
-  def printJSON(o:Object)={
+  def printJSON(o: Object) = {
     import org.json4s.JsonDSL._
     import org.json4s.native.JsonMethods._
     import org.json4s.native.Serialization._
@@ -31,82 +30,113 @@ object Utils {
 
   }
 
+  def computeAge(birthDate: Option[DateTime]) : Int = {
+    if (birthDate.isDefined) {
+      val period = new Period(birthDate.get.toLocalDate, DateTime.now().toLocalDate, PeriodType.years());
+      return period.getYears
+    }
+    else 0
+  }
+
   /**
    * Cette méthode permet de récupérer la date de début et de fin d'utilisation d'un ticket à partir de la date
    * choisie par le client et de la configuration du produit et du TicketType.
    * Si la date n'est pas valide, la méthode renvoie null sinon elle renvoie un tableau de 2 dates, la première étant
    * la date de début et la seconde étant la date de fin
-   * @param optTicketType : Facultatif (si non fourni, la date n'est pas controllée au niveau du ticketType)
+   * @param product : Product
+   * @param sku : Sku
    * @param optDate
    * @return
    */
-  def verifyAndExtractStartEndDate(optTicketType:Option[TicketType], optDate:Option[DateTime] ): (Option[DateTime],Option[DateTime])=
-  {
-    val emptyResult = (None,None)
-    if(optTicketType.isEmpty || optDate.isEmpty){
-      emptyResult
-    }else{
-
-
-      val ticketType = optTicketType.get
-      val product = ticketType.product.get
+  def verifyAndExtractStartEndDate(product: Product, sku: Sku, optDate: Option[DateTime]): Option[(DateTime, DateTime)] = {
+    if (optDate.isDefined) {
       val date = optDate.get
       val dateWithTimeReset = date.withTimeAtStartOfDay()
-      val start = ticketType.startDate.getOrElse(DateTime.now().withTimeAtStartOfDay)
-      val stop = ticketType.stopDate.getOrElse(DateTime.now().withTimeAtStartOfDay)
+      val start = sku.startDate.getOrElse(DateTime.now().withTimeAtStartOfDay)
+      val stop = sku.stopDate.getOrElse(DateTime.now().withTimeAtStartOfDay)
+
       val dateValidForTicketType = (dateWithTimeReset.isAfter(start) || dateWithTimeReset.isEqual(start)) && (dateWithTimeReset.isBefore(stop) || dateWithTimeReset.isEqual(stop))
 
-      if(!dateValidForTicketType) emptyResult
-      else
-
-      // On controle maintenant la date avec le calendrier du produit
+      if (!dateValidForTicketType) None
+      else {
+        // On controle maintenant la date avec le calendrier du produit
         product.calendarType match {
-          case ProductCalendar.NO_DATE => emptyResult  // Pas de calendrier donc pas de date
-        case ProductCalendar.DATE_ONLY =>
-
-            // Calendrier jour seulement, la date doit être comprise entres les dates du produits
-            val dateonly = date.toLocalDate
-            val startDateOnly = product.startDate.get.toLocalDate
-            val stopDateOnly = product.stopDate.get.toLocalDate
-            if ((dateonly.isAfter(startDateOnly) || dateonly.isEqual(startDateOnly)) && (dateonly.isBefore(stopDateOnly) || dateonly.isEqual(stopDateOnly))) {
-              (optDate, optDate)
-            }
+          case ProductCalendar.NO_DATE => None // Pas de calendrier donc pas de date
+          case ProductCalendar.DATE_ONLY => {
+            // On cherche d'abord que la date n'est pas dans une période d'exclusion
+            if (isExcludeDate(product, date)) None
             else {
-              emptyResult
-            }
-        case ProductCalendar.DATE_TIME =>
-
-            // on récupère le créneau horraire qui correspond à l'interval pour la date/heure donnée
-            val listIncluded:Seq[IntraDayPeriod] = DB readOnly { implicit session =>
-              //FIXME pb de précision sur les dates :(
-              sql"select * from intra_day_period where product_fk = ${product.id} and start_date <= ${date.plusSeconds(1)} and end_date >= ${date.minusSeconds(1)}"
-                .map(rs => IntraDayPeriod(startDate = rs.get("start_date"), endDate = rs.get("end_date"))).list.apply
-            }
-            val timeonly = date.toLocalTime
-            val res = listIncluded.filter{
-              intraDayPeriod => {
-                val startDateTime = intraDayPeriod.startDate.toLocalTime
-                val endDateTime = intraDayPeriod.endDate.toLocalTime
-                val rightStartDateTime = new LocalTime(startDateTime.getHourOfDay, startDateTime.minuteOfHour().get())
-                val rightEndDateTime = new LocalTime(endDateTime.getHourOfDay, endDateTime.minuteOfHour().get())
-                (timeonly.isAfter(rightStartDateTime)|| timeonly.isEqual(rightStartDateTime)) && (timeonly.isBefore(rightEndDateTime) || timeonly.isEqual(rightEndDateTime))
+              // On cherche si la date est dans une période autorisée
+              val localDate = date.toLocalDate
+              val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period => {
+                val start = period.startDate.toLocalDate
+                val end = period.endDate.toLocalDate
+                checkWeekDay(period, date) && (start.isBefore(localDate) || start.isEqual(localDate)) && (end.isAfter(localDate) || end.isEqual(localDate))
               }
+              }
+              if (intraDatePeriod.isDefined) {
+                val d = date.toDateTime(DateTimeZone.UTC).withTimeAtStartOfDay()
+                Some(d, d)
+              }
+              else None
             }
-            // et on renvoie le créneau horaire
-            res.headOption match{
-            case Some(idp) =>
-                //DateTime(int year, int monthOfYear, int dayOfMonth, int hourOfDay, int minuteOfHour)
-                val startDate = new DateTime(date.getYear, date.getMonthOfYear, date.dayOfMonth().get(), idp.startDate.hourOfDay().get(), idp.startDate.minuteOfHour().get())
-                val endDate = new DateTime(date.getYear, date.getMonthOfYear, date.dayOfMonth().get(), idp.endDate.hourOfDay().get(), idp.endDate.minuteOfHour().get())
-
-                (Some(startDate),Some(endDate))
-              case _ => emptyResult
+          }
+          case ProductCalendar.DATE_TIME => {
+            // On charche d'abord que la date n'est pas dans une période d'exlusion
+            if (isExcludeDate(product, date)) None
+            else {
+              // On cherche si la date et l'heure sont autorisée
+              val localDate = date.toLocalDate
+              val localTime = date.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+              val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period => {
+                val startDate = period.startDate.toLocalDate
+                val startTime = period.startDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+                val endDate = period.endDate.toLocalDate
+                val endTime = period.endDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+                checkWeekDay(period, date) &&
+                  (startDate.isBefore(localDate) || startDate.isEqual(localDate)) &&
+                  (endDate.isAfter(localDate) || endDate.isEqual(localDate)) &&
+                  (startTime.isBefore(localTime) || startTime.isEqual(localTime)) &&
+                  (endTime.isAfter(localTime) || endTime.isEqual(localTime))
+              }}
+              if (intraDatePeriod.isDefined) {
+                val startTime = intraDatePeriod.get.startDate.withMillisOfSecond(0).withSecondOfMinute(0)
+                val endTime = intraDatePeriod.get.endDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+                val start = localDate.toDateTime(startTime)
+                val end = localDate.toDateTime(endTime)
+                Some((start, end))
+              }
+              else None
             }
           }
         }
+      }
     }
-  case class IntraDayPeriod(startDate:DateTime, endDate:DateTime)
+    else None
+  }
 
+  private def isExcludeDate(product: Product, date: DateTime): Boolean = {
+    val localDate = date.toLocalDate
+    product.datePeriods.getOrElse(List()).find { period => {
+      val start = period.startDate.toLocalDate
+      val end = period.endDate.toLocalDate
+      (start.isBefore(localDate) || start.isEqual(localDate)) && (end.isAfter(localDate) || end.isEqual(localDate))
+    }
+    }.isDefined
+  }
+
+  private def checkWeekDay(intraDayPeriod: IntraDayPeriod, date: DateTime): Boolean = {
+    date.dayOfWeek().get() match {
+      case DateTimeConstants.MONDAY => intraDayPeriod.weekday1
+      case DateTimeConstants.TUESDAY => intraDayPeriod.weekday2
+      case DateTimeConstants.WEDNESDAY => intraDayPeriod.weekday3
+      case DateTimeConstants.THURSDAY => intraDayPeriod.weekday4
+      case DateTimeConstants.FRIDAY => intraDayPeriod.weekday5
+      case DateTimeConstants.SATURDAY => intraDayPeriod.weekday6
+      case DateTimeConstants.SUNDAY => intraDayPeriod.weekday7
+      case _ => false
+    }
+  }
 }
 
 /**

@@ -1,5 +1,6 @@
 package com.mogobiz
 
+import com.mogobiz.run.boot.DBInitializer
 import com.mogobiz.run.es.EmbeddedElasticSearchNode
 import com.mogobiz.system.MogobizSystem
 import org.elasticsearch.node.Node
@@ -9,7 +10,7 @@ import org.specs2.time.NoTimeConversions
 import spray.testkit.Specs2RouteTest
 import spray.routing.HttpService
 import com.mogobiz.run.services.MogobizRoutes
-import com.mogobiz.run.actors.MogobizActors
+import com.mogobiz.run.actors.{ActorSystemLocator, MogobizActors}
 import com.mogobiz.json.JsonUtil
 import org.specs2.matcher.JsonMatchers
 import scala.concurrent.duration._
@@ -20,13 +21,14 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
   val STORE = "mogobiz"
 
   def actorRefFactory = system // connect the DSL to the test ActorSystem
+  ActorSystemLocator(system)
 
   sequential
 
   // Node ES utilisé pour chaque test. Il est créer puis détruit à chaque test
   var esNode : Node = null
 
-  override def map(fs: =>Fragments) = Step(esNode = startES()) ^ fs ^ Step(stopES(esNode))
+  override def map(fs: =>Fragments) = Step(esNode = startES()) ^ Step(DBInitializer()) ^ fs ^ Step(stopES(esNode))
 
   override def after = prepareRefresh(esNode)
 
@@ -34,4 +36,13 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
     case JArray(a) => a
     case _ => List(j)
   }
+}
+
+object StartEmbeddedElasticSearchNodeApp extends App with EmbeddedElasticSearchNode {
+  val esNode = startES()
+
+  println("Press Enter to quit")
+  System.in.read()
+
+  stopES(esNode)
 }

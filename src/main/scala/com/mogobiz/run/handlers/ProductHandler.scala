@@ -3,6 +3,7 @@ package com.mogobiz.run.handlers
 import java.text.SimpleDateFormat
 import java.util.{Date, Calendar, Locale}
 
+import com.mogobiz.es.EsClient
 import com.mogobiz.run.es._
 import com.mogobiz.run.es.EsClientOld._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
@@ -710,6 +711,39 @@ class ProductHandler extends JsonUtil {
     periods.exists(period => {
       day.getTime.compareTo(period.startDate) >= 0 && day.getTime.compareTo(period.endDate) <= 0
     })
+  }
+
+}
+
+object ProductDao extends JsonUtil {
+
+  def get(storeCode: String, id: Long) : Option[Mogobiz.Product] = {
+    // Création de la requête
+    val req = esearch4s in storeCode -> "product" filter termFilter("product.id", id)
+
+    // Lancement de la requête
+    EsClient.search[Mogobiz.Product](req);
+  }
+
+  def getProductAndSku(storeCode: String, skuId: Long) : Option[(Mogobiz.Product, Mogobiz.Sku)] = {
+    // Création de la requête
+    val req = esearch4s in storeCode -> "product" filter termFilter("product.skus.id", skuId)
+
+    // Lancement de la requête
+    val productOpt = EsClient.search[Mogobiz.Product](req);
+    if (productOpt.isDefined) Some((productOpt.get, productOpt.get.skus.find(sku => sku.id == skuId).get))
+    else None
+  }
+
+  def getSkusIdByCoupon(storeCode: String, couponId: Long): List[Long] = {
+    // Création de la requête
+    val req = esearch4s in storeCode -> "product" filter termFilter("product.skus.coupons.id", couponId)
+
+    // Lancement de la requête
+    val productsList = EsClient.searchAll[Mogobiz.Product](req);
+
+    // Extract des id des Skus
+    productsList.toList.flatMap(p => p.skus.filter{sku => sku.coupons.exists(c => c.id == couponId)}.map(sku => sku.id))
   }
 
 }

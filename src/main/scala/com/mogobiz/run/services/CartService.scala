@@ -40,7 +40,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
 
   lazy val cartInit = pathEnd {
     get {
-      parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) { params => {
+      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) { params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
           val request = QueryCartInitRequest(storeCode, uuid, params, accountId)
@@ -57,7 +57,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
 
   lazy val cartClear = pathEnd {
     delete {
-      parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) {
+      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
         params => {
           optionalSession { optSession =>
             val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
@@ -75,7 +75,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
 
   lazy val cartAdd = path("items") {
     post {
-      parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) {
+      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
         params =>
           entity(as[AddToCartCommand]) {
             cmd => {
@@ -102,7 +102,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   }
 
   def cartUpdate(cartItemId: String) = put {
-    parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) {
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
       params => {
         entity(as[UpdateCartItemCommand]) {
           cmd => {
@@ -122,7 +122,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   }
 
   def cartRemove(cartItemId: String) = delete {
-    parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) {
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
@@ -139,7 +139,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
 
   lazy val cartValidate = path("validate") {
     post {
-      parameters('currency.?, 'country.?, 'lang ? "_all").as(CartParameters) {
+      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
         params => {
           optionalSession { optSession =>
             val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
@@ -165,7 +165,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   }
 
   def couponAdd(couponCode: String) = post {
-    parameters('currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) {
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CouponParameters) {
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
@@ -181,7 +181,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   }
 
   def couponRemove(couponCode: String) = delete {
-    parameters('currency.?, 'country.?, 'lang ? "_all").as(CouponParameters) {
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CouponParameters) {
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
@@ -237,7 +237,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   }
 
   lazy val paymentCancel = path("cancel") {
-    parameters('currency.?, 'country.?, 'lang ? "_all").as(CancelTransactionParameters) {
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CancelTransactionParameters) {
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}

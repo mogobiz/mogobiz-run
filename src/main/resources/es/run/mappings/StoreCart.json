@@ -5,6 +5,10 @@
                 "type": "string",
                 "index":"not_analyzed"
             },
+            "storeCode": {
+                "type": "string",
+                "index":"no"
+            },
             "dataUuid": {
                 "type": "string",
                 "index":"no"

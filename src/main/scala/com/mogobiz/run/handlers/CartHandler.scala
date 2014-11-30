@@ -28,36 +28,36 @@ class CartHandler {
   }
 
   def queryCartInit(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val computeCart = cartService.computeStoreCart(storeCode, cart, params.country, None)
+    val computeCart = cartService.computeStoreCart(cart, params.country, params.state)
     cartRenderService.renderCart(computeCart, currency, locale)
   }
 
   def queryCartClear(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
     val updatedCart = cartService.clear(cart)
-    val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)
+    val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
     cartRenderService.renderCart(computeCart, currency, locale)
   }
 
   def queryCartItemAdd(storeCode: String, uuid: String, params: CartParameters, cmd: AddToCartCommand, accountId:Option[Mogopay.Document]): Map[String, Any] = {
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
     try {
       val updatedCart = cartService.addItem(cart, cmd.skuId, cmd.quantity, cmd.dateTime, cmd.registeredCartItems)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -83,14 +83,14 @@ class CartHandler {
 
   def queryCartValidate(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
     try {
       val updatedCart = cartService.validateCart(cart)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -116,14 +116,14 @@ class CartHandler {
 
   def queryCartItemUpdate(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, cmd: UpdateCartItemCommand, accountId:Option[Mogopay.Document]): Map[String, Any] = {
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
     try {
       val updatedCart = cartService.updateItem(cart, cartItemId, cmd.quantity)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -143,14 +143,14 @@ class CartHandler {
   }
 
   def queryCartItemRemove(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
     try {
       val updatedCart = cartService.removeItem(cart, cartItemId)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -174,11 +174,11 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
-      val updatedCart = cartService.addCoupon(storeCode, couponCode, cart)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)
+      val updatedCart = cartService.addCoupon(couponCode, cart)
+      val computeCart = cartService.computeStoreCart( updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -201,11 +201,11 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
-      val updatedCart = cartService.removeCoupon(storeCode, couponCode, cart)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)
+      val updatedCart = cartService.removeCoupon(couponCode, cart)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
@@ -230,10 +230,10 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
-      val data = cartService.prepareBeforePayment(storeCode, params.country, params.state, currency, cart, params.buyer)
+      val data = cartService.prepareBeforePayment(params.country, params.state, currency, cart, params.buyer)
 
       val response = Map(
         "success" -> true,
@@ -246,14 +246,14 @@ class CartHandler {
         val response = Map(
           "success" -> false,
           "data" -> cart,
-          "errors" -> e.getMessage
+          "errors" -> List(e.getMessage)
         )
         response
     }
   }
 
   def queryCartPaymentCommit(storeCode: String, uuid: String, params: CommitTransactionParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
     cart.cartItems.foreach { item =>
         UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase)
     }
@@ -270,7 +270,7 @@ class CartHandler {
         val response = Map(
           "success" -> false,
           "data" -> cart,
-          "errors" -> e.getMessage
+          "errors" -> List(e.getMessage)
         )
         response
     }
@@ -280,10 +280,10 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = cartService.initCart(uuid, accountId)
+    val cart = cartService.initCart(storeCode, uuid, accountId)
     try {
       val updatedCart = cartService.cancel(cart)
-      val computeCart = cartService.computeStoreCart(storeCode, updatedCart, params.country, None)
+      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
       val data = cartRenderService.renderCart(computeCart, currency, locale)
       val response = Map(
         "success" -> true,
