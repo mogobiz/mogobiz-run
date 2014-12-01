@@ -64,7 +64,7 @@ class CouponHandler {
               val quantity = quantityAndPrice.quantity + cartItem.quantity
               val minPrice = if (cartItemPrice > 0) Some(Math.min(quantityAndPrice.minPrice.getOrElse(java.lang.Long.MAX_VALUE), cartItemPrice))
               else quantityAndPrice.minPrice
-              val totalPrice = quantityAndPrice.totalPrice + cartItem.saleTotalEndPrice.getOrElse(0l)
+              val totalPrice = quantityAndPrice.totalPrice + cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice)
 
               new QuantityAndPrices(quantity, minPrice, totalPrice)
             }

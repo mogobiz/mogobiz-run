@@ -618,7 +618,7 @@ object CartBoService extends BoService {
     val boCart = BOCartDao.findByTransactionUuid(cart.transactionUuid)
     if (boCart.isDefined) backOfficeHandler.failedTransaction(boCart.get)
 
-    val updatedCart = cart.copy(inTransaction = false)
+    val updatedCart = cart.copy(inTransaction = false, transactionUuid = UUID.randomUUID().toString)
     StoreCartDao.save(updatedCart)
     updatedCart
   }
