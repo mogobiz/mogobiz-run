@@ -4,15 +4,15 @@ import akka.actor.ActorRef
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.run.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductRequest, _}
+import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
-import com.mogobiz.run.vo.MogoError
 import spray.http.StatusCodes
 import spray.routing.Directives
 
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
+import scala.util.{Try}
 
-class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
+class ProductService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
 
   import akka.pattern.ask
   import akka.util.Timeout
@@ -35,11 +35,10 @@ import scala.concurrent.duration._
 
   lazy val history = path("history") {
     get {
-      parameters('currency.?, 'country.?, 'lang ? "_all").as(VisitorHistoryRequest) {
-        req => {
-          val request = QueryVisitedProductRequest(storeCode, req, uuid)
-          complete {
-            (actor ? request).mapTo[List[JValue]]
+      parameters('currency.?, 'country.?, 'lang ? "_all"){
+        (currency: Option[String], country: Option[String], lang: String) => {
+          onComplete((actor ? QueryVisitedProductRequest(storeCode, uuid, currency, country, lang)).mapTo[Try[List[JValue]]]) { call =>
+            handleComplete(call, (products: List[JValue]) => complete(StatusCodes.OK, products))
           }
         }
       }
@@ -86,9 +85,8 @@ import scala.concurrent.duration._
           brandId, tagName, notations, priceMin, priceMax, creationDateMin,
           featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionId, hasPromotion, property, feature, variations
         )
-          val request = QueryProductRequest(storeCode, params)
-          complete {
-            (actor ? request).mapTo[JValue]
+          onComplete ((actor ? QueryProductRequest(storeCode, params)).mapTo[Try[JValue]]){ call =>
+            handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))
           }
       }
     }
@@ -103,11 +101,9 @@ import scala.concurrent.duration._
         , 'query
         , 'highlight ? false
         , 'size ? 10
-        , 'categoryPath.?).as(FullTextSearchProductParameters) {
-        params =>
-          val request = QueryFindProductRequest(storeCode, params)
-          complete {
-            (actor ? request).mapTo[JValue]
+        , 'categoryPath.?).as(FullTextSearchProductParameters) { params =>
+          onComplete ((actor ? QueryFindProductRequest(storeCode, params)).mapTo[Try[JValue]]){ call =>
+            handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))
           }
       }
     }
@@ -119,11 +115,9 @@ import scala.concurrent.duration._
         'lang ? "_all"
         , 'currency.?
         , 'country.?
-        , 'ids).as(CompareProductParameters) {
-        params =>
-          val request = QueryCompareProductRequest(storeCode, params)
-          complete {
-            (actor ? request).mapTo[JValue]
+        , 'ids).as(CompareProductParameters) { params =>
+          onComplete ((actor ? QueryCompareProductRequest(storeCode, params)).mapTo[Try[JValue]]){ call =>
+            handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))
           }
       }
     }
@@ -131,13 +125,10 @@ import scala.concurrent.duration._
 
   lazy val notation = path("notation") {
     get {
-      parameters(
-        'lang ? "_all") {
-        params =>
-          val request = QueryNotationProductRequest(storeCode, params)
-          complete {
-            (actor ? request).mapTo[List[JValue]]
-          }
+      parameters('lang ? "_all") { lang =>
+        onComplete((actor ? QueryNotationProductRequest(storeCode, lang)).mapTo[Try[List[JValue]]]) { call =>
+          handleComplete(call, (list: List[JValue]) => complete(StatusCodes.OK, list))
+        }
       }
     }
   }
@@ -157,11 +148,9 @@ import scala.concurrent.duration._
         , 'visitorId.?
         , 'currency.?
         , 'country.?
-        , 'lang ? "_all").as(ProductDetailsRequest) {
-        params =>
-          val request = QueryProductDetailsRequest(storeCode, params, productId.toLong, uuid)
-          complete {
-            (actor ? request).mapTo[JValue]
+        , 'lang ? "_all").as(ProductDetailsRequest) { params =>
+          onComplete ((actor ? QueryProductDetailsRequest(storeCode, params, productId.toLong, uuid)).mapTo[Try[JValue]]){ call =>
+            handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))
           }
       }
     }
@@ -169,24 +158,20 @@ import scala.concurrent.duration._
 
   def dates (productId: Long) = path("dates") {
     get {
-      parameters('date.?).as(ProductDatesRequest) {
-        params =>
-          val request = QueryProductDatesRequest(storeCode, params, productId.toLong, uuid)
-          complete {
-            (actor ? request).mapTo[JValue]
-          }
+      parameters('date.?) { date =>
+        onComplete ((actor ? QueryProductDatesRequest(storeCode, date, productId.toLong, uuid)).mapTo[Try[JValue]]){ call =>
+          handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))
+        }
       }
     }
   }
 
   def times (productId: Long)= path("times") {
     get {
-      parameters('date.?).as(ProductTimesRequest) {
-        params =>
-          val request = QueryProductTimesRequest(storeCode, params, productId.toLong, uuid)
-          complete {
-            (actor ? request).mapTo[JValue]
-          }
+      parameters('date.?) { date =>
+        onComplete ((actor ? QueryProductTimesRequest(storeCode, date, productId.toLong, uuid)).mapTo[Try[JValue]]){ call =>
+          handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))
+        }
       }
     }
   }
@@ -204,13 +189,10 @@ import scala.concurrent.duration._
   def updateComment(productId: Long) = path(Segment) {
     commentId => {
       put {
-        entity(as[CommentPutRequest]) {
-          req =>
-            val request = QueryUpdateCommentRequest(storeCode, productId, commentId, req.note == 1)
-            onSuccess(actor ? request) {
-              res =>
-                complete("")
-            }
+        entity(as[CommentPutRequest]) { req =>
+          onComplete((actor ? QueryUpdateCommentRequest(storeCode, productId, commentId, req.note == 1)).mapTo[Try[Boolean]]) { call =>
+            handleComplete(call, (res:Boolean) => complete(StatusCodes.OK, res))
+          }
         }
       }
     }
@@ -218,30 +200,20 @@ import scala.concurrent.duration._
 
 
   def getComment(productId: Long) = get {
-      parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest) {
-        req =>
-          val request = QueryGetCommentRequest(storeCode, productId, req)
-          complete {
-            (actor ? request).mapTo[JValue]
-          }
+    parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest) { req =>
+      onComplete ((actor ? QueryGetCommentRequest(storeCode, productId, req)).mapTo[Try[JValue]]) { call =>
+        handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))
       }
     }
+  }
 
 
   def createComment(productId: Long) = post {
-      entity(as[CommentRequest]) {
-        req =>
-          val request = QueryCreateCommentRequest(storeCode, productId, req)
-          complete{
-            (actor ? request) map {
-              case Success(r) =>  r
-              case Failure(t) => t match {
-                case CommentException(code, message) => complete(StatusCodes.BadRequest, MogoError(code, message))
-                case _ => complete(StatusCodes.InternalServerError, t.getMessage)
-              }
-              //TODO check userId in mogopay before inserting
-            }
-          }
+      entity(as[CommentRequest]) { req =>
+        //TODO check userId in mogopay before inserting
+        onComplete((actor ? QueryCreateCommentRequest(storeCode, productId, req)).mapTo[Try[Comment]]){ call =>
+          handleComplete(call, (comment:Comment) => complete(StatusCodes.OK, comment))
+        }
       }
     }
 

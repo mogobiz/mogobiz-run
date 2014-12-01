@@ -1,11 +1,18 @@
 package com.mogobiz.run
 
+import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Currency
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
+import com.sksamuel.elastic4s.source.DocumentSource
 import com.sksamuel.elastic4s.{FilterDefinition, QueryDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
-import org.json4s.JsonAST.JNothing
+import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
+import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
+import org.elasticsearch.search.{SearchHit, SearchHits}
+import org.json4s.JValue
+import org.json4s.JsonAST.{JArray, JValue, JNothing}
 import org.json4s._
+import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
 
 /**
@@ -22,7 +29,7 @@ package object es {
     assert(!store.isEmpty)
     currencyCode match {
       case Some(s) =>
-        EsClientOld.search[Currency](
+        EsClient.search[Currency](
           filterRequest(
             esearch4s in store -> "rate",
             List(
@@ -42,8 +49,8 @@ package object es {
    * @return store languages
    */
   def queryStoreLanguages(store: String): JValue = {
-    import com.mogobiz.run.es.EsClientOld._
-    val languages:JValue = EsClientOld.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
+    import com.mogobiz.es.EsClient._
+    val languages:JValue = EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
       case Some(s) => s
       case None => JNothing
     }
@@ -193,5 +200,31 @@ package object es {
   }
 
   case class TypeField(`type`:String, field:String)
+
+  //implicits declaration
+  implicit def searchHits2JValue(searchHits:SearchHits) : JValue = {
+    parse(searchHits.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string().substring("hits".length + 2))
+  }
+
+  implicit def hits2JArray(hits:Array[SearchHit]) : JArray = JArray(hits.map(hit => parse(hit.getSourceAsString)).toList)
+
+  implicit def hit2JValue(hit:SearchHit) : JValue = parse(hit.getSourceAsString)
+
+  implicit def response2JValue(response:GetResponse) : JValue = parse(response.getSourceAsString)
+
+  implicit def responses2JArray(hits:Array[MultiGetItemResponse]) : JArray = JArray(hits.map(hit => parse(hit.getResponse.getSourceAsString)).toList)
+
+  implicit def JValue2StringSource(json:JValue) : StringSource = new StringSource(compact(render(json)))
+
+  class StringSource(val str:String) extends DocumentSource {
+    def json = str
+  }
+
+  /*
+private def debug(req: SearchDefinition) {
+  if (EsDebug) {
+    logger.info(req._builder.toString)
+  }
+}*/
 
 }

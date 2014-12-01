@@ -4,7 +4,7 @@ import akka.actor.Actor
 import com.mogobiz.run.actors.FacetActor.QueryGetFacetRequest
 import com.mogobiz.run.config.HandlersConfig
 import HandlersConfig._
-import com.mogobiz.run.model.FacetRequest
+import com.mogobiz.run.model.RequestParameters.FacetRequest
 
 import scala.util.Try
 

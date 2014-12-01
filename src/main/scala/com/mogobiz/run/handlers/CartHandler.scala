@@ -9,6 +9,7 @@ import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.UserActionRegistration
+import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.sksamuel.elastic4s.ElasticDsl._
 import org.joda.time.DateTime

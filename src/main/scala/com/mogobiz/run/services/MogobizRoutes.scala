@@ -75,7 +75,7 @@ trait DefaultComplete {
         res match {
           case Failure(t:MogobizException) => complete(t.code -> Map('error -> t.toString))
           case Success(id) => handler(id)
-          case  Failure(t) => throw new Exception("Invalid Exception " + t)
+          case  Failure(t) => throw new Exception("Invalid Exception: " + t.getMessage,t)
         }
     }
   }
