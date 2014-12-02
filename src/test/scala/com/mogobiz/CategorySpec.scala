@@ -19,22 +19,20 @@ class CategorySpec extends MogobizRouteTest {
     "return not hidden categories" in {
       Get("/store/" + STORE + "/categories") ~> sealRoute(routes) ~> check {
         val categories: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
-        categories must have size 4
-        checkCategoryHightech(categories(0))
+        categories must have size 3
+        checkCategoryCinema(categories(0))
         checkCategoryHabillement(categories(1))
-        checkCategoryTelevisions(categories(2))
-        checkCategoryCinema(categories(3))
+        checkCategoryHightech(categories(2))
       }
     }
 
     "return hidden categories" in {
       Get("/store/" + STORE + "/categories?hidden=true") ~> sealRoute(routes) ~> check {
         val categories: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
-        categories must have size 4
-        checkCategoryHightech(categories(0))
+        categories must have size 3
+        checkCategoryCinema(categories(0))
         checkCategoryHabillement(categories(1))
-        checkCategoryTelevisions(categories(2))
-        checkCategoryCinema(categories(3))
+        checkCategoryHightech(categories(2))
       }
     }
 
@@ -80,8 +78,8 @@ class CategorySpec extends MogobizRouteTest {
       Get("/store/" + STORE + "/categories?categoryPath=hightech") ~> sealRoute(routes) ~> check {
         val categories: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
         categories must have size 2
-        checkCategoryHightech(categories(0))
-        checkCategoryTelevisions(categories(1))
+        checkCategoryTelevisions(categories(0))
+        checkCategoryHightech(categories(1))
       }
     }
 
@@ -99,13 +97,13 @@ class CategorySpec extends MogobizRouteTest {
     category \ "parentId" must be_==(JNull)
     category \ "keywords" must be_==(JString(""))
     category \ "hide" must be_==(JBool(false))
-    category \ "description" must be_==(JNull)
+    category \ "description" must be_==(JString(""))
     category \ "name" must be_==(JString("Hightech"))
     category \ "path" must be_==(JString("hightech"))
     category \ "increments" must be_==(JInt(0))
-    category \ "uuid" must be_==(JString("0a002eaa-8744-4992-af4a-be6a0d764741"))
+    category \ "uuid" must be_==(JString("0e0ac866-a3e7-44e0-bd77-e9d7cfb3f7fc"))
     category \ "imported" must be_==(JNothing)
-    checkLang(category, checkOnlyLang, "fr", JString("Hightech"), JNull, JNull)
+    checkLang(category, checkOnlyLang, "fr", JString("Hightech"), JString(""), JString(""))
   }
 
   def checkCategoryHabillement(category: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
@@ -113,20 +111,16 @@ class CategorySpec extends MogobizRouteTest {
     category \ "parentId" must be_==(JNull)
     category \ "keywords" must be_==(JString("vetements homme femme enfant"))
     category \ "hide" must be_==(JBool(false))
-    category \ "description" must be_==(JNull)
+    category \ "description" must be_==(JString(""))
     category \ "name" must be_==(JString("Habillement"))
     category \ "path" must be_==(JString("habillement"))
     category \ "increments" must be_==(JInt(0))
-    category \ "uuid" must be_==(JString("5fe14b9b-4e55-40db-8ace-cfc77a1b1db1"))
+    category \ "uuid" must be_==(JString("fd3114cd-9ad7-44e5-aae8-a49de1e59100"))
     category \ "imported" must be_==(JNothing)
-    checkLang(category, checkOnlyLang, "fr", JString("Habillement"), JNull, JString("vetements homme femme enfant"))
+    checkLang(category, checkOnlyLang, "fr", JString("Habillement"), JString(""), JString("vetements homme femme enfant"))
   }
 
   def checkCategoryTelevisions(category: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
-    println("++++++++++++++++++++++++++")
-    println(category)
-    println("++++++++++++++++++++++++++")
-
     category \ "id" must be_==(JInt(21))
     category \ "parentId" must be_==(JInt(20))
     category \ "keywords" must be_==(JString("TV télé télévision HD"))
@@ -135,7 +129,7 @@ class CategorySpec extends MogobizRouteTest {
     category \ "name" must be_==(JString("Télévisions"))
     category \ "path" must be_==(JString("hightech/televisions"))
     category \ "increments" must be_==(JInt(0))
-    category \ "uuid" must be_==(JString("59bcb084-090f-4686-b1fd-1596865cb4ac")) //(JString("77057fd0-0709-4320-a14e-2957bc96946c"))
+    category \ "uuid" must be_==(JString("f7ed5217-eb3a-4755-82aa-c7b2383ab731"))
     category \ "imported" must be_==(JNothing)
     checkLang(category, checkOnlyLang, "fr", JString("Télévisions"), JString(""), JString("TV télé télévision HD"))
     checkLang(category, checkOnlyLang, "en", JString("Televisions"), JNothing, JNothing)
@@ -144,15 +138,15 @@ class CategorySpec extends MogobizRouteTest {
   def checkCategoryCinema(category: JValue, checkOnlyLang: String = null) : MatchResult[JValue] = {
     category \ "id" must be_==(JInt(22))
     category \ "parentId" must be_==(JNull)
-    category \ "keywords" must be_==(JNull)
+    category \ "keywords" must be_==(JString(""))
     category \ "hide" must be_==(JBool(false))
-    category \ "description" must be_==(JNull)
+    category \ "description" must be_==(JString(""))
     category \ "name" must be_==(JString("Cinéma"))
     category \ "path" must be_==(JString("cinema"))
     category \ "increments" must be_==(JInt(0))
-    category \ "uuid" must be_==(JString("a9cd16e3-6f89-4311-9e57-123b0c5bfec5"))
+    category \ "uuid" must be_==(JString("4f4df917-5630-4d35-a204-99014e43d46f"))
     category \ "imported" must be_==(JNothing)
-    checkLang(category, checkOnlyLang, "fr", JString("Cinéma"), JNull, JNull)
+    checkLang(category, checkOnlyLang, "fr", JString("Cinéma"), JString(""), JString(""))
   }
 
   def checkLang(category: JValue, checkOnlyLang: String, lang: String, exceptedName: JValue, exceptedDescription: JValue, exceptedKeywords: JValue) : MatchResult[JValue] = {

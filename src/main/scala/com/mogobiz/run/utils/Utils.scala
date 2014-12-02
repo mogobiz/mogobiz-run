@@ -100,10 +100,10 @@ object Utils {
                   (endTime.isAfter(localTime) || endTime.isEqual(localTime))
               }}
               if (intraDatePeriod.isDefined) {
-                val startTime = intraDatePeriod.get.startDate.withMillisOfSecond(0).withSecondOfMinute(0)
-                val endTime = intraDatePeriod.get.endDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
-                val start = localDate.toDateTime(startTime)
-                val end = localDate.toDateTime(endTime)
+                val startTime = intraDatePeriod.get.startDate.toDateTime(DateTimeZone.UTC).toLocalTime
+                val endTime = intraDatePeriod.get.endDate.toDateTime(DateTimeZone.UTC).toLocalTime
+                val start = date.toDateTime(DateTimeZone.UTC).withHourOfDay(startTime.getHourOfDay).withMinuteOfHour(startTime.getMinuteOfHour).toDateTime(date.getZone)
+                val end = date.toDateTime(DateTimeZone.UTC).withHourOfDay(endTime.getHourOfDay).withMinuteOfHour(endTime.getMinuteOfHour).toDateTime(date.getZone)
                 Some((start, end))
               }
               else None

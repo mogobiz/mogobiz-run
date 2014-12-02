@@ -25,11 +25,11 @@ class UtilsSpec extends MogobizRouteTest  {
 
     "verifyAndExtractStartEndDate for DATE_ONLY product with accepted date and weekday" in {
       val productAndSku = ProductDao.getProductAndSku(STORE, 139)
-      val date = Some(DateTime.parse("2014-09-06T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val date = Some(DateTime.parse("2014-10-04T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
       val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
       res must beSome[(DateTime, DateTime)]
-      res.get._1 mustEqual DateTime.parse("2014-09-06T00:00:00.000Z", ISODateTimeFormat.dateTimeParser()).toDateTime(DateTimeZone.UTC)
-      res.get._1 mustEqual DateTime.parse("2014-09-06T00:00:00.000Z", ISODateTimeFormat.dateTimeParser()).toDateTime(DateTimeZone.UTC)
+      res.get._1 mustEqual DateTime.parse("2014-10-04T00:00:00.000Z", ISODateTimeFormat.dateTimeParser()).toDateTime(DateTimeZone.UTC)
+      res.get._1 mustEqual DateTime.parse("2014-10-04T00:00:00.000Z", ISODateTimeFormat.dateTimeParser()).toDateTime(DateTimeZone.UTC)
     }
 
     "verifyAndExtractStartEndDate for DATE_ONLY product with unaccepted weekday" in {
@@ -55,11 +55,11 @@ class UtilsSpec extends MogobizRouteTest  {
 
     "verifyAndExtractStartEndDate for DATE_TIME product with accepted date time and weekday" in {
       val productAndSku = ProductDao.getProductAndSku(STORE, 146)
-      val date = Some(DateTime.parse("2014-09-06T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val date = Some(DateTime.parse("2014-10-04T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
       val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
       res must beSome[(DateTime, DateTime)]
-      res.get._1 mustEqual DateTime.parse("2014-09-06T15:00:00.000Z", ISODateTimeFormat.dateTimeParser())
-      res.get._2 mustEqual DateTime.parse("2014-09-06T17:00:00.000Z", ISODateTimeFormat.dateTimeParser())
+      res.get._1 mustEqual DateTime.parse("2014-10-04T15:00:00.000Z", ISODateTimeFormat.dateTimeParser())
+      res.get._2 mustEqual DateTime.parse("2014-10-04T17:00:00.000Z", ISODateTimeFormat.dateTimeParser())
     }
 
     "verifyAndExtractStartEndDate for DATE_TIME product with unaccepted weekday" in {
@@ -85,7 +85,7 @@ class UtilsSpec extends MogobizRouteTest  {
 
     "verifyAndExtractStartEndDate for DATE_TIME product with unaccepted future date" in {
       val productAndSku = ProductDao.getProductAndSku(STORE, 146)
-      val date = Some(DateTime.parse("2014-10-04T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
+      val date = Some(DateTime.parse("2015-01-03T16:00:00.000Z", ISODateTimeFormat.dateTimeParser()))
       val res = Utils.verifyAndExtractStartEndDate(productAndSku.get._1, productAndSku.get._2, date)
       res must beNone
     }

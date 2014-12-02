@@ -31,8 +31,8 @@ class ProductDaoSpec extends MogobizRouteTest {
 
       val sku = productAndSku.get._2
       sku.id mustEqual 137
-      sku.uuid mustEqual "6e258455-1b6c-4c99-9dfb-324c7f9230ed"
-      sku.sku mustEqual "72b7f03f-9ddb-4890-9a91-1879ee3b6b91"
+      sku.uuid mustEqual "4f48ff92-2bb3-4ad1-af29-112662b1a309"
+      sku.sku mustEqual "16458153-e907-43f1-bd26-2b90b97dcde3"
       sku.name mustEqual "Child"
       sku.price mustEqual 750
       sku.salePrice mustEqual 0

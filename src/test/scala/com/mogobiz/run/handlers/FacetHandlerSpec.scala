@@ -1,9 +1,10 @@
 package com.mogobiz.run.handlers
 
+import com.mogobiz.MogobizRouteTest
 import com.mogobiz.run.model.RequestParameters.FacetRequest
 import org.specs2.mutable.Specification
 
-class FacetHandlerSpec extends Specification {
+class FacetHandlerSpec extends MogobizRouteTest {
 
   val handler = new FacetHandler
 

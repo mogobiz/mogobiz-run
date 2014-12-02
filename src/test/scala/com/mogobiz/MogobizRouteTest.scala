@@ -7,6 +7,7 @@ import org.elasticsearch.node.Node
 import org.specs2.mutable.Specification
 import org.specs2.specification.{AfterExample, Step, Fragments}
 import org.specs2.time.NoTimeConversions
+import spray.http.{MediaTypes, HttpHeaders, ContentType, MediaType}
 import spray.testkit.Specs2RouteTest
 import spray.routing.HttpService
 import com.mogobiz.run.services.MogobizRoutes
@@ -19,6 +20,8 @@ import org.json4s.JsonAST.{JArray, JValue}
 abstract class MogobizRouteTest extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizActors with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode with JsonUtil with NoTimeConversions with AfterExample {
   implicit val routeTestTimeout = RouteTestTimeout(FiniteDuration(5, SECONDS))
   val STORE = "mogobiz"
+  val STORE_ACMESPORT = "acmesport"
+
 
   def actorRefFactory = system // connect the DSL to the test ActorSystem
   ActorSystemLocator(system)
@@ -31,6 +34,8 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
   override def map(fs: =>Fragments) = Step(esNode = startES()) ^ Step(DBInitializer()) ^ fs ^ Step(stopES(esNode))
 
   override def after = prepareRefresh(esNode)
+
+  val contenTypeJson = ContentType(MediaTypes.`application/json`)
 
   def checkJArray(j: JValue) : List[JValue] = j match {
     case JArray(a) => a

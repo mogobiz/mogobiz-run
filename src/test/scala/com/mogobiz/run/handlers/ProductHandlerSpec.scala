@@ -1,10 +1,11 @@
 package com.mogobiz.run.handlers
 
+import com.mogobiz.MogobizRouteTest
 import org.json4s.JsonAST
 import org.json4s.JsonAST._
 import org.specs2.mutable.Specification
 
-class ProductHandlerSpec extends Specification {
+class ProductHandlerSpec extends MogobizRouteTest {
 
   val handler = new ProductHandler
   val storeCode = "mogobiz"

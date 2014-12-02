@@ -13,55 +13,37 @@ class CouponHandlerSpec extends MogobizRouteTest {
   "CouponDao" should {
 
     "retrieve a coupon by code" in {
-      val coupon = CouponDao.findByCode(STORE,"TEST1")
+      val coupon = CouponDao.findByCode(STORE_ACMESPORT, "VIP50")
 
       coupon must beSome
-      coupon.get.code mustEqual "TEST1"
-    }
-
-    "find the promotion available on the store" in {
-
-      val promotions = CouponDao.findPromotionsThatOnlyApplyOnCart(STORE)
-
-      promotions.size must be_==(1)
-      promotions(0).active must beTrue
-      promotions(0).anonymous must beTrue
-      promotions(0).code mustEqual "Promo1pour3"
+      coupon.get.code mustEqual "VIP50"
     }
   }
 
   "CouponHandler" should {
 
     "be able to consumeCoupon" in {
-      val coupon = CouponDao.findByCode(STORE,"TEST1")
+      val coupon = CouponDao.findByCode(STORE_ACMESPORT,"VIP50")
       coupon must beSome
 
-      val initConsumed = extractConsumed(STORE, "TEST1")
+      val initConsumed = extractConsumed(STORE_ACMESPORT, "VIP50")
       initConsumed must beSome
 
-      val consumption = service.consumeCoupon(STORE, coupon.get)
+      val consumption = service.consumeCoupon(STORE_ACMESPORT, coupon.get)
       consumption must beTrue
-      val newConsumed = extractConsumed(STORE, "TEST1")
+      val newConsumed = extractConsumed(STORE_ACMESPORT, "VIP50")
       newConsumed must beSome(initConsumed.get + 1)
     }
 
-    "not be able to consumeCoupon if insufficient stock" in {
-      val coupon = CouponDao.findByCode(STORE,"Promotion")
-      coupon must beSome
-
-      val consumption = service.consumeCoupon(STORE, coupon.get)
-      consumption must beFalse
-    }
-
     "be able to releaseCoupon" in {
-      val coupon = CouponDao.findByCode(STORE,"TEST1")
+      val coupon = CouponDao.findByCode(STORE_ACMESPORT,"VIP50")
       coupon must beSome
-      service.consumeCoupon(STORE, coupon.get) must beTrue
+      service.consumeCoupon(STORE_ACMESPORT, coupon.get) must beTrue
 
-      val initConsumed = extractConsumed(STORE, "TEST1")
+      val initConsumed = extractConsumed(STORE_ACMESPORT, "VIP50")
 
-      service.releaseCoupon(STORE, coupon.get)
-      val newConsumed = extractConsumed(STORE, "TEST1")
+      service.releaseCoupon(STORE_ACMESPORT, coupon.get)
+      val newConsumed = extractConsumed(STORE_ACMESPORT, "VIP50")
       newConsumed must beSome(initConsumed.get - 1)
     }
 

@@ -4,7 +4,7 @@ import com.mogobiz.MogobizRouteTest
 import org.specs2.matcher._
 import org.json4s.native.JsonParser
 import org.json4s.JsonAST._
-import spray.http.{HttpHeaders, HttpCookie, HttpEntity}
+import spray.http._
 
 class ProductServiceSpec extends MogobizRouteTest {
 
@@ -128,7 +128,7 @@ class ProductServiceSpec extends MogobizRouteTest {
 
   "The 'product comment' route in Product service" should {
     "return new comment created for product 61" in {
-      val entity = HttpEntity(
+      val entity = HttpEntity(contenTypeJson,
         """
           |{
           |    "userId": "userId_soapui",

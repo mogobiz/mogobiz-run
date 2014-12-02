@@ -13,8 +13,8 @@ class CurrencyServiceSpec extends MogobizRouteTest {
         val currencies: List[JValue] = checkJArray(JsonParser.parse(responseAs[String]))
         currencies must have size 2
 
-        checkCurrencyEuro(currencies(0))
-        checkCurrencyGBP(currencies(1))
+        checkCurrencyGBP(currencies(0))
+        checkCurrencyEuro(currencies(1))
       }
     }
   }

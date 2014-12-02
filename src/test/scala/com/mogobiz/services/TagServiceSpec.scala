@@ -21,9 +21,9 @@ class TagServiceSpec extends MogobizRouteTest{
 
 
         checkTag(tags(0), 89, "THEATER")
-        checkTag(tags(1), 87, "PULL")
+        checkTag(tags(1), 141, "CINEMA")
         checkTag(tags(2), 88, "TSHIRT")
-        checkTag(tags(3), 141, "CINEMA")
+        checkTag(tags(3), 87, "PULL")
       }
     }
   }
