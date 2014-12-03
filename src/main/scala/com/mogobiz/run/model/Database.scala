@@ -20,9 +20,11 @@ import org.joda.time.DateTime
  */
 object Mogobiz {
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class Country(code: String,
                      name: String)
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class Location(latitude: Double,
                       longitude: Double,
                       postalCode: Option[String],
@@ -34,17 +36,20 @@ object Mogobiz {
                       country: Option[Country],
                       state: Option[String])
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class Poi(description: String,
                  name: String,
                  picture: String,
                  xtype: String,
                  location: Location)
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class LocalTaxRate(id:Long,
                           rate:Float,
                           countryCode:String,
                           stateCode:String)
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class TaxRate(id:Long,
                      name:String,
                      localTaxRates: List[LocalTaxRate])
@@ -62,6 +67,7 @@ object Mogobiz {
                       amount: Long,
                       free: Boolean)
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class DatePeriod(@JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
                             @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                             startDate:DateTime,
@@ -69,6 +75,7 @@ object Mogobiz {
                             @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                             endDate:DateTime)
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class IntraDayPeriod(id:Long,
                             @JsonSerialize(using = classOf[JodaDateTimeSerializer])
                             @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
@@ -105,6 +112,7 @@ object Mogobiz {
                  coupons: List[InnerCoupon],
                  nbSales: Long)
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class InnerCoupon(id:Long)
 
   @JsonIgnoreProperties(ignoreUnknown=true)
@@ -132,6 +140,7 @@ object Mogobiz {
                      var lastUpdated: Date,
                      var dateCreated: Date)
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
   case class ReductionRule(id:Long,
                            @JsonScalaEnumeration(classOf[ReductionRuleRef])
                            xtype: ReductionRuleType,

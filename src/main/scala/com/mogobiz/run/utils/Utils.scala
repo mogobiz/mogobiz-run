@@ -53,9 +53,10 @@ object Utils {
       val date = optDate.get
       val dateWithTimeReset = date.withTimeAtStartOfDay()
       val start = sku.startDate.getOrElse(DateTime.now().withTimeAtStartOfDay)
-      val stop = sku.stopDate.getOrElse(DateTime.now().withTimeAtStartOfDay)
+      val stop = sku.stopDate
 
-      val dateValidForTicketType = (dateWithTimeReset.isAfter(start) || dateWithTimeReset.isEqual(start)) && (dateWithTimeReset.isBefore(stop) || dateWithTimeReset.isEqual(stop))
+      val dateValidForTicketType = (dateWithTimeReset.isAfter(start) || dateWithTimeReset.isEqual(start)) &&
+        (stop.isEmpty || dateWithTimeReset.isBefore(stop.get) || dateWithTimeReset.isEqual(stop.get))
 
       if (!dateValidForTicketType) None
       else {
