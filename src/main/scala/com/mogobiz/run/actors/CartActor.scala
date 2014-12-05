@@ -9,6 +9,8 @@ import HandlersConfig._
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 
+import scala.util.Try
+
 object CartActor {
 
   case class QueryCartInitRequest(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document])
@@ -34,7 +36,7 @@ class CartActor extends Actor {
       sender ! cartHandler.queryCartClear(q.storeCode,q.uuid, q.params, q.accountId)
 
     case q: QueryCartItemAddRequest =>
-      sender ! cartHandler.queryCartItemAdd(q.storeCode,q.uuid, q.params, q.cmd, q.accountId)
+      sender ! Try(cartHandler.queryCartItemAdd(q.storeCode,q.uuid, q.params, q.cmd, q.accountId))
 
     case q: QueryCartItemUpdateRequest =>
       sender ! cartHandler.queryCartItemUpdate(q.storeCode,q.uuid, q.cartItemId, q.params, q.cmd, q.accountId)

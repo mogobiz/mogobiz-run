@@ -7,6 +7,7 @@ import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.cart._
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
+import com.mogobiz.run.exceptions._
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.RequestParameters._
@@ -48,37 +49,20 @@ class CartHandler {
     cartRenderService.renderCart(computeCart, currency, locale)
   }
 
+  @throws[NotFoundException]
+  @throws[MinMaxQuantityException]
+  @throws[DateIsNullException]
+  @throws[UnsaleableDateException]
+  @throws[NotEnoughRegisteredCartItemException]
   def queryCartItemAdd(storeCode: String, uuid: String, params: CartParameters, cmd: AddToCartCommand, accountId:Option[Mogopay.Document]): Map[String, Any] = {
-
     val cart = cartService.initCart(storeCode, uuid, accountId)
 
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    try {
-      val updatedCart = cartService.addItem(cart, cmd.skuId, cmd.quantity, cmd.dateTime, cmd.registeredCartItems)
-      val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
-      val data = cartRenderService.renderCart(computeCart, currency, locale)
-      val response = Map(
-        "success" -> true,
-        "data" -> data,
-        "errors" -> List()
-      )
-
-      response
-
-    } catch {
-      case e: AddCartItemException =>
-        val response = Map(
-          "success" -> false,
-          "data" -> cart,
-          "errors" -> e.getErrors(locale)
-        )
-        response
-      case t: Throwable =>
-        t.printStackTrace()
-        throw t
-    }
+    val updatedCart = cartService.addItem(cart, cmd.skuId, cmd.quantity, cmd.dateTime, cmd.registeredCartItems)
+    val computeCart = cartService.computeStoreCart(updatedCart, params.country, params.state)
+    cartRenderService.renderCart(computeCart, currency, locale)
   }
 
   def queryCartValidate(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {

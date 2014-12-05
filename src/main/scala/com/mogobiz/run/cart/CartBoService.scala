@@ -2,6 +2,7 @@ package com.mogobiz.run.cart
 
 import java.util.{UUID, Locale}
 import com.mogobiz.run.config.{Settings, MogobizDBsWithEnv}
+import com.mogobiz.run.exceptions._
 import com.mogobiz.run.handlers._
 import com.mogobiz.run.model.Mogobiz.{InsufficientStockException, ProductCalendar, ProductType}
 import com.mogobiz.run.model.Render.{Cart, RegisteredCartItem, CartItem}
@@ -238,62 +239,51 @@ object CartBoService extends BoService {
    * @param registeredCartItems
    * @return send back the new cart with the added item
    */
-  @throws[AddCartItemException]
-  def addItem(cart: StoreCart, ticketTypeId: Long, quantity: Int, dateTime: Option[DateTime], registeredCartItems: List[RegisteredCartItem]): StoreCart = {
-    logger.info(s"addItem dateTime : $dateTime")
-    println("+++++++++++++++++++++++++++++++++++++++++")
-    println(s"dateTime=$dateTime")
-    println("+++++++++++++++++++++++++++++++++++++++++")
-
-    var errors: CartErrors = Map()
-
+  @throws[NotFoundException]
+  @throws[MinMaxQuantityException]
+  @throws[DateIsNullException]
+  @throws[UnsaleableDateException]
+  @throws[NotEnoughRegisteredCartItemException]
+  def addItem(cart: StoreCart, ticketTypeId: Long, quantity: Int, dateTime: Option[DateTime], registeredCartItems: List[RegisteredCartItemCommand]): StoreCart = {
     // init local vars
     val productAndSku = ProductDao.getProductAndSku(cart.storeCode, ticketTypeId)
 
-    if (productAndSku.isEmpty) {
-      errors = addError(errors, "ticketTypeId", "unknown", null)
-      throw new AddCartItemException(errors)
-    }
+    if (productAndSku.isEmpty)
+      throw new NotFoundException("unknown sku")
 
     val product = productAndSku.get._1
     val sku = productAndSku.get._2
     val startEndDate = Utils.verifyAndExtractStartEndDate(product, sku, dateTime)
 
-    if (sku.minOrder > quantity || (sku.maxOrder < quantity && sku.maxOrder > -1)) {
-      println(sku.minOrder + ">" + quantity)
-      println(sku.maxOrder + "<" + quantity)
-      errors = addError(errors, "quantity", "min.max.error", List(sku.minOrder, sku.maxOrder))
-    }
-    if (!dateTime.isDefined && !ProductCalendar.NO_DATE.equals(product.calendarType)) {
-      errors = addError(errors, "dateTime", "nullable.error", null)
-    }
-    else if (dateTime.isDefined && startEndDate == None) {
-      errors = addError(errors, "dateTime", "unsaleable.error", null)
-    }
-    if (product.xtype == ProductType.SERVICE) {
-      if (registeredCartItems.size != quantity) {
-        errors = addError(errors, "registeredCartItems", "size.error", null)
-      }
-      else {
-        val emptyMails = for {
-          item <- registeredCartItems
-          if item.email.isEmpty
-        } yield item
-        if (emptyMails.nonEmpty)
-          errors = addError(errors, "registeredCartItems", "email.error", null)
-      }
-    }
+    if (sku.minOrder > quantity || (sku.maxOrder < quantity && sku.maxOrder > -1))
+      throw new MinMaxQuantityException(sku.minOrder, sku.maxOrder)
 
-    if (errors.size > 0)
-      throw new AddCartItemException(errors)
+    if (!dateTime.isDefined && !ProductCalendar.NO_DATE.equals(product.calendarType))
+      throw new DateIsNullException()
 
-    val newItemId = UUID.randomUUID().toString
-    val registeredItems = registeredCartItems.map { item => item.copy(cartItemId = newItemId)}
+    else if (dateTime.isDefined && startEndDate == None)
+      throw new UnsaleableDateException()
+
+    if (product.xtype == ProductType.SERVICE && registeredCartItems.size != quantity)
+      throw new NotEnoughRegisteredCartItemException()
+
+    val newCartItemId = UUID.randomUUID().toString
+    val registeredItems = registeredCartItems.map { item =>
+      new RegisteredCartItem(
+        newCartItemId,
+        UUID.randomUUID().toString,
+        item.email,
+        item.firstname,
+        item.lastname,
+        item.phone,
+        item.birthdate
+      )
+    }
 
     val startDate = if (startEndDate.isDefined) Some(startEndDate.get._1) else None
     val endDate = if (startEndDate.isDefined) Some(startEndDate.get._2) else None
     val salePrice = if (sku.salePrice > 0) sku.salePrice else sku.price
-    val cartItem = StoreCartItem(newItemId, product.id, product.name, product.xtype, product.calendarType, sku.id, sku.name, quantity,
+    val cartItem = StoreCartItem(newCartItemId, product.id, product.name, product.xtype, product.calendarType, sku.id, sku.name, quantity,
       sku.price, salePrice, startDate, endDate, registeredItems, product.shipping)
 
     val newcart = _addCartItemIntoCart(_unvalidateCart(cart), cartItem)
@@ -647,10 +637,6 @@ class CartException(val errors: CartErrors) extends Exception {
     res.toList
 
   }
-}
-
-case class AddCartItemException(override val errors: CartErrors) extends CartException(errors) {
-  override def toString = errors.toString()
 }
 
 case class UpdateCartItemException(override val errors: CartErrors) extends CartException(errors)

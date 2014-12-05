@@ -1,7 +1,9 @@
 package com.mogobiz.run.services
 
 import akka.actor.ActorRef
+import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
+import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.actors.CartActor._
 import com.mogobiz.run.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.run.implicits.Json4sProtocol
@@ -9,11 +11,13 @@ import Json4sProtocol._
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.session.Session
+import spray.http.StatusCodes
 import spray.routing.Directives
 import com.mogobiz.session.SessionESDirectives._
 import scala.concurrent.ExecutionContext
+import scala.util.Try
 
-class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives {
+class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
 
   import akka.pattern.ask
   import akka.util.Timeout
@@ -82,10 +86,8 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
               optionalSession { optSession =>
                 val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
                 val request = QueryCartItemAddRequest(storeCode, uuid, params, cmd, accountId)
-                complete {
-                  (actor ? request).mapTo[Map[String, Any]] map {
-                    response => response
-                  }
+                onComplete((actor ? request).mapTo[Try[Map[String, Any]]]) { call =>
+                  handleComplete(call, (cart: Map[String, Any]) => complete(StatusCodes.OK, cart))
                 }
               }
             }

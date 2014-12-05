@@ -70,12 +70,12 @@ trait DefaultComplete {
   def handleComplete[T](call: Try[Try[T]], handler: T => Route): Route = {
     import com.mogobiz.run.implicits.JsonSupport._
     call match {
-      case Failure(t) => complete(StatusCodes.InternalServerError -> Map('error -> t.toString))
+      case Failure(t) => complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
       case Success(res) =>
         res match {
-          case Failure(t:MogobizException) => complete(t.code -> Map('error -> t.toString))
           case Success(id) => handler(id)
-          case  Failure(t) => throw new Exception("Invalid Exception: " + t.getMessage,t)
+          case Failure(t:MogobizException) => t.printStackTrace(); complete(t.code -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+          case Failure(t) => t.printStackTrace(); complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
         }
     }
   }

@@ -38,7 +38,7 @@ object Render {
 
   case class RegisteredCartItem(cartItemId: String = "",
                                   id: String,
-                                  email: Option[String],
+                                  email: String,
                                   firstname: Option[String] = None,
                                   lastname: Option[String] = None,
                                   phone: Option[String] = None,

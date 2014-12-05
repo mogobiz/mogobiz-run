@@ -303,7 +303,7 @@ object BOTicketTypeDao extends SQLSyntaxSupport[BOTicketType] with BoService {
       Some(sku.name),
       registeredCartItem.firstname,
       registeredCartItem.lastname,
-      registeredCartItem.email,
+      Some(registeredCartItem.email),
       registeredCartItem.phone,
       Utils.computeAge(registeredCartItem.birthdate),
       registeredCartItem.birthdate,

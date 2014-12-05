@@ -10,6 +10,15 @@ case class NotAuthorizedException(message: String) extends MogobizException(mess
 
 case class NotFoundException(message: String) extends MogobizException(message, StatusCodes.NotFound)
 
+case class MinMaxQuantityException(min: Long, max: Long) extends MogobizException(s"$min|$max", StatusCodes.BadRequest)
+
+case class DateIsNullException() extends MogobizException("", StatusCodes.BadRequest)
+
+case class UnsaleableDateException() extends MogobizException("", StatusCodes.BadRequest)
+
+case class NotEnoughRegisteredCartItemException() extends MogobizException("", StatusCodes.BadRequest)
+
+
 object Exceptions {
   def toHTTPResponse(t: MogobizException): StatusCode = t match {
     case e: DuplicateException => StatusCodes.Conflict
