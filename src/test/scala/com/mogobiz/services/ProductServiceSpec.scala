@@ -12,6 +12,15 @@ class ProductServiceSpec extends MogobizRouteTest {
   val request_headers = List(HttpHeaders.Cookie(cookies))
 
   "The products route of Product service" should {
+
+    "returns suggestion for product" in {
+      Get("/store/" + STORE_ACMESPORT + "/products/32531/suggestions") ~> sealRoute(routes) ~> check {
+        val res: JValue = JsonParser.parse(responseAs[String])
+        val array = checkJArray(res)
+        array must size(1)
+      }
+    }
+
     "return products on default criteria" in {
       Get("/store/" + STORE + "/products") ~> sealRoute(routes) ~> check {
 

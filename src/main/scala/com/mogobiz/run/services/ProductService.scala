@@ -136,6 +136,7 @@ import scala.concurrent.duration._
   lazy val product = pathPrefix(Segment) {
     productId =>
       comments(productId.toLong) ~
+      suggestions(productId.toLong) ~
       details(productId.toLong) ~
       dates(productId.toLong) ~
       times(productId.toLong)
@@ -198,7 +199,6 @@ import scala.concurrent.duration._
     }
   }
 
-
   def getComment(productId: Long) = get {
     parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest) { req =>
       onComplete ((actor ? QueryGetCommentRequest(storeCode, productId, req)).mapTo[Try[JValue]]) { call =>
@@ -206,7 +206,6 @@ import scala.concurrent.duration._
       }
     }
   }
-
 
   def createComment(productId: Long) = post {
       entity(as[CommentRequest]) { req =>
@@ -217,4 +216,15 @@ import scala.concurrent.duration._
       }
     }
 
+  def suggestions(productId: Long) = pathPrefix("suggestions") {
+    pathEnd {
+      get {
+        parameters('lang ? "_all") { lang =>
+          onComplete((actor ? QuerySuggestionsRequest(storeCode, productId, lang)).mapTo[Try[JValue]]) { call =>
+            handleComplete(call, (list: JValue) => complete(StatusCodes.OK, list))
+          }
+        }
+      }
+    }
+  }
 }

@@ -512,6 +512,14 @@ class ProductHandler extends JsonUtil {
     if (ids.isEmpty) List() else getProductsByIds(storeCode, ids, new ProductDetailsRequest(false, None, None, None, lang))
   }
 
+  def querySuggestions(storeCode: String, productId: Long, lang: String): JArray = {
+    val fieldsToExclude = getAllExcludedLanguagesExceptAsList(storeCode, lang) ::: fieldsToRemoveForProductSearchRendering
+    val req = esearch4s in storeCode -> "suggestion" filter termFilter("suggestion._parent", productId)
+    println(req._builder.toString)
+    val response: SearchHits = EsClient.searchAllRaw(req)
+    response.getHits
+  }
+
   /**
    * Query for products given a list of product ids
    *

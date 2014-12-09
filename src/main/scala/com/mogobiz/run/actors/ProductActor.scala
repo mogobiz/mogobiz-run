@@ -33,6 +33,9 @@ object ProductActor {
   case class QueryVisitedProductRequest(storeCode: String, uuid: String, currency: Option[String], country: Option[String], lang: String)
 
   case class QueryNotationProductRequest(storeCode: String, lang: String)
+
+  case class QuerySuggestionsRequest(storeCode: String, productId: Long, lang: String)
+
 }
 
 class ProductActor extends Actor {
@@ -87,6 +90,9 @@ class ProductActor extends Actor {
 
     case q: QueryNotationProductRequest =>
       sender ! Try(productHandler.getProductsByNotation(q.storeCode, q.lang))
+
+    case q: QuerySuggestionsRequest =>
+      sender ! Try(productHandler.querySuggestions(q.storeCode, q.productId, q.lang))
   }
 
 }
