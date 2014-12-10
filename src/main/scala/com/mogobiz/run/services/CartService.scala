@@ -223,7 +223,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
   }
 
   lazy val paymentCommit = path("commit") {
-    parameters('transactionUuid).as(CommitTransactionParameters) {
+    parameters('country.?, 'lang ? "_all", 'transactionUuid).as(CommitTransactionParameters) {
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}

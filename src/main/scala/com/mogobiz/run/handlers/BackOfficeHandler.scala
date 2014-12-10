@@ -4,7 +4,8 @@ import java.io.ByteArrayOutputStream
 import java.util.UUID
 
 import com.mogobiz.run.cart.BoService
-import com.mogobiz.run.model.{Mogobiz, Render, Currency}
+import com.mogobiz.run.config.Settings
+import com.mogobiz.run.model.{StoreCart, Mogobiz, Render, Currency}
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.utils.Utils
@@ -51,10 +52,12 @@ class BackOfficeHandler {
     }
   }
 
-  def createTransaction(storeCode: String, cart: Render.Cart, transactionUuid: String, rate: Currency, buyer: String, company: Company)(implicit session: DBSession) = {
+  def createTransaction(storeCart: StoreCart, storeCode: String, cart: Render.Cart, transactionUuid: String, rate: Currency, buyer: String, company: Company)(implicit session: DBSession) : StoreCart = {
     val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice, transactionUuid)
 
-    cart.cartItemVOs.foreach { cartItem =>
+    val newStoreCartItems = cart.cartItemVOs.map { cartItem =>
+      val storeCartItem = storeCart.cartItems.find(i => (i.productId == cartItem.productId) && (i.skuId == cartItem.skuId)).get
+
       val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
       val product = productAndSku.get._1
       val sku = productAndSku.get._2
@@ -62,7 +65,8 @@ class BackOfficeHandler {
       // Création du BOProduct correspondant au produit principal
       val boProduct = BOProductDao.create(cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), true, cartItem.productId)
 
-      cartItem.registeredCartItemVOs.foreach { registeredCartItem =>
+      val newStoreRegistedCartItems = cartItem.registeredCartItemVOs.map { registeredCartItem =>
+        val storeRegistedCartItem = storeCartItem.registeredCartItems.find(r => r.email == registeredCartItem.email).get
         val boTicketId = BOTicketTypeDao.newId()
 
         val shortCodeAndQrCode = product.xtype match {
@@ -85,11 +89,18 @@ class BackOfficeHandler {
         }
 
         BOTicketTypeDao.create(boTicketId, sku, cartItem, registeredCartItem, shortCodeAndQrCode._1, shortCodeAndQrCode._2, shortCodeAndQrCode._3, boProduct.id)
+        if (shortCodeAndQrCode._3.isDefined)
+          storeRegistedCartItem.copy(qrCodeContent = Some(product.name + ":" + registeredCartItem.email + "||" + shortCodeAndQrCode._3.get))
+        else storeRegistedCartItem
       }
 
       //create Sale
       BOCartItemDao.create(sku, cartItem, boCart, boProduct.id)
+
+      storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList)
     }
+
+    storeCart.copy(cartItems = newStoreCartItems.toList)
   }
 
   def completeTransaction(boCart: BOCart, transactionUuid: String)(implicit session: DBSession) : Unit = {

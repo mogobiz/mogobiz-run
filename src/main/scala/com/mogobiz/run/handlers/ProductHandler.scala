@@ -626,8 +626,8 @@ class ProductHandler extends JsonUtil {
 
       val locale = new Locale(lang)
       val endPrice = price + (price * taxRate / 100d)
-      val formatedPrice = rateService.format(price, currency.get, locale, cur.rate)
-      val formatedEndPrice = rateService.format(endPrice, currency.get, locale, cur.rate)
+      val formatedPrice = rateService.formatPrice(price, cur, locale)
+      val formatedEndPrice = rateService.formatPrice(endPrice, cur, locale)
       val additionalFields = ("localTaxRate" -> taxRate) ~
         ("endPrice" -> endPrice) ~
         ("formatedPrice" -> formatedPrice) ~

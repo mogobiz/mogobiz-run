@@ -1,12 +1,15 @@
 package com.mogobiz.run.cart
 
+import java.util.UUID
+
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.MogobizRouteTest
 import com.mogobiz.run.handlers.StoreCartDao
 import com.mogobiz.run.json.{JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer}
 import com.mogobiz.run.model.Mogobiz.{ProductCalendar, ProductType, Shipping}
-import com.mogobiz.run.model.{StoreCoupon, StoreCartItem, StoreCart}
+import com.mogobiz.run.model.Render.RegisteredCartItem
+import com.mogobiz.run.model.{Currency, StoreCoupon, StoreCartItem, StoreCart}
 import org.joda.time.DateTime
 
 /**
@@ -111,5 +114,45 @@ class CartBoServiceSpec extends MogobizRouteTest {
       cart.cartItemVOs(0).saleTotalEndPrice must beSome((900 * 3 + 900 * 3 * 0.196).toLong)
       cart.cartItemVOs(0).tax must beSome(19.6f)
     }
+
+
+    "commit cart" in {
+      val registerCartItem = new RegisteredCartItem("1",
+        "1",
+        "yoann.baudy@ebiznext.com",
+        Some("Yoann"),
+        None,
+        None,
+        None,
+        None
+      )
+
+      val storeCartItem1 = new StoreCartItem("1",
+        135,
+        "product",
+        ProductType.SERVICE,
+        ProductCalendar.NO_DATE,
+        137,
+        "sku",
+        2,
+        1989,
+        1791,
+        None,
+        None,
+        List(registerCartItem),
+        None)
+
+      val storeCart = new StoreCart(STORE, "uuid", None, cartItems=List(storeCartItem1))
+      StoreCartDao.save(storeCart)
+
+      CartBoService.prepareBeforePayment(Some("FR"), None, new Currency(2, 0.01, "Euro", "EUR"), storeCart, "yoann.baudy@ebiznext.com")
+
+      val newStoreCart = StoreCartDao.findByDataUuidAndUserUuid("uuid", None)
+      CartBoService.commit(newStoreCart.get, "Test " + UUID.randomUUID().toString)
+
+      val finalStoreCart = StoreCartDao.findByDataUuidAndUserUuid("uuid", None)
+      finalStoreCart must beSome
+    }
+
   }
 }

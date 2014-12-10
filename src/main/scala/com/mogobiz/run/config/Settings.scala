@@ -30,6 +30,8 @@ object Settings {
   //  val RememberCookieName = config getString "session.remember.cookie.name"
   //  val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
 
+  val accessUrl = config getString "mogobiz.accessUrl"
+
   object cart {
     val lifetime = 15
     val EsIndex = config getString "mogobiz.cart.index"
@@ -43,40 +45,20 @@ object Settings {
     val sender = ""
   }
 
-  object Emailing {
+  object Mail {
 
-    /* from iper
-    grails.mail.host = 'smtp.gmail.com'
-    grails.mail.port = 465
-    grails.mail.username = 'mogobiz@gmail.com'
-    grails.mail.password = 'e-z12B24'
-    grails.mail.props = ['mail.smtp.auth'                  : 'true',
-                         'mail.smtp.socketFactory.port'    : '465',
-                         'mail.smtp.socketFactory.class'   : 'javax.net.ssl.SSLSocketFactory',
-                         'mail.smtp.socketFactory.fallback': 'false']
-    grails.mail.default.from = 'mogobiz@gmail.com'
-
-    // email confirmation
-    emailConfirmation.from = 'mogobiz@gmail.com'
-    // 24hr 1000 * 60 * 60 * 24
-    emailConfirmation.maxAge = 86400000
-     */
-
-    object SMTP {
-      val Hostname = config getString "mail.smtp.hostname"
-      val Port = config getInt "mail.smtp.port"
-      val Username = config getString "mail.smtp.username"
-      val Password = config getString "mail.smtp.password"
-      val IsSSLEnabled = config getBoolean "mail.smtp.sslEnabled"
+    object Smtp {
+      val Host = config.getString("mail.smtp.host")
+      val Port = config.getInt("mail.smtp.port")
+      val SslPort = config.getInt("mail.smtp.sslport")
+      val Username = config.getString("mail.smtp.username")
+      val Password = config.getString("mail.smtp.password")
+      val IsSSLEnabled = config.getBoolean("mail.smtp.ssl")
+      val IsSSLCheckServerIdentity = config.getBoolean("mail.smtp.checkserveridentity")
+      val IsStartTLSEnabled = config.getBoolean("mail.smtp.starttls")
     }
-
     val defaultFrom = config getString "mail.defaultFrom"
     val MaxAge = (config getInt "mail.maxAgeInHours") * 3600
-  }
-
-  object MogobizAdmin {
-
-    val QrCodeAccessUrl = config getString "mogobiz.admin.qrCodeAccessUrl"
   }
 
   val Dialect = if (config hasPath "dialect") config getString "dialect" else "test"
@@ -98,6 +80,7 @@ object Settings {
   }
 
   val ResourcesRootPath = config getString "resources.rootPath"
+  val TemplatesPath = config.getString("templates.path")
 
   //  require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
   //  require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")

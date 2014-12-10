@@ -13,10 +13,16 @@ object RateBoService {
 
   type MogopayRate = Currency
 
-  def format(amount: Double, currencyCode: String, locale: Locale = Locale.getDefault, rate: Double = 0): String = {
+  def formatPrice(price: Double, currency: Currency, locale: Locale = Locale.getDefault): String = {
     val numberFormat = NumberFormat.getCurrencyInstance(locale)
-    numberFormat.setCurrency(java.util.Currency.getInstance(currencyCode))
-    numberFormat.format(amount * rate)
+    numberFormat.setCurrency(java.util.Currency.getInstance(currency.code))
+    numberFormat.format(price * currency.rate)
+  }
+
+  def formatLongPrice(price: Long, currency: Currency, locale: Locale = Locale.getDefault): String = {
+    val numberFormat = NumberFormat.getCurrencyInstance(locale)
+    numberFormat.setCurrency(java.util.Currency.getInstance(currency.code))
+    numberFormat.format(price * currency.rate)
   }
 
   /**

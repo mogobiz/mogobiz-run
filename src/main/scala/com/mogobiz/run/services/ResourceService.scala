@@ -1,10 +1,12 @@
 package com.mogobiz.run.services
 
+import java.io.ByteArrayOutputStream
 import akka.actor.ActorRefFactory
 import com.mogobiz.run.config.HandlersConfig
-import spray.http.StatusCodes
+import com.mogobiz.utils.QRCodeUtils
 import spray.routing.{RoutingSettings, Directives}
 import HandlersConfig._
+import spray.http.{MediaType, StatusCodes}
 
 import scala.concurrent.ExecutionContext
 

@@ -217,7 +217,7 @@ class CartHandler {
     val cart = cartService.initCart(storeCode, uuid, accountId)
 
     try {
-      val data = cartService.prepareBeforePayment(params.country, params.state, currency, cart, params.buyer)
+      val data = cartService.prepareBeforePayment(params.country, params.state, currency, cart, params.buyer, locale)
 
       val response = Map(
         "success" -> true,
@@ -237,15 +237,15 @@ class CartHandler {
   }
 
   def queryCartPaymentCommit(storeCode: String, uuid: String, params: CommitTransactionParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+    val locale = _buildLocal(params.lang, params.country)
     val cart = cartService.initCart(storeCode, uuid, accountId)
     cart.cartItems.foreach { item =>
         UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase)
     }
     try {
-      val emailingData = cartService.commit(cart, params.transactionUuid)
+      cartService.commit(cart, params.transactionUuid, locale)
       val response = Map(
         "success" -> true,
-        "data" -> emailingData,
         "errors" -> List()
       )
       response
@@ -253,7 +253,6 @@ class CartHandler {
       case e: Exception =>
         val response = Map(
           "success" -> false,
-          "data" -> cart,
           "errors" -> List(e.getMessage)
         )
         response

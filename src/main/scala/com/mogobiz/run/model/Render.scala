@@ -44,7 +44,7 @@ object Render {
                                   phone: Option[String] = None,
                                   @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
                                   @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                                  birthdate: Option[DateTime] = None)
-
+                                  birthdate: Option[DateTime] = None,
+                                  qrCodeContent: Option[String] = None)
 
 }

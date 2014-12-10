@@ -1,0 +1,22 @@
+Your command {{uuid}}
+<html>
+<head>
+    <title>Your command {{uuid}}</title>
+    <meta http-equiv="content-type" content="text/html; charset=ISO-8859-15">
+</head>
+<body>
+Thank You for your command.<br/>
+
+{{#cartItemVOs}}
+    <br/>
+    Product : {{productName}} {{skuName}}<br/>
+    Quantity : {{quantity}}<br/>
+    Prix = {{formatedTotalEndPrice}}<br/>
+    {{#registeredCartItemVOs}}
+        <br/>
+        {{email}} {{firstname}} {{lastname}}<br/>
+        <img src="{{qrCodeContent}}" /><br/>
+    {{/registeredCartItemVOs}}
+{{/cartItemVOs}}
+</body>
+</html>

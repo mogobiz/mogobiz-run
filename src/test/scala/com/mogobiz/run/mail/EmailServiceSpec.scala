@@ -18,21 +18,21 @@ class EmailServiceSpec extends Specification with NoTimeConversions with BootedM
   "should send email" in {
 
     val smtpConfig = SmtpConfig(
-      ssl = Settings.Emailing.SMTP.IsSSLEnabled,
-      port = Settings.Emailing.SMTP.Port,
-      host = Settings.Emailing.SMTP.Hostname,
-      user = Settings.Emailing.SMTP.Username,
-      password = Settings.Emailing.SMTP.Password
+      ssl = Settings.Mail.Smtp.IsSSLEnabled,
+      port = Settings.Mail.Smtp.Port,
+      host = Settings.Mail.Smtp.Host,
+      user = Settings.Mail.Smtp.Username,
+      password = Settings.Mail.Smtp.Password
     )
 
-    val qrcodeBaseUrl : String = Settings.MogobizAdmin.QrCodeAccessUrl
+    val qrcodeBaseUrl : String = Settings.accessUrl
 
 
 
       val msg = EmailMessage(
         subject = "Your ticket : "+ "{eventName}",
         recipient = "christophe.galant@gmail.com",
-        from = Settings.Emailing.defaultFrom,
+        from = Settings.Mail.defaultFrom,
         html = Some(MailTemplateUtils.ticket(
           "emailData(eventName).asInstanceOf[String]",
           "emailData(startDate).asInstanceOf[Option[DateTime]].getOrElse()",

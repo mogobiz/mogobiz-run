@@ -27,7 +27,10 @@ case class StoreCart(// Identifiant du panier (Sert à identifier l'entrée dans
                      @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
                      expireDate: DateTime = DateTime.now.plusSeconds(60 * Settings.cart.lifetime), // Date d'expiration du panier
                      var dateCreated: Date = Calendar.getInstance().getTime,  // Date de création du panier
-                     var lastUpdated: Date = Calendar.getInstance().getTime)  { // Date de dernière modification du panier
+                     var lastUpdated: Date = Calendar.getInstance().getTime,  // Date de dernière modification du panier
+                     countryCode: Option[String] = None,
+                     stateCode: Option[String] = None,
+                     rate: Option[Currency] = None)  {
 
   val uuid: String = dataUuid + "--" + userUuid.getOrElse("None")
 

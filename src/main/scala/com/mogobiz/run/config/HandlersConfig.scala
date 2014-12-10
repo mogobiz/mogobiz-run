@@ -24,4 +24,5 @@ object HandlersConfig {
   val couponHandler = new CouponHandler
   val backOfficeHandler = new BackOfficeHandler
   val forUpdateHandler = new ForUpdateHandler
+  val templateHandler = new TemplateHandler
 }

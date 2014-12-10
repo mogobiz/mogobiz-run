@@ -1,8 +1,10 @@
 package com.mogobiz.run.cart
 
+import java.io.File
 import java.util.{UUID, Locale}
 import com.mogobiz.run.config.{Settings, MogobizDBsWithEnv}
 import com.mogobiz.run.exceptions._
+import com.mogobiz.run.handlers.EmailHandler.Mail
 import com.mogobiz.run.handlers._
 import com.mogobiz.run.model.Mogobiz.{InsufficientStockException, ProductCalendar, ProductType}
 import com.mogobiz.run.model.Render.{Cart, RegisteredCartItem, CartItem}
@@ -519,11 +521,11 @@ object CartBoService extends BoService {
    * @return
    */
   @throws[ValidateCartException]
-  def prepareBeforePayment(countryCode: Option[String], stateCode: Option[String], rate: Currency, cart: StoreCart, buyer: String) = {
+  def prepareBeforePayment(countryCode: Option[String], stateCode: Option[String], rate: Currency, cart: StoreCart, buyer: String, locale:Locale) = {
     val company = CompanyDao.findByCode(cart.storeCode)
 
     // Validation du panier au cas où il ne l'était pas déjà
-    val valideCart = validateCart(cart)
+    val valideCart = validateCart(cart).copy(countryCode = countryCode, stateCode = stateCode, rate = Some(rate))
 
     // Calcul des données du panier
     val cartTTC = computeStoreCart(valideCart, countryCode, stateCode)
@@ -531,16 +533,14 @@ object CartBoService extends BoService {
     // Suppression de la transaction en cours (si elle existe). Une nouvelle transaction sera créé
     if (cart.inTransaction) backOfficeHandler.deletePendingTransaction(cart.transactionUuid)
 
-    val updatedCart = valideCart.copy(inTransaction = true)
-
     // Création de la transaction
-    DB localTx { implicit session =>
-      backOfficeHandler.createTransaction(cart.storeCode, cartTTC, cart.transactionUuid, rate, buyer, company.get)
+    val updatedCart = DB localTx { implicit session =>
+      backOfficeHandler.createTransaction(valideCart.copy(inTransaction = true), cart.storeCode, cartTTC, cart.transactionUuid, rate, buyer, company.get)
     }
 
     StoreCartDao.save(updatedCart)
 
-    val renderedCart = CartRenderService.renderTransactionCart(cartTTC, rate)
+    val renderedCart = CartRenderService.renderTransactionCart(cartTTC, rate, locale)
     Map(
       "amount" -> renderedCart("finalPrice"),
       "currencyCode" -> rate.code,
@@ -555,48 +555,55 @@ object CartBoService extends BoService {
    * @param transactionUuid
    * @return
    */
-  def commit(cart: StoreCart, transactionUuid: String): List[Map[String, Any]] = {
+  def commit(cart: StoreCart, transactionUuid: String, locale:Locale): Unit = {
     assert(!transactionUuid.isEmpty, "transactionUuid should not be empty")
 
+    val transactionCart = cart.copy(transactionUuid = transactionUuid)
     BOCartDao.findByTransactionUuid(cart.transactionUuid) match {
       case Some(boCart) =>
         DB localTx { implicit session =>
-          val boCartItems = BOCartItemDao.findByBOCart(boCart)
-          val emailingData = boCartItems.map { boCartItem =>
-            //browse boTicketType to send confirmation mails
-            BOCartItemDao.bOProducts(boCartItem).map { boProduct =>
-              val product = ProductDao.get(cart.storeCode, boProduct.productFk)
-              BOTicketTypeDao.findByBOProduct(boProduct.id).map { boTicketType =>
-                var map: Map[String, Any] = Map()
-                map += ("email" -> boTicketType.email)
-                map += ("eventName" -> product.get.name)
-                map += ("startDate" -> boTicketType.startDate)
-                map += ("stopDate" -> boTicketType.endDate)
-                map += ("location" -> toEventLocationVO(product.get.poi))
-                map += ("type" -> boTicketType.ticketType)
-                map += ("price" -> boTicketType.price)
-                map += ("qrcode" -> boTicketType.qrcodeContent)
-                map += ("shortCode" -> boTicketType.shortCode)
-                map
-              }
-            }.flatten
-          }.flatten
-
           backOfficeHandler.completeTransaction(boCart, transactionUuid)
 
-          //update nbSales
-          boCartItems.map { boCartItem =>
-            val productAndSku = ProductDao.getProductAndSku(cart.storeCode, boCartItem.ticketTypeFk)
+          cart.cartItems.foreach {cartItem =>
+            val productAndSku = ProductDao.getProductAndSku(transactionCart.storeCode, cartItem.skuId)
             val product = productAndSku.get._1
             val sku = productAndSku.get._2
-            salesHandler.incrementSales(cart.storeCode, product, sku, boCartItem.quantity)
+            salesHandler.incrementSales(transactionCart.storeCode, product, sku, cartItem.quantity)
           }
-          val updatedCart = StoreCart(storeCode = cart.storeCode, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
+          val updatedCart = StoreCart(storeCode = transactionCart.storeCode, dataUuid = transactionCart.dataUuid, userUuid = transactionCart.userUuid)
           StoreCartDao.save(updatedCart)
-          emailingData
+
+          notifyCartCommit(transactionCart.storeCode, boCart.buyer, transactionCart, locale)
         }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
     }
+  }
+
+  private def notifyCartCommit(storeCode: String, email: String, cart: StoreCart, locale: Locale): Unit = {
+    import org.json4s.native.Serialization.write
+    import com.mogobiz.run.implicits.Json4sProtocol._
+
+    val cartTTC = computeStoreCart(cart, cart.countryCode, cart.stateCode)
+    val renderCart = CartRenderService.renderTransactionCart(cartTTC, cart.rate.get, locale)
+
+    val template = templateHandler.getTemplate(storeCode, "mail-cart.mustache")
+
+    val mailContent = templateHandler.mustache(template, write(renderCart))
+    val eol = mailContent.indexOf('\n')
+    require(eol > 0, "No new line found in mustache file to distinguish subject from body")
+    val subject = mailContent.substring(0, eol)
+    val body = mailContent.substring(eol + 1)
+
+    EmailHandler.Send.to(
+      Mail(
+        (Settings.Mail.defaultFrom -> storeCode),
+        List(email),
+        List(),
+        List(),
+        subject,
+        body,
+        Some(body)
+      ))
   }
 
   /**
