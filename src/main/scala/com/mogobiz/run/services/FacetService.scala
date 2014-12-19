@@ -30,8 +30,10 @@ class FacetService (storeCode: String, actor: ActorRef)(implicit executionContex
 
   lazy val getFacets = pathEnd{
     get {
-      parameters('priceInterval, 'lang ? "_all", 'name.?, 'brandId.?, 'categoryPath.?, 'brandName.?, 'categoryName.?,
-        'tags.?, 'notations.?, 'priceMin.?, 'priceMax.?, 'features.?, 'variations.?).as(FacetRequest) {
+      parameters('priceInterval, 'xtype.?, 'name.?, 'code.?, 'categoryPath.?, 'brandId.?,
+        'tags.?, 'notations.?, 'priceMin.?, 'priceMax.?, 'creationDateMin.?, 'featured.?.as[Option[Boolean]],
+        'lang ? "_all", 'promotionId.?, 'hasPromotion.?.as[Option[Boolean]], 'property.?,
+        'features.?, 'variations.?, 'brandName.?, 'categoryName.?).as(FacetRequest) {
         param =>
           onComplete ((actor ? QueryGetFacetRequest(storeCode, param)).mapTo[Try[JValue]]){call =>
             handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))

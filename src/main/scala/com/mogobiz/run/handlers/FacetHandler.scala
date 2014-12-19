@@ -1,7 +1,11 @@
 package com.mogobiz.run.handlers
 
 
+import java.text.SimpleDateFormat
+import java.util.Calendar
+
 import com.mogobiz.es.EsClient
+import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.es._
 import com.mogobiz.run.model.RequestParameters.FacetRequest
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s}
@@ -10,11 +14,24 @@ import org.json4s._
 import org.json4s.JsonAST.{JObject, JValue}
 import com.mogobiz.es.aggregations.Aggregations._
 import com.mogobiz.es.aggregations.ElasticDsl2._
+import com.mogobiz.run.config.HandlersConfig
 
 class FacetHandler {
 
+  private val sdf = new SimpleDateFormat("yyyy-MM-dd")
 
   def getProductCriteria(storeCode: String, req: FacetRequest) : JValue = {
+    val promotionIds = req.hasPromotion.map(v => {
+      if(v) {
+        val ids = promotionHandler.getPromotionIds(storeCode)
+        if(ids.isEmpty) None
+        else Some(ids.mkString("|"))
+      }else None
+    }) match {
+      case Some(s) => s
+      case _ => req.promotionId
+    }
+
     val query = req.name match {
       case Some(s) =>
         esearch4s in storeCode -> "product" query {
@@ -27,14 +44,31 @@ class FacetHandler {
     val _lang = if(req.lang=="_all") "_" else s"_${req.lang}"
 
     val filters:List[FilterDefinition] = (List(
+      createTermFilter("code", req.code),
+      createTermFilter("xtype", req.xtype),
       createTermFilter("brand.id", req.brandId),
       createRegexFilter("category.path", req.categoryPath),
       createTermFilter("brand.name", req.brandName.map(_.toLowerCase)),
       createTermFilter("category.name", req.categoryName.map(_.toLowerCase)),
       createNestedTermFilter("tags", "tags.name", req.tags.map(_.toLowerCase)),
       createNestedTermFilter("notations","notations.notation", req.notations),
-      createNumericRangeFilter("price", req.priceMin, req.priceMax)
-    )::: List(/*feature*/
+      createNumericRangeFilter("price", req.priceMin, req.priceMax),
+      createRangeFilter("dateCreated", req.creationDateMin, None),
+      createTermFilter("coupons.id", promotionIds)
+
+    )::: createFeaturedRangeFilters(req.featured.getOrElse(false))
+      ::: List(/*property*/
+      req.property match {
+        case Some(x: String) =>
+          val properties = (for (property <- x.split( """\|\|\|""")) yield {
+            val kv = property.split( """\:\:\:""")
+            if (kv.size == 2) createTermFilter(kv(0), Some(kv(1))) else None
+          }).toList.flatten
+          if (properties.size > 1) Some(must(properties: _*)) else if (properties.size == 1) Some(properties(0)) else None
+        case _ => None
+      }
+    )
+      ::: List(/*feature*/
       req.features match {
         case Some(x:String) =>
           val features:List[FilterDefinition] = (for(feature <- x.split("""\|\|\|""")) yield {
@@ -163,6 +197,18 @@ class FacetHandler {
     EsClient searchAgg esq
   }
 
+  private def createFeaturedRangeFilters(featured: Boolean): List[Option[FilterDefinition]] = {
+    if (featured) {
+      val today = sdf.format(Calendar.getInstance().getTime)
+      List(
+        createRangeFilter("startFeatureDate", None, Some(s"$today")),
+        createRangeFilter("stopFeatureDate", Some(s"$today"), None)
+      )
+    }
+    else{
+      List.empty
+    }
+  }
 
   def getCommentNotations(storeCode: String, productId: Option[Long]) : List[JValue] = {
 

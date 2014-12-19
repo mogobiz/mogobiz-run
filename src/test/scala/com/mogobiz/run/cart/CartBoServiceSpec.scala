@@ -1,6 +1,6 @@
 package com.mogobiz.run.cart
 
-import java.util.UUID
+import java.util.{Locale, UUID}
 
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
@@ -145,10 +145,10 @@ class CartBoServiceSpec extends MogobizRouteTest {
       val storeCart = new StoreCart(STORE, "uuid", None, cartItems=List(storeCartItem1))
       StoreCartDao.save(storeCart)
 
-      CartBoService.prepareBeforePayment(Some("FR"), None, new Currency(2, 0.01, "Euro", "EUR"), storeCart, "yoann.baudy@ebiznext.com")
+      CartBoService.prepareBeforePayment(Some("FR"), None, new Currency(2, 0.01, "Euro", "EUR"), storeCart, "yoann.baudy@ebiznext.com", Locale.FRENCH)
 
       val newStoreCart = StoreCartDao.findByDataUuidAndUserUuid("uuid", None)
-      CartBoService.commit(newStoreCart.get, "Test " + UUID.randomUUID().toString)
+      CartBoService.commit(newStoreCart.get, "Test " + UUID.randomUUID().toString, Locale.FRENCH)
 
       val finalStoreCart = StoreCartDao.findByDataUuidAndUserUuid("uuid", None)
       finalStoreCart must beSome

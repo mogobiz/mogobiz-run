@@ -16,20 +16,26 @@ object RequestParameters {
 
   case class FacetRequest(
                            priceInterval:Long
-                           , lang: String
+                           , xtype: Option[String]
                            , name: Option[String]
-                           , brandId: Option[Long]
+                           , code: Option[String]
                            , categoryPath: Option[String]
-                           , brandName: Option[String]
-                           , categoryName: Option[String]
+                           , brandId: Option[Int]
                            , tags: Option[String]
                            , notations: Option[String]
                            , priceMin: Option[Long]
                            , priceMax: Option[Long]
+                           , creationDateMin: Option[String]
+                           , featured: Option[Boolean]
+                           , lang: String
+                           , promotionId: Option[String]
+                           , hasPromotion : Option[Boolean]
+                           , property : Option[String]
                            , features : Option[String]
                            , variations : Option[String]
-                           ) {
-    def this(priceInterval: Long, lang:String) = this(priceInterval, lang, None, None, None, None, None, None, None, None, None, None, None)
+                           , brandName: Option[String]
+                           , categoryName: Option[String]) {
+    def this(priceInterval: Long, lang:String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None)
   }
 
   //--- Products
