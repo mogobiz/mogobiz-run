@@ -31,7 +31,7 @@ trait ElasticSearchNode {
     node.client().admin().indices().prepareRefresh().execute().actionGet()
   }
 
-  def startES() : Node
+  def startES(esPath: String) : Node
 
   def stopES(node: Node) : Unit
 }
@@ -44,7 +44,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
   val icuPlugin = "elasticsearch/elasticsearch-analysis-icu/2.2.0"
   val plugins = Seq(esHeadPlugin)
 
-  def startES() : Node = {
+  def startES(esPath: String = EsEmbedded) : Node = {
     logger.info("ES is starting...")
     // Prépare les plugins
     val initialSettings : Tuple[Settings, Environment]= InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true)
@@ -73,16 +73,16 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       else get(filename)
     }
 
-    Files.walkFileTree(EsEmbedded, new SimpleFileVisitor[Path]() {
+    Files.walkFileTree(esPath, new SimpleFileVisitor[Path]() {
       @Override
       override def preVisitDirectory(dir:Path, attrs:BasicFileAttributes):FileVisitResult = {
-        Files.createDirectories(tmpdir.resolve(EsEmbedded.relativize(dir)))
+        Files.createDirectories(tmpdir.resolve(esPath.relativize(dir)))
         CONTINUE
       }
 
       @Override
       override def visitFile(file:Path, attrs:BasicFileAttributes):FileVisitResult = {
-        copy(file, tmpdir.resolve(EsEmbedded.relativize(file)))
+        copy(file, tmpdir.resolve(esPath.relativize(file)))
         CONTINUE
       }
     })
