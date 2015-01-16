@@ -9,7 +9,6 @@ import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
 import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
 import org.elasticsearch.search.{SearchHit, SearchHits}
-import org.json4s.JValue
 import org.json4s.JsonAST.{JArray, JValue, JNothing}
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -219,12 +218,5 @@ package object es {
   class StringSource(val str:String) extends DocumentSource {
     def json = str
   }
-
-  /*
-private def debug(req: SearchDefinition) {
-  if (EsDebug) {
-    logger.info(req._builder.toString)
-  }
-}*/
 
 }
