@@ -34,8 +34,9 @@ object RequestParameters {
                            , features : Option[String]
                            , variations : Option[String]
                            , brandName: Option[String]
-                           , categoryName: Option[String]) {
-    def this(priceInterval: Long, lang:String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None)
+                           , categoryName: Option[String]
+                           , multi: Boolean) {
+    def this(priceInterval: Long, lang:String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None, false)
   }
 
   //--- Products

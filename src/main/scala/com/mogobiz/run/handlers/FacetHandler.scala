@@ -126,7 +126,9 @@ class FacetHandler {
     )
       ).flatten
 
-    val esq = (filterRequest(query, filters) aggs {
+    val filtersPart = if(req.multi) filterOrRequest(query,filters) else filterRequest(query, filters)
+
+    val esq = (filtersPart aggs {
       aggregation terms "category" field "category.path" aggs {
         agg terms "name" field "category.name.raw"
       } aggs {
@@ -155,29 +157,29 @@ class FacetHandler {
       }
     } aggs {
       //nestedPath("skus") aggs {
-        aggregation terms "variation1_name" field s"skus.variation1.name.raw" aggs {
-          aggregation terms s"variation1_name${_lang}" field s"skus.variation1.${lang}name.raw"
-        } aggs {
-          aggregation terms s"variation1_values" field s"skus.variation1.value.raw"
-        } aggs {
-          aggregation terms s"variation1_values${_lang}" field s"skus.variation1.${lang}value.raw"
-        }
+      aggregation terms "variation1_name" field s"skus.variation1.name.raw" aggs {
+        aggregation terms s"variation1_name${_lang}" field s"skus.variation1.${lang}name.raw"
       } aggs {
-        aggregation terms "variation2_name" field s"skus.variation2.name.raw" aggs {
-          aggregation terms s"variation2_name${_lang}" field s"skus.variation2.${lang}name.raw"
-        } aggs {
-          aggregation terms s"variation2_values" field s"skus.variation2.value.raw"
-        } aggs {
-          aggregation terms s"variation2_values${_lang}" field s"skus.variation2.${lang}value.raw"
-        }
+        aggregation terms s"variation1_values" field s"skus.variation1.value.raw"
       } aggs {
-        aggregation terms "variation3_name" field s"skus.variation3.name.raw" aggs {
-          aggregation terms s"variation3_name${_lang}" field s"skus.variation3.${lang}name.raw"
-        } aggs {
-          aggregation terms s"variation3_values" field s"skus.variation3.value.raw"
-        } aggs {
-          aggregation terms s"variation3_values${_lang}" field s"skus.variation3.${lang}value.raw"
-        }
+        aggregation terms s"variation1_values${_lang}" field s"skus.variation1.${lang}value.raw"
+      }
+    } aggs {
+      aggregation terms "variation2_name" field s"skus.variation2.name.raw" aggs {
+        aggregation terms s"variation2_name${_lang}" field s"skus.variation2.${lang}name.raw"
+      } aggs {
+        aggregation terms s"variation2_values" field s"skus.variation2.value.raw"
+      } aggs {
+        aggregation terms s"variation2_values${_lang}" field s"skus.variation2.${lang}value.raw"
+      }
+    } aggs {
+      aggregation terms "variation3_name" field s"skus.variation3.name.raw" aggs {
+        aggregation terms s"variation3_name${_lang}" field s"skus.variation3.${lang}name.raw"
+      } aggs {
+        aggregation terms s"variation3_values" field s"skus.variation3.value.raw"
+      } aggs {
+        aggregation terms s"variation3_values${_lang}" field s"skus.variation3.${lang}value.raw"
+      }
       //}
     } aggs {
       nestedPath("notations") aggs {
@@ -192,6 +194,7 @@ class FacetHandler {
     } aggs {
       aggregation max "price_max" field "price"
     }
+
       searchType SearchType.Count)
 
     EsClient searchAgg esq

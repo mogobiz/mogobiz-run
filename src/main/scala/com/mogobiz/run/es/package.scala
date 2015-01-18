@@ -121,6 +121,15 @@ package object es {
     }
     else req
 
+  def filterOrRequest(req:SearchDefinition, filters:List[FilterDefinition], _query:QueryDefinition = matchall) : SearchDefinition =
+    if(filters.nonEmpty){
+      if(filters.size > 1)
+        req query {filteredQuery query _query filter {or(filters: _*)}}
+      else
+        req query {filteredQuery query _query filter filters(0)}
+    }
+    else req
+
   def createOrRegexAndTypeFilter(typeFields:List[TypeField], value:Option[String]) : Option[FilterDefinition] = {
     value match{
       case Some(s) => Some(
