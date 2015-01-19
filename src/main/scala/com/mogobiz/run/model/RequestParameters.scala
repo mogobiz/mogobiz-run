@@ -95,7 +95,7 @@ object RequestParameters {
                                        , ids: String) extends CommonProductParameters(_lang, _currency, _country)
 
   //--- Comment
-  case class CommentRequest( userId:String, surname: String, notation:Int, subject:String, comment:String, created:Date = new Date){
+  case class CommentRequest( notation:Int, subject:String, comment:String, created:Date = new Date){
     def validate() {
       if(!(notation>=0 && notation<=5)) throw CommentException(CommentException.BAD_NOTATION)
     }

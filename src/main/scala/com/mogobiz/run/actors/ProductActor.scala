@@ -1,6 +1,7 @@
 package com.mogobiz.run.actors
 
 import akka.actor.{Props, Actor}
+import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.actors.EsUpdateActor.ProductNotationsUpdateRequest
 import com.mogobiz.run.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductDetailsRequest, QueryProductRequest, _}
 import com.mogobiz.run.config.HandlersConfig
@@ -28,7 +29,7 @@ object ProductActor {
 
   case class QueryGetCommentRequest(storeCode: String, productId: Long, req: CommentGetRequest)
 
-  case class QueryCreateCommentRequest(storeCode: String, productId: Long, req: CommentRequest)
+  case class QueryCreateCommentRequest(storeCode: String, productId: Long, req: CommentRequest, account: Option[Account])
 
   case class QueryVisitedProductRequest(storeCode: String, uuid: String, currency: Option[String], country: Option[String], lang: String)
 
@@ -72,7 +73,7 @@ class ProductActor extends Actor {
       sender ! Try(productHandler.getProductTimes(q.storeCode, q.date, q.productId, q.uuid))
 
     case q: QueryCreateCommentRequest =>
-      val comment = Try(productHandler.createComment(q.storeCode, q.productId, q.req))
+      val comment = Try(productHandler.createComment(q.storeCode, q.productId, q.req, q.account))
 
       val updateActor = context.actorOf(Props[EsUpdateActor])
       updateActor ! ProductNotationsUpdateRequest(q.storeCode, q.productId)

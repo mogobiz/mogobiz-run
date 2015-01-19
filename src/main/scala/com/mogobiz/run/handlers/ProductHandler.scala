@@ -1,10 +1,11 @@
 package com.mogobiz.run.handlers
 
 import java.text.SimpleDateFormat
-import java.util.{Date, Calendar, Locale}
+import java.util.{UUID, Date, Calendar, Locale}
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
+import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.es._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
 import com.mogobiz.run.learning.UserActionRegistration
@@ -443,13 +444,15 @@ class ProductHandler extends JsonUtil {
     true
   }
 
-  def createComment(storeCode: String, productId: Long, req: CommentRequest): Comment = {
+  def createComment(storeCode: String, productId: Long, req: CommentRequest, account: Option[Account]): Comment = {
     require(!storeCode.isEmpty)
     require(productId > 0)
-    val comment = Try(Comment(None, req.userId, req.surname, req.notation, req.subject, req.comment, req.created, productId))
+    val userId = if (account.isDefined) account.get.uuid else ""
+    val surname = if (account.isDefined) account.get.firstName.getOrElse("") + " " + account.get.lastName.getOrElse("") else ""
+    val comment = Try(Comment(Some(UUID.randomUUID().toString), userId, surname, req.notation, req.subject, req.comment, req.created, productId))
     comment match {
       case Success(s) =>
-        Comment(Some(EsClient.index[Comment](commentIndex(storeCode), s)), req.userId, req.surname, req.notation, req.subject, req.comment, req.created, productId)
+        Comment(Some(EsClient.index[Comment](commentIndex(storeCode), s)), userId, surname, req.notation, req.subject, req.comment, req.created, productId)
       case Failure(f) => throw f
     }
   }

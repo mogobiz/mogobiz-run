@@ -6,8 +6,13 @@ import Json4sProtocol._
 import com.mogobiz.run.actors.ProductActor.{QueryCompareProductRequest, QueryFindProductRequest, QueryProductRequest, _}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
+import com.mogobiz.session.Session
+import com.mogobiz.session.SessionESDirectives._
+import com.mogobiz.pay.implicits.Implicits
+import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import spray.http.StatusCodes
 import spray.routing.Directives
+import com.mogobiz.pay.config.MogopayHandlers.accountHandler
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Try}
@@ -209,9 +214,12 @@ import scala.concurrent.duration._
 
   def createComment(productId: Long) = post {
       entity(as[CommentRequest]) { req =>
-        //TODO check userId in mogopay before inserting
-        onComplete((actor ? QueryCreateCommentRequest(storeCode, productId, req)).mapTo[Try[Comment]]){ call =>
-          handleComplete(call, (comment:Comment) => complete(StatusCodes.OK, comment))
+        optionalSession { optSession =>
+          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+          val account = if (accountId.isDefined) accountHandler.load(accountId.get) else None
+          onComplete((actor ? QueryCreateCommentRequest(storeCode, productId, req, account)).mapTo[Try[Comment]]) { call =>
+            handleComplete(call, (comment: Comment) => complete(StatusCodes.OK, comment))
+          }
         }
       }
     }
