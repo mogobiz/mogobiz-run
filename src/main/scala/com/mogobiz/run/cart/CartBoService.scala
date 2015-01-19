@@ -464,8 +464,16 @@ object CartBoService extends BoService {
 
     val finalPrice = if (endPrice.isDefined) endPrice.get - reduction else price - reduction
 
-    Cart(price, endPrice, reduction, finalPrice, cartItems.length, cart.transactionUuid,
+    val count = calculateCount(cartItems)
+    Cart(price, endPrice, reduction, finalPrice, count, cart.transactionUuid,
       cartItems.toArray, coupons.toArray)
+  }
+
+  private def calculateCount(list: List[CartItem]) : Int = {
+    if (list.isEmpty) 0
+    else {
+      list.head.quantity + calculateCount(list.tail)
+    }
   }
 
   /**
