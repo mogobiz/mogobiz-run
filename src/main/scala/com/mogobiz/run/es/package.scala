@@ -75,6 +75,71 @@ package object es {
     }.flatten
   }
 
+  /**
+   * Créer le filtre correspondant à la requete fournie. La requête a la format suivant :
+   * k1:::v1_1|v1_2|||k2:::v2_1|v2_2 etc...
+   * Le filtre généré est le suivant (optimisé si possible):
+   * and {
+   *     or {
+   *          filter pour tester k1 et v1_1,
+   *          filter pour tester k1 et v1_2
+   *          etc...
+   *     },
+   *     or {
+   *          filter pour tester k2 et v2_1,
+   *          filter pour tester k2 et v2_2
+   *          etc...
+   *     }
+   *     etc...
+   * }
+   * @param optQuery
+   * @param fct
+   * @return
+   */
+  def createAndOrFilterBySplitKeyValues(optQuery: Option[String], fct: (String, String) => Option[FilterDefinition]) : Option[FilterDefinition] = {
+    optQuery match {
+      case Some(query) => {
+        val andFilters = (for (keyValues <- query.split("""\|\|\|""")) yield {
+          val kv = keyValues.split( """\:\:\:""")
+          if (kv.size == 2) {
+            val orFilters = (for (v <- kv(1).split("""\|""")) yield {
+              fct(kv(0), v)
+            }).toList.flatten
+            if (orFilters.length > 1) Some(or(orFilters: _*)) else if (orFilters.length == 1) Some(orFilters(0)) else None
+          }
+          else None
+        }).toList.flatten
+        if (andFilters.length > 1) Some(and(andFilters: _*)) else if (andFilters.length == 1) Some(andFilters(0)) else None
+      }
+      case _ => None
+    }
+  }
+
+  /**
+   * Créer le filtre correspondant à la requete fournie. La requête a la format suivant :
+   * v1|v2 etc...
+   * Le filtre généré est le suivant (optimisé si possible):
+   * or {
+   *     filter pour tester v1,
+   *     filter pour tester v2
+   *     etc...
+   * }
+   * @param optQuery
+   * @param fct
+   * @return
+   */
+  def createOrFilterBySplitValues(optQuery: Option[String], fct: (String) => Option[FilterDefinition]) : Option[FilterDefinition] = {
+    optQuery match {
+      case Some(query) => {
+        val orFilters = (for (v <- query.split("""\|""")) yield {
+          fct(v)
+        }).toList.flatten
+        if (orFilters.length > 1) Some(or(orFilters: _*)) else if (orFilters.length == 1) Some(orFilters(0)) else None
+      }
+      case _ => None
+    }
+  }
+
   def getAllExcludedLanguagesExcept(store: String, langRequested: String): List[String] = {
     val storeLanguagesList: List[String] = getStoreLanguagesAsList(store)
     if (langRequested == "_all") List()

@@ -8,144 +8,53 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.es._
 import com.mogobiz.run.model.RequestParameters.FacetRequest
-import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s}
+import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, SearchDefinition}
 import com.sksamuel.elastic4s.{SearchType, FilterDefinition}
 import org.json4s._
 import org.json4s.JsonAST.{JObject, JValue}
 import com.mogobiz.es.aggregations.Aggregations._
 import com.mogobiz.es.aggregations.ElasticDsl2._
-import com.mogobiz.run.config.HandlersConfig
 
 class FacetHandler {
 
   private val sdf = new SimpleDateFormat("yyyy-MM-dd")
 
   def getProductCriteria(storeCode: String, req: FacetRequest) : JValue = {
-    val promotionIds = req.hasPromotion.map(v => {
-      if(v) {
-        val ids = promotionHandler.getPromotionIds(storeCode)
-        if(ids.isEmpty) None
-        else Some(ids.mkString("|"))
-      }else None
-    }) match {
-      case Some(s) => s
-      case _ => req.promotionId
-    }
-
-    val query = req.name match {
-      case Some(s) =>
-        esearch4s in storeCode -> "product" query {
-          matchQuery("name", s)
-        }
-      case None => esearch4s in storeCode -> "product"
-    }
-
     val lang = if(req.lang=="_all") "" else s"${req.lang}."
     val _lang = if(req.lang=="_all") "_" else s"_${req.lang}"
 
-    val filters:List[FilterDefinition] = (List(
-      createTermFilter("code", req.code),
-      createTermFilter("xtype", req.xtype),
-      createTermFilter("brand.id", req.brandId),
-      createRegexFilter("category.path", req.categoryPath),
-      createTermFilter("brand.name", req.brandName.map(_.toLowerCase)),
-      createTermFilter("category.name", req.categoryName.map(_.toLowerCase)),
-      createNestedTermFilter("tags", "tags.name", req.tags.map(_.toLowerCase)),
-      createNestedTermFilter("notations","notations.notation", req.notations),
-      createNumericRangeFilter("price", req.priceMin, req.priceMax),
-      createRangeFilter("dateCreated", req.creationDateMin, None),
-      createTermFilter("coupons.id", promotionIds)
-
-    )::: createFeaturedRangeFilters(req.featured.getOrElse(false))
-      ::: List(/*property*/
-      req.property match {
-        case Some(x: String) =>
-          val properties = (for (property <- x.split( """\|\|\|""")) yield {
-            val kv = property.split( """\:\:\:""")
-            if (kv.size == 2) createTermFilter(kv(0), Some(kv(1))) else None
-          }).toList.flatten
-          if (properties.size > 1) Some(must(properties: _*)) else if (properties.size == 1) Some(properties(0)) else None
-        case _ => None
-      }
+    val fixeFilters: List[Option[FilterDefinition]] = List(
+      createOrFilterBySplitValues(req.code, v => createTermFilter("code", Some(v))),
+      createOrFilterBySplitValues(req.xtype, v => createTermFilter("xtype", Some(v))),
+      createOrFilterBySplitValues(req.creationDateMin, v => createRangeFilter("dateCreated", Some(v), None)),
+      createOrFilterBySplitValues(retrievePromotionsIds(storeCode, req), v => createTermFilter("coupons.id", Some(v))),
+      createFeaturedRangeFilters(req),
+      createAndOrFilterBySplitKeyValues(req.property, (k, v) => createTermFilter(k, Some(v)))
     )
-      ::: List(/*feature*/
-      req.features match {
-        case Some(x:String) =>
-          val features:List[FilterDefinition] = (for(feature <- x.split("""\|\|\|""")) yield {
-            val kv = feature.split("""\:\:\:""")
-            if(kv.size == 2)
-              Some(
-                must(
-                  List(
-                    createNestedTermFilter("features",s"features.name.raw", Some(kv(0))),
-                    createNestedTermFilter("features",s"features.value.raw", Some(kv(1)))
-                  ).flatten:_*
-                )
-              )
-            else
-              None
-          }).toList.flatten
-          if(features.size > 1) Some(and(features:_*)) else if(features.size == 1) Some(features(0)) else None
-        case _ => None
-      }
-    )
-      ::: List(/* variations */
-      req.variations match {
-        case Some(v: String) =>
-          val variations: List[FilterDefinition] = (for(variation <- v.split("""\|\|\|""")) yield{
-            val kv = variation.split("""\:\:\:""")
-            if(kv.size == 2)
-              Some(
-                or(
-                  must(
-                    List(
-                      createTermFilter(s"skus.variation1.name.raw", Some(kv(0))),
-                      createTermFilter(s"skus.variation1.value.raw", Some(kv(1)))
-                    ).flatten:_*
-                  )
-                  ,must(
-                    List(
-                      createTermFilter(s"skus.variation2.name.raw", Some(kv(0))),
-                      createTermFilter(s"skus.variation2.value.raw", Some(kv(1)))
-                    ).flatten:_*
-                  )
-                  ,must(
-                    List(
-                      createTermFilter(s"skus.variation3.name.raw", Some(kv(0))),
-                      createTermFilter(s"skus.variation3.value.raw", Some(kv(1)))
-                    ).flatten:_*
-                  )
-                )
-              )
-            else
-              None
-          }).toList.flatten
-          if(variations.size > 1) Some(and(variations:_*)) else if(variations.size == 1) Some(variations(0)) else None
-        case _ => None
-      }
-    )
-      ).flatten
 
-    val filtersPart = if(req.multi) filterOrRequest(query,filters) else filterRequest(query, filters)
-
-    val esq = (filtersPart aggs {
+    val categoryQuery = buildQueryAndFilters(FilterBuilder(withCategory = false), storeCode, req, fixeFilters) aggs {
       aggregation terms "category" field "category.path" aggs {
         agg terms "name" field "category.name.raw"
       } aggs {
         agg terms s"name${_lang}" field s"category.${lang}name.raw"
       }
+    }
 
-    } aggs {
+    val brandQuery = buildQueryAndFilters(FilterBuilder(withBrand = false), storeCode, req, fixeFilters) aggs {
       aggregation terms "brand" field "brand.id" aggs {
         agg terms "name" field "brand.name.raw"
       } aggs {
         agg terms s"name${_lang}" field s"brand.${lang}name.raw"
       }
-    } aggs {
+    }
+
+    val tagQuery = buildQueryAndFilters(FilterBuilder(withTags = false), storeCode, req, fixeFilters) aggs {
       nestedPath("tags") aggs {
         aggregation terms "tags" field "tags.name.raw"
       }
-    } aggs {
+    }
+
+    val featuresQuery = buildQueryAndFilters(FilterBuilder(withFeatures = false), storeCode, req, fixeFilters) aggs {
       nestedPath("features") aggs {
         aggregation terms "features_name" field s"features.name.raw" aggs {
           aggregation terms s"features_name${_lang}" field s"features.${lang}name.raw"
@@ -155,8 +64,9 @@ class FacetHandler {
           aggregation terms s"feature_values${_lang}" field s"features.${lang}value.raw"
         }
       }
-    } aggs {
-      //nestedPath("skus") aggs {
+    }
+
+    val variationsQuery = buildQueryAndFilters(FilterBuilder(withVariations = false), storeCode, req, fixeFilters) aggs {
       aggregation terms "variation1_name" field s"skus.variation1.name.raw" aggs {
         aggregation terms s"variation1_name${_lang}" field s"skus.variation1.${lang}name.raw"
       } aggs {
@@ -180,14 +90,17 @@ class FacetHandler {
       } aggs {
         aggregation terms s"variation3_values${_lang}" field s"skus.variation3.${lang}value.raw"
       }
-      //}
-    } aggs {
+    }
+
+    val notationQuery = buildQueryAndFilters(FilterBuilder(withNotation = false), storeCode, req, fixeFilters) aggs {
       nestedPath("notations") aggs {
         aggregation terms "notation" field s"notations.notation" aggs {
           aggregation sum "nbcomments" field s"notations.nbcomments"
         }
       }
-    } aggs {
+    }
+
+    val priceQuery = buildQueryAndFilters(FilterBuilder(withPrice = false), storeCode, req, fixeFilters) aggs {
       aggregation histogram "prices" field "price" interval req.priceInterval minDocCount 0
     } aggs {
       aggregation min "price_min" field "price"
@@ -195,44 +108,157 @@ class FacetHandler {
       aggregation max "price_max" field "price"
     }
 
-      searchType SearchType.Count)
+    val multiQueries = List(
+      categoryQuery searchType SearchType.Count,
+      brandQuery searchType SearchType.Count,
+      tagQuery searchType SearchType.Count,
+      featuresQuery searchType SearchType.Count,
+      variationsQuery searchType SearchType.Count,
+      notationQuery searchType SearchType.Count,
+      priceQuery searchType SearchType.Count
+    )
 
-    EsClient searchAgg esq
+    EsClient.multiSearchAgg(multiQueries)
   }
 
-  private def createFeaturedRangeFilters(featured: Boolean): List[Option[FilterDefinition]] = {
-    if (featured) {
+  private def buildQueryAndFilters(builder: FilterBuilder, storeCode: String, req: FacetRequest, fixeFilters: List[Option[FilterDefinition]]) : SearchDefinition = {
+    val filters = (
+      fixeFilters
+      :+ (if (builder.withCategory) createOrFilterBySplitValues(req.categoryPath, v => createRegexFilter("category.path", Some(v))) else None)
+      :+ (if (builder.withCategory) createOrFilterBySplitValues(req.categoryName.map(_.toLowerCase), v => createTermFilter("category.name", Some(v))) else None)
+      :+ (if (builder.withBrand) createOrFilterBySplitValues(req.brandId, v => createTermFilter("brand.id", Some(v))) else None)
+      :+ (if (builder.withBrand) createOrFilterBySplitValues(req.brandName.map(_.toLowerCase), v => createTermFilter("brand.name", Some(v))) else None)
+      :+ (if (builder.withTags) createOrFilterBySplitValues(req.tags.map(_.toLowerCase), v => createNestedTermFilter("tags", "tags.name", Some(v))) else None)
+      :+ (if (builder.withFeatures) createFeaturesFilters(req) else None)
+      :+ (if (builder.withVariations) createVariationsFilters(req) else None)
+      :+ (if (builder.withNotation) createOrFilterBySplitValues(req.notations, v => createNestedTermFilter("notations","notations.notation", Some(v))) else None)
+      :+ (if (builder.withPrice) createNumericRangeFilter("price", req.priceMin, req.priceMax) else None)
+    ).flatten
+
+    filterRequest(buildQueryPart(storeCode, req), filters)
+  }
+
+  /**
+   * Renvoie tous les ids des promotions si la requêtes demandes n'importe
+   * quelle promotion ou l'id de la promotion fournie dans la requête
+   * @param storeCode
+   * @param req
+   */
+  private def retrievePromotionsIds(storeCode: String, req: FacetRequest) : Option[String] = {
+    if (req.hasPromotion.getOrElse(false)) {
+      val ids = promotionHandler.getPromotionIds(storeCode)
+      if (ids.isEmpty) None
+      else Some(ids.mkString("|"))
+    }
+    else req.promotionId
+  }
+
+  /**
+   * Renvoie la requête (sans les filtres) à utiliser. Si le nom du produit
+   * est spécifié, la requête contient un match sur le nom du produit
+   * @param storeCode
+   * @param req
+   * @return
+   */
+  private def buildQueryPart(storeCode: String, req: FacetRequest) = {
+    req.name match {
+      case Some(s) =>
+        esearch4s in storeCode -> "product" query {
+          matchQuery("name", s)
+        }
+      case None => esearch4s in storeCode -> "product"
+    }
+  }
+
+  /**
+   * Renvoie le filtres permettant de filtrer les produits mis en avant
+   * si la requête le demande
+   * @param req
+   * @return
+   */
+  private def createFeaturedRangeFilters(req: FacetRequest): Option[FilterDefinition] = {
+    if (req.featured.getOrElse(false)) {
       val today = sdf.format(Calendar.getInstance().getTime)
-      List(
+      val list = List(
         createRangeFilter("startFeatureDate", None, Some(s"$today")),
         createRangeFilter("stopFeatureDate", Some(s"$today"), None)
+      ).flatten
+      Some(and(list: _*))
+    }
+    else None
+  }
+
+  /**
+   * Renvoie le filtre pour les features
+   * @param req
+   * @return
+   */
+  private def createFeaturesFilters(req: FacetRequest): Option[FilterDefinition] = {
+    createAndOrFilterBySplitKeyValues(req.features, (k, v) => {
+      Some(
+        must(
+          List(
+            createNestedTermFilter("features", s"features.name.raw", Some(k)),
+            createNestedTermFilter("features", s"features.value.raw", Some(v))
+          ).flatten: _*
+        )
       )
-    }
-    else{
-      List.empty
-    }
+    })
+  }
+
+  /**
+   * Renvoie la liste des filtres pour les variations
+   * @param req
+   * @return
+   */
+  private def createVariationsFilters(req: FacetRequest): Option[FilterDefinition] = {
+    createAndOrFilterBySplitKeyValues(req.variations, (k, v) => {
+      Some(
+        or(
+          must(
+            List(
+              createTermFilter(s"skus.variation1.name.raw", Some(k)),
+              createTermFilter(s"skus.variation1.value.raw", Some(v))
+            ).flatten:_*
+          )
+          ,must(
+            List(
+              createTermFilter(s"skus.variation2.name.raw", Some(k)),
+              createTermFilter(s"skus.variation2.value.raw", Some(v))
+            ).flatten:_*
+          )
+          ,must(
+            List(
+              createTermFilter(s"skus.variation3.name.raw", Some(k)),
+              createTermFilter(s"skus.variation3.value.raw", Some(v))
+            ).flatten:_*
+          )
+        )
+      )
+    })
   }
 
   def getCommentNotations(storeCode: String, productId: Option[Long]) : List[JValue] = {
-
     val filters = List(createTermFilter("productId", productId)).flatten
     val req = filterRequest(esearch4s in s"${storeCode}_comment" types "comment", filters) aggs {
         agg terms "notations" field "notation"
       } searchType SearchType.Count
 
     val resagg = EsClient searchAgg req
-//    println("getCommentNotations resagg:",resagg)
 
-    val keyValue = for {
+    for {
       JArray(buckets) <- resagg \ "notations" \ "buckets"
       JObject(bucket) <- buckets
       JField("key_as_string", JString(key)) <- bucket
       JField("doc_count", JInt(value)) <- bucket
     } yield  JObject(List(JField("notation", JString(key)), JField("nbcomments", JInt(value))))
-
-//    println("getCommentNotations keyValue:",keyValue)
-    keyValue
-
   }
 
+  private case class FilterBuilder(withCategory: Boolean = true,
+                                   withBrand: Boolean = true,
+                                   withTags: Boolean = true,
+                                   withFeatures: Boolean = true,
+                                   withVariations: Boolean = true,
+                                   withNotation: Boolean = true,
+                                   withPrice: Boolean = true)
 }

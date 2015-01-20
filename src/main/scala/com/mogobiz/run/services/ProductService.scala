@@ -62,7 +62,7 @@ import scala.concurrent.duration._
           'name.? ::
           'code.? ::
           'categoryPath.? ::
-          'brandId.?.as[Option[Int]] ::
+          'brandId.? ::
           'tagName.? ::
           'notations.? ::
           'priceMin.?.as[Option[Long]] ::

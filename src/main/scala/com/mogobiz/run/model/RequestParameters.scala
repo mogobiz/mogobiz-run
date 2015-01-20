@@ -20,7 +20,7 @@ object RequestParameters {
                            , name: Option[String]
                            , code: Option[String]
                            , categoryPath: Option[String]
-                           , brandId: Option[Int]
+                           , brandId: Option[String]
                            , tags: Option[String]
                            , notations: Option[String]
                            , priceMin: Option[Long]
@@ -34,9 +34,8 @@ object RequestParameters {
                            , features : Option[String]
                            , variations : Option[String]
                            , brandName: Option[String]
-                           , categoryName: Option[String]
-                           , multi: Boolean) {
-    def this(priceInterval: Long, lang:String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None, false)
+                           , categoryName: Option[String]) {
+    def this(priceInterval: Long, lang:String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None)
   }
 
   //--- Products
@@ -51,7 +50,7 @@ object RequestParameters {
                              , name: Option[String]
                              , code: Option[String]
                              , categoryPath: Option[String]
-                             , brandId: Option[Int]
+                             , brandId: Option[String]
                              , tagName: Option[String]
                              , notations: Option[String]
                              , priceMin: Option[Long]
