@@ -12,4 +12,6 @@ import java.util.Date
 
 import UserAction._
 
-case class UserItemAction(val trackingid:String, val itemid:String, action:UserAction, timestamp : Date = Calendar.getInstance().getTime)
+case class UserItemAction(val trackingid: String, val itemid: String, action: UserAction, timestamp: Date = Calendar.getInstance().getTime)
+
+case class CartAction(val trackingid: String, val itemids: String, timestamp: Date = Calendar.getInstance().getTime)
