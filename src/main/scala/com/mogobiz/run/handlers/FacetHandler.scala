@@ -32,7 +32,7 @@ class FacetHandler {
       createAndOrFilterBySplitKeyValues(req.property, (k, v) => createTermFilter(k, Some(v)))
     )
 
-    val categoryQuery = buildQueryAndFilters(FilterBuilder(withCategory = false), storeCode, req, fixeFilters) aggs {
+    val categoryQuery = buildQueryAndFilters(FilterBuilder(withCategory = !req.multiCategory.getOrElse(false)), storeCode, req, fixeFilters) aggs {
       aggregation terms "category" field "category.path" aggs {
         agg terms "name" field "category.name.raw"
       } aggs {
@@ -40,7 +40,7 @@ class FacetHandler {
       }
     }
 
-    val brandQuery = buildQueryAndFilters(FilterBuilder(withBrand = false), storeCode, req, fixeFilters) aggs {
+    val brandQuery = buildQueryAndFilters(FilterBuilder(withBrand = !req.multiBrand.getOrElse(false)), storeCode, req, fixeFilters) aggs {
       aggregation terms "brand" field "brand.id" aggs {
         agg terms "name" field "brand.name.raw"
       } aggs {
@@ -48,13 +48,13 @@ class FacetHandler {
       }
     }
 
-    val tagQuery = buildQueryAndFilters(FilterBuilder(withTags = false), storeCode, req, fixeFilters) aggs {
+    val tagQuery = buildQueryAndFilters(FilterBuilder(withTags = !req.multiTag.getOrElse(false)), storeCode, req, fixeFilters) aggs {
       nestedPath("tags") aggs {
         aggregation terms "tags" field "tags.name.raw"
       }
     }
 
-    val featuresQuery = buildQueryAndFilters(FilterBuilder(withFeatures = false), storeCode, req, fixeFilters) aggs {
+    val featuresQuery = buildQueryAndFilters(FilterBuilder(withFeatures = !req.multiFeatures.getOrElse(false)), storeCode, req, fixeFilters) aggs {
       nestedPath("features") aggs {
         aggregation terms "features_name" field s"features.name.raw" aggs {
           aggregation terms s"features_name${_lang}" field s"features.${lang}name.raw"
@@ -66,7 +66,7 @@ class FacetHandler {
       }
     }
 
-    val variationsQuery = buildQueryAndFilters(FilterBuilder(withVariations = false), storeCode, req, fixeFilters) aggs {
+    val variationsQuery = buildQueryAndFilters(FilterBuilder(withVariations = !req.multiVariations.getOrElse(false)), storeCode, req, fixeFilters) aggs {
       aggregation terms "variation1_name" field s"skus.variation1.name.raw" aggs {
         aggregation terms s"variation1_name${_lang}" field s"skus.variation1.${lang}name.raw"
       } aggs {
@@ -92,7 +92,7 @@ class FacetHandler {
       }
     }
 
-    val notationQuery = buildQueryAndFilters(FilterBuilder(withNotation = false), storeCode, req, fixeFilters) aggs {
+    val notationQuery = buildQueryAndFilters(FilterBuilder(withNotation = !req.multiNotation.getOrElse(false)), storeCode, req, fixeFilters) aggs {
       nestedPath("notations") aggs {
         aggregation terms "notation" field s"notations.notation" aggs {
           aggregation sum "nbcomments" field s"notations.nbcomments"
@@ -100,7 +100,7 @@ class FacetHandler {
       }
     }
 
-    val priceQuery = buildQueryAndFilters(FilterBuilder(withPrice = false), storeCode, req, fixeFilters) aggs {
+    val priceQuery = buildQueryAndFilters(FilterBuilder(withPrice = !req.multiPrices.getOrElse(false)), storeCode, req, fixeFilters) aggs {
       aggregation histogram "prices" field "price" interval req.priceInterval minDocCount 0
     } aggs {
       aggregation min "price_min" field "price"
@@ -132,7 +132,7 @@ class FacetHandler {
       :+ (if (builder.withFeatures) createFeaturesFilters(req) else None)
       :+ (if (builder.withVariations) createVariationsFilters(req) else None)
       :+ (if (builder.withNotation) createOrFilterBySplitValues(req.notations, v => createNestedTermFilter("notations","notations.notation", Some(v))) else None)
-      :+ (if (builder.withPrice) createNumericRangeFilter("price", req.priceMin, req.priceMax) else None)
+      :+ (if (builder.withPrice) createOrFilterBySplitKeyValues(req.priceRange, (min, max) => createNumericRangeFilter("price", min, max)) else None)
     ).flatten
 
     filterRequest(buildQueryPart(storeCode, req), filters)

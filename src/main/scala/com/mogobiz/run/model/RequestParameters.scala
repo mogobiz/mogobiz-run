@@ -23,8 +23,7 @@ object RequestParameters {
                            , brandId: Option[String]
                            , tags: Option[String]
                            , notations: Option[String]
-                           , priceMin: Option[Long]
-                           , priceMax: Option[Long]
+                           , priceRange: Option[String]
                            , creationDateMin: Option[String]
                            , featured: Option[Boolean]
                            , lang: String
@@ -34,8 +33,15 @@ object RequestParameters {
                            , features : Option[String]
                            , variations : Option[String]
                            , brandName: Option[String]
-                           , categoryName: Option[String]) {
-    def this(priceInterval: Long, lang:String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None)
+                           , categoryName: Option[String]
+                           , multiCategory : Option[Boolean]
+                           , multiBrand : Option[Boolean]
+                           , multiTag : Option[Boolean]
+                           , multiFeatures : Option[Boolean]
+                           , multiVariations : Option[Boolean]
+                           , multiNotation : Option[Boolean]
+                           , multiPrices : Option[Boolean]) {
+    def this(priceInterval: Long, lang:String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
   }
 
   //--- Products
@@ -53,8 +59,7 @@ object RequestParameters {
                              , brandId: Option[String]
                              , tagName: Option[String]
                              , notations: Option[String]
-                             , priceMin: Option[Long]
-                             , priceMax: Option[Long]
+                             , priceRange: Option[String]
                              , creationDateMin: Option[String]
                              , featured: Option[Boolean]
                              , orderBy: Option[String]
@@ -67,7 +72,7 @@ object RequestParameters {
                              , property : Option[String]
                              , feature : Option[String]
                              , variations : Option[String]) extends PagingParams {
-    def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None, None,Some(false), None, None, None)
+    def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None, None,Some(false), None, None, None)
   }
 
   case class ProductDetailsRequest(

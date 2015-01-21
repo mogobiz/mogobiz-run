@@ -65,8 +65,7 @@ import scala.concurrent.duration._
           'brandId.? ::
           'tagName.? ::
           'notations.? ::
-          'priceMin.?.as[Option[Long]] ::
-          'priceMax.?.as[Option[Long]] ::
+          'priceRange.? ::
           'creationDateMin.? ::
           'featured.?.as[Option[Boolean]] ::
           'orderBy.? ::
@@ -82,12 +81,12 @@ import scala.concurrent.duration._
       )
 
       productsParams.happly{
-          case (maxItemPerPage :: pageOffset  :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceMin :: priceMax :: creationDateMin
+          case (maxItemPerPage :: pageOffset  :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin
           :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: property :: feature :: variations :: HNil) =>
 
         val params = new ProductRequest(
           maxItemPerPage,pageOffset,xtype,name,code,categoryPath,
-          brandId, tagName, notations, priceMin, priceMax, creationDateMin,
+          brandId, tagName, notations, priceRange, creationDateMin,
           featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionId, hasPromotion, property, feature, variations
         )
           onComplete ((actor ? QueryProductRequest(storeCode, params)).mapTo[Try[JValue]]){ call =>

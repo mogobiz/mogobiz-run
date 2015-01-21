@@ -117,6 +117,45 @@ package object es {
 
   /**
    * Créer le filtre correspondant à la requete fournie. La requête a la format suivant :
+   * k1:::v1|||k2:::v2 etc...
+   * Le filtre généré est le suivant (optimisé si possible):
+   * or {
+   *     filter pour tester k1 et v1,
+   *     filter pour tester k2 et v2
+   *     etc...
+   * }
+   * @param optQuery
+   * @param fct
+   * @return
+   */
+  def createOrFilterBySplitKeyValues(optQuery: Option[String], fct: (String, String) => Option[FilterDefinition]) : Option[FilterDefinition] = {
+    optQuery match {
+      case Some(query) => {
+        val orFilters = (for (keyValues <- query.split("""\|\|\|""")) yield {
+          val kv = keyValues.split( """\:\:\:""")
+          if (kv.size == 2) {
+            fct(kv(0), kv(1))
+          }
+          else None
+        }).toList.flatten
+        if (orFilters.length > 1) Some(or(orFilters: _*)) else if (orFilters.length == 1) Some(orFilters(0)) else None
+      }
+      case _ => None
+    }
+  }
+
+  def convertAsLongOption(value: String) : Option[Long] = {
+    if (value == null || value.trim.length == 0) None
+    else try {
+      Some(value.toInt)
+    }
+    catch {
+      case e:Exception => None
+    }
+  }
+
+  /**
+   * Créer le filtre correspondant à la requete fournie. La requête a la format suivant :
    * v1|v2 etc...
    * Le filtre généré est le suivant (optimisé si possible):
    * or {
@@ -261,6 +300,10 @@ package object es {
       }
     }
     req
+  }
+
+  def createNumericRangeFilter(field:String, _gte:String, _lte: String) : Option[FilterDefinition] = {
+    createNumericRangeFilter(field, convertAsLongOption(_gte), convertAsLongOption(_lte))
   }
 
   def createNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {

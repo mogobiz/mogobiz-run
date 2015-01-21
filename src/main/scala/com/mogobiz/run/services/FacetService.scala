@@ -28,13 +28,50 @@ class FacetService (storeCode: String, actor: ActorRef)(implicit executionContex
     }
   }
 
+  import shapeless._
+
   lazy val getFacets = pathEnd{
     get {
-      parameters('priceInterval, 'xtype.?, 'name.?, 'code.?, 'categoryPath.?, 'brandId.?,
-        'tags.?, 'notations.?, 'priceMin.?, 'priceMax.?, 'creationDateMin.?, 'featured.?.as[Option[Boolean]],
-        'lang ? "_all", 'promotionId.?, 'hasPromotion.?.as[Option[Boolean]], 'property.?,
-        'features.?, 'variations.?, 'brandName.?, 'categoryName.?).as(FacetRequest) {
-        param =>
+      val facetParam = parameters('priceInterval.as[Long] ::
+        'xtype.? ::
+        'name.? ::
+        'code.? ::
+        'categoryPath.? ::
+        'brandId.? ::
+        'tags.? ::
+        'notations.? ::
+        'priceRange.? ::
+        'creationDateMin.? ::
+        'featured.?.as[Option[Boolean]] ::
+        'lang ? "_all" ::
+        'promotionId.? ::
+        'hasPromotion.?.as[Option[Boolean]] ::
+        'property.? ::
+        'features.? ::
+        'variations.? ::
+        'brandName.? ::
+        'categoryName.? ::
+        'multiCategory.?.as[Option[Boolean]] ::
+        'multiBrand.?.as[Option[Boolean]] ::
+        'multiTag.?.as[Option[Boolean]] ::
+        'multiFeatures.?.as[Option[Boolean]] ::
+        'multiVariations.?.as[Option[Boolean]] ::
+        'multiNotation.?.as[Option[Boolean]] ::
+        'multiPrices.?.as[Option[Boolean]] ::
+        HNil
+      )
+
+      facetParam.happly {
+        case (priceInterval :: xtype :: name :: code :: categoryPath :: brandId :: tags :: notations :: priceRange ::
+          creationDateMin :: featured :: lang :: promotionId :: hasPromotion :: property :: features :: variations ::
+          brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations ::
+          multiNotation :: multiPrices :: HNil) =>
+
+          val param = new FacetRequest(priceInterval, xtype, name, code, categoryPath, brandId, tags, notations, priceRange,
+            creationDateMin, featured, lang, promotionId, hasPromotion, property, features, variations,
+            brandName, categoryName, multiCategory, multiBrand, multiTag, multiFeatures, multiVariations,
+            multiNotation, multiPrices)
+
           onComplete ((actor ? QueryGetFacetRequest(storeCode, param)).mapTo[Try[JValue]]){call =>
             handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))
           }
