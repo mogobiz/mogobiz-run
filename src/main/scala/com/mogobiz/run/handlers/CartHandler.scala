@@ -9,7 +9,7 @@ import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions._
 import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.run.learning.UserActionRegistration
+import com.mogobiz.run.learning.{CartRegistration, UserActionRegistration}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.sksamuel.elastic4s.ElasticDsl._
@@ -239,9 +239,12 @@ class CartHandler {
   def queryCartPaymentCommit(storeCode: String, uuid: String, params: CommitTransactionParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val cart = cartService.initCart(storeCode, uuid, accountId)
-    cart.cartItems.foreach { item =>
+    val productIds = cart.cartItems.map { item =>
         UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase)
+        item.productId.toString
     }
+    CartRegistration.register(storeCode, uuid, productIds)
+
     try {
       cartService.commit(cart, params.transactionUuid, locale)
       val response = Map(
