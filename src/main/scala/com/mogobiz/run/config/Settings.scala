@@ -37,6 +37,9 @@ object Settings {
     val EsIndex = config getString "mogobiz.cart.index"
   }
 
+  object visitedProduct {
+    val max = config getLong "mogobiz.visited-product.max"
+  }
 
   object clickatell {
     val user = ""

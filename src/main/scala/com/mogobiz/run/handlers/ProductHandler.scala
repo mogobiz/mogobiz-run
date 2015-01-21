@@ -6,6 +6,7 @@ import java.util.{UUID, Date, Calendar, Locale}
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
 import com.mogobiz.pay.model.Mogopay.Account
+import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
 import com.mogobiz.run.learning.UserActionRegistration
@@ -495,7 +496,9 @@ class ProductHandler extends JsonUtil {
   private def addToHistory(store: String, productId: Long, sessionId: String): Boolean = {
 
     //add to the end because productIds is an ArrayList (performance issue if we use ArrayList.add(0,_) => so last is newer
-    val script = "if(ctx._source.productIds.contains(pid)){ ctx._source.productIds.remove(ctx._source.productIds.indexOf(pid))}; ctx._source.productIds += pid"
+    val script = "if(ctx._source.productIds.contains(pid)){ ctx._source.productIds.remove(ctx._source.productIds.indexOf(pid))}; " +
+      "ctx._source.productIds += pid;" +
+      "if (ctx._source.productIds.size() > " + Settings.visitedProduct.max + ") {ctx._source.productIds.remove(0)}"
     EsClient.updateRaw(
       esupdate4s id sessionId in s"${historyIndex(store)}/history" script
         script
