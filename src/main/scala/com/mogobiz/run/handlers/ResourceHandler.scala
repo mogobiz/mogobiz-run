@@ -21,9 +21,8 @@ class ResourceHandler {
         case Some(response) =>
           if(response.getFields.containsKey("content")){
             val content = response.getField("content").getValue.asInstanceOf[ChannelBufferBytesReference]
-            if(new File(dir).mkdirs()){
-              content.writeTo(new FileOutputStream(file))
-            }
+            new File(dir).mkdirs()
+            content.writeTo(new FileOutputStream(file))
           }
         case _ =>
       }
