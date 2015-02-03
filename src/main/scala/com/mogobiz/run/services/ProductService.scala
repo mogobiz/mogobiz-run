@@ -215,7 +215,7 @@ import scala.concurrent.duration._
       entity(as[CommentRequest]) { req =>
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          val account = if (accountId.isDefined) accountHandler.load(accountId.get) else None
+          val account = if (accountId.isDefined) accountHandler.find(accountId.get) else None
           onComplete((actor ? QueryCreateCommentRequest(storeCode, productId, req, account)).mapTo[Try[Comment]]) { call =>
             handleComplete(call, (comment: Comment) => complete(StatusCodes.OK, comment))
           }
