@@ -44,6 +44,7 @@ class ProductHandler extends JsonUtil {
     val lang = if (productRequest.lang == "_all") "" else s"${productRequest.lang}."
 
     val filters: List[FilterDefinition] = List(
+      createOrFilterBySplitValues(productRequest.id, v => createTermFilter("id", Some(v))),
       createOrFilterBySplitValues(productRequest.code, v => createTermFilter("code", Some(v))),
       createOrFilterBySplitValues(productRequest.xtype, v => createTermFilter("xtype", Some(v))),
       createOrFilterBySplitValues(productRequest.categoryPath, v => createRegexFilter("path", Some(v))),

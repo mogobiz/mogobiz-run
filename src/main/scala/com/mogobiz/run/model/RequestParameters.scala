@@ -52,6 +52,7 @@ object RequestParameters {
   case class ProductRequest(
                              override val maxItemPerPage: Option[Int]
                              , override val pageOffset: Option[Int]
+                             , id: Option[String]
                              , xtype: Option[String]
                              , name: Option[String]
                              , code: Option[String]
@@ -72,7 +73,7 @@ object RequestParameters {
                              , property : Option[String]
                              , feature : Option[String]
                              , variations : Option[String]) extends PagingParams {
-    def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None, None,Some(false), None, None, None)
+    def this(lang:String, currencyCode:String, countryCode: String) = this(None,None,None,None,None,None,None,None,None,None,None,None,Some(false),None,None,lang,None,None, None,Some(false), None, None, None)
   }
 
   case class ProductDetailsRequest(

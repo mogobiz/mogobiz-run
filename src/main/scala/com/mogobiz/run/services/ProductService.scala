@@ -58,6 +58,7 @@ import scala.concurrent.duration._
 
         'maxItemPerPage.?.as[Option[Int]] ::
           'pageOffset.?.as[Option[Int]] ::
+          'id.? ::
           'xtype.? ::
           'name.? ::
           'code.? ::
@@ -81,11 +82,11 @@ import scala.concurrent.duration._
       )
 
       productsParams.happly{
-          case (maxItemPerPage :: pageOffset  :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin
+          case (maxItemPerPage :: pageOffset :: id :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin
           :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: property :: feature :: variations :: HNil) =>
 
         val params = new ProductRequest(
-          maxItemPerPage,pageOffset,xtype,name,code,categoryPath,
+          maxItemPerPage,pageOffset,id,xtype,name,code,categoryPath,
           brandId, tagName, notations, priceRange, creationDateMin,
           featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionId, hasPromotion, property, feature, variations
         )
