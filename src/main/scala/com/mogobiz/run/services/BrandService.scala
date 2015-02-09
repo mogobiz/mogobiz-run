@@ -1,18 +1,14 @@
 package com.mogobiz.run.services
 
-import akka.actor.ActorRef
-import com.mogobiz.run.exceptions.MogobizException
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import org.json4s._
 import spray.http.StatusCodes
 import spray.routing._
 
-import scala.concurrent.ExecutionContext
-import scala.util.{Success, Failure, Try}
 import com.mogobiz.run.config.HandlersConfig._
 
-class BrandService(storeCode: String)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
+class BrandService(storeCode: String) extends Directives with DefaultComplete {
 
   import akka.util.Timeout
 

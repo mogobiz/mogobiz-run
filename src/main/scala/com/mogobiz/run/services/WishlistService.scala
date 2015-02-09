@@ -1,6 +1,5 @@
 package com.mogobiz.run.services
 
-import akka.actor.{ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.mogobiz.run.config.HandlersConfig._
@@ -10,12 +9,8 @@ import com.mogobiz.utils.GlobalUtil
 import spray.http.StatusCodes
 import spray.routing.Directives
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-import scala.util.Try
 
-class WishlistService(storeCode: String)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
-  implicit val timeout = Timeout(10 seconds)
+class WishlistService(storeCode: String) extends Directives with DefaultComplete {
 
 
   val serviceName = "wishlists"

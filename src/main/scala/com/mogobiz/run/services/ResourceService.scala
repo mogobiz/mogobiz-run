@@ -1,22 +1,14 @@
 package com.mogobiz.run.services
 
-import java.io.ByteArrayOutputStream
 import akka.actor.ActorRefFactory
 import com.mogobiz.run.config.HandlersConfig
-import com.mogobiz.utils.QRCodeUtils
 import spray.routing.{RoutingSettings, Directives}
 import HandlersConfig._
-import spray.http.{MediaType, StatusCodes}
+import spray.http.{StatusCodes}
 
 import scala.concurrent.ExecutionContext
 
-class ResourceService(storeCode: String)(implicit executionContext: ExecutionContext, settings:RoutingSettings, refFactory:ActorRefFactory) extends Directives {
-
-  import akka.util.Timeout
-  
-  import scala.concurrent.duration._
-
-  implicit val timeout = Timeout(2.seconds)
+class ResourceService(storeCode: String)(implicit settings:RoutingSettings, refFactory:ActorRefFactory) extends Directives {
 
   val route = {
     pathPrefix("resources" / Segment) {resourceId =>

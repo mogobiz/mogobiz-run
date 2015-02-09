@@ -1,6 +1,5 @@
 package com.mogobiz.run.services
 
-import akka.actor.ActorRef
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
@@ -14,18 +13,10 @@ import spray.http.StatusCodes
 import spray.routing.Directives
 import com.mogobiz.pay.config.MogopayHandlers.accountHandler
 
-import scala.concurrent.ExecutionContext
 import scala.util.{Try}
 
-class ProductService(storeCode: String, uuid: String)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
-
-  import akka.pattern.ask
-  import akka.util.Timeout
+class ProductService(storeCode: String, uuid: String) extends Directives with DefaultComplete {
   import org.json4s._
-
-  import scala.concurrent.duration._
-
-  implicit val timeout = Timeout(2.seconds)
 
   val route = {
     pathPrefix("products") {

@@ -1,29 +1,18 @@
 package com.mogobiz.run.services
 
-import akka.actor.ActorRef
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.run.model.RequestParameters._
-import com.mogobiz.run.model._
 import com.mogobiz.session.Session
 import spray.http.StatusCodes
 import spray.routing.Directives
 import com.mogobiz.session.SessionESDirectives._
-import scala.concurrent.ExecutionContext
-import scala.util.Try
 import com.mogobiz.run.config.HandlersConfig._
 
-class CartService(storeCode: String, uuid: String)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
-
-  import akka.util.Timeout
-
-  import scala.concurrent.duration._
-
-  implicit val timeout = Timeout(2.seconds)
+class CartService(storeCode: String, uuid: String) extends Directives with DefaultComplete {
 
   val route = {
     pathPrefix("cart") {
