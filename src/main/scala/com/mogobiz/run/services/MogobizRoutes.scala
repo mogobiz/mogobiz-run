@@ -3,7 +3,6 @@ package com.mogobiz.run.services
 import java.util.UUID
 
 import akka.actor.{Props}
-import com.mogobiz.run.actors.{MogobizActors}
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.exceptions.MogobizException
 import Settings._
@@ -18,7 +17,7 @@ import scala.util.{Success, Failure, Try}
 
 
 trait MogobizRoutes extends Directives {
-  this: MogobizActors with MogobizSystem =>
+  this: MogobizSystem =>
 
   private implicit val _ = system.dispatcher
 
@@ -45,18 +44,18 @@ trait MogobizRoutes extends Directives {
     pathEnd {
       complete("the store code is " + storeCode)
     } ~
-      new TagService(storeCode, tagActor).route ~
-      new BrandService(storeCode, brandActor).route ~
-      new LangService(storeCode, langActor).route ~
-      new CountryService(storeCode, countriesActor).route ~
-      new CurrencyService(storeCode, currencyActor).route ~
-      new CategoryService(storeCode, categoryActor).route ~
-      new ProductService(storeCode, uuid, productActor).route ~
-      new PreferenceService(storeCode, uuid, preferenceActor).route ~
-      new CartService(storeCode, uuid, cartActor).route ~
-      new PromotionService(storeCode, promotionActor).route ~
-      new WishlistService(storeCode, wishlistActor).route ~
-      new FacetService(storeCode, facetActor).route ~
+      new TagService(storeCode).route ~
+      new BrandService(storeCode).route ~
+      new LangService(storeCode).route ~
+      new CountryService(storeCode).route ~
+      new CurrencyService(storeCode).route ~
+      new CategoryService(storeCode).route ~
+      new ProductService(storeCode, uuid).route ~
+      new PreferenceService(storeCode, uuid).route ~
+      new CartService(storeCode, uuid).route ~
+      new PromotionService(storeCode).route ~
+      new WishlistService(storeCode).route ~
+      new FacetService(storeCode).route ~
       new ResourceService(storeCode).route
   }
 
@@ -67,6 +66,15 @@ trait MogobizRoutes extends Directives {
 
 trait DefaultComplete {
   this : Directives =>
+  def handleCall[T](call: => T, handler: T => Route): Route = {
+    import com.mogobiz.run.implicits.JsonSupport._
+    Try(call) match {
+      case Failure(t: MogobizException) => t.printStackTrace(); complete(t.code -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+      case Failure(t) => complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+      case Success(res) => handler(res)
+    }
+  }
+
   def handleComplete[T](call: Try[Try[T]], handler: T => Route): Route = {
     import com.mogobiz.run.implicits.JsonSupport._
     call match {
