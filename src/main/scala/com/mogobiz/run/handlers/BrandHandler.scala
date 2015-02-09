@@ -1,7 +1,6 @@
 package com.mogobiz.run.handlers
 
 import com.mogobiz.es.EsClient
-import com.mogobiz.es.EsClient._
 import com.mogobiz.run.es._
 import com.mogobiz.json.JsonUtil
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}

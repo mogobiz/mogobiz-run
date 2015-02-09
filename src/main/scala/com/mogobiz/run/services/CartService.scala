@@ -4,7 +4,6 @@ import akka.actor.ActorRef
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import com.mogobiz.pay.model.Mogopay.Account
-import com.mogobiz.run.actors.CartActor._
 import com.mogobiz.run.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
@@ -16,10 +15,10 @@ import spray.routing.Directives
 import com.mogobiz.session.SessionESDirectives._
 import scala.concurrent.ExecutionContext
 import scala.util.Try
+import com.mogobiz.run.config.HandlersConfig._
 
-class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
+class CartService(storeCode: String, uuid: String)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
 
-  import akka.pattern.ask
   import akka.util.Timeout
 
   import scala.concurrent.duration._
@@ -44,17 +43,13 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
 
   lazy val cartInit = pathEnd {
     get {
-      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) { params => {
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          val request = QueryCartInitRequest(storeCode, uuid, params, accountId)
-          complete {
-            (actor ? request).mapTo[Map[String, Any]] map {
-              response => response
-            }
+      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
+        params => {
+          optionalSession { optSession =>
+            val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+            handleCall(cartHandler.queryCartInit(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
           }
         }
-      }
       }
     }
   }
@@ -65,12 +60,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
         params => {
           optionalSession { optSession =>
             val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-            val request = QueryCartClearRequest(storeCode, uuid, params, accountId)
-            complete {
-              (actor ? request).mapTo[Map[String, Any]] map {
-                response => response
-              }
-            }
+            handleCall(cartHandler.queryCartClear(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
           }
         }
       }
@@ -83,12 +73,10 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
         params =>
           entity(as[AddToCartCommand]) {
             cmd => {
-              optionalSession { optSession =>
-                val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-                val request = QueryCartItemAddRequest(storeCode, uuid, params, cmd, accountId)
-                onComplete((actor ? request).mapTo[Try[Map[String, Any]]]) { call =>
-                  handleComplete(call, (cart: Map[String, Any]) => complete(StatusCodes.OK, cart))
-                }
+              optionalSession {
+                optSession =>
+                  val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+                  handleCall(cartHandler.queryCartItemAdd(storeCode, uuid, params, cmd, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
               }
             }
           }
@@ -110,12 +98,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
           cmd => {
             optionalSession { optSession =>
               val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-              val request = QueryCartItemUpdateRequest(storeCode, uuid, cartItemId, params, cmd, accountId)
-              complete {
-                (actor ? request).mapTo[Map[String, Any]] map {
-                  response => response
-                }
-              }
+              handleCall(cartHandler.queryCartItemUpdate(storeCode, uuid, cartItemId, params, cmd, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
             }
           }
         }
@@ -128,12 +111,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          val request = QueryCartItemRemoveRequest(storeCode, uuid, cartItemId, params, accountId)
-          complete {
-            (actor ? request).mapTo[Map[String, Any]] map {
-              response => response
-            }
-          }
+          handleCall(cartHandler.queryCartItemRemove(storeCode, uuid, cartItemId, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
       }
     }
@@ -145,12 +123,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
         params => {
           optionalSession { optSession =>
             val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-            val request = QueryCartValidateRequest(storeCode, uuid, params, accountId)
-            complete {
-              (actor ? request).mapTo[Map[String, Any]] map {
-                response => response
-              }
-            }
+            handleCall(cartHandler.queryCartValidate(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
           }
         }
       }
@@ -171,12 +144,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          val request = QueryCartCouponAddRequest(storeCode, uuid, couponCode, params, accountId)
-          complete {
-            (actor ? request).mapTo[Map[String, Any]] map {
-              response => response
-            }
-          }
+          handleCall(cartHandler.queryCartCouponAdd(storeCode, uuid, couponCode, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
       }
     }
@@ -187,12 +155,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          val request = QueryCartCouponDeleteRequest(storeCode, uuid, couponCode, params, accountId)
-          complete {
-            (actor ? request).mapTo[Map[String, Any]] map {
-              response => response
-            }
-          }
+          handleCall(cartHandler.queryCartCouponDelete(storeCode, uuid, couponCode, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
       }
     }
@@ -211,12 +174,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          val request = QueryCartPaymentPrepareRequest(storeCode, uuid, params, accountId)
-          complete {
-            (actor ? request).mapTo[Map[String, Any]] map {
-              response => response
-            }
-          }
+          handleCall(cartHandler.queryCartPaymentPrepare(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
       }
     }
@@ -227,12 +185,7 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          val request = QueryCartPaymentCommitRequest(storeCode, uuid, params, accountId)
-          complete {
-            (actor ? request).mapTo[Map[String, Any]] map {
-              response => response
-            }
-          }
+          handleCall(cartHandler.queryCartPaymentCommit(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
       }
     }
@@ -243,15 +196,9 @@ class CartService(storeCode: String, uuid: String, actor: ActorRef)(implicit exe
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          val request = QueryCartPaymentCancelRequest(storeCode, uuid, params, accountId)
-          complete {
-            (actor ? request).mapTo[Map[String, Any]] map {
-              response => response
-            }
-          }
+          handleCall(cartHandler.queryCartPaymentCancel(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
       }
     }
   }
-
 }

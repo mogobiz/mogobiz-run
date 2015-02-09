@@ -1,7 +1,7 @@
 package com.mogobiz.run.services
 
 import akka.actor.ActorRef
-import com.mogobiz.run.actors.FacetActor.QueryGetFacetRequest
+import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.model.RequestParameters.FacetRequest
 import spray.http.StatusCodes
 import spray.routing.Directives
@@ -13,7 +13,7 @@ import org.json4s._
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
-class FacetService (storeCode: String, actor: ActorRef)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
+class FacetService (storeCode: String)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
   import akka.pattern.ask
   import akka.util.Timeout
 
@@ -72,9 +72,7 @@ class FacetService (storeCode: String, actor: ActorRef)(implicit executionContex
             brandName, categoryName, multiCategory, multiBrand, multiTag, multiFeatures, multiVariations,
             multiNotation, multiPrices)
 
-          onComplete ((actor ? QueryGetFacetRequest(storeCode, param)).mapTo[Try[JValue]]){call =>
-            handleComplete(call, (json:JValue) => complete(StatusCodes.OK, json))
-          }
+          handleCall(facetHandler.getProductCriteria(storeCode, param),(json:JValue) => complete(StatusCodes.OK, json))
       }
     }
   }
