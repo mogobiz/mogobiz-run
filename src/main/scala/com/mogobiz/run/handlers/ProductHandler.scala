@@ -388,10 +388,10 @@ class ProductHandler extends JsonUtil {
     require(productId > 0)
     val userId = if (account.isDefined) account.get.uuid else ""
     val surname = if (account.isDefined) account.get.firstName.getOrElse("") + " " + account.get.lastName.getOrElse("") else ""
-    val comment = Try(Comment(Some(UUID.randomUUID().toString), userId, surname, req.notation, req.subject, req.comment, req.created, productId))
+    val comment = Try(Comment(Some(UUID.randomUUID().toString), userId, surname, req.notation, req.subject, req.comment, req.externalCode, req.created, productId))
     comment match {
       case Success(s) =>
-        Comment(Some(EsClient.index[Comment](commentIndex(storeCode), s)), userId, surname, req.notation, req.subject, req.comment, req.created, productId)
+        Comment(Some(EsClient.index[Comment](commentIndex(storeCode), s)), userId, surname, req.notation, req.subject, req.comment, req.externalCode, req.created, productId)
       case Failure(f) => throw f
     }
   }
@@ -401,7 +401,7 @@ class ProductHandler extends JsonUtil {
 
     def deserializeComment(hit: SearchHit): Comment = {
       val c: Comment = JacksonConverter.deserialize[Comment](hit.getSourceAsString)
-      Comment(Some(hit.getId), c.userId, c.surname, c.notation, c.subject, c.comment, c.created, c.productId, c.useful, c.notuseful)
+      Comment(Some(hit.getId), c.userId, c.surname, c.notation, c.subject, c.comment, c.externalCode, c.created, c.productId, c.useful, c.notuseful)
     }
 
     val size = req.maxItemPerPage.getOrElse(100)
