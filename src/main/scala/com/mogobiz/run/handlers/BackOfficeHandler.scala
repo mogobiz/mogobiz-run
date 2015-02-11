@@ -95,7 +95,9 @@ class BackOfficeHandler {
       }
 
       //create Sale
-      BOCartItemDao.create(sku, cartItem, boCart, boProduct.id)
+      val boDelivery = BODeliveryDao.create(boCart)
+
+      BOCartItemDao.create(sku, cartItem, boCart, Some(boDelivery), boProduct.id)
 
       storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList)
     }
@@ -192,6 +194,37 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
 
 }
 
+object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
+
+  override val tableName = "b_o_delivery"
+
+  def create(boCart: BOCart)(implicit session: DBSession) : BODelivery = {
+    val newBODelivery = new BODelivery(
+      id = newId(),
+      bOCartFk = boCart.id,
+      status = DeliveryStatus.NOT_STARTED,
+      extra = Some("extra ceci est un test"),
+      uuid = UUID.randomUUID().toString
+    )
+
+    applyUpdate {
+      insert.into(BODeliveryDao).namedValues(
+        BODeliveryDao.column.id -> newBODelivery.id,
+        BODeliveryDao.column.bOCartFk -> newBODelivery.bOCartFk,
+        BODeliveryDao.column.status -> newBODelivery.status.toString(),
+        BODeliveryDao.column.tracking -> newBODelivery.tracking,
+        BODeliveryDao.column.destination -> newBODelivery.destination,
+        BODeliveryDao.column.extra -> newBODelivery.extra,
+        BODeliveryDao.column.dateCreated -> newBODelivery.dateCreated,
+        BODeliveryDao.column.lastUpdated -> newBODelivery.lastUpdated,
+        BODeliveryDao.column.uuid -> newBODelivery.uuid
+      )
+    }
+
+    newBODelivery
+  }
+}
+
 object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
 
   override val tableName = "b_o_cart_item"
@@ -210,11 +243,12 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     rs.get(rn.endDate),
     rs.get(rn.ticketTypeFk),
     rs.get(rn.bOCartFk),
+    rs.get(rn.bODeliveryFk),
     rs.get(rn.dateCreated),
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))
 
-  def create(sku: Mogobiz.Sku, cartItem : Render.CartItem, boCart: BOCart, boProductId : Long)(implicit session: DBSession) : BOCartItem = {
+  def create(sku: Mogobiz.Sku, cartItem : Render.CartItem, boCart: BOCart, bODelivery: Option[BODelivery], boProductId : Long)(implicit session: DBSession) : BOCartItem = {
     val newBOCartItem = new BOCartItem(
       newId(),
       "SALE_" + boCart.id + "_" + boProductId,
@@ -229,6 +263,7 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
       cartItem.endDate,
       sku.id,
       boCart.id,
+      if (bODelivery.isDefined) Some(bODelivery.get.id) else None,
       DateTime.now,
       DateTime.now,
       UUID.randomUUID().toString

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.run.json.{JodaDateTimeOptionSerializer, JodaDateTimeOptionDeserializer, JodaDateTimeDeserializer, JodaDateTimeSerializer}
 import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnitType
+import com.mogobiz.run.model.Mogobiz.DeliveryStatus.DeliveryStatus
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
 import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
@@ -224,9 +225,21 @@ object Mogobiz {
                         endDate:Option[DateTime],
                         ticketTypeFk:Long,
                         bOCartFk : Long,
+                        bODeliveryFk : Option[Long],
                         dateCreated:DateTime,
                         lastUpdated:DateTime,
                         uuid : String)
+
+  case class BODelivery(id: Long,
+                        bOCartFk: Long,
+                        @JsonScalaEnumeration(classOf[DeliveryStatusRef])
+                        status: DeliveryStatus,
+                        tracking: Option[String] = None,
+                        destination: Option[String] = None,
+                        extra: Option[String] = None,
+                        dateCreated: DateTime = DateTime.now,
+                        lastUpdated: DateTime = DateTime.now,
+                        uuid: String)
 
   @JsonIgnoreProperties(ignoreUnknown=true)
   case class Company(id: Long,
@@ -340,4 +353,23 @@ object Mogobiz {
 
   class InsufficientStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
 
+  object DeliveryStatus extends Enumeration {
+    class DeliveryStatusType(s: String) extends Val(s)
+    type DeliveryStatus = DeliveryStatusType
+    val NOT_STARTED = new DeliveryStatusType("NOT_STARTED")
+    val IN_PROGRESS = new DeliveryStatusType("IN_PROGRESS")
+    val DELIVERED = new DeliveryStatusType("DELIVERED")
+    val RETURNED = new DeliveryStatusType("RETURNED")
+    val CANCELED = new DeliveryStatusType("CANCELED")
+
+    def apply(str: String) = str match {
+      case "NOT_STARTED" => NOT_STARTED
+      case "IN_PROGRESS" => IN_PROGRESS
+      case "DELIVERED" => DELIVERED
+      case "RETURNED" => RETURNED
+      case "CANCELED" => CANCELED
+      case _ => throw new RuntimeException("unexpected DeliveryStatus value")
+    }
+  }
+  class DeliveryStatusRef extends TypeReference[DeliveryStatus.type]
 }
