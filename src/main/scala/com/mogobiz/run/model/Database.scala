@@ -353,6 +353,8 @@ object Mogobiz {
 
   class InsufficientStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
 
+  class ConcurrentUpdateStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
+
   object DeliveryStatus extends Enumeration {
     class DeliveryStatusType(s: String) extends Val(s)
     type DeliveryStatus = DeliveryStatusType

@@ -136,7 +136,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
       post {
         entity(as[AddWishlistCommand]) {
           cmd =>
-            val wishlist = Wishlist(name = cmd.name, visibility = cmd.visibility, default = cmd.defaultIndicator)
+            val wishlist = Wishlist(name = cmd.name, visibility = cmd.visibility, default = cmd.defaultIndicator, externalCode = cmd.externalCode)
             handleCall(wishlistHandler.addWishlist(storeCode, wishlist_list_uuid, wishlist, cmd.owner_email),
               (id: String) => complete(StatusCodes.OK, id))
         }

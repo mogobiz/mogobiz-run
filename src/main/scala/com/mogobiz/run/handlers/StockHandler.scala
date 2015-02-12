@@ -26,21 +26,34 @@ class StockHandler extends IndexesTypesDsl {
     val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
     stockOpt match {
       case Some(stock) => DB localTx { implicit session =>
-        // Search the corresponding StockCalendar or create it if necessary
-        val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
-        val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
-        else StockCalendarDao.create(product, sku, stock, date)
 
-        // stock verification
-        if (!stock.stockUnlimited && !stock.stockOutSelling && stockCalendar.stock < (quantity + stockCalendar.sold)) {
-          throw new InsufficientStockException("The available stock is insufficient for the quantity required")
+        //In order to avoid locking on concurrents updates, we catch and retry 5 times until the update succeed else throw exception
+        def doSelectUpdateStockOperation(retryTime: Int):Unit = {
+          try {
+            // Search the corresponding StockCalendar or create it if necessary
+            val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
+            val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
+            else StockCalendarDao.create(product, sku, stock, date)
+
+            // stock verification
+            if (!stock.stockUnlimited && !stock.stockOutSelling && stockCalendar.stock < (quantity + stockCalendar.sold)) {
+              throw new InsufficientStockException("The available stock is insufficient for the quantity required")
+            }
+
+            // sold increment
+            val newStockCalendar = StockCalendarDao.update(stockCalendar, quantity)
+
+            // Mise à jour du stock dans ES via un actor pour ne pas bloquer la méthode
+            fireUpdateEsStock(storeCode, product, sku, stock, newStockCalendar)
+
+          } catch {
+            case e: ConcurrentUpdateStockException =>
+              if(retryTime>5) throw new ConcurrentUpdateStockException("update error while decrementing stock")
+              else doSelectUpdateStockOperation(retryTime + 1)
+          }
         }
 
-        // sold increment
-        val newStockCalendar = StockCalendarDao.update(stockCalendar, quantity)
-
-        // Mise à jour du stock dans ES via un actor pour ne pas bloquer la méthode
-        fireUpdateEsStock(storeCode, product, sku, stock, newStockCalendar)
+        doSelectUpdateStockOperation(0)
       }
       case None => // Pas de stock à gérer
     }
@@ -50,16 +63,27 @@ class StockHandler extends IndexesTypesDsl {
     val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
     stockOpt match {
       case Some(stock) =>
-        // Search the corresponding StockCalendar or create it if necessary
-        val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
-        val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
-        else StockCalendarDao.create(product, sku, stock, date)
 
-        // sold increment
-        val newStockCalendar = StockCalendarDao.update(stockCalendar, -quantity)
+        def doSelectUpdateStockOperation(retryTime: Int): Unit = {
+          try {
+            // Search the corresponding StockCalendar or create it if necessary
+            val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
+            val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
+            else StockCalendarDao.create(product, sku, stock, date)
 
-        // Mise à jour du stock dans ES via un actor pour ne pas bloquer la méthode
-        fireUpdateEsStock(storeCode, product, sku, stock, newStockCalendar)
+            // sold increment
+            val newStockCalendar = StockCalendarDao.update(stockCalendar, -quantity)
+
+            // Mise à jour du stock dans ES via un actor pour ne pas bloquer la méthode
+            fireUpdateEsStock(storeCode, product, sku, stock, newStockCalendar)
+          } catch {
+            case e: ConcurrentUpdateStockException =>
+              if (retryTime > 5) throw new ConcurrentUpdateStockException("update error while incrementing stock")
+              else doSelectUpdateStockOperation(retryTime + 1)
+          }
+        }
+
+        doSelectUpdateStockOperation(0)
 
       case None => // Pas de stock à gérer
     }
@@ -179,8 +203,12 @@ object StockCalendarDao extends SQLSyntaxSupport[StockCalendar] with BoService {
   }
 
   def update(stockCalendar:StockCalendar, addQuantity: Long)(implicit session:DBSession) : StockCalendar = {
+
     val newStockCalendar = stockCalendar.copy(sold = Math.max(stockCalendar.sold + addQuantity, 0))
-    sql"update stock_calendar set sold = ${newStockCalendar.sold},last_updated = $now where id=${stockCalendar.id}".update().apply()
+    val res = sql"update stock_calendar set sold = ${newStockCalendar.sold},last_updated = $now where id=${stockCalendar.id} and last_updated = ${stockCalendar.lastUpdated}".update().apply()
+    if(res==0)
+      throw new ConcurrentUpdateStockException()
+
     newStockCalendar
   }
 

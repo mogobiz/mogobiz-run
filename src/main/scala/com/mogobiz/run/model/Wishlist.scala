@@ -35,6 +35,7 @@ case class Wishlist(uuid: String = newUUID,
                     @JsonScalaEnumeration(classOf[WishlistVisibilityRef]) visibility: WishlistVisibility = WishlistVisibility.PRIVATE,
                     default: Boolean = false,
                     token: String = newUUID,
+                    externalCode: Option[String] = None,
                     ideas: List[WishIdea] = List(),
                     items: List[WishItem] = List(),
                     brands: List[WishBrand] = List(), // Not yet available
@@ -50,7 +51,7 @@ case class WishlistList(uuid: String = newUUID,
                         var dateCreated: Date = null,
                         var lastUpdated: Date = null)
 
-case class AddWishlistCommand(name: String, visibility: WishlistVisibility = WishlistVisibility.PRIVATE, defaultIndicator: Boolean = false, owner_email: String)
+case class AddWishlistCommand(name: String, visibility: WishlistVisibility = WishlistVisibility.PRIVATE, defaultIndicator: Boolean = false, owner_email: String, externalCode: Option[String])
 
 case class AddItemCommand(name: String, product: String, owner_email: String, product_sku : Option[String] = None)
 
