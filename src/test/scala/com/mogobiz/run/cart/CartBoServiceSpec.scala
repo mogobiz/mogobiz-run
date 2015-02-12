@@ -5,12 +5,14 @@ import java.util.{Locale, UUID}
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.MogobizRouteTest
-import com.mogobiz.run.handlers.StoreCartDao
+import com.mogobiz.pay.sql.BOTransactionDAO
+import com.mogobiz.run.handlers.{BOCartDao, StoreCartDao}
 import com.mogobiz.run.json.{JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer}
-import com.mogobiz.run.model.Mogobiz.{ProductCalendar, ProductType, Shipping}
+import com.mogobiz.run.model.Mogobiz.{TransactionStatus, ProductCalendar, ProductType, Shipping}
 import com.mogobiz.run.model.Render.RegisteredCartItem
 import com.mogobiz.run.model.{Currency, StoreCoupon, StoreCartItem, StoreCart}
 import org.joda.time.DateTime
+import scalikejdbc.DB
 
 /**
  * Created by yoannbaudy on 22/11/2014.
@@ -115,6 +117,52 @@ class CartBoServiceSpec extends MogobizRouteTest {
       cart.cartItemVOs(0).tax must beSome(19.6f)
     }
 
+    "prepare cart before payment" in {
+      val registerCartItem = new RegisteredCartItem("1",
+        "1",
+        "yoann.baudy@ebiznext.com",
+        Some("Yoann"),
+        None,
+        None,
+        None,
+        None
+      )
+
+      val storeCartItem1 = new StoreCartItem("1",
+        135,
+        "product",
+        ProductType.SERVICE,
+        ProductCalendar.NO_DATE,
+        137,
+        "sku",
+        2,
+        1989,
+        1791,
+        None,
+        None,
+        List(registerCartItem),
+        None)
+
+      val storeCart = new StoreCart(STORE, "uuid", None, cartItems=List(storeCartItem1))
+      StoreCartDao.save(storeCart)
+
+      CartBoService.prepareBeforePayment(Some("FR"), None, "mon adresse de livraison en json", new Currency(2, 0.01, "Euro", "EUR"), storeCart, "yoann.baudy@ebiznext.com", Locale.FRENCH)
+
+      val storeCartAfterPrepareBeforePayment = StoreCartDao.findByDataUuidAndUserUuid("uuid", None).get
+      DB localTx { implicit session =>
+        // On vérifie qu'une transaction a été créé en statut en cours
+        val boCart = BOCartDao.findByTransactionUuidAndStatus(storeCart.transactionUuid, TransactionStatus.PENDING)
+        boCart must beSome
+
+        // On le refait pour vérifier que la transaction en cours a bien été supprimés
+        CartBoService.prepareBeforePayment(Some("FR"), None, "mon adresse de livraison en json", new Currency(2, 0.01, "Euro", "EUR"), storeCartAfterPrepareBeforePayment, "yoann.baudy@ebiznext.com", Locale.FRENCH)
+
+        // On vérifie que la transaction précédente a été annulé et qu'une nouvelle a été créé
+        val newBoCart = BOCartDao.findByTransactionUuidAndStatus(storeCart.transactionUuid, TransactionStatus.PENDING)
+        newBoCart must beSome
+        newBoCart.get.id mustNotEqual boCart.get.id
+      }
+    }
 
     "commit cart" in {
       val registerCartItem = new RegisteredCartItem("1",

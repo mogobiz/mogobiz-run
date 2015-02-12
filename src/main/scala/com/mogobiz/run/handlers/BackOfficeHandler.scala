@@ -290,6 +290,7 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
         BOCartItemDao.column.endDate -> newBOCartItem.endDate,
         BOCartItemDao.column.ticketTypeFk -> newBOCartItem.ticketTypeFk,
         BOCartItemDao.column.bOCartFk -> newBOCartItem.bOCartFk,
+        BOCartItemDao.column.bODeliveryFk -> newBOCartItem.bODeliveryFk,
         BOCartItemDao.column.dateCreated -> newBOCartItem.dateCreated,
         BOCartItemDao.column.lastUpdated -> newBOCartItem.lastUpdated,
         BOCartItemDao.column.uuid -> newBOCartItem.uuid
@@ -315,10 +316,10 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     }
 
     def delete(boCartItem : BOCartItem)(implicit session: DBSession) = {
-      if (boCartItem.bODeliveryFk.isDefined) BODeliveryDao.delete(boCartItem.bODeliveryFk.get)
-      withSQL {
+      val result = withSQL {
         deleteFrom(BOCartItemDao).where.eq(BOCartItemDao.column.id, boCartItem.id)
       }.update.apply()
+      if (boCartItem.bODeliveryFk.isDefined) BODeliveryDao.delete(boCartItem.bODeliveryFk.get) else result
     }
 }
 
