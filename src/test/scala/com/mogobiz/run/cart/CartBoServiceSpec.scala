@@ -88,7 +88,7 @@ class CartBoServiceSpec extends MogobizRouteTest {
 
       val cart = CartBoService.computeStoreCart(storeCart, Some("FR"), None)
 
-      cart.count mustEqual 2
+      cart.count mustEqual 5
       cart.price mustEqual 1791 * 2 + 900 * 3
       cart.endPrice must beSome((1791 * 2 + 1791 * 2 * 0.196).toLong + (900 * 3 + 900 * 3 * 0.196).toLong)
       cart.reduction mustEqual 0
@@ -145,7 +145,7 @@ class CartBoServiceSpec extends MogobizRouteTest {
       val storeCart = new StoreCart(STORE, "uuid", None, cartItems=List(storeCartItem1))
       StoreCartDao.save(storeCart)
 
-      CartBoService.prepareBeforePayment(Some("FR"), None, new Currency(2, 0.01, "Euro", "EUR"), storeCart, "yoann.baudy@ebiznext.com", Locale.FRENCH)
+      CartBoService.prepareBeforePayment(Some("FR"), None, "mon adresse de livraison en json", new Currency(2, 0.01, "Euro", "EUR"), storeCart, "yoann.baudy@ebiznext.com", Locale.FRENCH)
 
       val newStoreCart = StoreCartDao.findByDataUuidAndUserUuid("uuid", None)
       CartBoService.commit(newStoreCart.get, "Test " + UUID.randomUUID().toString, Locale.FRENCH)

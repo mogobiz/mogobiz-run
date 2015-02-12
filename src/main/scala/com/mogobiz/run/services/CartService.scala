@@ -159,7 +159,7 @@ class CartService(storeCode: String, uuid: String) extends Directives with Defau
   }
 
   lazy val paymentPrepare = path("prepare") {
-    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all", 'buyer).as(PrepareTransactionParameters) {
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all", 'buyer, 'shippingAddress).as(PrepareTransactionParameters) {
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}

@@ -52,7 +52,7 @@ class BackOfficeHandler {
     }
   }
 
-  def createTransaction(storeCart: StoreCart, storeCode: String, cart: Render.Cart, transactionUuid: String, rate: Currency, buyer: String, company: Company)(implicit session: DBSession) : StoreCart = {
+  def createTransaction(storeCart: StoreCart, storeCode: String, cart: Render.Cart, transactionUuid: String, rate: Currency, buyer: String, company: Company, shippingAddress: String)(implicit session: DBSession) : StoreCart = {
     val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice, transactionUuid)
 
     val newStoreCartItems = cart.cartItemVOs.map { cartItem =>
@@ -95,7 +95,7 @@ class BackOfficeHandler {
       }
 
       //create Sale
-      val boDelivery = BODeliveryDao.create(boCart)
+      val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
 
       BOCartItemDao.create(sku, cartItem, boCart, Some(boDelivery), boProduct.id)
 
@@ -198,12 +198,12 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
 
   override val tableName = "b_o_delivery"
 
-  def create(boCart: BOCart)(implicit session: DBSession) : BODelivery = {
+  def create(boCart: BOCart, extra: Option[String])(implicit session: DBSession) : BODelivery = {
     val newBODelivery = new BODelivery(
       id = newId(),
       bOCartFk = boCart.id,
       status = DeliveryStatus.NOT_STARTED,
-      extra = Some("extra ceci est un test"),
+      extra = extra,
       uuid = UUID.randomUUID().toString
     )
 
@@ -222,6 +222,12 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
     }
 
     newBODelivery
+  }
+
+  def delete(boDeliveryId : Long)(implicit session: DBSession) = {
+    withSQL {
+      deleteFrom(BODeliveryDao).where.eq(BODeliveryDao.column.id, boDeliveryId)
+    }.update.apply()
   }
 }
 
@@ -309,6 +315,7 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     }
 
     def delete(boCartItem : BOCartItem)(implicit session: DBSession) = {
+      if (boCartItem.bODeliveryFk.isDefined) BODeliveryDao.delete(boCartItem.bODeliveryFk.get)
       withSQL {
         deleteFrom(BOCartItemDao).where.eq(BOCartItemDao.column.id, boCartItem.id)
       }.update.apply()

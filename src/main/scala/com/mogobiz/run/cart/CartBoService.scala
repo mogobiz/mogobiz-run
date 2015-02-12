@@ -529,7 +529,7 @@ object CartBoService extends BoService {
    * @return
    */
   @throws[ValidateCartException]
-  def prepareBeforePayment(countryCode: Option[String], stateCode: Option[String], rate: Currency, cart: StoreCart, buyer: String, locale:Locale) = {
+  def prepareBeforePayment(countryCode: Option[String], stateCode: Option[String], shippingAddress: String, rate: Currency, cart: StoreCart, buyer: String, locale:Locale) = {
     val company = CompanyDao.findByCode(cart.storeCode)
 
     // Validation du panier au cas où il ne l'était pas déjà
@@ -543,7 +543,7 @@ object CartBoService extends BoService {
 
     // Création de la transaction
     val updatedCart = DB localTx { implicit session =>
-      backOfficeHandler.createTransaction(valideCart.copy(inTransaction = true), cart.storeCode, cartTTC, cart.transactionUuid, rate, buyer, company.get)
+      backOfficeHandler.createTransaction(valideCart.copy(inTransaction = true), cart.storeCode, cartTTC, cart.transactionUuid, rate, buyer, company.get, shippingAddress)
     }
 
     StoreCartDao.save(updatedCart)
