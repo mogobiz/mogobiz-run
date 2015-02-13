@@ -208,7 +208,7 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     entity(as[CommentRequest]) { req =>
       optionalSession { optSession =>
         val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-        val account = if (accountId.isDefined) accountHandler.find(accountId.get) else None
+        val account = if (accountId.isDefined) accountHandler.load(accountId.get) else None
         handleCall(productHandler.createComment(storeCode, productId, req, account),
           (comment: Comment) => complete(StatusCodes.OK, comment))
       }
