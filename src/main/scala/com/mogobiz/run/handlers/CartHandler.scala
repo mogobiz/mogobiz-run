@@ -10,6 +10,7 @@ import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions._
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.{CartRegistration, UserActionRegistration}
+import com.mogobiz.run.model.MogoLearn.UserAction
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.sksamuel.elastic4s.ElasticDsl._
