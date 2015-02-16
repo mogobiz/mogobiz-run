@@ -246,6 +246,7 @@ object CartBoService extends BoService {
   @throws[DateIsNullException]
   @throws[UnsaleableDateException]
   @throws[NotEnoughRegisteredCartItemException]
+  @throws[InsufficientStockCartItemException]
   def addItem(cart: StoreCart, ticketTypeId: Long, quantity: Int, dateTime: Option[DateTime], registeredCartItems: List[RegisteredCartItemCommand]): StoreCart = {
     // init local vars
     val productAndSku = ProductDao.getProductAndSku(cart.storeCode, ticketTypeId)
@@ -256,6 +257,8 @@ object CartBoService extends BoService {
     val product = productAndSku.get._1
     val sku = productAndSku.get._2
     val startEndDate = Utils.verifyAndExtractStartEndDate(product, sku, dateTime)
+    val startDate = if (startEndDate.isDefined) Some(startEndDate.get._1) else None
+    val endDate = if (startEndDate.isDefined) Some(startEndDate.get._2) else None
 
     if (sku.minOrder > quantity || (sku.maxOrder < quantity && sku.maxOrder > -1))
       throw new MinMaxQuantityException(sku.minOrder, sku.maxOrder)
@@ -268,6 +271,10 @@ object CartBoService extends BoService {
 
     if (product.xtype == ProductType.SERVICE && registeredCartItems.size != quantity)
       throw new NotEnoughRegisteredCartItemException()
+
+    if (!stockHandler.checkStock(cart.storeCode, product, sku, quantity, startDate)) {
+      throw new InsufficientStockCartItemException()
+    }
 
     val newCartItemId = UUID.randomUUID().toString
     val registeredItems = registeredCartItems.map { item =>
@@ -282,8 +289,6 @@ object CartBoService extends BoService {
       )
     }
 
-    val startDate = if (startEndDate.isDefined) Some(startEndDate.get._1) else None
-    val endDate = if (startEndDate.isDefined) Some(startEndDate.get._2) else None
     val salePrice = if (sku.salePrice > 0) sku.salePrice else sku.price
     val cartItem = StoreCartItem(newCartItemId, product.id, product.name, product.xtype, product.calendarType, sku.id, sku.name, quantity,
       sku.price, salePrice, startDate, endDate, registeredItems, product.shipping)
@@ -309,6 +314,13 @@ object CartBoService extends BoService {
     if (optCartItem.isDefined) {
       val existCartItem = optCartItem.get
       if (ProductType.SERVICE != existCartItem.xtype && existCartItem.quantity != quantity) {
+        val productAndSku = ProductDao.getProductAndSku(cart.storeCode, existCartItem.skuId)
+        val product = productAndSku.get._1
+        val sku = productAndSku.get._2
+
+        if (!stockHandler.checkStock(cart.storeCode, product, sku, quantity, existCartItem.startDate)) {
+          throw new InsufficientStockCartItemException()
+        }
 
         // Modification du panier
         val newCartItems = existCartItem.copy(quantity = quantity) :: Utils.remove(cart.cartItems, existCartItem)

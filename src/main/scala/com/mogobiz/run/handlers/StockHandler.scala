@@ -21,6 +21,22 @@ import scalikejdbc._
  */
 class StockHandler extends IndexesTypesDsl {
 
+  def checkStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date:Option[DateTime]):Boolean = {
+    val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
+    stockOpt match {
+      case Some(stock) => DB localTx { implicit session =>
+        // Search the corresponding StockCalendar or create it if necessary
+        val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
+        val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
+        else StockCalendarDao.create(product, sku, stock, date)
+
+        // stock verification
+        return stock.stockUnlimited || stock.stockOutSelling || (stockCalendar.stock >= (quantity + stockCalendar.sold))
+      }
+      case None => return true;
+    }
+  }
+
   @throws[InsufficientStockException]
   def decrementStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date:Option[DateTime]):Unit = {
     val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
