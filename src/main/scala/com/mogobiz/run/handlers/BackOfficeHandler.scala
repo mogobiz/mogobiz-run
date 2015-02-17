@@ -2,9 +2,6 @@ package com.mogobiz.run.handlers
 
 import java.io.ByteArrayOutputStream
 import java.util.UUID
-
-import com.mogobiz.run.cart.BoService
-import com.mogobiz.run.config.Settings
 import com.mogobiz.run.model.{StoreCart, Mogobiz, Render, Currency}
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus

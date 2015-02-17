@@ -7,7 +7,6 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.actors.EsUpdateActor.StockUpdateRequest
 import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
-import com.mogobiz.run.cart.BoService
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.{Stock => EsStock, StockByDateTime, StockCalendar}
 import com.mogobiz.utils.GlobalUtil._

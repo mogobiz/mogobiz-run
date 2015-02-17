@@ -2,7 +2,6 @@ package com.mogobiz.run.services
 
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import com.mogobiz.run.cart.{AddToCartCommand, UpdateCartItemCommand}
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.run.model.RequestParameters._
@@ -60,7 +59,7 @@ class CartService(storeCode: String, uuid: String) extends Directives with Defau
     post {
       parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
         params =>
-          entity(as[AddToCartCommand]) {
+          entity(as[AddCartItemRequest]) {
             cmd => {
               optionalSession {
                 optSession =>
@@ -83,7 +82,7 @@ class CartService(storeCode: String, uuid: String) extends Directives with Defau
   def cartUpdate(cartItemId: String) = put {
     parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
       params => {
-        entity(as[UpdateCartItemCommand]) {
+        entity(as[UpdateCartItemRequest]) {
           cmd => {
             optionalSession { optSession =>
               val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
@@ -174,7 +173,7 @@ class CartService(storeCode: String, uuid: String) extends Directives with Defau
       params => {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          handleCall(cartHandler.queryCartPaymentCommit(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+          handleCall(cartHandler.queryCartPaymentCommit(storeCode, uuid, params, accountId), (res: Unit) => complete(StatusCodes.OK))
         }
       }
     }

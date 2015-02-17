@@ -20,6 +20,8 @@ case class NotEnoughRegisteredCartItemException() extends MogobizException("", S
 
 case class InsufficientStockCartItemException() extends MogobizException("", StatusCodes.BadRequest)
 
+case class InsufficientStockCouponException() extends MogobizException("", StatusCodes.BadRequest)
+
 
 object Exceptions {
   def toHTTPResponse(t: MogobizException): StatusCode = t match {

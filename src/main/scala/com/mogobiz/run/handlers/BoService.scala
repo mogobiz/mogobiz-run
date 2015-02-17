@@ -1,8 +1,8 @@
-package com.mogobiz.run.cart
+package com.mogobiz.run.handlers
 
 import com.mogobiz.run.config.Settings
+import com.mogobiz.run.config.Settings.NextVal
 import scalikejdbc._
-import Settings.NextVal
 
 /**
  * 

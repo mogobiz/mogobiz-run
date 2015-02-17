@@ -4,6 +4,7 @@ import java.util.Date
 
 import com.mogobiz.run.exceptions.CommentException
 import com.mogobiz.run.utils.PagingParams
+import org.joda.time.DateTime
 
 object RequestParameters {
 
@@ -123,5 +124,20 @@ object RequestParameters {
 
   case class CancelTransactionParameters(_currency:Option[String],_country:Option[String],state: Option[String],_lang:String) extends CommonProductParameters(_lang,_currency,_country)
 
+
+  case class AddCartItemRequest( uuid : Option[String],
+                               skuId:Long,
+                               quantity:Int,
+                               dateTime:Option[DateTime],
+                               registeredCartItems:List[RegisteredCartItemRequest])
+
+  case class RegisteredCartItemRequest(uuid : Option[String],
+                                       email: String,
+                                       firstname: Option[String] = None,
+                                       lastname: Option[String] = None,
+                                       phone: Option[String] = None,
+                                       birthdate: Option[DateTime] = None)
+
+  case class UpdateCartItemRequest(quantity: Int)
 
 }
