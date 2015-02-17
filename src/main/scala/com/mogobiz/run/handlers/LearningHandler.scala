@@ -7,7 +7,7 @@ import com.mogobiz.run.model.MogoLearn._
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
 import org.elasticsearch.search.sort.SortOrder
 
-object LearningHandler extends App {
+class LearningHandler {
   def cooccurences(store: String, productId: String, action: UserAction): Seq[String] = {
     val actionString = action.toString
     EsClient.load[Prediction](esStore(store), productId).map(_.purchase).getOrElse(Nil)
@@ -20,7 +20,7 @@ object LearningHandler extends App {
         termFilter("uuid", uuid)
       )
     } sort {
-      by field("dateCreated") order SortOrder.DESC
+      by field ("dateCreated") order SortOrder.DESC
     }
 
     val itemids = (EsClient searchAllRaw historyReq).getHits map (_.sourceAsMap().get("itemid"))
@@ -39,8 +39,14 @@ object LearningHandler extends App {
     predictions
   }
 
+}
+
+
+object LearningHandler extends App {
+
   import UserAction._
 
-  val res = cooccurences("mogobiz", "718", Purchase)
-  browserHistory("mogobiz", "119", Purchase, 10, 20, 3)
+  val l = new LearningHandler()
+  val res = l.cooccurences("mogobiz", "718", Purchase)
+  l.browserHistory("mogobiz", "119", Purchase, 10, 20, 3)
 }
