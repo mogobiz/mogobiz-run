@@ -13,16 +13,14 @@ import com.mogobiz.run.model.Mogobiz.{ProductCalendarRef, ProductTypeRef, Shippi
 import com.mogobiz.run.model.Render.RegisteredCartItem
 import org.joda.time.DateTime
 
-case class StoreCart(// Identifiant du panier (Sert à identifier l'entrée dans ES et l'unique BOTransaction correspondant).
-                      // Il est constitué du dataUuid et du userUuid
-                     storeCode: String,
+case class StoreCart(storeCode: String,
                      dataUuid: String, // Valeur du cookie de tracking
                      userUuid: Option[Mogopay.Document],  // Uuid du l'utilisateur connecté
-                     transactionUuid : String = UUID.randomUUID().toString, // Identifiant de la BOTransaction
+                     boCartUuid : Option[String] = None, // uuid du boCart correspondant (quand le BOCart a été créé)
+                     transactionUuid : Option[String] = None, // Identifiant de la BOTransaction (quand la transaction est validée)
                      cartItems: List[StoreCartItem] = List(), // liste des items du panier
                      coupons: List[StoreCoupon] = List(), // liste des coupons du panier
                      validate: Boolean = false, // Indique si le panier a été validé, c'est à dire si les stocks ont été décrémenté
-                     inTransaction: Boolean = false, // Indique si le panier est associé à une BOTransaction
                      @JsonSerialize(using = classOf[JodaDateTimeSerializer])
                      @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
                      expireDate: DateTime = DateTime.now.plusSeconds(60 * Settings.cart.lifetime), // Date d'expiration du panier

@@ -15,8 +15,7 @@ object Mapping extends App {
 
   def clear = Await.result(EsClient.client.execute(delete index Settings.cart.EsIndex), Duration.Inf)
 
-  def mappingNames = List()
-  def set() {
+  def set(mappingNames: List[String]) {
     def route(url: String) = "http://" + com.mogobiz.es.Settings.ElasticSearch.FullUrl + url
     def mappingFor(name: String) = getClass().getResourceAsStream(s"es/run/mappings/$name.json")
 

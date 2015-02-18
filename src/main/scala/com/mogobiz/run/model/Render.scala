@@ -15,8 +15,8 @@ import org.joda.time.DateTime
  */
 object Render {
 
-  case class Cart(price: Long = 0, endPrice: Long = 0, reduction: Long = 0, finalPrice: Long = 0, count: Int = 0, uuid: String,
-                    cartItemVOs: Array[CartItem] = Array(), coupons: Array[Coupon] = Array())
+  case class Cart(price: Long = 0, endPrice: Long = 0, reduction: Long = 0, finalPrice: Long = 0, count: Int = 0,
+                  cartItemVOs: Array[CartItem] = Array(), coupons: Array[Coupon] = Array())
 
   case class CartItem
   (id: String, productId: Long, productName: String, xtype: ProductType, calendarType: ProductCalendar, skuId: Long, skuName: String,

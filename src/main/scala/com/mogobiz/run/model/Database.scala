@@ -13,6 +13,8 @@ import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
 import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
+import com.mogobiz.run.model.Mogobiz.ReturnStatus.ReturnStatus
+import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus.ReturnedItemStatus
 import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnitType
 import org.joda.time.DateTime
 
@@ -241,6 +243,27 @@ object Mogobiz {
                         lastUpdated: DateTime = DateTime.now,
                         uuid: String)
 
+  case class BOReturn(id: Long,
+                      bOCartFk: Long,
+                      motivation: Option[String],
+                      @JsonScalaEnumeration(classOf[ReturnStatusRef])
+                      status: ReturnStatus,
+                      dateCreated: DateTime = DateTime.now,
+                      lastUpdated: DateTime = DateTime.now,
+                      uuid: String)
+
+  case class BOReturnedItem(id: Long,
+                            bOCartItemFk: Long,
+                            bOReturnFk: Long,
+                            quantity: Int,
+                            refunded: Long,
+                            totalRefunded: Long,
+                            @JsonScalaEnumeration(classOf[ReturnedItemStatusRef])
+                            status: ReturnedItemStatus,
+                            dateCreated: DateTime = DateTime.now,
+                            lastUpdated: DateTime = DateTime.now,
+                            uuid: String)
+
   @JsonIgnoreProperties(ignoreUnknown=true)
   case class Company(id: Long,
                       aesPassword: String,
@@ -374,4 +397,40 @@ object Mogobiz {
     }
   }
   class DeliveryStatusRef extends TypeReference[DeliveryStatus.type]
+
+  object ReturnStatus extends Enumeration {
+    class ReturnStatusType(s: String) extends Val(s)
+    type ReturnStatus = ReturnStatusType
+    val RETURN_SUBMITTED = new ReturnStatusType("RETURN_SUBMITTED")
+    val RETURN_TO_BE_RECEIVED = new ReturnStatusType("RETURN_TO_BE_RECEIVED")
+    val RETURN_RECEIVED = new ReturnStatusType("RETURN_RECEIVED")
+    val RETURN_REFUSED = new ReturnStatusType("RETURN_REFUSED")
+    val RETURN_ACCEPTED = new ReturnStatusType("RETURN_ACCEPTED")
+
+    def apply(str: String) = str match {
+      case "RETURN_SUBMITTED" => RETURN_SUBMITTED
+      case "RETURN_TO_BE_RECEIVED" => RETURN_TO_BE_RECEIVED
+      case "RETURN_RECEIVED" => RETURN_RECEIVED
+      case "RETURN_REFUSED" => RETURN_REFUSED
+      case "RETURN_ACCEPTED" => RETURN_ACCEPTED
+      case _ => throw new RuntimeException("unexpected ReturnStatus value")
+    }
+  }
+  class ReturnStatusRef extends TypeReference[ReturnStatus.type]
+
+  object ReturnedItemStatus extends Enumeration {
+    class ReturnedItemStatusType(s: String) extends Val(s)
+    type ReturnedItemStatus = ReturnedItemStatusType
+    val NOT_AVAILABLE = new ReturnedItemStatusType("NOT_AVAILABLE")
+    val BACK_TO_STOCK = new ReturnedItemStatusType("BACK_TO_STOCK")
+    val DISCARDED = new ReturnedItemStatusType("DISCARDED")
+
+    def apply(str: String) = str match {
+      case "NOT_AVAILABLE" => NOT_AVAILABLE
+      case "BACK_TO_STOCK" => BACK_TO_STOCK
+      case "DISCARDED" => DISCARDED
+      case _ => throw new RuntimeException("unexpected ReturnedItemStatus value")
+    }
+  }
+  class ReturnedItemStatusRef extends TypeReference[ReturnedItemStatus.type]
 }

@@ -37,6 +37,10 @@ object Settings {
     val EsIndex = config getString "mogobiz.cart.index"
   }
 
+  object backoffice {
+    val EsIndex = config getString "mogobiz.backoffice.index"
+  }
+
   object visitedProduct {
     val max = config getLong "mogobiz.visited-product.max"
   }
