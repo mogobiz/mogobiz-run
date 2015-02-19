@@ -817,12 +817,7 @@ class CartHandler {
 
     val template = templateHandler.getTemplate(storeCode, "mail-cart.mustache")
 
-    val mailContent = templateHandler.mustache(template, write(renderCart))
-    val eol = mailContent.indexOf('\n')
-    require(eol > 0, "No new line found in mustache file to distinguish subject from body")
-    val subject = mailContent.substring(0, eol)
-    val body = mailContent.substring(eol + 1)
-
+    val (subject, body) = templateHandler.mustache(template, write(renderCart))
     EmailHandler.Send.to(
       Mail(
         (Settings.Mail.defaultFrom -> storeCode),
