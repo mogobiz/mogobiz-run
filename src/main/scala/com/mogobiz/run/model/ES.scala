@@ -19,7 +19,7 @@ import org.joda.time.DateTime
  */
 object ES {
 
-  case class BOCart(transactionUuid:String,
+  case class BOCart(transactionUuid:Option[String],
                     buyer:String,
                     @JsonSerialize(using = classOf[JodaDateTimeSerializer])
                     @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
@@ -57,7 +57,6 @@ object ES {
   case class BODelivery(@JsonScalaEnumeration(classOf[DeliveryStatusRef])
                         status: DeliveryStatus,
                         tracking: Option[String] = None,
-                        destination: Option[String] = None,
                         extra: Option[String] = None,
                         uuid: String)
 

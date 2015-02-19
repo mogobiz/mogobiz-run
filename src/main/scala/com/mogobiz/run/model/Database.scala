@@ -182,7 +182,7 @@ object Mogobiz {
                     lastUpdated:DateTime,
                     price:Long,
                     status:TransactionStatus,
-                    transactionUuid:String,
+                    transactionUuid:Option[String],
                     uuid: String)
 
   case class BOProduct(id:Long,
@@ -237,7 +237,6 @@ object Mogobiz {
                         @JsonScalaEnumeration(classOf[DeliveryStatusRef])
                         status: DeliveryStatus,
                         tracking: Option[String] = None,
-                        destination: Option[String] = None,
                         extra: Option[String] = None,
                         dateCreated: DateTime = DateTime.now,
                         lastUpdated: DateTime = DateTime.now,

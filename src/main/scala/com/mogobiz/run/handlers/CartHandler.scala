@@ -378,7 +378,7 @@ class CartHandler {
     BOCartDao.load(transactionCart.boCartUuid.get) match {
       case Some(boCart) =>
         DB localTx { implicit session =>
-          val transactionBoCart = boCart.copy(transactionUuid = params.transactionUuid, status = TransactionStatus.COMPLETE)
+          val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid), status = TransactionStatus.COMPLETE)
           BOCartDao.updateStatus(transactionBoCart)
           _exportBOCartIntoES(storeCode, transactionBoCart)
 
@@ -1036,7 +1036,6 @@ class CartHandler {
           case Some(boDelivery) =>
             Some(new BODeliveryES(status = boDelivery.status,
               tracking = boDelivery.tracking,
-              destination = boDelivery.destination,
               extra = boDelivery.extra,
               uuid = boDelivery.uuid))
           case _ => None
@@ -1180,7 +1179,7 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
       DateTime.now,
       price,
       TransactionStatus.PENDING,
-      "",
+      None,
       UUID.randomUUID().toString
     )
 
@@ -1221,7 +1220,6 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
     rs.get(rn.bOCartFk),
     DeliveryStatus(rs.get(rn.status)),
     rs.get(rn.tracking),
-    rs.get(rn.destination),
     rs.get(rn.extra),
     rs.get(rn.dateCreated),
     rs.get(rn.lastUpdated),
@@ -1242,7 +1240,6 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
         BODeliveryDao.column.bOCartFk -> newBODelivery.bOCartFk,
         BODeliveryDao.column.status -> newBODelivery.status.toString(),
         BODeliveryDao.column.tracking -> newBODelivery.tracking,
-        BODeliveryDao.column.destination -> newBODelivery.destination,
         BODeliveryDao.column.extra -> newBODelivery.extra,
         BODeliveryDao.column.dateCreated -> newBODelivery.dateCreated,
         BODeliveryDao.column.lastUpdated -> newBODelivery.lastUpdated,

@@ -17,7 +17,7 @@ object Mapping extends App {
 
   def set(mappingNames: List[String]) {
     def route(url: String) = "http://" + com.mogobiz.es.Settings.ElasticSearch.FullUrl + url
-    def mappingFor(name: String) = getClass().getResourceAsStream(s"es/run/mappings/$name.json")
+    def mappingFor(name: String) = getClass().getResourceAsStream(s"/es/run/mappings/$name.json")
 
     implicit val system = akka.actor.ActorSystem("mogobiz-boot")
     val pipeline: HttpRequest => scala.concurrent.Future[HttpResponse] = sendReceive
