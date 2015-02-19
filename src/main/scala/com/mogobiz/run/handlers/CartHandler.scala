@@ -380,7 +380,7 @@ class CartHandler {
         DB localTx { implicit session =>
           val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid), status = TransactionStatus.COMPLETE)
           BOCartDao.updateStatus(transactionBoCart)
-          _exportBOCartIntoES(storeCode, transactionBoCart)
+          exportBOCartIntoES(storeCode, transactionBoCart)
 
           cart.cartItems.foreach {cartItem =>
             val productAndSku = ProductDao.getProductAndSku(transactionCart.storeCode, cartItem.skuId)
@@ -489,7 +489,7 @@ class CartHandler {
       storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList)
     }
 
-    _exportBOCartIntoES(storeCart.storeCode, boCart)
+    exportBOCartIntoES(storeCart.storeCode, boCart)
 
     storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList)
   }
@@ -608,7 +608,7 @@ class CartHandler {
         // Mise à jour du statut
         val newBoCart = boCart.get.copy(status = TransactionStatus.FAILED)
         BOCartDao.updateStatus(newBoCart)
-        _exportBOCartIntoES(cart.storeCode, newBoCart)
+        exportBOCartIntoES(cart.storeCode, newBoCart)
       }
 
       val updatedCart = cart.copy(boCartUuid = None, transactionUuid = None)
@@ -992,7 +992,7 @@ class CartHandler {
     )
   }
 
-  private def _exportBOCartIntoES(storeCode: String, boCart: BOCart) = {
+  def exportBOCartIntoES(storeCode: String, boCart: BOCart) = {
     DB readOnly { implicit session =>
 
       // Conversion des BOCartItem
