@@ -9,7 +9,7 @@ import com.mogobiz.run.model.RequestParameters.BOListOrderRequest
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.mogobiz.run.es._
-import com.sksamuel.elastic4s.FilterDefinition
+import com.sksamuel.elastic4s.{QueryDefinition, FilterDefinition}
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST._
 
@@ -27,26 +27,24 @@ class BackofficeHandler {
     val customer = account.roles.find{role => role == RoleName.CUSTOMER}.map{r => account}
     val merchant = account.roles.find{role => role == RoleName.MERCHANT}.map{r => account}
 
-    val boCartFilters = List(
-      createTermFilter("status", req.transactionStatus),
-      createTermFilter("cartItems.bODelivery.status", req.deliveryStatus)
-    ).flatten
-
-    val boCartTransactionUuidList = if (boCartFilters.nonEmpty) {
-      Some((EsClient.searchAllRaw(buildSearchQuery(getBOCartIndex(storeCode), "BOCart", boCartFilters)) hits() map { hit =>
+    val boCartTransactionUuidList = req.deliveryStatus.map { deliveryStatus =>
+      (EsClient.searchAllRaw(search in getBOCartIndex(storeCode) types "BOCart" query matchQuery("cartItems.bODelivery.status", deliveryStatus)) hits() map { hit =>
         (hit2JValue(hit) \ "transactionUuid") match {
-          case JString(uuid) => Some(uuid)
+          case JString(uuid) => {
+            Some(uuid)
+          }
           case _ => None
         }
-      }).toList.flatten.mkString("|"))
+      }).toList.flatten.mkString("|")
     }
-    else None
+
     val filters = List(
       req.lastName.map {lastName => or(createTermFilter("customer.lastName", Some(lastName)).get, createTermFilter("customer.firstName", Some(lastName)).get) },
+      createTermFilter("status", req.transactionStatus),
       createTermFilter("email", req.email),
       createTermFilter("customer.uuid", customer.map {c => c.uuid}),
       createTermFilter("vendor.uuid", merchant.map {m => m.uuid}),
-      createRangeFilter("endDate", req.startDate, req.endDate),
+      createRangeFilter("transactionDate", req.startDate, req.endDate),
       createTermFilter("amount", req.price),
       createOrFilterBySplitValues(boCartTransactionUuidList, v => createTermFilter("transactionUUID", Some(v)))
     ).flatten
@@ -55,7 +53,7 @@ class BackofficeHandler {
     val _from: Int = req.pageOffset.getOrElse(0) * _size
 
     val response = EsClient.searchAllRaw(
-      buildSearchQuery(mogopayIndex, "BOTransaction", filters)
+      search in mogopayIndex types "BOTransaction" filter and(filters : _*)
       from _from
       size _size
       sort {by field "transactionDate" order SortOrder.DESC})
@@ -65,17 +63,11 @@ class BackofficeHandler {
     })
   }
 
-  private def buildSearchQuery(indexName: String, searchType: String, filters: List[FilterDefinition]) = {
-    if (filters.size > 0) search in indexName types searchType filter and(filters: _*)
-    else search in indexName types searchType filter filters(0)
-  }
-
   private def completeBOTransactionWithDeliveryStatus(storeCode: String) : PartialFunction[JValue, JValue] = {
     case obj : JObject => {
       (obj \ "transactionUUID") match {
         case (JString(transactionUuid)) => {
-          val filters = List(createTermFilter("transactionUuid", Some(transactionUuid))).flatten
-          val statusList = (EsClient.searchAllRaw(buildSearchQuery(getBOCartIndex(storeCode), "BOCart", filters)) hits() map { hit =>
+          val statusList = (EsClient.searchAllRaw(search in getBOCartIndex(storeCode) types "BOCart" query matchQuery("transactionUuid", transactionUuid)) hits() map { hit =>
             hit2JValue(hit) \ "cartItems" match {
               case JArray(cartItems) => {
                 cartItems.map { cartItem =>
@@ -89,7 +81,7 @@ class BackofficeHandler {
             }
           }).toList.flatten
 
-          (obj ++ JObject(JField("deliveryStatus", JArray(statusList))))
+          JObject(JField("deliveryStatus", JArray(statusList)) :: obj.obj)
         }
         case _ => obj
       }
@@ -97,7 +89,7 @@ class BackofficeHandler {
   }
 
   private val filterBOTransactionField : PartialFunction[JField, JField] = {
-    case JField("extra", v: JValue) => JField("vendor", JNothing)
+    case JField("extra", v: JValue) => JField("extra", JNothing)
     case JField("vendor", v: JValue) => JField("vendor", JNothing)
   }
 }

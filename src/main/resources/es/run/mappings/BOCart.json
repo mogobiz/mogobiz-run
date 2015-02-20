@@ -1,6 +1,4 @@
 {
-  "mogobiz_bo": {
-    "mappings": {
       "BOCart": {
         "properties": {
           "buyer": {
@@ -368,6 +366,4 @@
           }
         }
       }
-    }
-  }
 }
