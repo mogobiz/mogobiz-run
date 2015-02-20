@@ -602,11 +602,10 @@ class CartHandler {
    * @return
    */
   private def _cancelCart(cart: StoreCart): StoreCart = {
-    if (cart.boCartUuid.isDefined) {
-      val boCart = BOCartDao.load(cart.boCartUuid.get)
-      if (boCart.isDefined) {
+    cart.boCartUuid.map { boCartUuid =>
+      BOCartDao.load(cart.boCartUuid.get).map { boCart =>
         // Mise à jour du statut
-        val newBoCart = boCart.get.copy(status = TransactionStatus.FAILED)
+        val newBoCart = boCart.copy(status = TransactionStatus.FAILED)
         BOCartDao.updateStatus(newBoCart)
         exportBOCartIntoES(cart.storeCode, newBoCart)
       }
@@ -614,8 +613,7 @@ class CartHandler {
       val updatedCart = cart.copy(boCartUuid = None, transactionUuid = None)
       StoreCartDao.save(updatedCart)
       updatedCart
-    }
-    else cart
+    } getOrElse(cart)
   }
 
   /**
@@ -1027,13 +1025,11 @@ class CartHandler {
         }
 
         // Convertion du BODelivery pour ES
-        val boDeliveryEs = BODeliveryDao.findByBOCartItem(boCartItem) match {
-          case Some(boDelivery) =>
-            Some(new BODeliveryES(status = boDelivery.status,
-              tracking = boDelivery.tracking,
-              extra = boDelivery.extra,
-              uuid = boDelivery.uuid))
-          case _ => None
+        val boDeliveryEs = BODeliveryDao.findByBOCartItem(boCartItem).map { boDelivery =>
+          new BODeliveryES(status = boDelivery.status,
+            tracking = boDelivery.tracking,
+            extra = boDelivery.extra,
+            uuid = boDelivery.uuid)
         }
 
         // Concertion des BOReturnedItem pour ES
@@ -1060,9 +1056,9 @@ class CartHandler {
           startDate = boCartItem.startDate,
           endDate = boCartItem.endDate,
           sku = ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).get._2,
-          bOProduct = boProducts,
+          bOProducts = boProducts,
           bODelivery = boDeliveryEs,
-          bOReturnedItem = boReturnedItems,
+          bOReturnedItems = boReturnedItems,
           uuid = boCartItem.uuid)
       }
 
@@ -1248,7 +1244,7 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
   def findByBOCartItem(boCartItem: BOCartItem)(implicit session: DBSession): Option[BODelivery] = {
     val t = BODeliveryDao.syntax("t")
     withSQL {
-      select.from(BODeliveryDao as t).where.eq(t.id, boCartItem.id)
+      select.from(BODeliveryDao as t).where.eq(t.id, boCartItem.bODeliveryFk)
     }.map(BODeliveryDao(t.resultName)).single().apply()
   }
 
