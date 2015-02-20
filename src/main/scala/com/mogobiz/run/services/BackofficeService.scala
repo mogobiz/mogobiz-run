@@ -23,7 +23,7 @@ class BackofficeService(storeCode: String) extends Directives with DefaultComple
     }
   }
 
-  lazy val listOrders = pathEnd {
+  lazy val listOrders = path("listOrders") {
     get {
       parameters(
         'maxItemPerPage ?,
