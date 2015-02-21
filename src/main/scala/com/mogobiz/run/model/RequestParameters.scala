@@ -140,4 +140,13 @@ object RequestParameters {
 
   case class UpdateCartItemRequest(quantity: Int)
 
+  case class BOListOrderRequest(override val maxItemPerPage: Option[Int] = None,
+                                override val pageOffset: Option[Int] = None,
+                                lastName: Option[String] = None,
+                                email: Option[String] = None,
+                                startDate: Option[String] = None,
+                                endDate: Option[String] = None,
+                                price: Option[String] = None,
+                                transactionStatus: Option[String] = None,
+                                deliveryStatus: Option[String] = None) extends PagingParams
 }

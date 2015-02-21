@@ -49,9 +49,9 @@ object ES {
                         @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                         endDate:Option[DateTime],
                         sku:Sku,
-                        bOProduct: List[BOProduct],
+                        bOProducts: List[BOProduct],
                         bODelivery: Option[BODelivery],
-                        bOReturnedItem: List[BOReturnedItem],
+                        bOReturnedItems: List[BOReturnedItem],
                         uuid : String)
 
   case class BODelivery(@JsonScalaEnumeration(classOf[DeliveryStatusRef])
