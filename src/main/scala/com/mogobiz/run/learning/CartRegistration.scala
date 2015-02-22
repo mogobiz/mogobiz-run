@@ -15,7 +15,6 @@ import akka.stream.scaladsl._
 import scala.concurrent.Future
 
 object CartRegistration extends BootedMogobizSystem with LazyLogging {
-  def esStore(store: String): String = s"${store}_learning"
 
   def register(store: String, trackingid: String, itemids: Seq[String]): Unit = {
 
@@ -36,7 +35,7 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
         val transform = Flow[List[Seq[Long]]].map(_.map(seq => {
           val now = Calendar.getInstance().getTime
           update(seq.mkString("-"))
-            .in("acmesport_learning/CartCombination2")
+            .in(s"${esInputStore(store)}/CartCombination")
             .upsert(
               "combinations" -> seq.map(_.toString),
               "counter" -> 1,
