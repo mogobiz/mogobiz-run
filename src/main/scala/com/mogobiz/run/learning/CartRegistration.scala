@@ -4,7 +4,7 @@ import java.util.{Calendar, Date}
 
 import akka.stream.ActorFlowMaterializer
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.model.MogoLearn._
+import com.mogobiz.run.model.Learning._
 import com.mogobiz.system.BootedMogobizSystem
 import com.sksamuel.elastic4s.BulkCompatibleDefinition
 import com.typesafe.scalalogging.slf4j.LazyLogging
@@ -34,9 +34,11 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
 
         val transform = Flow[List[Seq[Long]]].map(_.map(seq => {
           val now = Calendar.getInstance().getTime
-          update(seq.mkString("-"))
+          val uuid = seq.mkString("-")
+          update(uuid)
             .in(s"${esInputStore(store)}/CartCombination")
             .upsert(
+              "uuid" -> uuid,
               "combinations" -> seq.map(_.toString),
               "counter" -> 1,
               "dateCreated" -> now,

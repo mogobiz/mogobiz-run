@@ -1,9 +1,9 @@
 package com.mogobiz.run.handlers
 
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.model.MogoLearn.UserAction.UserAction
+import com.mogobiz.run.model.Learning.UserAction.UserAction
 
-import com.mogobiz.run.model.MogoLearn._
+import com.mogobiz.run.model.Learning._
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
 import org.elasticsearch.search.sort.SortOrder
 
