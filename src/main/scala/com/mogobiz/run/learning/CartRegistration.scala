@@ -34,7 +34,7 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
         import com.sksamuel.elastic4s.ElasticDsl._
 
         val transform = Flow[List[Seq[Long]]].map(_.map(seq => {
-          val now = Calendar.getInstance().getTime.toString
+          val now = Calendar.getInstance().getTime
           update(seq.mkString("-"))
             .in("acmesport_learning/CartCombination2")
             .upsert(
