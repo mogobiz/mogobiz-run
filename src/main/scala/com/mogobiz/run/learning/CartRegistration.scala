@@ -32,10 +32,8 @@ object CartRegistration extends BootedMogobizSystem {
   def register(store: String, trackingid: String, itemids: Seq[String]): String = {
     val sorted: Seq[Long] = itemids.map(_.toLong).distinct.sorted
 
-    if(sorted.length > 100){
-      EsClient.index(esStore(store), CartAction(trackingid, itemids.mkString(" ")))
-    }
-    else{
+    EsClient.index(esStore(store), CartAction(trackingid, itemids.mkString(" ")))
+    if(sorted.length < 100) {
       implicit val _ = ActorFlowMaterializer()
       import com.sksamuel.elastic4s.ElasticDsl._
 
