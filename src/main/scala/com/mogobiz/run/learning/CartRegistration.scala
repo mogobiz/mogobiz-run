@@ -1,6 +1,6 @@
 package com.mogobiz.run.learning
 
-import java.util.Date
+import java.util.{Calendar, Date}
 
 import akka.stream.ActorFlowMaterializer
 import com.mogobiz.es.EsClient
@@ -33,13 +33,18 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
 
         import com.sksamuel.elastic4s.ElasticDsl._
 
-        val transform = Flow[List[Seq[Long]]].map(_.map(seq =>
+        val transform = Flow[List[Seq[Long]]].map(_.map(seq => {
+          val now = Calendar.getInstance().getTime.toString
           update(seq.mkString("-"))
-            .in(s"${esStore(store)}/CartCombination")
-            .upsert("combinations" -> seq.map(_.toString), "counter" -> 1)
-            .script("ctx._source.counter += count")
-            .params("count" -> 1)
-        ))
+            .in("acmesport_learning/CartCombination2")
+            .upsert(
+              "combinations" -> seq.map(_.toString),
+              "counter" -> 1,
+              "dateCreated" -> now,
+              "lastUpdated" -> now)
+            .script("ctx._source.counter += count;ctx._source.lastUpdated = now")
+            .params("count" -> 1, "now" -> now)
+        }))
 
         val flatten = Flow[List[BulkCompatibleDefinition]].mapConcat[BulkCompatibleDefinition](identity)
 
