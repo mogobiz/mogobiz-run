@@ -85,7 +85,7 @@ class ProductHandler extends JsonUtil {
 
   def queryProductsByFulltextCriteria(storeCode: String, params: FullTextSearchProductParameters): JValue = {
     val fieldNames = List("name", "description", "descriptionAsText", "keywords", "path", "category.path")
-    val fields: List[String] = fieldNames.foldLeft(List[String]())((A, B) => A ::: getIncludedFieldWithPrefixAsList(storeCode, "", B, params._lang))
+    val fields: List[String] = fieldNames.foldLeft(List[String]())((A, B) => A ::: getIncludedFieldWithPrefixAsList(storeCode, "", B, params.lang))
     val includedFields: List[String] = List("id") ::: (if (params.highlight) List.empty
     else {
       fieldNames ::: fields
@@ -192,7 +192,7 @@ class ProductHandler extends JsonUtil {
     def translateFeature(feature: JValue, esProperty: String, targetPropery: String): List[JField] = {
       val value = extractJSonProperty(feature, esProperty)
 
-      if (params._lang.equals("_all")) {
+      if (params.lang.equals("_all")) {
         allLanguages.map { lang: String => {
           val v = extractJSonProperty(extractJSonProperty(feature, lang), esProperty)
           if (v == JNothing) JField("-", "-")
@@ -201,7 +201,7 @@ class ProductHandler extends JsonUtil {
         }.filter { v: JField => v._1 != "-"} :+ JField(targetPropery, value)
       }
       else {
-        val valueInGivenLang = extractJSonProperty(extractJSonProperty(feature, params._lang), esProperty)
+        val valueInGivenLang = extractJSonProperty(extractJSonProperty(feature, params.lang), esProperty)
         if (valueInGivenLang == JNothing) List(JField(targetPropery, value))
         else List(JField(targetPropery, valueInGivenLang))
       }
