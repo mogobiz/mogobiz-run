@@ -20,7 +20,8 @@ class BackofficeService(storeCode: String) extends Directives with DefaultComple
   val route = {
     pathPrefix("backoffice") {
       listOrders ~
-      listCustomers
+      listCustomers ~
+      cartDetails
     }
   }
 
@@ -55,6 +56,16 @@ class BackofficeService(storeCode: String) extends Directives with DefaultComple
           handleCall(backofficeHandler.listCustomers(storeCode, accountUuid, req),
             (res : Paging[JValue]) => complete(StatusCodes.OK, res))
         }
+      }
+    }
+  }
+
+  lazy val cartDetails = path("cartDetails" / Segment) { transactionUuid =>
+    get {
+      optionalSession { optSession =>
+        val accountUuid = optSession.flatMap { session: Session => session.sessionData.accountId}
+        handleCall(backofficeHandler.cartDetails(storeCode, accountUuid, transactionUuid),
+          (res : JValue) => complete(StatusCodes.OK, res))
       }
     }
   }

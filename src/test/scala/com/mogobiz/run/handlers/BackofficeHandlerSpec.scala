@@ -1,6 +1,7 @@
 package com.mogobiz.run.handlers
 
 import com.mogobiz.MogobizRouteTest
+import com.mogobiz.run.exceptions.NotFoundException
 import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
 import org.json4s.JsonAST._
 
@@ -191,6 +192,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
   }
 
   "BackofficeHandler list customers" should {
+
     "for merchant" in {
       val req = BOListCustomersRequest()
       val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
@@ -206,6 +208,27 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val customer = result.list(0)
       customer \ "uuid" must be_==(JString("8a53ef3e-34e8-4569-8f68-ac0dfc548a0f"))
       customer \ "email" must be_==(JString("client@merchant.com"))
+    }
+  }
+
+  "BackofficeHandler return cart details" should {
+
+    "for merchant with existing transactionUuid" in {
+      val result = handler.cartDetails(storeCode, Some(merchantUuid), "f9f71371-17f3-4dcd-bf8f-5d313470ccdf")
+      result must not(beNull)
+      result \ "transactionUuid" must be_==(JString("f9f71371-17f3-4dcd-bf8f-5d313470ccdf"))
+      result \ "price" must be_==(JInt(1680))
+    }
+
+    "for merchant with not existing transactionUuid" in {
+      try {
+        handler.cartDetails(storeCode, Some(merchantUuid), "not-found")
+        failure
+      }
+      catch {
+        case ex: NotFoundException => success
+        case _ => failure
+      }
     }
   }
 

@@ -4,7 +4,7 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers._
 import com.mogobiz.pay.model.Mogopay.RoleName
 import com.mogobiz.pay.settings.Settings
-import com.mogobiz.run.exceptions.NotAuthorizedException
+import com.mogobiz.run.exceptions.{NotFoundException, NotAuthorizedException}
 import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl._
@@ -23,6 +23,7 @@ class BackofficeHandler extends JsonUtil {
 
   def getBOCartIndex(storeCode: String) = s"${storeCode}_bo"
 
+  @throws[NotAuthorizedException]
   def listOrders(storeCode: String, accountUuid: Option[String], req: BOListOrdersRequest) : Paging[JValue] = {
     val account = accountUuid.map { uuid => accountHandler.load(uuid) }.flatten getOrElse(throw new NotAuthorizedException(""))
     val customer = account.roles.find{role => role == RoleName.CUSTOMER}.map{r => account}
@@ -36,7 +37,7 @@ class BackofficeHandler extends JsonUtil {
           }
           case _ => None
         }
-      }).toList.flatten.mkString("|")
+      }).toList.flatten.distinct.mkString("|")
     }
 
     val filters = List(
@@ -64,7 +65,8 @@ class BackofficeHandler extends JsonUtil {
     })
   }
 
-  def listCustomers(storeCode: String, accountUuid: Option[String], req: BOListCustomersRequest) = {
+  @throws[NotAuthorizedException]
+  def listCustomers(storeCode: String, accountUuid: Option[String], req: BOListCustomersRequest) : Paging[JValue] = {
     val merchant = accountUuid.map { uuid =>
       accountHandler.load(uuid).map { account =>
         account.roles.find{role => role == RoleName.MERCHANT}.map{r => account}
@@ -78,7 +80,7 @@ class BackofficeHandler extends JsonUtil {
         }
         case _ => None
       }
-    }.toList.flatten.mkString("|")
+    }.toList.flatten.distinct.mkString("|")
 
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
@@ -90,6 +92,33 @@ class BackofficeHandler extends JsonUtil {
         sort {by field "lastName" order SortOrder.DESC})
 
     Paging.build(_size, _from, response, {hit => hit})
+  }
+
+  @throws[NotFoundException]
+  def cartDetails(storeCode: String, accountUuid: Option[String], transactionUuid: String) : JValue = {
+    val account = accountUuid.map { uuid => accountHandler.load(uuid) }.flatten getOrElse(throw new NotAuthorizedException(""))
+    val customer = account.roles.find{role => role == RoleName.CUSTOMER}.map{r => account}
+    val merchant = account.roles.find{role => role == RoleName.MERCHANT}.map{r => account}
+
+    val transactionFilters = List(
+      createTermFilter("customer.uuid", customer.map {c => c.uuid}),
+      createTermFilter("vendor.uuid", merchant.map {m => m.uuid}),
+      createTermFilter("transactionUUID", Some(transactionUuid))
+    ).flatten
+
+    val transactionRequest = search in mogopayIndex types "BOTransaction" sourceInclude "transactionUUID" filter and(transactionFilters : _*)
+    val esTransactionUuid = EsClient.searchRaw(transactionRequest).map {hit =>
+      (hit2JValue(hit) \ "transactionUUID") match {
+        case JString(uuid) => {
+          uuid
+        }
+        case _ => throw new NotFoundException("")
+      }
+    }.getOrElse(throw new NotFoundException(""))
+
+    EsClient.searchRaw(
+      search in getBOCartIndex(storeCode) types "BOCart" query matchQuery("transactionUuid", esTransactionUuid)
+    ).getOrElse(throw new NotFoundException(""))
   }
 
   private def completeBOTransactionWithDeliveryStatus(storeCode: String) : PartialFunction[JValue, JValue] = {
