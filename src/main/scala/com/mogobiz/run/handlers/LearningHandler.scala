@@ -42,9 +42,9 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
         )
       }
     }
-    println(req._builder.toString)
+    logger.debug(req._builder.toString)
     val predictions = EsClient.searchAll[Prediction](req).map(_.uid)
-    predictions.foreach(println)
+    predictions.foreach(p => logger.debug(p))
     predictions
   }
 
@@ -54,27 +54,28 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
     import EsClient._
 
     val loadProductOccurences: Flow[String, Option[(String, Long)]] = Flow[String].map(load[CartCombination](esInputStore(store), _))
-      //.filter(_.isDefined)
       .map(_.map(x => Some(x.uuid, Math.ceil(x.counter * frequency).toLong)).getOrElse(None))
       .transform(() => new LoggingStage[Option[(String, Long)]]("Learning"))
 
     import com.mogobiz.run.es._
 
-    val loadCartCombinationsByFrequency = Flow[Option[(String, Long)]].map(_.map((x) =>
-      searchAll[CartCombination](filterRequest(esearch4s in esInputStore(store) -> "CartCombination" query { matchall }, List(
+    def cartCombinations(x: (String, Long)): SearchDefinition = {
+      filterRequest(esearch4s in esInputStore(store) -> "CartCombination" query {
+        matchall
+      }, List(
         createTermFilter("combinations", Some(x._1)),
         createNumericRangeFilter("counter", Some(x._2), None),
         Some(scriptFilter("doc['combinations'].values.size() >= 2"))
-      ).flatten) from 0 size 1 sort {
+      ).flatten) from 0 size 1
+    }
+
+    val loadCartCombinationsByFrequency = Flow[Option[(String, Long)]].map(_.map((x) =>
+      searchAll[CartCombination](cartCombinations(x) sort {
         by field "counter" order SortOrder.DESC
       }).headOption).getOrElse(None))
 
     val loadCartCombinationsBySize = Flow[Option[(String, Long)]].map(_.map((x) =>
-      searchAll[CartCombination](filterRequest(esearch4s in esInputStore(store) -> "CartCombination" query { matchall }, List(
-        createTermFilter("combinations", Some(x._1)),
-        createNumericRangeFilter("counter", Some(x._2), None),
-        Some(scriptFilter("doc['combinations'].values.size() >= 2"))
-      ).flatten) from 0 size 1 sort {
+      searchAll[CartCombination](cartCombinations(x) sort {
         by script "doc['combinations'].values.size()" order SortOrder.DESC
       }).headOption).getOrElse(None))
 
