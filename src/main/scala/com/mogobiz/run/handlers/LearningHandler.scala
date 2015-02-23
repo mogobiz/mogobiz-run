@@ -53,38 +53,36 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
 
     import EsClient._
 
-    val loadProductOccurences: Flow[String, (String, Long)] = Flow[String].map(load[CartCombination](esInputStore(store), _))
-      .filter(_.isDefined)
-      .map({o =>
-        val combination = o.get
-        (combination.uuid, Math.ceil(combination.counter * frequency).toLong)
-    }).transform(() => new LoggingStage[(String, Long)]("Learning"))
+    val loadProductOccurences: Flow[String, Option[(String, Long)]] = Flow[String].map(load[CartCombination](esInputStore(store), _))
+      //.filter(_.isDefined)
+      .map(_.map(x => Some(x.uuid, Math.ceil(x.counter * frequency).toLong)).getOrElse(None))
+      .transform(() => new LoggingStage[Option[(String, Long)]]("Learning"))
 
     import com.mogobiz.run.es._
 
-    val loadCartCombinationsByFrequency = Flow[(String, Long)].map((x) =>
+    val loadCartCombinationsByFrequency = Flow[Option[(String, Long)]].map(_.map((x) =>
       searchAll[CartCombination](filterRequest(esearch4s in esInputStore(store) -> "CartCombination" query { matchall }, List(
         createTermFilter("combinations", Some(x._1)),
         createNumericRangeFilter("counter", Some(x._2), None),
         Some(scriptFilter("doc['combinations'].values.size() >= 2"))
       ).flatten) from 0 size 1 sort {
         by field "counter" order SortOrder.DESC
-      }).headOption)
+      }).headOption).getOrElse(None))
 
-    val loadCartCombinationsBySize = Flow[(String, Long)].map((x) =>
+    val loadCartCombinationsBySize = Flow[Option[(String, Long)]].map(_.map((x) =>
       searchAll[CartCombination](filterRequest(esearch4s in esInputStore(store) -> "CartCombination" query { matchall }, List(
         createTermFilter("combinations", Some(x._1)),
         createNumericRangeFilter("counter", Some(x._2), None),
         Some(scriptFilter("doc['combinations'].values.size() >= 2"))
       ).flatten) from 0 size 1 sort {
         by script "doc['combinations'].values.size()" order SortOrder.DESC
-      }).headOption)
+      }).headOption).getOrElse(None))
 
     val flow = Flow() { implicit builder =>
       import FlowGraphImplicits._
 
       val undefinedSource = UndefinedSource[String]
-      val broadcast = Broadcast[(String, Long)]
+      val broadcast = Broadcast[Option[(String, Long)]]
       val zip = Zip[Option[CartCombination], Option[CartCombination]]
       val extractCombinations = Flow[(Option[CartCombination], Option[CartCombination])].map((x) => {
         (x._1.map(_.combinations.toSeq).getOrElse(Seq.empty), x._2.map(_.combinations.toSeq).getOrElse(Seq.empty))
