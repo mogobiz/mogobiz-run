@@ -1,5 +1,8 @@
 package com.mogobiz.run.handlers
 
+import java.text.DateFormat
+import java.util.Locale
+
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers._
 import com.mogobiz.pay.model.Mogopay.RoleName
@@ -9,8 +12,10 @@ import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOr
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.mogobiz.run.es._
+import org.elasticsearch.common.joda.time.format.ISODateTimeFormat
 import org.elasticsearch.search.SearchHit
 import org.elasticsearch.search.sort.SortOrder
+import org.joda.time.DateTime
 import org.json4s.JsonAST._
 import com.mogobiz.json.JsonUtil
 
@@ -149,5 +154,19 @@ class BackofficeHandler extends JsonUtil {
   private val filterBOTransactionField : PartialFunction[JField, JField] = {
     case JField("extra", v: JValue) => JField("extra", JNothing)
     case JField("vendor", v: JValue) => JField("vendor", JNothing)
+    case JField("transactionDate", JInt(v)) => JField("transactionDate", JString(formatDateTime(v)))
+    case JField("creationDate", JInt(v)) => JField("creationDate", JString(formatDateTime(v)))
+    case JField("dateCreated", JInt(v)) => JField("dateCreated", JString(formatDateTime(v)))
+    case JField("lastUpdated", JInt(v)) => JField("lastUpdated", JString(formatDateTime(v)))
+    case JField("startDate", JInt(v)) => JField("startDate", JString(formatDateTime(v)))
+    case JField("endDate", JInt(v)) => JField("endDate", JString(formatDateTime(v)))
+    case JField("orderDate", JInt(v)) => JField("orderDate", JString(formatDateTime(v)))
+    case JField("expiryDate", JInt(v)) => JField("expiryDate", JString(formatDateTime(v)))
+    case JField("birthDate", JInt(v)) => JField("birthDate", JString(formatDateTime(v)))
   }
+
+  private def formatDateTime(value: BigInt) : String = {
+    ISODateTimeFormat.dateTimeNoMillis().print(value.longValue())
+  }
+
 }
