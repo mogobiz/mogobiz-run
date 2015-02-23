@@ -10,7 +10,7 @@ import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
 import com.mogobiz.run.learning.UserActionRegistration
-import com.mogobiz.run.model.MogoLearn.UserAction
+import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService

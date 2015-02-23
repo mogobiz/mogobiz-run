@@ -1,8 +1,8 @@
 package com.mogobiz.run.learning
 
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.model.MogoLearn.UserAction.UserAction
-import com.mogobiz.run.model.MogoLearn.UserItemAction
+import com.mogobiz.run.model.Learning.UserAction.UserAction
+import com.mogobiz.run.model.Learning.UserItemAction
 
 
 object UserActionRegistration {

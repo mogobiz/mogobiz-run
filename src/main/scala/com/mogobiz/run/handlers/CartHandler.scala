@@ -12,7 +12,7 @@ import com.mogobiz.run.exceptions._
 import com.mogobiz.run.handlers.EmailHandler.Mail
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.{CartRegistration, UserActionRegistration}
-import com.mogobiz.run.model.MogoLearn.UserAction
+import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz.DeliveryStatus
 import com.mogobiz.run.model.Mogobiz.TransactionStatus
 import com.mogobiz.run.model.Mogobiz.TransactionStatus._
