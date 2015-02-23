@@ -158,30 +158,25 @@ class CartService(storeCode: String, uuid: String) extends Directives with Defau
   }
 
   lazy val paymentPrepare = path("prepare") {
-    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all", 'buyer, 'shippingAddress).as(PrepareTransactionParameters) {
-      params => {
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          handleCall(cartHandler.queryCartPaymentPrepare(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
-        }
+    entity(as[PrepareTransactionParameters]) { params =>
+      optionalSession { optSession =>
+        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+        handleCall(cartHandler.queryCartPaymentPrepare(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
       }
     }
   }
 
   lazy val paymentCommit = path("commit") {
-    parameters('country.?, 'lang ? "_all", 'transactionUuid).as(CommitTransactionParameters) {
-      params => {
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          handleCall(cartHandler.queryCartPaymentCommit(storeCode, uuid, params, accountId), (res: Unit) => complete(StatusCodes.OK))
-        }
+    entity(as[CommitTransactionParameters]) { params =>
+      optionalSession { optSession =>
+        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+        handleCall(cartHandler.queryCartPaymentCommit(storeCode, uuid, params, accountId), (res: Unit) => complete(StatusCodes.OK))
       }
     }
   }
 
   lazy val paymentCancel = path("cancel") {
-    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CancelTransactionParameters) {
-      params => {
+    entity(as[CancelTransactionParameters]) {  params =>
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
           handleCall(cartHandler.queryCartPaymentCancel(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
