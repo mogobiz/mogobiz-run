@@ -176,11 +176,10 @@ class CartService(storeCode: String, uuid: String) extends Directives with Defau
   }
 
   lazy val paymentCancel = path("cancel") {
-    entity(as[CancelTransactionParameters]) {  params =>
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-          handleCall(cartHandler.queryCartPaymentCancel(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
-        }
+    entity(as[CancelTransactionParameters]) { params =>
+      optionalSession { optSession =>
+        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+        handleCall(cartHandler.queryCartPaymentCancel(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
       }
     }
   }
