@@ -12,24 +12,7 @@ import com.mogobiz.run.es._
 
 object Paging {
 
-  def build[T](paging:PagingParams, response: SearchHits, transformFct: (JValue => T), distinctFct: (List[T] => List[T])) : Paging[T] = {
-    val size = paging.maxItemPerPage.getOrElse(100)
-    val from = paging.pageOffset.getOrElse(0) * size
-    val total = response.getTotalHits.toInt
-    val pageCount = total / size + (if (total % size > 0) 1 else 0)
-    val hasPrevious = from > size
-    val hasNext = (from + size) < total
-
-    val l = distinctFct(response.getHits.map( hit => {
-      val json : JValue = hit
-      transformFct(json)
-    }).toList)
-    new Paging[T](l,l.size,total,size,from,pageCount,hasPrevious,hasNext)
-  }
-
-  def build[T](paging:PagingParams, response: SearchHits, transformFct: (JValue => T)) : Paging[T] = {
-    val size = paging.maxItemPerPage.getOrElse(100)
-    val from = paging.pageOffset.getOrElse(0) * size
+  def build[T](size : Int, from: Int, response: SearchHits, transformFct: (JValue => T)) : Paging[T] = {
     val total = response.getTotalHits.toInt
     val pageCount = total / size + (if (total % size > 0) 1 else 0)
     val hasPrevious = from > size

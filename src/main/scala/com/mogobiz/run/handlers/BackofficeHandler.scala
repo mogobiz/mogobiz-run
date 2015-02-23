@@ -9,6 +9,7 @@ import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOr
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.mogobiz.run.es._
+import org.elasticsearch.search.SearchHit
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST._
 import com.mogobiz.json.JsonUtil
@@ -28,7 +29,7 @@ class BackofficeHandler extends JsonUtil {
     val merchant = account.roles.find{role => role == RoleName.MERCHANT}.map{r => account}
 
     val boCartTransactionUuidList = req.deliveryStatus.map { deliveryStatus =>
-      (EsClient.searchAllRaw(search in getBOCartIndex(storeCode) types "BOCart" query matchQuery("cartItems.bODelivery.status", deliveryStatus)) hits() map { hit =>
+      (EsClient.searchAllRaw(search in getBOCartIndex(storeCode) types "BOCart" sourceInclude "transactionUuid" query matchQuery("cartItems.bODelivery.status", deliveryStatus)) hits() map { hit =>
         (hit2JValue(hit) \ "transactionUuid") match {
           case JString(uuid) => {
             Some(uuid)
@@ -58,7 +59,7 @@ class BackofficeHandler extends JsonUtil {
       size _size
       sort {by field "transactionDate" order SortOrder.DESC})
 
-    Paging.build(req, response, {hit =>
+    Paging.build(_size, _from, response, {hit =>
       hit.transform(completeBOTransactionWithDeliveryStatus(storeCode)).transformField(filterBOTransactionField)
     })
   }
@@ -70,11 +71,25 @@ class BackofficeHandler extends JsonUtil {
       }.flatten
     }.flatten getOrElse(throw new NotAuthorizedException(""))
 
-    val response = EsClient.searchAllRaw(
-      search in mogopayIndex types "BOTransaction" filter createTermFilter("vendor.uuid", Some(merchant.uuid)).get
-    )
+    val customerUuidList = EsClient.searchAllRaw(search in mogopayIndex types "BOTransaction" sourceInclude "customer.uuid" filter createTermFilter("vendor.uuid", Some(merchant.uuid)).get).hits().map {hit =>
+      (hit2JValue(hit) \ "customer" \ "uuid") match {
+        case JString(uuid) => {
+          Some(uuid)
+        }
+        case _ => None
+      }
+    }.toList.flatten.mkString("|")
 
-    Paging.build(req, response, {hit => hit \ "customer"}, {list: List[JValue] => distinctByProperty(JArray(list), "uuid")})
+    val _size: Int = req.maxItemPerPage.getOrElse(100)
+    val _from: Int = req.pageOffset.getOrElse(0) * _size
+
+    val response = EsClient.searchAllRaw(
+      search in mogopayIndex types "Account" filter createOrFilterBySplitValues(Some(customerUuidList), v => createTermFilter("uuid", Some(v))).get
+        from _from
+        size _size
+        sort {by field "lastName" order SortOrder.DESC})
+
+    Paging.build(_size, _from, response, {hit => hit})
   }
 
   private def completeBOTransactionWithDeliveryStatus(storeCode: String) : PartialFunction[JValue, JValue] = {

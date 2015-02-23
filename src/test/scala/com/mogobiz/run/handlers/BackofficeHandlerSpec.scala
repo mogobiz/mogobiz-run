@@ -204,7 +204,8 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       result.list must size(1)
 
       val customer = result.list(0)
-      customer \ "uuid" must be_==(JString("4c7a5788-0079-4781-b823-047cbef84198"))
+      customer \ "uuid" must be_==(JString("8a53ef3e-34e8-4569-8f68-ac0dfc548a0f"))
+      customer \ "email" must be_==(JString("client@merchant.com"))
     }
   }
 
