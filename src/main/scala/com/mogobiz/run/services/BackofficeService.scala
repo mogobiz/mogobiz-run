@@ -2,8 +2,8 @@ package com.mogobiz.run.services
 
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.run.model.RequestParameters.BOListOrderRequest
-import com.mogobiz.run.utils.Paging
+import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
+import com.mogobiz.run.utils.{PagingParams, Paging}
 import com.mogobiz.session.Session
 import com.mogobiz.session.SessionESDirectives._
 import org.json4s.JsonAST.JValue
@@ -19,7 +19,8 @@ class BackofficeService(storeCode: String) extends Directives with DefaultComple
 
   val route = {
     pathPrefix("backoffice") {
-      listOrders
+      listOrders ~
+      listCustomers
     }
   }
 
@@ -34,12 +35,26 @@ class BackofficeService(storeCode: String) extends Directives with DefaultComple
         'endDate.?,
         'price.?,
         'transactionStatus.?,
-        'deliveryStatus.?).as(BOListOrderRequest) { req =>
-          optionalSession { optSession =>
-            val accountUuid = optSession.flatMap { session: Session => session.sessionData.accountId}
-            handleCall(backofficeHandler.listOrders(storeCode, accountUuid, req),
-              (res : Paging[JValue]) => complete(StatusCodes.OK, res))
-          }
+        'deliveryStatus.?).as(BOListOrdersRequest) { req =>
+        optionalSession { optSession =>
+          val accountUuid = optSession.flatMap { session: Session => session.sessionData.accountId}
+          handleCall(backofficeHandler.listOrders(storeCode, accountUuid, req),
+            (res : Paging[JValue]) => complete(StatusCodes.OK, res))
+        }
+      }
+    }
+  }
+
+  lazy val listCustomers = path("listCustomers") {
+    get {
+      parameters(
+        'maxItemPerPage ?,
+        'pageOffset ?).as(BOListCustomersRequest) { req =>
+        optionalSession { optSession =>
+          val accountUuid = optSession.flatMap { session: Session => session.sessionData.accountId}
+          handleCall(backofficeHandler.listCustomers(storeCode, accountUuid, req),
+            (res : Paging[JValue]) => complete(StatusCodes.OK, res))
+        }
       }
     }
   }

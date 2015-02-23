@@ -1,10 +1,8 @@
 package com.mogobiz.run.utils
 
-import org.elasticsearch.search.{SearchHit, SearchHits}
+import org.elasticsearch.search.SearchHits
 import org.json4s.JsonAST.JValue
 import org.json4s._
-import org.json4s.native.JsonMethods._
-import org.json4s.native.Serialization._
 import com.mogobiz.run.es._
 
 /**
@@ -13,6 +11,21 @@ import com.mogobiz.run.es._
  */
 
 object Paging {
+
+  def build[T](paging:PagingParams, response: SearchHits, transformFct: (JValue => T), distinctFct: (List[T] => List[T])) : Paging[T] = {
+    val size = paging.maxItemPerPage.getOrElse(100)
+    val from = paging.pageOffset.getOrElse(0) * size
+    val total = response.getTotalHits.toInt
+    val pageCount = total / size + (if (total % size > 0) 1 else 0)
+    val hasPrevious = from > size
+    val hasNext = (from + size) < total
+
+    val l = distinctFct(response.getHits.map( hit => {
+      val json : JValue = hit
+      transformFct(json)
+    }).toList)
+    new Paging[T](l,l.size,total,size,from,pageCount,hasPrevious,hasNext)
+  }
 
   def build[T](paging:PagingParams, response: SearchHits, transformFct: (JValue => T)) : Paging[T] = {
     val size = paging.maxItemPerPage.getOrElse(100)

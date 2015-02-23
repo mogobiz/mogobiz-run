@@ -1,7 +1,7 @@
 package com.mogobiz.run.handlers
 
 import com.mogobiz.MogobizRouteTest
-import com.mogobiz.run.model.RequestParameters.BOListOrderRequest
+import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
 import org.json4s.JsonAST._
 
 /**
@@ -16,7 +16,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
   "BackofficeHandler list orders" should {
 
     "by lastName with authenticate merchant using paging (maxItemPerPage = 1)" in {
-      val req = BOListOrderRequest(maxItemPerPage = Some(1), lastName = Some("TEST"))
+      val req = BOListOrdersRequest(maxItemPerPage = Some(1), lastName = Some("TEST"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beTrue
       result.hasPrevious must beFalse
@@ -31,7 +31,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by firstName with authenticate merchant (maxItemPerPage = 2)" in {
-      val req = BOListOrderRequest(maxItemPerPage = Some(2), lastName = Some("Client 1"))
+      val req = BOListOrdersRequest(maxItemPerPage = Some(2), lastName = Some("Client 1"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beTrue
       result.hasPrevious must beFalse
@@ -47,7 +47,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by email with authenticate merchant" in {
-      val req = BOListOrderRequest(email = Some("client@merchant.com"))
+      val req = BOListOrdersRequest(email = Some("client@merchant.com"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -64,7 +64,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by price with authenticate merchant" in {
-      val req = BOListOrderRequest(price = Some("2080"))
+      val req = BOListOrdersRequest(price = Some("2080"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -79,7 +79,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by Delivery Status with authenticate merchant" in {
-      val req = BOListOrderRequest(deliveryStatus = Some("NOT_STARTED"))
+      val req = BOListOrdersRequest(deliveryStatus = Some("NOT_STARTED"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -96,7 +96,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by Transaction Status with authenticate merchant" in {
-      val req = BOListOrderRequest(transactionStatus = Some("PAYMENT_CONFIRMED"))
+      val req = BOListOrdersRequest(transactionStatus = Some("PAYMENT_CONFIRMED"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -113,7 +113,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by Transaction and Delivery Status with authenticate merchant" in {
-      val req = BOListOrderRequest(transactionStatus = Some("PAYMENT_CONFIRMED"), deliveryStatus = Some("NOT_STARTED"))
+      val req = BOListOrdersRequest(transactionStatus = Some("PAYMENT_CONFIRMED"), deliveryStatus = Some("NOT_STARTED"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -130,7 +130,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by not found Delivery Status with authenticate merchant" in {
-      val req = BOListOrderRequest(deliveryStatus = Some("???NOT_FOUND???"))
+      val req = BOListOrdersRequest(deliveryStatus = Some("???NOT_FOUND???"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -143,7 +143,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by startDate with authenticate merchant" in {
-      val req = BOListOrderRequest(startDate = Some("2015-01-30T00:00:00Z"))
+      val req = BOListOrdersRequest(startDate = Some("2015-01-30T00:00:00Z"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -159,7 +159,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by endDate with authenticate merchant" in {
-      val req = BOListOrderRequest(endDate = Some("2015-01-31T00:00:00Z"))
+      val req = BOListOrdersRequest(endDate = Some("2015-01-31T00:00:00Z"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -175,7 +175,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by startDate and endDate with authenticate merchant" in {
-      val req = BOListOrderRequest(startDate = Some("2015-01-29T00:00:00Z"), endDate = Some("2015-01-29T23:59:59Z"))
+      val req = BOListOrdersRequest(startDate = Some("2015-01-29T00:00:00Z"), endDate = Some("2015-01-29T23:59:59Z"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -188,7 +188,24 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
 
       assertOrder2080(result.list(0))
     }
+  }
 
+  "BackofficeHandler list customers" should {
+    "for merchant" in {
+      val req = BOListCustomersRequest()
+      val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
+      result.hasNext must beFalse
+      result.hasPrevious must beFalse
+      result.maxItemsPerPage mustEqual(100)
+      result.pageCount mustEqual(1)
+      result.pageOffset mustEqual(0)
+      result.pageSize mustEqual(1)
+      result.totalCount mustEqual(1)
+      result.list must size(1)
+
+      val customer = result.list(0)
+      customer \ "uuid" must be_==(JString("4c7a5788-0079-4781-b823-047cbef84198"))
+    }
   }
 
   private def assertOrder2080(order: JValue) = {
