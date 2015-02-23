@@ -87,13 +87,7 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
       val broadcast = Broadcast[(String, Long)]
       val zip = Zip[Option[CartCombination], Option[CartCombination]]
       val extractCombinations = Flow[(Option[CartCombination], Option[CartCombination])].map((x) => {
-        (x._1 match {
-          case Some(y) => y.combinations.toSeq
-          case None => Seq.empty
-        }, x._2 match {
-          case Some(y) => y.combinations.toSeq
-          case None => Seq.empty
-        })
+        (x._1.map(_.combinations.toSeq).getOrElse(Seq.empty), x._2.map(_.combinations.toSeq).getOrElse(Seq.empty))
       })
       val undefinedSink = UndefinedSink[(Seq[String], Seq[String])]
 
