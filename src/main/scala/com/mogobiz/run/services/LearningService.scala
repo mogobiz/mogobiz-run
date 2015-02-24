@@ -50,7 +50,7 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
           handleCall(learningHandler.fis(storeCode, productId, frequency),
             (res: Future[(Seq[String], Seq[String])]) =>
               onComplete(res) {
-                case Success(tuple) => complete(StatusCodes.OK, tuple)
+                case Success(tuple) => complete(StatusCodes.OK, (tuple._1.filter(_ != productId), tuple._2.filter(_ != productId)))
                 case Failure(e) => complete(StatusCodes.InternalServerError, e)
               }
           )
