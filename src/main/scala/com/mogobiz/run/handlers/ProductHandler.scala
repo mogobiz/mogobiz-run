@@ -34,6 +34,9 @@ class ProductHandler extends JsonUtil {
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
 
   def queryProductsByCriteria(storeCode: String, productRequest: ProductRequest): JValue = {
+    if(productRequest.hasPromotion.getOrElse(false) && productRequest.promotionId.isEmpty){
+      return Paging.wrap(0, JArray(List.empty), productRequest)
+    }
     val _query = productRequest.name match {
       case Some(s) =>
         esearch4s in storeCode -> "product" query {
