@@ -51,53 +51,7 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
   def fis(store: String, productId: String, frequency: Double = 0.2): Future[(Seq[String], Seq[String])] = {
     implicit val _ = ActorFlowMaterializer()
 
-    import EsClient._
-
-    val loadProductOccurrences: Flow[(String, Double), Option[(String, Long)]] = Flow[(String, Double)].map(d => (load[CartCombination](esInputStore(store), d._1), d._2))
-      .map(d => d._1.map(x => Some(x.uuid, Math.ceil(x.counter * d._2).toLong)).getOrElse(None))
-      .transform(() => new LoggingStage[Option[(String, Long)]]("Learning"))
-
-    import com.mogobiz.run.es._
-
-    def cartCombinations(x: (String, Long)): SearchDefinition = {
-      filterRequest(esearch4s in esInputStore(store) -> "CartCombination" query {
-        matchall
-      }, List(
-        createTermFilter("combinations", Some(x._1)),
-        createNumericRangeFilter("counter", Some(x._2), None),
-        Some(scriptFilter("doc['combinations'].values.size() >= 2"))
-      ).flatten) from 0 size 1
-    }
-
-    val loadCartCombinationsByFrequency = Flow[Option[(String, Long)]].map(_.map((x) =>
-      searchAll[CartCombination](cartCombinations(x) sort {
-        by field "counter" order SortOrder.DESC
-      }).headOption).getOrElse(None))
-
-    val loadCartCombinationsBySize = Flow[Option[(String, Long)]].map(_.map((x) =>
-      searchAll[CartCombination](cartCombinations(x) sort {
-        by script "doc['combinations'].values.size()" order SortOrder.DESC
-      }).headOption).getOrElse(None))
-
-    val flow = Flow() { implicit builder =>
-      import FlowGraphImplicits._
-
-      val undefinedSource = UndefinedSource[(String, Double)]
-      val broadcast = Broadcast[Option[(String, Long)]]
-      val zip = Zip[Option[CartCombination], Option[CartCombination]]
-      val extractCombinations = Flow[(Option[CartCombination], Option[CartCombination])].map((x) => {
-        (
-          x._1.map(_.combinations.toSeq).getOrElse(Seq.empty),
-          x._2.map(_.combinations.toSeq).getOrElse(Seq.empty))
-      })
-      val undefinedSink = UndefinedSink[(Seq[String], Seq[String])]
-
-      undefinedSource ~> loadProductOccurrences ~> broadcast ~> loadCartCombinationsByFrequency ~> zip.left
-                                                  broadcast ~> loadCartCombinationsBySize      ~> zip.right
-      zip.out ~> extractCombinations ~> undefinedSink
-
-      (undefinedSource, undefinedSink)
-    }
+    import com.mogobiz.run.learning._
 
     val source = Source.single((productId, frequency))
 
@@ -105,7 +59,11 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
 
     val sink = Sink.head[(Seq[String], Seq[String])]
 
-    val runnable:RunnableFlow = source.via(flow).via(exclusion).to(sink)
+    val runnable:RunnableFlow = source
+      .transform(() => new LoggingStage[(String, Double)]("Learning"))
+      .via(frequentItemSets(store))
+      .via(exclusion)
+      .to(sink)
 
     runnable.run().get(sink)
   }
