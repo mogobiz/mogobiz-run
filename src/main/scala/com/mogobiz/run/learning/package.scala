@@ -72,7 +72,7 @@ package object learning {
     val undefinedSink = UndefinedSink[(Seq[String], Seq[String])]
 
     undefinedSource ~> loadProductOccurrences(store) ~> broadcast ~> loadCartCombinationsByFrequency(store) ~> zip.left
-    broadcast ~> loadCartCombinationsBySize(store)      ~> zip.right
+                                                        broadcast ~> loadCartCombinationsBySize(store)      ~> zip.right
     zip.out ~> extractCombinations ~> undefinedSink
 
     (undefinedSource, undefinedSink)
