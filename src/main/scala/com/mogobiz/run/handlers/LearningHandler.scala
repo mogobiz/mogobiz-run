@@ -53,8 +53,8 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
 
     import EsClient._
 
-    val loadProductOccurences: Flow[String, Option[(String, Long)]] = Flow[String].map(load[CartCombination](esInputStore(store), _))
-      .map(_.map(x => Some(x.uuid, Math.ceil(x.counter * frequency).toLong)).getOrElse(None))
+    val loadProductOccurrences: Flow[(String, Double), Option[(String, Long)]] = Flow[(String, Double)].map(d => (load[CartCombination](esInputStore(store), d._1), d._2))
+      .map(d => d._1.map(x => Some(x.uuid, Math.ceil(x.counter * d._2).toLong)).getOrElse(None))
       .transform(() => new LoggingStage[Option[(String, Long)]]("Learning"))
 
     import com.mogobiz.run.es._
@@ -82,7 +82,7 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
     val flow = Flow() { implicit builder =>
       import FlowGraphImplicits._
 
-      val undefinedSource = UndefinedSource[String]
+      val undefinedSource = UndefinedSource[(String, Double)]
       val broadcast = Broadcast[Option[(String, Long)]]
       val zip = Zip[Option[CartCombination], Option[CartCombination]]
       val extractCombinations = Flow[(Option[CartCombination], Option[CartCombination])].map((x) => {
@@ -92,18 +92,20 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
       })
       val undefinedSink = UndefinedSink[(Seq[String], Seq[String])]
 
-      undefinedSource ~> loadProductOccurences ~> broadcast ~> loadCartCombinationsByFrequency ~> zip.left
+      undefinedSource ~> loadProductOccurrences ~> broadcast ~> loadCartCombinationsByFrequency ~> zip.left
                                                   broadcast ~> loadCartCombinationsBySize      ~> zip.right
       zip.out ~> extractCombinations ~> undefinedSink
 
       (undefinedSource, undefinedSink)
     }
 
-    val source = Source.single(productId)
+    val source = Source.single((productId, frequency))
+
+    val exclusion = Flow[(Seq[String], Seq[String])].map(x => (x._1.filter(_ != productId), x._2.filter(_ != productId)))
 
     val sink = Sink.head[(Seq[String], Seq[String])]
 
-    val runnable:RunnableFlow = source.via(flow).to(sink)
+    val runnable:RunnableFlow = source.via(flow).via(exclusion).to(sink)
 
     runnable.run().get(sink)
   }
