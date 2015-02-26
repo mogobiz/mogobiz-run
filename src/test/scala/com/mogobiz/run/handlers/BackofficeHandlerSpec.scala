@@ -44,7 +44,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       result.list must size(2)
 
       assertOrder1188000(result.list(0))
-      assertOrder2560(result.list(1))
+      assertOrder2080(result.list(1))
     }
 
     "by email with authenticate merchant" in {
@@ -60,8 +60,8 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       result.list must size(3)
 
       assertOrder1188000(result.list(0))
-      assertOrder2560(result.list(1))
-      assertOrder2080(result.list(2))
+      assertOrder2080(result.list(1))
+      assertOrder2560(result.list(2))
     }
 
     "by price with authenticate merchant" in {
@@ -92,8 +92,8 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       result.list must size(3)
 
       assertOrder1188000(result.list(0))
-      assertOrder2560(result.list(1))
-      assertOrder2080(result.list(2))
+      assertOrder2080(result.list(1))
+      assertOrder2560(result.list(2))
     }
 
     "by Transaction Status with authenticate merchant" in {
@@ -109,8 +109,8 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       result.list must size(3)
 
       assertOrder1188000(result.list(0))
-      assertOrder2560(result.list(1))
-      assertOrder2080(result.list(2))
+      assertOrder2080(result.list(1))
+      assertOrder2560(result.list(2))
     }
 
     "by Transaction and Delivery Status with authenticate merchant" in {
@@ -126,8 +126,8 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       result.list must size(3)
 
       assertOrder1188000(result.list(0))
-      assertOrder2560(result.list(1))
-      assertOrder2080(result.list(2))
+      assertOrder2080(result.list(1))
+      assertOrder2560(result.list(2))
     }
 
     "by not found Delivery Status with authenticate merchant" in {
@@ -144,7 +144,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     }
 
     "by startDate with authenticate merchant" in {
-      val req = BOListOrdersRequest(startDate = Some("2015-01-30T00:00:00Z"))
+      val req = BOListOrdersRequest(startDate = Some("2015-02-13T00:00:00Z"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -156,11 +156,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       result.list must size(2)
 
       assertOrder1188000(result.list(0))
-      assertOrder2560(result.list(1))
+      assertOrder2080(result.list(1))
     }
 
     "by endDate with authenticate merchant" in {
-      val req = BOListOrdersRequest(endDate = Some("2015-01-31T00:00:00Z"))
+      val req = BOListOrdersRequest(endDate = Some("2015-02-14T00:00:00Z"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -171,12 +171,12 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       result.totalCount mustEqual(2)
       result.list must size(2)
 
-      assertOrder2560(result.list(0))
-      assertOrder2080(result.list(1))
+      assertOrder2080(result.list(0))
+      assertOrder2560(result.list(1))
     }
 
     "by startDate and endDate with authenticate merchant" in {
-      val req = BOListOrdersRequest(startDate = Some("2015-01-29T00:00:00Z"), endDate = Some("2015-01-29T23:59:59Z"))
+      val req = BOListOrdersRequest(startDate = Some("2015-02-13T00:00:00Z"), endDate = Some("2015-02-13T23:59:59Z"))
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
@@ -209,6 +209,83 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       customer \ "uuid" must be_==(JString("8a53ef3e-34e8-4569-8f68-ac0dfc548a0f"))
       customer \ "email" must be_==(JString("client@merchant.com"))
     }
+
+    "for merchant with email" in {
+      val req = BOListCustomersRequest(email = Some("client@merchant.com"))
+      val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
+      result.hasNext must beFalse
+      result.hasPrevious must beFalse
+      result.maxItemsPerPage mustEqual(100)
+      result.pageCount mustEqual(1)
+      result.pageOffset mustEqual(0)
+      result.pageSize mustEqual(1)
+      result.totalCount mustEqual(1)
+      result.list must size(1)
+
+      val customer = result.list(0)
+      customer \ "uuid" must be_==(JString("8a53ef3e-34e8-4569-8f68-ac0dfc548a0f"))
+      customer \ "email" must be_==(JString("client@merchant.com"))
+    }
+
+    "for merchant with unknown email" in {
+      val req = BOListCustomersRequest(email = Some("unknown@merchant.com"))
+      val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
+      result.hasNext must beFalse
+      result.hasPrevious must beFalse
+      result.maxItemsPerPage mustEqual(100)
+      result.pageCount mustEqual(0)
+      result.pageOffset mustEqual(0)
+      result.pageSize mustEqual(0)
+      result.totalCount mustEqual(0)
+      result.list must size(0)
+    }
+
+    "for merchant with lastName" in {
+      val req = BOListCustomersRequest(lastName = Some("TEST"))
+      val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
+      result.hasNext must beFalse
+      result.hasPrevious must beFalse
+      result.maxItemsPerPage mustEqual(100)
+      result.pageCount mustEqual(1)
+      result.pageOffset mustEqual(0)
+      result.pageSize mustEqual(1)
+      result.totalCount mustEqual(1)
+      result.list must size(1)
+
+      val customer = result.list(0)
+      customer \ "uuid" must be_==(JString("8a53ef3e-34e8-4569-8f68-ac0dfc548a0f"))
+      customer \ "email" must be_==(JString("client@merchant.com"))
+    }
+
+    "for merchant with firstName" in {
+      val req = BOListCustomersRequest(lastName = Some("Client 1"))
+      val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
+      result.hasNext must beFalse
+      result.hasPrevious must beFalse
+      result.maxItemsPerPage mustEqual(100)
+      result.pageCount mustEqual(1)
+      result.pageOffset mustEqual(0)
+      result.pageSize mustEqual(1)
+      result.totalCount mustEqual(1)
+      result.list must size(1)
+
+      val customer = result.list(0)
+      customer \ "uuid" must be_==(JString("8a53ef3e-34e8-4569-8f68-ac0dfc548a0f"))
+      customer \ "email" must be_==(JString("client@merchant.com"))
+    }
+
+    "for merchant with unknown lastName" in {
+      val req = BOListCustomersRequest(lastName = Some("unknown"))
+      val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
+      result.hasNext must beFalse
+      result.hasPrevious must beFalse
+      result.maxItemsPerPage mustEqual(100)
+      result.pageCount mustEqual(0)
+      result.pageOffset mustEqual(0)
+      result.pageSize mustEqual(0)
+      result.totalCount mustEqual(0)
+      result.list must size(0)
+    }
   }
 
   "BackofficeHandler return cart details" should {
@@ -235,7 +312,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
   private def assertOrder2080(order: JValue) = {
     order \ "uuid" must be_==(JString("f9f71371-17f3-4dcd-bf8f-5d313470ccdf"))
     order \ "transactionUUID" must be_==(JString("f9f71371-17f3-4dcd-bf8f-5d313470ccdf"))
-    order \ "authorizationId" must be_==(JString("8167684525895056883"))
+    order \ "authorizationId" must be_==(JString("7382890194151699676"))
     order \ "amount" must be_==(JInt(2080))
     order \ "status" must be_==(JString("PAYMENT_CONFIRMED"))
     order \ "email" must be_==(JString("client@merchant.com"))
@@ -250,7 +327,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
   private def assertOrder2560(order: JValue) = {
     order \ "uuid" must be_==(JString("4c7a5788-0079-4781-b823-047cbef84198"))
     order \ "transactionUUID" must be_==(JString("4c7a5788-0079-4781-b823-047cbef84198"))
-    order \ "authorizationId" must be_==(JString("3666656541829891917"))
+    order \ "authorizationId" must be_==(JString("4691479651656208079"))
     order \ "amount" must be_==(JInt(2560))
     order \ "status" must be_==(JString("PAYMENT_CONFIRMED"))
     order \ "email" must be_==(JString("client@merchant.com"))
@@ -265,7 +342,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
   private def assertOrder1188000(order: JValue) = {
     order \ "uuid" must be_==(JString("931eedc2-a4cd-431f-ba9c-aba4ed68806c"))
     order \ "transactionUUID" must be_==(JString("931eedc2-a4cd-431f-ba9c-aba4ed68806c"))
-    order \ "authorizationId" must be_==(JString("4936994872997537717"))
+    order \ "authorizationId" must be_==(JString("7613948530830911361"))
     order \ "amount" must be_==(JInt(1188000))
     order \ "status" must be_==(JString("PAYMENT_CONFIRMED"))
     order \ "email" must be_==(JString("client@merchant.com"))
