@@ -64,16 +64,11 @@ package object learning {
     val undefinedSource = UndefinedSource[(String, Double)]
     val broadcast = Broadcast[Option[(String, Long)]]
     val zip = Zip[Option[CartCombination], Option[CartCombination]]
-    val extractCombinations = Flow[(Option[CartCombination], Option[CartCombination])].map((x) => {
-      (
-        x._1.map(_.combinations.toSeq).getOrElse(Seq.empty),
-        x._2.map(_.combinations.toSeq).getOrElse(Seq.empty))
-    })
-    val undefinedSink = UndefinedSink[(Seq[String], Seq[String])]
+    val undefinedSink = UndefinedSink[(Option[CartCombination], Option[CartCombination])]
 
     undefinedSource ~> loadProductOccurrences(store) ~> broadcast ~> loadCartCombinationsByFrequency(store) ~> zip.left
                                                         broadcast ~> loadCartCombinationsBySize(store)      ~> zip.right
-    zip.out ~> extractCombinations ~> undefinedSink
+    zip.out ~> undefinedSink
 
     (undefinedSource, undefinedSink)
   }
