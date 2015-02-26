@@ -49,7 +49,7 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
 
         val flatten = Flow[List[BulkCompatibleDefinition]].mapConcat[BulkCompatibleDefinition](identity)
 
-        val f = Flow[BulkResponse].map[Int]((resp)=>{
+        val count = Flow[BulkResponse].map[Int]((resp)=>{
           val nb = resp.getItems.length
           logger.debug(s"index $nb combinations within ${resp.getTookInMillis} ms")
           nb
@@ -57,7 +57,7 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
 
         import EsClient._
 
-        source ~> combinationsFlow ~> transform ~> flatten ~> bulkBalancedFlow() ~> f ~> sumSink
+        source ~> combinationsFlow ~> transform ~> flatten ~> bulkBalancedFlow() ~> count ~> sumSink
       }
 
       val sum: Future[Int] = g.runWith(sumSink)
