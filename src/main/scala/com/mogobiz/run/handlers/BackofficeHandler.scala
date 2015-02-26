@@ -78,7 +78,13 @@ class BackofficeHandler extends JsonUtil {
       }.flatten
     }.flatten getOrElse(throw new NotAuthorizedException(""))
 
-    val customerUuidList = EsClient.searchAllRaw(search in mogopayIndex types "BOTransaction" sourceInclude "customer.uuid" filter createTermFilter("vendor.uuid", Some(merchant.uuid)).get).hits().map {hit =>
+    val filters = List(
+      req.lastName.map {lastName => or(createTermFilter("customer.lastName", Some(lastName)).get, createTermFilter("customer.firstName", Some(lastName)).get) },
+      createTermFilter("email", req.email),
+      createTermFilter("vendor.uuid", Some(merchant.uuid))
+    ).flatten
+
+    val customerUuidList = EsClient.searchAllRaw(search in mogopayIndex types "BOTransaction" sourceInclude "customer.uuid" filter and(filters : _*)).hits().map {hit =>
       (hit2JValue(hit) \ "customer" \ "uuid") match {
         case JString(uuid) => {
           Some(uuid)

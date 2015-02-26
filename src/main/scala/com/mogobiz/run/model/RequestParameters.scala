@@ -149,6 +149,8 @@ object RequestParameters {
                                  deliveryStatus: Option[String] = None) extends PagingParams
 
   case class BOListCustomersRequest(override val maxItemPerPage: Option[Int] = None,
-                                    override val pageOffset: Option[Int] = None) extends PagingParams
+                                    override val pageOffset: Option[Int] = None,
+                                    lastName: Option[String] = None,
+                                    email: Option[String] = None) extends PagingParams
 
 }

@@ -50,7 +50,9 @@ class BackofficeService(storeCode: String) extends Directives with DefaultComple
     get {
       parameters(
         'maxItemPerPage ?,
-        'pageOffset ?).as(BOListCustomersRequest) { req =>
+        'pageOffset ?,
+        'lastName.?,
+        'email.?).as(BOListCustomersRequest) { req =>
         optionalSession { optSession =>
           val accountUuid = optSession.flatMap { session: Session => session.sessionData.accountId}
           handleCall(backofficeHandler.listCustomers(storeCode, accountUuid, req),
