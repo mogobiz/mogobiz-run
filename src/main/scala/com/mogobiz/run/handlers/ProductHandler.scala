@@ -67,7 +67,7 @@ class ProductHandler extends JsonUtil {
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(storeCode, productRequest.lang) ::: fieldsToRemoveForProductSearchRendering
     val _size: Int = productRequest.maxItemPerPage.getOrElse(100)
     val _from: Int = productRequest.pageOffset.getOrElse(0) * _size
-    val _sort = productRequest.orderBy.getOrElse("name")
+    val _sort = productRequest.orderBy.getOrElse("name.raw")
     val _sortOrder = productRequest.orderDirection.getOrElse("asc")
     lazy val currency = queryCurrency(storeCode, productRequest.currencyCode)
     val response: SearchHits = EsClient.searchAllRaw(
@@ -189,7 +189,7 @@ class ProductHandler extends JsonUtil {
 
     val docs: Array[MultiGetItemResponse] = EsClient.loadRaw(multiget(idList.map(id => get id id from storeCode -> "product" fields (includedFields: _*)): _*))
 
-    var allLanguages: List[String] = getStoreLanguagesAsList(storeCode)
+    val allLanguages: List[String] = getStoreLanguagesAsList(storeCode)
 
     // Permet de traduire la value ou le name d'une feature
     def translateFeature(feature: JValue, esProperty: String, targetPropery: String): List[JField] = {
@@ -606,8 +606,8 @@ class ProductHandler extends JsonUtil {
   /**
    * Renvoie le filtres permettant de filtrer les produits mis en avant
    * si la requête le demande
-   * @param req
-   * @return
+   * @param req - product request
+   * @return FilterDefinition
    */
   private def createFeaturedRangeFilters(req: ProductRequest): Option[FilterDefinition] = {
     if (req.featured.getOrElse(false)) {
@@ -623,8 +623,8 @@ class ProductHandler extends JsonUtil {
 
   /**
    * Renvoie le filtre pour les features
-   * @param req
-   * @return
+   * @param req - product request
+   * @return FilterDefinition
    */
   private def createFeaturesFilters(req: ProductRequest): Option[FilterDefinition] = {
     createAndOrFilterBySplitKeyValues(req.feature, (k, v) => {
@@ -641,8 +641,8 @@ class ProductHandler extends JsonUtil {
 
   /**
    * Renvoie la liste des filtres pour les variations
-   * @param req
-   * @return
+   * @param req - product request
+   * @return FilterDefinition
    */
   private def createVariationsFilters(req: ProductRequest): Option[FilterDefinition] = {
     createAndOrFilterBySplitKeyValues(req.variations, (k, v) => {
@@ -732,7 +732,7 @@ object ProductDao extends JsonUtil {
     val req = esearch4s in storeCode -> "product" filter termFilter("product.id", id)
 
     // Lancement de la requête
-    EsClient.search[Mogobiz.Product](req);
+    EsClient.search[Mogobiz.Product](req)
   }
 
   def getProductAndSku(storeCode: String, skuId: Long) : Option[(Mogobiz.Product, Mogobiz.Sku)] = {
@@ -740,7 +740,7 @@ object ProductDao extends JsonUtil {
     val req = esearch4s in storeCode -> "product" filter termFilter("product.skus.id", skuId)
 
     // Lancement de la requête
-    val productOpt = EsClient.search[Mogobiz.Product](req);
+    val productOpt = EsClient.search[Mogobiz.Product](req)
     if (productOpt.isDefined) Some((productOpt.get, productOpt.get.skus.find(sku => sku.id == skuId).get))
     else None
   }
@@ -750,7 +750,7 @@ object ProductDao extends JsonUtil {
     val req = esearch4s in storeCode -> "product" filter termFilter("product.skus.coupons.id", couponId)
 
     // Lancement de la requête
-    val productsList = EsClient.searchAll[Mogobiz.Product](req);
+    val productsList = EsClient.searchAll[Mogobiz.Product](req)
 
     // Extract des id des Skus
     productsList.toList.flatMap(p => p.skus.filter{sku => sku.coupons.exists(c => c.id == couponId)}.map(sku => sku.id))
