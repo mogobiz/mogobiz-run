@@ -61,7 +61,7 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
         x._2.map(_.combinations.toSeq).getOrElse(Seq.empty))
     })
 
-    val exclusion = Flow[(Seq[String], Seq[String])].map(x => (x._1.filter(_ != productId), x._2.filter(_ != productId)))
+    val exclude = Flow[(Seq[String], Seq[String])].map(x => (x._1.filter(_ != productId), x._2.filter(_ != productId)))
 
     val head = Sink.head[(Seq[String], Seq[String])]
 
@@ -69,7 +69,7 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
       .transform(() => new LoggingStage[(String, Double)]("Learning"))
       .via(frequentItemSets(store))
       .via(extract)
-      .via(exclusion)
+      .via(exclude)
       .to(head)
 
     runnable.run().get(head)

@@ -5,6 +5,7 @@ import com.mogobiz.es.EsClient._
 import com.mogobiz.run.es._
 import com.mogobiz.run.model.Learning._
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
+import com.sksamuel.elastic4s.SearchDefinition
 import org.elasticsearch.search.sort.SortOrder
 
 import scala.collection.mutable.ListBuffer
@@ -32,7 +33,7 @@ package object learning {
 
   val sumSink = FoldSink[Int, Int](0)(_ + _)
 
-  def loadProductOccurrences(store:String) = Flow[(String, Double)]
+  def calculateSupportThreshold(store:String) = Flow[(String, Double)]
     .map(d => (load[CartCombination](esInputStore(store), d._1), d._2))
     .map(d => d._1.map(x => Some(x.uuid, Math.ceil(x.counter * d._2).toLong)).getOrElse(None))
 
@@ -47,12 +48,12 @@ package object learning {
     ).flatten) from 0 size 1
   }
 
-  def loadCartCombinationsByFrequency(store: String) = Flow[Option[(String, Long)]].map(_.map((x) =>
+  def loadMostFrequentItemSet(store: String) = Flow[Option[(String, Long)]].map(_.map((x) =>
     searchAll[CartCombination](cartCombinations(store, x) sort {
       by field "counter" order SortOrder.DESC
     }).headOption).getOrElse(None))
 
-  def loadCartCombinationsBySize(store: String) = Flow[Option[(String, Long)]].map(_.map((x) =>
+  def loadLargerFrequentItemSet(store: String) = Flow[Option[(String, Long)]].map(_.map((x) =>
     searchAll[CartCombination](cartCombinations(store, x) sort {
       by script "doc['combinations'].values.size()" order SortOrder.DESC
     }).headOption).getOrElse(None))
@@ -66,8 +67,8 @@ package object learning {
     val zip = Zip[Option[CartCombination], Option[CartCombination]]
     val undefinedSink = UndefinedSink[(Option[CartCombination], Option[CartCombination])]
 
-    undefinedSource ~> loadProductOccurrences(store) ~> broadcast ~> loadCartCombinationsByFrequency(store) ~> zip.left
-                                                        broadcast ~> loadCartCombinationsBySize(store)      ~> zip.right
+    undefinedSource ~> calculateSupportThreshold(store) ~> broadcast ~> loadMostFrequentItemSet(store)   ~> zip.left
+                                                           broadcast ~> loadLargerFrequentItemSet(store) ~> zip.right
     zip.out ~> undefinedSink
 
     (undefinedSource, undefinedSink)

@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 
 object Mapping extends App {
 
-  def clear = Await.result(EsClient.client.execute(delete index Settings.cart.EsIndex), Duration.Inf)
+  def clear = EsClient().execute(delete index Settings.cart.EsIndex).await
 
   def set(mappingNames: List[String]) {
     def route(url: String) = "http://" + com.mogobiz.es.Settings.ElasticSearch.FullUrl + url

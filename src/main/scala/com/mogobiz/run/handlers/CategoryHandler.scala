@@ -4,7 +4,7 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.run.es._
 import com.mogobiz.json.JsonUtil
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
-import com.sksamuel.elastic4s.FilterDefinition
+import com.sksamuel.elastic4s.{SearchDefinition, FilterDefinition}
 import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL._
 import org.json4s._

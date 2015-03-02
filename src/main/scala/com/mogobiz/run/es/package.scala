@@ -4,7 +4,7 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Currency
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
 import com.sksamuel.elastic4s.source.DocumentSource
-import com.sksamuel.elastic4s.{FilterDefinition, QueryDefinition}
+import com.sksamuel.elastic4s.{SearchDefinition, FilterDefinition, QueryDefinition}
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
 import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
