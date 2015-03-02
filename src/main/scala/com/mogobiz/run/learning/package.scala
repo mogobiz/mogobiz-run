@@ -5,6 +5,7 @@ import com.mogobiz.es.EsClient._
 import com.mogobiz.run.es._
 import com.mogobiz.run.model.Learning._
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
+import com.sksamuel.elastic4s.SearchDefinition
 import org.elasticsearch.search.sort.SortOrder
 
 import scala.collection.mutable.ListBuffer

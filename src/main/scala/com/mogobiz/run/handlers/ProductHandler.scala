@@ -447,7 +447,7 @@ class ProductHandler extends JsonUtil {
           aggregation avg "avg_notation" field "notation"
           )
       }
-    )
+    ).await
     import scala.collection.JavaConversions._
     val ids: List[Long] =
       (for (

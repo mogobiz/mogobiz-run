@@ -117,7 +117,7 @@ class StockHandler extends IndexesTypesDsl {
       val req = esupdate id stock.uuid in s"$storeCode/stock" script script params {
         "sold" -> s"${stockCalendar.sold}"
       } retryOnConflict 4
-      EsClient().execute(req).getGetResult
+      EsClient().execute(req).await.getGetResult
     }
     else {
       val esStockCalendarOpt = stock.stockByDateTime.getOrElse(Seq()).find(_.uuid == stockCalendar.uuid)

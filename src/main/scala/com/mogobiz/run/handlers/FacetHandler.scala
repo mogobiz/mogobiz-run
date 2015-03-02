@@ -8,12 +8,12 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.es._
 import com.mogobiz.run.model.RequestParameters.FacetRequest
-import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, SearchDefinition}
-import com.sksamuel.elastic4s.{SearchType, FilterDefinition}
+import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s}
+import com.sksamuel.elastic4s.{SearchDefinition, SearchType, FilterDefinition}
 import org.json4s._
 import org.json4s.JsonAST.{JObject, JValue}
 import com.mogobiz.es.aggregations.Aggregations._
-import com.mogobiz.es.aggregations.ElasticDsl2._
+import com.sksamuel.elastic4s.ElasticDsl._
 
 class FacetHandler {
 
@@ -32,7 +32,7 @@ class FacetHandler {
       createAndOrFilterBySplitKeyValues(req.property, (k, v) => createTermFilter(k, Some(v)))
     )
 
-    val categoryQuery = buildQueryAndFilters(FilterBuilder(withCategory = !req.multiCategory.getOrElse(false)), storeCode, req, fixeFilters) aggs {
+    val categoryQuery = buildQueryAndFilters(FilterBuilder(withCategory = !req.multiCategory.getOrElse(false)), storeCode, req, fixeFilters) aggregations {
       aggregation terms "category" field "category.path" aggs {
         agg terms "name" field "category.name.raw"
       } aggs {
@@ -49,13 +49,13 @@ class FacetHandler {
     }
 
     val tagQuery = buildQueryAndFilters(FilterBuilder(withTags = !req.multiTag.getOrElse(false)), storeCode, req, fixeFilters) aggs {
-      nestedPath("tags") aggs {
+      aggregation nested ("tags") path("tags") aggs {
         aggregation terms "tags" field "tags.name.raw"
       }
     }
 
     val featuresQuery = buildQueryAndFilters(FilterBuilder(withFeatures = !req.multiFeatures.getOrElse(false)), storeCode, req, fixeFilters) aggs {
-      nestedPath("features") aggs {
+      aggregation nested ("features") path("features") aggs {
         aggregation terms "features_name" field s"features.name.raw" aggs {
           aggregation terms s"features_name${_lang}" field s"features.${lang}name.raw"
         } aggs {
@@ -93,7 +93,7 @@ class FacetHandler {
     }
 
     val notationQuery = buildQueryAndFilters(FilterBuilder(withNotation = !req.multiNotation.getOrElse(false)), storeCode, req, fixeFilters) aggs {
-      nestedPath("notations") aggs {
+      aggregation nested ("notations") path("notations") aggs {
         aggregation terms "notation" field s"notations.notation" aggs {
           aggregation sum "nbcomments" field s"notations.nbcomments"
         }

@@ -16,7 +16,7 @@ object DBInitializer {
   def apply(fillWithFixtures: Boolean = false): Unit = {
     def createIndex(indexName: String) : Boolean = {
       try {
-        EsClient.client.sync.execute(createES index indexName)
+        EsClient().execute(createES index indexName).await
         println(s"Index $indexName has been created.")
         return true
       } catch {
