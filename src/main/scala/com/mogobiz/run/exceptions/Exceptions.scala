@@ -22,6 +22,8 @@ case class InsufficientStockCartItemException() extends MogobizException("", Sta
 
 case class InsufficientStockCouponException() extends MogobizException("", StatusCodes.BadRequest)
 
+case class CommentAlreadyExistsException() extends MogobizException("", StatusCodes.Conflict)
+
 
 object Exceptions {
   def toHTTPResponse(t: MogobizException): StatusCode = t match {

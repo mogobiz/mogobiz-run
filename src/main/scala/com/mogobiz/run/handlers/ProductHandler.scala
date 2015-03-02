@@ -9,14 +9,16 @@ import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
+import com.mogobiz.run.exceptions.{CommentAlreadyExistsException, NotAuthorizedException}
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Paging
-import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s, search => esearch4s, _}
+import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s, search => esearch4s, delete => esdelete4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
+import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.action.get.MultiGetItemResponse
 import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.search.{SearchHit, SearchHits}
@@ -377,36 +379,66 @@ class ProductHandler extends JsonUtil {
     true
   }
 
+  def deleteComment(storeCode: String, productId: Long, account: Option[Account], commentId: String): Unit = {
+    val userId = account.map{ c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
+    findComment(storeCode, productId, userId).find{comment => comment.id == commentId}.getOrElse(throw new NotAuthorizedException(""))
 
-  def updateComment(storeCode: String, productId: Long, commentId: String, useful: Boolean): Boolean = {
-    val script = "if(useful){ctx._source.useful +=1}else{ctx._source.notuseful +=1}"
-    val req = esupdate4s id commentId in s"${commentIndex(storeCode)}/comment" script script params {
-      "useful" -> s"$useful"
-    }
-    EsClient.updateRaw(req)
-    true
+    EsClient.deleteRaw(esdelete4s id commentId from s"${commentIndex(storeCode)}/comment" refresh true)
   }
 
+  @throws[NotAuthorizedException]
+  def updateComment(storeCode: String, productId: Long, account: Option[Account], commentId: String, params: CommentPutRequest): Unit = {
+    val userId = account.map{ c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
+    val oldComment = findComment(storeCode, productId, userId).find{comment => comment.id == commentId}.getOrElse(throw new NotAuthorizedException(""))
+
+    val newComment = oldComment.copy(
+      subject = params.subject.getOrElse(oldComment.subject),
+      comment = params.comment.getOrElse(oldComment.comment),
+      notation = params.notation.getOrElse(oldComment.notation)
+    )
+
+    EsClient.updateRaw(esupdate4s id commentId in commentIndex(storeCode) -> "comment" doc new DocumentSource {
+      override def json: String = JacksonConverter.serialize(newComment)
+    } retryOnConflict 4)
+  }
+
+  def noteComment(storeCode: String, productId: Long, commentId: String, params: NoteCommentRequest) : Unit = {
+    val script = if (params.note == 1) "ctx._source.useful = ctx._source.useful + 1"
+    else "ctx._source.notuseful = ctx._source.notuseful + 1"
+    val req = esupdate4s id commentId in commentIndex(storeCode) -> "comment" script script retryOnConflict 4
+    EsClient.updateRaw(req)
+  }
+
+  @throws[NotAuthorizedException]
+  @throws[CommentAlreadyExistsException]
   def createComment(storeCode: String, productId: Long, req: CommentRequest, account: Option[Account]): Comment = {
     require(!storeCode.isEmpty)
     require(productId > 0)
-    val userId = if (account.isDefined) account.get.uuid else ""
-    val surname = if (account.isDefined) account.get.firstName.getOrElse("") + " " + account.get.lastName.getOrElse("") else ""
-    val comment = Try(Comment(Some(UUID.randomUUID().toString), userId, surname, req.notation, req.subject, req.comment, req.externalCode, req.created, productId))
+
+    val userId = account.map{ c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
+    val surname = account.map{ c => c.firstName.getOrElse("") + " " + c.lastName.getOrElse("") }.getOrElse(throw new NotAuthorizedException(""))
+
+    findComment(storeCode, productId, userId).map{comment => throw new CommentAlreadyExistsException()}
+
+    val comment = Try(Comment(UUID.randomUUID().toString, userId, surname, req.notation, req.subject, req.comment, req.externalCode, req.created, productId))
     comment match {
       case Success(s) =>
-        Comment(Some(EsClient.index[Comment](commentIndex(storeCode), s)), userId, surname, req.notation, req.subject, req.comment, req.externalCode, req.created, productId)
+        Comment(EsClient.index[Comment](commentIndex(storeCode), s), userId, surname, req.notation, req.subject, req.comment, req.externalCode, req.created, productId)
       case Failure(f) => throw f
     }
   }
 
+  private def findComment(storeCode: String, productId: Long, userId: String) = {
+    val query = must(termQuery("productId", s"$productId"),matchQuery("userId", userId))
+    EsClient.searchRaw(esearch4s in commentIndex(storeCode) -> "comment" query query).map(deserializeComment)
+  }
+
+  def deserializeComment(hit: SearchHit): Comment = {
+    val c: Comment = JacksonConverter.deserialize[Comment](hit.getSourceAsString)
+    Comment(hit.getId, c.userId, c.surname, c.notation, c.subject, c.comment, c.externalCode, c.created, c.productId, c.useful, c.notuseful)
+  }
 
   def getComment(storeCode: String, productId: Long, req: CommentGetRequest): JValue = {
-
-    def deserializeComment(hit: SearchHit): Comment = {
-      val c: Comment = JacksonConverter.deserialize[Comment](hit.getSourceAsString)
-      Comment(Some(hit.getId), c.userId, c.surname, c.notation, c.subject, c.comment, c.externalCode, c.created, c.productId, c.useful, c.notuseful)
-    }
 
     val size = req.maxItemPerPage.getOrElse(100)
     val from = req.pageOffset.getOrElse(0) * size

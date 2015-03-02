@@ -107,7 +107,9 @@ object RequestParameters {
 
   case class CommentGetRequest(override val maxItemPerPage: Option[Int], override val pageOffset: Option[Int]) extends PagingParams
 
-  case class CommentPutRequest(note: Int)
+  case class CommentPutRequest(subject:Option[String], comment: Option[String], notation: Option[Int])
+
+  case class NoteCommentRequest(note: Int)
 
 
   //--- Cart

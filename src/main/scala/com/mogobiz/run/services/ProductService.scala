@@ -177,23 +177,43 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
   }
 
   def comments(productId: Long) = pathPrefix("comments") {
-
     pathEnd {
       createComment(productId) ~
         getComment(productId)
-    } ~ updateComment(productId)
-
+    } ~
+    path(Segment) {
+      commentId => {
+        updateComment(productId, commentId) ~
+        noteComment(productId, commentId) ~
+        deleteComment(productId, commentId)
+      }
+    }
   }
 
-
-  def updateComment(productId: Long) = path(Segment) {
-    commentId => {
-      put {
-        entity(as[CommentPutRequest]) { req =>
-          handleCall(productHandler.updateComment(storeCode, productId, commentId, req.note == 1),
-            (res: Boolean) => complete(StatusCodes.OK, res))
-        }
+  def updateComment(productId: Long, commentId: String) = put {
+    optionalSession { optSession =>
+      entity(as[CommentPutRequest]) { req =>
+        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+        val account = accountId.map{id => accountHandler.load(id)}.getOrElse(None)
+        handleCall(productHandler.updateComment(storeCode, productId, account, commentId, req),
+          (res: Unit) => complete(StatusCodes.OK))
       }
+    }
+  }
+
+  def noteComment(productId: Long, commentId: String) = post {
+    entity(as[NoteCommentRequest]) { req =>
+      handleCall(productHandler.noteComment(storeCode, productId, commentId, req),
+        (res: Unit) => complete(StatusCodes.OK))
+    }
+  }
+
+  def deleteComment(productId: Long, commentId: String) = delete {
+    optionalSession { optSession =>
+      val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+      val account = accountId.map{id => accountHandler.load(id)}.getOrElse(None)
+      handleCall(productHandler.deleteComment(storeCode, productId, account, commentId),
+        (res: Unit) => complete(StatusCodes.OK))
     }
   }
 

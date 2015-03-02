@@ -4,7 +4,7 @@ import java.util.Date
 
 import com.mogobiz.run.utils.PagingParams
 
-case class Comment(id:Option[String], userId:String
+case class Comment(id:String, userId:String
                     , surname:String, notation:Int
                     , subject:String, comment:String
                     , externalCode: Option[String]
