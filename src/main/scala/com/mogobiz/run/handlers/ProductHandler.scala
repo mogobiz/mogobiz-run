@@ -17,7 +17,7 @@ import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s, search => esearch4s, delete => esdelete4s, _}
-import com.sksamuel.elastic4s.FilterDefinition
+import com.sksamuel.elastic4s.{SearchType, FilterDefinition}
 import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.action.get.MultiGetItemResponse
 import org.elasticsearch.action.search.SearchResponse
@@ -31,6 +31,9 @@ import org.json4s._
 import scala.util.{Failure, Success, Try}
 
 class ProductHandler extends JsonUtil {
+
+  private val MIN_NOTATION = 1
+  private val MAX_NOTATION = 5
 
   val rateService = RateBoService
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
@@ -83,7 +86,7 @@ class ProductHandler extends JsonUtil {
     )
     val hits: JArray = response.getHits
     val products: JValue = hits.map {
-      hit => renderProduct(hit, productRequest.countryCode, productRequest.currencyCode, productRequest.lang, currency, fieldsToRemoveForProductSearchRendering)
+      hit => renderProduct(storeCode, hit, productRequest.countryCode, productRequest.currencyCode, productRequest.lang, currency, fieldsToRemoveForProductSearchRendering)
     }
     Paging.wrap(response.getTotalHits.toInt, products, productRequest)
   }
@@ -394,7 +397,7 @@ class ProductHandler extends JsonUtil {
     val newComment = oldComment.copy(
       subject = params.subject.getOrElse(oldComment.subject),
       comment = params.comment.getOrElse(oldComment.comment),
-      notation = params.notation.getOrElse(oldComment.notation)
+      notation = Math.min(Math.max(params.notation.getOrElse(oldComment.notation), MIN_NOTATION), MAX_NOTATION)
     )
 
     EsClient.updateRaw(esupdate4s id commentId in commentIndex(storeCode) -> "comment" doc new DocumentSource {
@@ -420,10 +423,11 @@ class ProductHandler extends JsonUtil {
 
     findComment(storeCode, productId, userId).map{comment => throw new CommentAlreadyExistsException()}
 
-    val comment = Try(Comment(UUID.randomUUID().toString, userId, surname, req.notation, req.subject, req.comment, req.externalCode, req.created, productId))
+    val notation = Math.min(Math.max(req.notation, MIN_NOTATION), MAX_NOTATION)
+    val comment = Try(Comment(UUID.randomUUID().toString, userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId))
     comment match {
       case Success(s) =>
-        Comment(EsClient.index[Comment](commentIndex(storeCode), s), userId, surname, req.notation, req.subject, req.comment, req.externalCode, req.created, productId)
+        Comment(EsClient.index[Comment](commentIndex(storeCode), s), userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId)
       case Failure(f) => throw f
     }
   }
@@ -511,7 +515,7 @@ class ProductHandler extends JsonUtil {
     val products: List[MultiGetItemResponse] = EsClient.loadRaw(multiget(ids.map(id => get id id from store -> "product"): _*)).toList
     for (product <- products if !product.isFailed) yield {
       val p: JValue = product.getResponse
-      renderProduct(p, req.country, req.currency, req.lang, currency, List())
+      renderProduct(store, p, req.country, req.currency, req.lang, currency, List())
     }
   }
 
@@ -567,7 +571,7 @@ class ProductHandler extends JsonUtil {
     )
     response(0) match {
       case Some(p) =>
-        val product = renderProduct(p.getHits()(0), req.country, req.currency, req.lang, currency, List())
+        val product = renderProduct(store, p.getHits()(0), req.country, req.currency, req.lang, currency, List(), true)
         response(1) match {
           case Some(s) =>
             Some(JObject(product.asInstanceOf[JObject].obj :+ JField("stocks", s.getHits)))
@@ -577,12 +581,46 @@ class ProductHandler extends JsonUtil {
     }
   }
 
-  def renderProduct(product: JsonAST.JValue, country: Option[String], currency: Option[String], lang: String, cur: com.mogobiz.run.model.Currency, fieldsToRemove: List[String]): JsonAST.JValue = {
-    if (country.isEmpty || currency.isEmpty) {
-      product
-    } else {
-      implicit def json4sFormats: Formats = DefaultFormats
+  def renderProduct(storeCode: String, product: JsonAST.JValue, country: Option[String], currency: Option[String], lang: String, cur: com.mogobiz.run.model.Currency, fieldsToRemove: List[String], includeNotations: Boolean = false): JsonAST.JValue = {
+    implicit def json4sFormats: Formats = DefaultFormats
 
+    val notation = if (includeNotations) {
+      // récupération du nombre de commentaires par note + calcul de la moyenne
+      val JInt(productId) = (product \ "id")
+      val req = filterRequest(esearch4s in s"${storeCode}_comment" types "comment", List(termFilter("productId", productId.toLong))) aggs {
+        agg terms "notations" field "comment.notation"
+      }
+      val resagg = EsClient searchAgg req
+
+      def computeSumNoteAndSumNbComment(l: List[(Long, Long)]): (Long, Long) = {
+        if (l.isEmpty) (0, 0)
+        else {
+          val r = computeSumNoteAndSumNbComment(l.tail)
+          (r._1 + l.head._1 * l.head._2, r._2 + l.head._2)
+        }
+      }
+
+      val nbCommentsByNote: List[(Long, Long)] = for {
+        JArray(buckets) <- resagg \ "notations" \ "buckets"
+        JObject(bucket) <- buckets
+        JField("key", JInt(key)) <- bucket
+        JField("doc_count", JInt(value)) <- bucket
+      } yield (key.longValue(), value.longValue())
+
+
+      val sumNoteAndComment = computeSumNoteAndSumNbComment(nbCommentsByNote)
+
+      JObject(JField("notations", JObject(
+        JField("average", JDouble(if (sumNoteAndComment._2 == 0) 0 else sumNoteAndComment._1.toDouble / sumNoteAndComment._2.toDouble)) ::
+          JField("nbComments", JInt(sumNoteAndComment._2)) ::
+          nbCommentsByNote.map(note => JField(s"note_${note._1}", JInt(note._2)))
+      )))
+    }
+    else JNothing
+
+    if (country.isEmpty || currency.isEmpty) {
+      product merge notation
+    } else {
       val jprice = product \ "price"
       /*
       println(jprice)
@@ -613,22 +651,8 @@ class ProductHandler extends JsonUtil {
         ("formatedPrice" -> formatedPrice) ~
         ("formatedEndPrice" -> formatedEndPrice)
 
-      val renderedProduct = product merge additionalFields
-      //removeFields(renderedProduct,fieldsToRemove)
-      renderedProduct
+      product merge additionalFields  merge notation
     }
-    /* calcul prix Groovy
-    def localTaxRates = product['taxRate'] ? product['taxRate']['localTaxRates'] as List<Map> : []
-    def localTaxRate = localTaxRates?.find { ltr ->
-      ltr['country'] == country && (!state || ltr['stateCode'] == state)
-    }
-    def taxRate = localTaxRate ? localTaxRate['rate'] : 0f
-    def price = product['price'] ?: 0l
-    def endPrice = (price as long) + ((price * taxRate / 100f) as long)
-    product << ['localTaxRate': taxRate,
-    formatedPrice: format(price as long, currency, locale, rate as double),
-    formatedEndPrice: format(endPrice, currency, locale, rate as double)
-    */
   }
 
   private val sdf = new SimpleDateFormat("yyyy-MM-dd")
