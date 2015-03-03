@@ -402,7 +402,7 @@ class ProductHandler extends JsonUtil {
 
     EsClient.updateRaw(esupdate4s id commentId in commentIndex(storeCode) -> "comment" doc new DocumentSource {
       override def json: String = JacksonConverter.serialize(newComment)
-    } retryOnConflict 4)
+    } refresh true retryOnConflict 4)
   }
 
   def noteComment(storeCode: String, productId: Long, commentId: String, params: NoteCommentRequest) : Unit = {
@@ -612,8 +612,8 @@ class ProductHandler extends JsonUtil {
 
       JObject(JField("notations", JObject(
         JField("average", JDouble(if (sumNoteAndComment._2 == 0) 0 else sumNoteAndComment._1.toDouble / sumNoteAndComment._2.toDouble)) ::
-          JField("nbComments", JInt(sumNoteAndComment._2)) ::
-          nbCommentsByNote.map(note => JField(s"note_${note._1}", JInt(note._2)))
+          JField("nbPosts", JInt(sumNoteAndComment._2)) ::
+          nbCommentsByNote.map(note => JField(s"notation_${note._1}", JInt(note._2)))
       )))
     }
     else JNothing
