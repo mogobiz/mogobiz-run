@@ -496,7 +496,7 @@ class ProductHandler extends JsonUtil {
 
   def querySuggestions(storeCode: String, productId: Long, lang: String): JArray = {
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(storeCode, lang) ::: fieldsToRemoveForProductSearchRendering
-    val req = esearch4s in storeCode -> "suggestion" filter termFilter("suggestion._parent", productId)
+    val req = esearch4s in storeCode -> "suggestion" postFilter termFilter("suggestion._parent", productId)
     println(req._builder.toString)
     val response: SearchHits = EsClient.searchAllRaw(req)
     response.getHits
@@ -566,7 +566,7 @@ class ProductHandler extends JsonUtil {
         esearch4s in store -> "product" query {
           ids(List(s"$id"))
         },
-        esearch4s in store -> "stock" filter termFilter("productId", id)
+        esearch4s in store -> "stock" postFilter termFilter("productId", id)
       )
     )
     response(0) match {
@@ -785,7 +785,7 @@ object ProductDao extends JsonUtil {
 
   def get(storeCode: String, id: Long) : Option[Mogobiz.Product] = {
     // Création de la requête
-    val req = esearch4s in storeCode -> "product" filter termFilter("product.id", id)
+    val req = esearch4s in storeCode -> "product" postFilter termFilter("product.id", id)
 
     // Lancement de la requête
     EsClient.search[Mogobiz.Product](req)
@@ -793,7 +793,7 @@ object ProductDao extends JsonUtil {
 
   def getProductAndSku(storeCode: String, skuId: Long) : Option[(Mogobiz.Product, Mogobiz.Sku)] = {
     // Création de la requête
-    val req = esearch4s in storeCode -> "product" filter termFilter("product.skus.id", skuId)
+    val req = esearch4s in storeCode -> "product" postFilter termFilter("product.skus.id", skuId)
 
     // Lancement de la requête
     val productOpt = EsClient.search[Mogobiz.Product](req)
@@ -803,7 +803,7 @@ object ProductDao extends JsonUtil {
 
   def getSkusIdByCoupon(storeCode: String, couponId: Long): List[Long] = {
     // Création de la requête
-    val req = esearch4s in storeCode -> "product" filter termFilter("product.skus.coupons.id", couponId)
+    val req = esearch4s in storeCode -> "product" postFilter termFilter("product.skus.coupons.id", couponId)
 
     // Lancement de la requête
     val productsList = EsClient.searchAll[Mogobiz.Product](req)

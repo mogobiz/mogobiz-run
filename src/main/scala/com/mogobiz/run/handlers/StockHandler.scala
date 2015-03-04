@@ -151,7 +151,7 @@ object StockDao {
 
   def findByProductAndSku(storeCode: String, product: Product, sku: Sku) : Option[EsStock] = {
     // Création de la requête
-    val req = search in storeCode -> "stock" filter and(
+    val req = search in storeCode -> "stock" postFilter and(
       termFilter("stock.productId", product.id),
       termFilter("stock.id", sku.id)
     )

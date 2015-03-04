@@ -166,7 +166,7 @@ object CouponDao {
 
   def findByCode(storeCode:String, couponCode:String):Option[Mogobiz.Coupon]={
     // Création de la requête
-    val req = search in storeCode -> "coupon" filter termFilter("coupon.code.raw", couponCode)
+    val req = search in storeCode -> "coupon" postFilter termFilter("coupon.code.raw", couponCode)
 
     // Lancement de la requête
     EsClient.search[Mogobiz.Coupon](req);
@@ -174,7 +174,7 @@ object CouponDao {
 
   def findPromotionsThatOnlyApplyOnCart(storeCode:String):List[Mogobiz.Coupon]={
     // Création de la requête
-    val req = search in storeCode -> "coupon" filter
+    val req = search in storeCode -> "coupon" postFilter
     and (
       termFilter("coupon.anonymous", true),
       termFilter("coupon.rules.xtype", "X_PURCHASED_Y_OFFERED"),

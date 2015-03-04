@@ -60,7 +60,7 @@ class BackofficeHandler extends JsonUtil {
     val _from: Int = req.pageOffset.getOrElse(0) * _size
 
     val response = EsClient.searchAllRaw(
-      search in mogopayIndex types "BOTransaction" filter and(filters : _*)
+      search in mogopayIndex types "BOTransaction" postFilter and(filters : _*)
       from _from
       size _size
       sort {by field "transactionDate" order SortOrder.DESC})
@@ -84,7 +84,7 @@ class BackofficeHandler extends JsonUtil {
       createTermFilter("vendor.uuid", Some(merchant.uuid))
     ).flatten
 
-    val customerUuidList = EsClient.searchAllRaw(search in mogopayIndex types "BOTransaction" sourceInclude "customer.uuid" filter and(filters : _*)).hits().map {hit =>
+    val customerUuidList = EsClient.searchAllRaw(search in mogopayIndex types "BOTransaction" sourceInclude "customer.uuid" postFilter and(filters : _*)).hits().map {hit =>
       (hit2JValue(hit) \ "customer" \ "uuid") match {
         case JString(uuid) => {
           Some(uuid)
@@ -97,7 +97,7 @@ class BackofficeHandler extends JsonUtil {
     val _from: Int = req.pageOffset.getOrElse(0) * _size
 
     val response = EsClient.searchAllRaw(
-      search in mogopayIndex types "Account" filter createOrFilterBySplitValues(Some(customerUuidList), v => createTermFilter("uuid", Some(v))).get
+      search in mogopayIndex types "Account" postFilter createOrFilterBySplitValues(Some(customerUuidList), v => createTermFilter("uuid", Some(v))).get
         from _from
         size _size
         sort {by field "lastName" order SortOrder.DESC})
@@ -117,7 +117,7 @@ class BackofficeHandler extends JsonUtil {
       createTermFilter("transactionUUID", Some(transactionUuid))
     ).flatten
 
-    val transactionRequest = search in mogopayIndex types "BOTransaction" sourceInclude "transactionUUID" filter and(transactionFilters : _*)
+    val transactionRequest = search in mogopayIndex types "BOTransaction" sourceInclude "transactionUUID" postFilter and(transactionFilters : _*)
     val esTransactionUuid = EsClient.searchRaw(transactionRequest).map {hit =>
       (hit2JValue(hit) \ "transactionUUID") match {
         case JString(uuid) => {
