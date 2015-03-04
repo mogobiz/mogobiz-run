@@ -5,8 +5,8 @@ import java.util.Locale
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers._
+import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.model.Mogopay.RoleName
-import com.mogobiz.pay.settings.Settings
 import com.mogobiz.run.exceptions.{NotFoundException, NotAuthorizedException}
 import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
 import com.mogobiz.run.utils.Paging
