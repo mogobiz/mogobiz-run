@@ -340,9 +340,7 @@ class CartHandler {
     val cartTTC = _computeStoreCart(cartWithoutBOCart, params.country, params.state)
 
     // Création de la transaction
-    val updatedCart = DB localTx { implicit session =>
-      _createBOCart(cartWithoutBOCart, cartTTC, currency, params.buyer, company.get, params.shippingAddress)
-    }
+    val updatedCart = _createBOCart(cartWithoutBOCart, cartTTC, currency, params.buyer, company.get, params.shippingAddress)
 
     StoreCartDao.save(updatedCart)
 
@@ -438,60 +436,63 @@ class CartHandler {
    * @param session
    * @return
    */
-  private def _createBOCart(storeCart: StoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String)(implicit session: DBSession) : StoreCart = {
-    val storeCode = storeCart.storeCode
-    val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
+  private def _createBOCart(storeCart: StoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String) : StoreCart = {
+    val boCartAndStoreCart = DB localTx { implicit session => {
+      val storeCode = storeCart.storeCode
+      val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
 
-    val newStoreCartItems = cart.cartItemVOs.map { cartItem =>
-      val storeCartItem = storeCart.cartItems.find(i => (i.productId == cartItem.productId) && (i.skuId == cartItem.skuId)).get
+      val newStoreCartItems = cart.cartItemVOs.map { cartItem =>
+        val storeCartItem = storeCart.cartItems.find(i => (i.productId == cartItem.productId) && (i.skuId == cartItem.skuId)).get
 
-      val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
-      val product = productAndSku.get._1
-      val sku = productAndSku.get._2
+        val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
+        val product = productAndSku.get._1
+        val sku = productAndSku.get._2
 
-      // Création du BOProduct correspondant au produit principal
-      val boProduct = BOProductDao.create(cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), true, cartItem.productId)
+        // Création du BOProduct correspondant au produit principal
+        val boProduct = BOProductDao.create(cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), true, cartItem.productId)
 
-      val newStoreRegistedCartItems = cartItem.registeredCartItemVOs.map { registeredCartItem =>
-        val storeRegistedCartItem = storeCartItem.registeredCartItems.find(r => r.email == registeredCartItem.email).get
-        val boTicketId = BOTicketTypeDao.newId()
+        val newStoreRegistedCartItems = cartItem.registeredCartItemVOs.map { registeredCartItem =>
+          val storeRegistedCartItem = storeCartItem.registeredCartItems.find(r => r.email == registeredCartItem.email).get
+          val boTicketId = BOTicketTypeDao.newId()
 
-        val shortCodeAndQrCode = product.xtype match {
-          case ProductType.SERVICE => {
-            val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
-            val shortCode = "P" + boProduct.id + "T" + boTicketId
-            val qrCodeContent = "EventId:" + product.id + ";BoProductId:" + boProduct.id + ";BoTicketId:" + boTicketId +
-              ";EventName:" + product.name + ";EventDate:" + startDateStr + ";FirstName:" +
-              registeredCartItem.firstname.getOrElse("") + ";LastName:" + registeredCartItem.lastname.getOrElse("") +
-              ";Phone:" + registeredCartItem.phone.getOrElse("") + ";TicketType:" + sku.name + ";shortCode:" + shortCode
+          val shortCodeAndQrCode = product.xtype match {
+            case ProductType.SERVICE => {
+              val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
+              val shortCode = "P" + boProduct.id + "T" + boTicketId
+              val qrCodeContent = "EventId:" + product.id + ";BoProductId:" + boProduct.id + ";BoTicketId:" + boTicketId +
+                ";EventName:" + product.name + ";EventDate:" + startDateStr + ";FirstName:" +
+                registeredCartItem.firstname.getOrElse("") + ";LastName:" + registeredCartItem.lastname.getOrElse("") +
+                ";Phone:" + registeredCartItem.phone.getOrElse("") + ";TicketType:" + sku.name + ";shortCode:" + shortCode
 
-            val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, company.aesPassword, "AES")
-            val output = new ByteArrayOutputStream()
-            QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
-            val qrCodeBase64 = Base64.encode(output.toByteArray)
+              val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, company.aesPassword, "AES")
+              val output = new ByteArrayOutputStream()
+              QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
+              val qrCodeBase64 = Base64.encode(output.toByteArray)
 
-            (Some(shortCode), Some(qrCodeBase64), Some(encryptedQrCodeContent))
+              (Some(shortCode), Some(qrCodeBase64), Some(encryptedQrCodeContent))
+            }
+            case _ => (None, None, None)
           }
-          case _ => (None, None, None)
+
+          BOTicketTypeDao.create(boTicketId, sku, cartItem, registeredCartItem, shortCodeAndQrCode._1, shortCodeAndQrCode._2, shortCodeAndQrCode._3, boProduct.id)
+          if (shortCodeAndQrCode._3.isDefined)
+            storeRegistedCartItem.copy(qrCodeContent = Some(product.name + ":" + registeredCartItem.email + "||" + shortCodeAndQrCode._3.get))
+          else storeRegistedCartItem
         }
 
-        BOTicketTypeDao.create(boTicketId, sku, cartItem, registeredCartItem, shortCodeAndQrCode._1, shortCodeAndQrCode._2, shortCodeAndQrCode._3, boProduct.id)
-        if (shortCodeAndQrCode._3.isDefined)
-          storeRegistedCartItem.copy(qrCodeContent = Some(product.name + ":" + registeredCartItem.email + "||" + shortCodeAndQrCode._3.get))
-        else storeRegistedCartItem
+        //create Sale
+        val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
+
+        BOCartItemDao.create(sku, cartItem, boCart, Some(boDelivery), boProduct.id)
+
+        storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList)
       }
+      (boCart, storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList))
+    }}
 
-      //create Sale
-      val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
+    exportBOCartIntoES(storeCart.storeCode, boCartAndStoreCart._1)
 
-      BOCartItemDao.create(sku, cartItem, boCart, Some(boDelivery), boProduct.id)
-
-      storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList)
-    }
-
-    exportBOCartIntoES(storeCart.storeCode, boCart)
-
-    storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList)
+    boCartAndStoreCart._2
   }
 
   /**
