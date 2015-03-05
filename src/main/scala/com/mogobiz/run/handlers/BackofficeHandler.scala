@@ -5,8 +5,8 @@ import java.util.Locale
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers._
+import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.model.Mogopay.RoleName
-import com.mogobiz.pay.settings.Settings
 import com.mogobiz.run.exceptions.{NotFoundException, NotAuthorizedException}
 import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
 import com.mogobiz.run.utils.Paging
@@ -60,7 +60,7 @@ class BackofficeHandler extends JsonUtil {
     val _from: Int = req.pageOffset.getOrElse(0) * _size
 
     val response = EsClient.searchAllRaw(
-      search in mogopayIndex types "BOTransaction" filter and(filters : _*)
+      search in mogopayIndex types "BOTransaction" postFilter and(filters : _*)
       from _from
       size _size
       sort {by field "transactionDate" order SortOrder.DESC})
@@ -88,7 +88,7 @@ class BackofficeHandler extends JsonUtil {
     ).flatten
 
     val response = EsClient.searchAllRaw(
-      search in mogopayIndex types "Account" filter and(accountFilters: _*)
+      search in mogopayIndex types "Account" postFilter and(accountFilters: _*)
         from _from
         size _size
         sort {by field "lastName" order SortOrder.DESC})
@@ -108,7 +108,7 @@ class BackofficeHandler extends JsonUtil {
       createTermFilter("transactionUUID", Some(transactionUuid))
     ).flatten
 
-    val transactionRequest = search in mogopayIndex types "BOTransaction" sourceInclude "transactionUUID" filter and(transactionFilters : _*)
+    val transactionRequest = search in mogopayIndex types "BOTransaction" sourceInclude "transactionUUID" postFilter and(transactionFilters : _*)
     val esTransactionUuid = EsClient.searchRaw(transactionRequest).map {hit =>
       (hit2JValue(hit) \ "transactionUUID") match {
         case JString(uuid) => {

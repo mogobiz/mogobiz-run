@@ -1100,7 +1100,7 @@ object StoreCartDao {
   }
 
   def getExpired() : List[StoreCart] = {
-    val req = search in index -> "StoreCart" filter and (
+    val req = search in index -> "StoreCart" postFilter and (
       rangeFilter("expireDate") lt "now"
     )
 

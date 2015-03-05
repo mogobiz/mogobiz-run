@@ -23,7 +23,7 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
   }
 
   def browserHistory(store: String, uuid: String, action: UserAction, historyCount: Int, count: Int, matchCount: Int): Seq[String] = {
-    val historyReq = esearch4s in esInputStore(store) -> "UserItemAction" limit historyCount from 0 filter {
+    val historyReq = esearch4s in esInputStore(store) -> "UserItemAction" limit historyCount from 0 postFilter {
       and(
         termFilter("action", action.toString),
         termFilter("uuid", uuid)
