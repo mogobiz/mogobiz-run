@@ -78,26 +78,17 @@ class BackofficeHandler extends JsonUtil {
       }.flatten
     }.flatten getOrElse(throw new NotAuthorizedException(""))
 
-    val filters = List(
-      req.lastName.map {lastName => or(createTermFilter("customer.lastName", Some(lastName)).get, createTermFilter("customer.firstName", Some(lastName)).get) },
-      createTermFilter("email", req.email),
-      createTermFilter("vendor.uuid", Some(merchant.uuid))
-    ).flatten
-
-    val customerUuidList = EsClient.searchAllRaw(search in mogopayIndex types "BOTransaction" sourceInclude "customer.uuid" filter and(filters : _*)).hits().map {hit =>
-      (hit2JValue(hit) \ "customer" \ "uuid") match {
-        case JString(uuid) => {
-          Some(uuid)
-        }
-        case _ => None
-      }
-    }.toList.flatten.distinct.mkString("|")
-
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
 
+    val accountFilters = List(
+      req.lastName.map {lastName => or(createTermFilter("lastName", Some(lastName)).get, createTermFilter("firstName", Some(lastName)).get) },
+      createTermFilter("email", req.email),
+      createTermFilter("owner", Some(merchant.uuid))
+    ).flatten
+
     val response = EsClient.searchAllRaw(
-      search in mogopayIndex types "Account" filter createOrFilterBySplitValues(Some(customerUuidList), v => createTermFilter("uuid", Some(v))).get
+      search in mogopayIndex types "Account" filter and(accountFilters: _*)
         from _from
         size _size
         sort {by field "lastName" order SortOrder.DESC})
