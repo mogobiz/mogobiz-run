@@ -3,6 +3,7 @@ package com.mogobiz.run.handlers
 import java.text.DateFormat
 import java.util.Locale
 
+import com.mogobiz.es._
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers._
 import com.mogobiz.pay.config.Settings

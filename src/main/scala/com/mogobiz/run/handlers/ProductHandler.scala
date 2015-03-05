@@ -3,6 +3,7 @@ package com.mogobiz.run.handlers
 import java.text.SimpleDateFormat
 import java.util.{UUID, Date, Calendar, Locale}
 
+import com.mogobiz.es._
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
 import com.mogobiz.pay.model.Mogopay.Account

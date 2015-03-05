@@ -4,6 +4,7 @@ import org.elasticsearch.search.SearchHits
 import org.json4s.JsonAST.JValue
 import org.json4s._
 import com.mogobiz.run.es._
+import com.mogobiz.es._
 
 /**
  *

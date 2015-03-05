@@ -8,6 +8,7 @@ import com.sksamuel.elastic4s.{SearchDefinition, FilterDefinition}
 import org.json4s.JsonAST.JValue
 import org.json4s.JsonDSL._
 import org.json4s._
+import com.mogobiz.es._
 
 class CategoryHandler extends JsonUtil {
 

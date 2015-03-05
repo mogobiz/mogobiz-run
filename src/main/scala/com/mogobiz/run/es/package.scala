@@ -1,5 +1,6 @@
 package com.mogobiz.run
 
+import com.mogobiz.es._
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Currency
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
@@ -48,7 +49,6 @@ package object es {
    * @return store languages
    */
   def queryStoreLanguages(store: String): JValue = {
-    import com.mogobiz.es.EsClient._
     val languages:JValue = EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
       case Some(s) => s
       case None => JNothing
@@ -316,24 +316,5 @@ package object es {
   }
 
   case class TypeField(`type`:String, field:String)
-
-  //implicits declaration
-  implicit def searchHits2JValue(searchHits:SearchHits) : JValue = {
-    parse(searchHits.toXContent(XContentFactory.jsonBuilder(), ToXContent.EMPTY_PARAMS).string().substring("hits".length + 2))
-  }
-
-  implicit def hits2JArray(hits:Array[SearchHit]) : JArray = JArray(hits.map(hit => parse(hit.getSourceAsString)).toList)
-
-  implicit def hit2JValue(hit:SearchHit) : JValue = parse(hit.getSourceAsString)
-
-  implicit def response2JValue(response:GetResponse) : JValue = parse(response.getSourceAsString)
-
-  implicit def responses2JArray(hits:Array[MultiGetItemResponse]) : JArray = JArray(hits.map(hit => parse(hit.getResponse.getSourceAsString)).toList)
-
-  implicit def JValue2StringSource(json:JValue) : StringSource = new StringSource(compact(render(json)))
-
-  class StringSource(val str:String) extends DocumentSource {
-    def json = str
-  }
 
 }

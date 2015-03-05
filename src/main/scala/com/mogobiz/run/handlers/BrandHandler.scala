@@ -9,6 +9,7 @@ import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.JArray
 import org.json4s.JsonDSL._
 import org.json4s._
+import com.mogobiz.es._
 
 class BrandHandler extends JsonUtil {
 

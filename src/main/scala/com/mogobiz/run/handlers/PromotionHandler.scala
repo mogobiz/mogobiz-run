@@ -14,6 +14,7 @@ import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JArray, JNothing, JValue}
 import org.json4s._
+import com.mogobiz.es._
 
 class PromotionHandler {
 
