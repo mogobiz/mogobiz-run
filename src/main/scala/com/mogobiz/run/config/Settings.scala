@@ -2,6 +2,7 @@ package com.mogobiz.run.config
 
 import com.typesafe.config.{Config, ConfigFactory}
 import scalikejdbc.config._
+import collection.JavaConversions._
 
 import scala.util.Try
 
@@ -33,12 +34,13 @@ object Settings {
   val accessUrl = config getString "mogobiz.accessUrl"
 
   object cart {
-    val lifetime = 15
-    val EsIndex = config getString "mogobiz.cart.index"
-  }
+    val lifetime = config.getInt("mogobiz.cart.lifetime")
 
-  object backoffice {
-    val EsIndex = config getString "mogobiz.backoffice.index"
+    object cleanJob {
+      val delay = config.getInt("mogobiz.cart.cleanJob.delay")
+      val interval = config.getInt("mogobiz.cart.cleanJob.interval")
+      val storeCodeList = config.getStringList("mogobiz.cart.cleanJob.storeCodeList").toList
+    }
   }
 
   object visitedProduct {

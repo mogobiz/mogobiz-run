@@ -418,8 +418,8 @@ class CartHandler {
   /**
    * Supprime tous les paniers expirés
    */
-  def cleanup(): Unit = {
-    StoreCartDao.getExpired.map { cart =>
+  def cleanup(storeCode: String): Unit = {
+    StoreCartDao.getExpired(storeCode).map { cart =>
       StoreCartDao.delete(_clearCart(cart))
     }
   }
@@ -517,7 +517,7 @@ class CartHandler {
             }
           }
           BOCartDao.delete(boCart.get)
-          BOCartESDao.delete(boCart.get.uuid)
+          BOCartESDao.delete(cart.storeCode, boCart.get.uuid)
 
           cart.copy(boCartUuid = None)
         }
@@ -561,8 +561,8 @@ class CartHandler {
     }
 
     if (currentAccountId.isDefined) {
-      val cartAnonyme = StoreCartDao.findByDataUuidAndUserUuid(uuid, None);
-      val cartAuthentifie = getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(uuid, currentAccountId));
+      val cartAnonyme = StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None);
+      val cartAuthentifie = getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, currentAccountId));
 
       // S'il y a un panier anonyme, il est fusionné avec le panier authentifié et supprimé de la base
       if (cartAnonyme.isDefined) {
@@ -575,7 +575,7 @@ class CartHandler {
     }
     else {
       // Utilisateur anonyme
-      getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(uuid, None));
+      getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None));
     }
   }
 
@@ -1075,7 +1075,7 @@ class CartHandler {
         lastUpdated = boCart.lastUpdated.toDate,
         uuid = boCart.uuid)
 
-      EsClient.update[BOCartES](Settings.backoffice.EsIndex, boCartES, true, false)
+      BOCartESDao.save(storeCode, boCartES)
     }
   }
 }
@@ -1084,23 +1084,23 @@ object StoreCartDao {
 
   import com.sksamuel.elastic4s.ElasticDsl._
 
-  val index = Settings.cart.EsIndex
+  private def buildIndex(storeCode: String) = s"${storeCode}_cart"
 
-  def findByDataUuidAndUserUuid(dataUuid: String, userUuid: Option[Mogopay.Document]): Option[StoreCart] = {
+  def findByDataUuidAndUserUuid(storeCode: String, dataUuid: String, userUuid: Option[Mogopay.Document]): Option[StoreCart] = {
     val uuid = dataUuid + "--" + userUuid.getOrElse("None")
-    EsClient.load[StoreCart](index, uuid)
+    EsClient.load[StoreCart](buildIndex(storeCode), uuid)
   }
 
   def save(entity: StoreCart): Boolean = {
-    EsClient.update[StoreCart](index, entity.copy(expireDate = DateTime.now.plusSeconds(60 * Settings.cart.lifetime)), true, false)
+    EsClient.update[StoreCart](buildIndex(entity.storeCode), entity.copy(expireDate = DateTime.now.plusSeconds(60 * Settings.cart.lifetime)), true, false)
   }
 
   def delete(cart: StoreCart) : Unit = {
-    EsClient.delete[StoreCart](index, cart.uuid, false)
+    EsClient.delete[StoreCart](buildIndex(cart.storeCode), cart.uuid, false)
   }
 
-  def getExpired() : List[StoreCart] = {
-    val req = search in index -> "StoreCart" postFilter and (
+  def getExpired(storeCode: String) : List[StoreCart] = {
+    val req = search in buildIndex(storeCode) -> "StoreCart" postFilter and (
       rangeFilter("expireDate") lt "now"
     )
 
@@ -1110,14 +1110,14 @@ object StoreCartDao {
 
 object BOCartESDao {
 
-  val index = Settings.backoffice.EsIndex
+  def buildIndex(storeCode: String) = s"${storeCode}_bo"
 
-  def save(boCart: BOCartES): Boolean = {
-    EsClient.update[BOCartES](index, boCart, true, false)
+  def save(storeCode: String, boCart: BOCartES): Boolean = {
+    EsClient.update[BOCartES](buildIndex(storeCode), boCart, true, false)
   }
 
-  def delete(uuid: String) : Unit = {
-    EsClient.delete[StoreCart](index, uuid, false)
+  def delete(storeCode: String, uuid: String) : Unit = {
+    EsClient.delete[StoreCart](buildIndex(storeCode), uuid, false)
   }
 }
 

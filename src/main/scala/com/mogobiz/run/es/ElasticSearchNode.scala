@@ -94,7 +94,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
     // On attend que ES est bien démarré
     esNode.client().admin().cluster().prepareHealth().setWaitForYellowStatus().execute().actionGet();
 
-    logger.info(s"ES is started.")
+    logger.info(s"ES is started using ${tmpdir}.")
     esNode
   }
 

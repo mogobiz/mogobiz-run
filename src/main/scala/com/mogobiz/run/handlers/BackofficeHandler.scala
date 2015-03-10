@@ -27,8 +27,6 @@ class BackofficeHandler extends JsonUtil {
 
   private val mogopayIndex = Settings.Mogopay.EsIndex
 
-  def getBOCartIndex(storeCode: String) = s"${storeCode}_bo"
-
   @throws[NotAuthorizedException]
   def listOrders(storeCode: String, accountUuid: Option[String], req: BOListOrdersRequest) : Paging[JValue] = {
     val account = accountUuid.map { uuid => accountHandler.load(uuid) }.flatten getOrElse(throw new NotAuthorizedException(""))
@@ -36,7 +34,7 @@ class BackofficeHandler extends JsonUtil {
     val merchant = account.roles.find{role => role == RoleName.MERCHANT}.map{r => account}
 
     val boCartTransactionUuidList = req.deliveryStatus.map { deliveryStatus =>
-      (EsClient.searchAllRaw(search in getBOCartIndex(storeCode) types "BOCart" sourceInclude "transactionUuid" query matchQuery("cartItems.bODelivery.status", deliveryStatus)) hits() map { hit =>
+      (EsClient.searchAllRaw(search in BOCartESDao.buildIndex(storeCode) types "BOCart" sourceInclude "transactionUuid" query matchQuery("cartItems.bODelivery.status", deliveryStatus)) hits() map { hit =>
         (hit2JValue(hit) \ "transactionUuid") match {
           case JString(uuid) => {
             Some(uuid)
@@ -120,7 +118,7 @@ class BackofficeHandler extends JsonUtil {
     }.getOrElse(throw new NotFoundException(""))
 
     EsClient.searchRaw(
-      search in getBOCartIndex(storeCode) types "BOCart" query matchQuery("transactionUuid", esTransactionUuid)
+      search in BOCartESDao.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid", esTransactionUuid)
     ).getOrElse(throw new NotFoundException(""))
   }
 
@@ -128,7 +126,7 @@ class BackofficeHandler extends JsonUtil {
     case obj : JObject => {
       (obj \ "transactionUUID") match {
         case (JString(transactionUuid)) => {
-          val statusList = (EsClient.searchAllRaw(search in getBOCartIndex(storeCode) types "BOCart" query matchQuery("transactionUuid", transactionUuid)) hits() map { hit =>
+          val statusList = (EsClient.searchAllRaw(search in BOCartESDao.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid", transactionUuid)) hits() map { hit =>
             hit2JValue(hit) \ "cartItems" match {
               case JArray(cartItems) => {
                 cartItems.map { cartItem =>
