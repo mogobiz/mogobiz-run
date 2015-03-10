@@ -45,7 +45,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
   val plugins = Seq(esHeadPlugin)
 
   def startES(esPath: String = EsEmbedded) : Node = {
-    logger.info("ES is starting...")
+    logger.info(s"ES is starting using source path '${esPath}'...")
     // Prépare les plugins
     val initialSettings : Tuple[Settings, Environment]= InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true)
     if (!initialSettings.v2().pluginsFile().exists()) {
@@ -94,7 +94,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
     // On attend que ES est bien démarré
     esNode.client().admin().cluster().prepareHealth().setWaitForYellowStatus().execute().actionGet();
 
-    logger.info(s"ES is started using ${tmpdir}.")
+    logger.info(s"ES is started using '${tmpdir}'.")
     esNode
   }
 
