@@ -49,8 +49,8 @@ class PromotionHandler {
     val filters:List[FilterDefinition] = List(
       termFilter("anonymous", true),
       termFilter("active", true),
-      rangeFilter("startDate") lte now,
-      rangeFilter("endDate") gte now
+      or(rangeFilter("startDate") lte now, missingFilter("startDate")),
+      or(rangeFilter("endDate") gte now, missingFilter("endDate"))
     )
 
     EsClient.searchAllRaw(
