@@ -1,6 +1,7 @@
 package com.mogobiz.run.jobs
 
 import akka.actor.{Actor, ActorSystem, Props}
+import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.{Settings, HandlersConfig}
 import HandlersConfig._
 import scala.concurrent.duration._
@@ -22,6 +23,6 @@ object CleanCartJob{
 class CleanCartJob extends Actor {
 
   def receive = {
-    case _ => Settings.cart.cleanJob.storeCodeList.map {storeCode: String =>  Try(cartHandler.cleanup(storeCode)) }
+    case _ => EsClient.getIndexByAlias("mogobiz_carts").map {storeCode: String =>  Try(cartHandler.cleanup(storeCode)) }
   }
 }

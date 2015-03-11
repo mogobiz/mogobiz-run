@@ -39,7 +39,6 @@ object Settings {
     object cleanJob {
       val delay = config.getInt("mogobiz.cart.cleanJob.delay")
       val interval = config.getInt("mogobiz.cart.cleanJob.interval")
-      val storeCodeList = config.getStringList("mogobiz.cart.cleanJob.storeCodeList").toList
     }
   }
 
