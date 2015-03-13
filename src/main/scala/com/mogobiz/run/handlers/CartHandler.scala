@@ -1153,9 +1153,9 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
     }
   }
 
-  def findByBOCartItem(boCartItem: BOCartItem)(implicit session: DBSession = AutoSession) : Option[BOCart] = {
+  def findByTransactionUuid(transactionUuid: String)(implicit session: DBSession = AutoSession) : Option[BOCart] = {
     val t = BOCartDao.syntax("t")
-    withSQL {select.from(BOCartDao as t).where.eq(t.id, boCartItem.bOCartFk)}.map(BOCartDao(t.resultName)).single().apply()
+    withSQL {select.from(BOCartDao as t).where.eq(t.transactionUuid, transactionUuid)}.map(BOCartDao(t.resultName)).single().apply()
   }
 
   def updateStatus(boCart: BOCart) : Unit = {

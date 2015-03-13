@@ -5,7 +5,7 @@ import com.mogobiz.run.exceptions.NotFoundException
 import com.mogobiz.run.model.ES.{BOCartItem, BOCart}
 import com.mogobiz.run.model.Mogobiz.ReturnStatus._
 import com.mogobiz.run.model.Mogobiz.{ReturnStatus, ReturnedItemStatus}
-import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
+import com.mogobiz.run.model.RequestParameters.{UpdateBOReturnedItemRequest, CreateBOReturnedItemRequest, BOListCustomersRequest, BOListOrdersRequest}
 import org.json4s.JsonAST._
 
 /**
@@ -17,6 +17,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
   val storeCode = "acmesports"
   val merchantUuid = "d7b864c8-4567-4603-abd4-5f85e9ff56e6"
   val customerUuid = "8a53ef3e-34e8-4569-8f68-ac0dfc548a0f"
+  val transactionUuid = "dcacac6e-720f-4715-b5d7-ed6ed4431ab2"
   val boCartItemUuid = "734b0e5b-49f0-4dff-9732-8b28b5827518"
 
   "BackofficeHandler list orders" should {
@@ -325,7 +326,8 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
 
   "BackofficeHandler" should {
     "create BOReturnedItem for customer" in {
-      handler.createBOReturnedItem(storeCode, Some(customerUuid), boCartItemUuid, 1, "test init return")
+      val req = new CreateBOReturnedItemRequest(quantity = 1, motivation = "test init return")
+      handler.createBOReturnedItem(storeCode, Some(customerUuid), transactionUuid, boCartItemUuid, req)
 
       val bOReturnedItem = retreiveBoReturnedItem()
       bOReturnedItem.refunded must be_==(0)
@@ -339,7 +341,14 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
 
     "accepte returned submitted for merchant" in {
       val boReturnedItemUudi = retreiveBoReturnedItem().uuid
-      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), boReturnedItemUudi, ReturnedItemStatus.UNDEFINED, 0, 0, ReturnStatus.RETURN_TO_BE_RECEIVED, "return is possible")
+      val req = new UpdateBOReturnedItemRequest(
+        status = ReturnedItemStatus.UNDEFINED,
+        refunded = 0,
+        totalRefunded = 0,
+        returnStatus = ReturnStatus.RETURN_TO_BE_RECEIVED,
+        motivation = "return is possible"
+      )
+      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), transactionUuid, boCartItemUuid, boReturnedItemUudi, req)
 
       val bOReturnedItem = retreiveBoReturnedItem()
       bOReturnedItem.refunded must be_==(0)
@@ -355,7 +364,14 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
 
     "received returned for merchant" in {
       val boReturnedItemUudi = retreiveBoReturnedItem().uuid
-      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), boReturnedItemUudi, ReturnedItemStatus.UNDEFINED, 0, 0, ReturnStatus.RETURN_RECEIVED, "item received")
+      val req = new UpdateBOReturnedItemRequest(
+        status = ReturnedItemStatus.UNDEFINED,
+        refunded = 0,
+        totalRefunded = 0,
+        returnStatus = ReturnStatus.RETURN_RECEIVED,
+        motivation = "item received"
+      )
+      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), transactionUuid, boCartItemUuid, boReturnedItemUudi, req)
 
       val bOReturnedItem = retreiveBoReturnedItem()
       bOReturnedItem.refunded must be_==(0)
@@ -373,7 +389,14 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
 
     "accpete returned for merchant" in {
       val boReturnedItemUudi = retreiveBoReturnedItem().uuid
-      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), boReturnedItemUudi, ReturnedItemStatus.BACK_TO_STOCK, 1000, 2000, ReturnStatus.RETURN_ACCEPTED, "accepted")
+      val req = new UpdateBOReturnedItemRequest(
+        status = ReturnedItemStatus.BACK_TO_STOCK,
+        refunded = 1000,
+        totalRefunded = 2000,
+        returnStatus = ReturnStatus.RETURN_ACCEPTED,
+        motivation = "accepted"
+      )
+      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), transactionUuid, boCartItemUuid, boReturnedItemUudi, req)
 
       val bOReturnedItem = retreiveBoReturnedItem()
       bOReturnedItem.refunded must be_==(1000)
@@ -390,12 +413,6 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       bOReturnedItem.boReturns(3).motivation must beSome("test init return")
       bOReturnedItem.boReturns(3).status must be_==(ReturnStatus.RETURN_SUBMITTED)
     }
-  }
-
-  private def createBOReturnedItem() : String = {
-    handler.createBOReturnedItem(storeCode, Some(customerUuid), boCartItemUuid, 1, "test init return")
-
-    retreiveBoReturnedItem().uuid
   }
 
   private def retreiveBoReturnedItem() = {

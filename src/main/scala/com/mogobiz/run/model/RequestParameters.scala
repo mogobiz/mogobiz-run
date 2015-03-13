@@ -3,6 +3,8 @@ package com.mogobiz.run.model
 import java.util.Date
 
 import com.mogobiz.run.exceptions.CommentException
+import com.mogobiz.run.model.Mogobiz.ReturnStatus._
+import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus._
 import com.mogobiz.run.utils.PagingParams
 import org.joda.time.DateTime
 
@@ -154,5 +156,9 @@ object RequestParameters {
                                     override val pageOffset: Option[Int] = None,
                                     lastName: Option[String] = None,
                                     email: Option[String] = None) extends PagingParams
+
+  case class CreateBOReturnedItemRequest(quantity: Int, motivation: String)
+
+  case class UpdateBOReturnedItemRequest(status: ReturnedItemStatus, refunded : Long, totalRefunded : Long, returnStatus: ReturnStatus, motivation: String)
 
 }
