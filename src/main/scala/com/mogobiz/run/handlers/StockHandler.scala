@@ -24,13 +24,13 @@ class StockHandler extends IndexesTypesDsl {
     val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
     stockOpt match {
       case Some(stock) => DB localTx { implicit session =>
-        // Search the corresponding StockCalendar or create it if necessary
+        // Search the corresponding StockCalendar
         val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
-        val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
-        else StockCalendarDao.create(product, sku, stock, date)
 
         // stock verification
-        return stock.stockUnlimited || stock.stockOutSelling || (stockCalendar.stock >= (quantity + stockCalendar.sold))
+        return stock.stockUnlimited || stock.stockOutSelling || stockCalendarOpt.map {stockCalendar =>
+          stockCalendar.stock >= (quantity + stockCalendar.sold)
+        }.getOrElse(stock.initialStock >= quantity)
       }
       case None => return true;
     }
