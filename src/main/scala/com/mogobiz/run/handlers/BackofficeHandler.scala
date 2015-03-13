@@ -123,14 +123,14 @@ class BackofficeHandler extends JsonUtil with BoService {
     ).getOrElse(throw new NotFoundException(""))
   }
 
-  def createBOReturnedItem(storeCode: String, accountUuid: Option[String], boCartItemId: Long, quantity: Int, motivation: String) : Unit = {
+  def createBOReturnedItem(storeCode: String, accountUuid: Option[String], boCartItemUuid: String, quantity: Int, motivation: String) : Unit = {
     val customer = accountUuid.map { uuid =>
       accountHandler.load(uuid).map { account =>
         account.roles.find{role => role == RoleName.CUSTOMER}.map{r => account}
       }.flatten
     }.flatten getOrElse(throw new NotAuthorizedException(""))
 
-    val boCartItem = BOCartItemDao.load(boCartItemId).getOrElse(throw new NotFoundException(""))
+    val boCartItem = BOCartItemDao.load(boCartItemUuid).getOrElse(throw new NotFoundException(""))
     val boCart = BOCartDao.findByBOCartItem(boCartItem).getOrElse(throw new NotFoundException(""))
 
     if (quantity < 1 || quantity > boCartItem.quantity) throw new MinMaxQuantityException(1, boCartItem.quantity)

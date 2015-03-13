@@ -16,7 +16,9 @@
 
 //resolvers += "Grep code" at "http://grepcode.com/snapshot/repo1.maven.org/maven2/"
 
-
+libraryDependencies in ThisBuild ++= Seq(
+  "org.apache.derby" % "derby" % "10.11.1.1" % "test"
+)
 //packAutoSettings
 
 name:= "mogobiz-run"

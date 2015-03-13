@@ -1115,6 +1115,10 @@ object BOCartESDao {
 
   def buildIndex(storeCode: String) = s"${storeCode}_bo"
 
+  def load(storeCode: String, uuid: String) : Option[BOCartES] = {
+    EsClient.load[BOCartES](buildIndex(storeCode), uuid)
+  }
+
   def save(storeCode: String, boCart: BOCartES, refresh: Boolean = false): Boolean = {
     EsClient.update[BOCartES](buildIndex(storeCode), boCart, true, refresh)
   }
@@ -1421,10 +1425,10 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     }.map(BOCartItemDao(t.resultName)).list().apply()
   }
 
-  def load(boCartItemId: Long)(implicit session: DBSession = AutoSession):Option[BOCartItem] = {
+  def load(boCartItemUuid: String)(implicit session: DBSession = AutoSession):Option[BOCartItem] = {
     val t = BOCartItemDao.syntax("t")
     withSQL {
-      select.from(BOCartItemDao as t).where.eq(t.id, boCartItemId)
+      select.from(BOCartItemDao as t).where.eq(t.uuid, boCartItemUuid)
     }.map(BOCartItemDao(t.resultName)).single().apply()
   }
 

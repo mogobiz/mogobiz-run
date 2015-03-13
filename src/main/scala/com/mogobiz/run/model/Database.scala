@@ -292,6 +292,7 @@ object Mogobiz {
       case _ => "Invalid value"
     }
   }
+  class TransactionStatusRef extends TypeReference[TransactionStatus.type]
 
   object ProductType extends Enumeration {
     class ProductTypeType(s: String) extends Val(s)
@@ -425,6 +426,7 @@ object Mogobiz {
     val DISCARDED = new ReturnedItemStatusType("DISCARDED")
 
     def apply(str: String) = str match {
+      case "UNDEFINED" => UNDEFINED
       case "NOT_AVAILABLE" => NOT_AVAILABLE
       case "BACK_TO_STOCK" => BACK_TO_STOCK
       case "DISCARDED" => DISCARDED

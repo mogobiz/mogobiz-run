@@ -4,14 +4,12 @@ import java.util.Date
 
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import com.mogobiz.pay.model.Mogopay.TransactionStatusRef
 import com.mogobiz.run.json.{JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeDeserializer, JodaDateTimeSerializer}
 import com.mogobiz.run.model.Mogobiz.DeliveryStatus.DeliveryStatus
 import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus.ReturnedItemStatus
-import com.mogobiz.run.model.Mogobiz.{Sku, ReturnedItemStatusRef, ReturnStatusRef, DeliveryStatusRef}
+import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.Mogobiz.ReturnStatus.ReturnStatus
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
-import com.mogobiz.run.model.Render.RegisteredCartItem
 import org.joda.time.DateTime
 
 /**

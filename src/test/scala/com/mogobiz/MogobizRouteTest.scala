@@ -1,5 +1,10 @@
 package com.mogobiz
 
+import java.io.{IOException, File}
+import java.nio.file._
+import java.nio.file.attribute.BasicFileAttributes
+
+import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.es.EmbeddedElasticSearchNode
 import com.mogobiz.system.MogobizSystem
 import org.elasticsearch.node.Node
@@ -30,7 +35,47 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
   // Node ES utilisé pour chaque test. Il est créer puis détruit à chaque test
   var esNode : Node = null
 
-  override def map(fs: =>Fragments) = Step(esNode = startES()) ^ fs ^ Step(stopES(esNode))
+  private def copyDerbyDataBase() : Unit = {
+    val sourceDerby = Paths.get(getClass.getResource("/derby").getPath)
+    val targetDerby = "/tmp/mogobiz/run/test/derby"
+    val targetDerbyPath = Paths.get(targetDerby)
+    val targetDerbyFile = new File(targetDerby)
+
+    if (targetDerbyFile.exists()) {
+      // Suppression du contenu du répertoire
+      Files.walkFileTree(targetDerbyPath, new SimpleFileVisitor[Path]() {
+        override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+          Files.delete(file)
+          FileVisitResult.CONTINUE
+        }
+        override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
+          Files.delete(dir)
+          FileVisitResult.CONTINUE
+        }
+      })
+    }
+
+    // Création du répertoire
+    targetDerbyFile.mkdirs();
+
+    // Copie du répertoire
+    Files.walkFileTree(sourceDerby, new SimpleFileVisitor[Path]() {
+      @Override
+      override def preVisitDirectory(dir:Path, attrs:BasicFileAttributes):FileVisitResult = {
+        Files.createDirectories(targetDerbyPath.resolve(sourceDerby.relativize(dir)))
+        FileVisitResult.CONTINUE
+      }
+
+      @Override
+      override def visitFile(file:Path, attrs:BasicFileAttributes):FileVisitResult = {
+        Files.copy(file, targetDerbyPath.resolve(sourceDerby.relativize(file)))
+        FileVisitResult.CONTINUE
+      }
+    })
+
+  }
+
+  override def map(fs: =>Fragments) = Step(copyDerbyDataBase()) ^ Step(esNode = startES()) ^ fs ^ Step(stopES(esNode))
 
   override def after = prepareRefresh(esNode)
 
