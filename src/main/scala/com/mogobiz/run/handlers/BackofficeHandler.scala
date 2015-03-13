@@ -7,8 +7,10 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers._
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.model.Mogopay.RoleName
-import com.mogobiz.run.exceptions.{MinMaxQuantityException, NotFoundException, NotAuthorizedException}
-import com.mogobiz.run.model.Mogobiz.{BOReturn, ReturnedItemStatus, ReturnStatus, BOReturnedItem}
+import com.mogobiz.run.exceptions.{IllegalStatusException, MinMaxQuantityException, NotFoundException, NotAuthorizedException}
+import com.mogobiz.run.model.Mogobiz.ReturnStatus.ReturnStatus
+import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus.ReturnedItemStatus
+import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl._
@@ -123,6 +125,9 @@ class BackofficeHandler extends JsonUtil with BoService {
     ).getOrElse(throw new NotFoundException(""))
   }
 
+  @throws[NotAuthorizedException]
+  @throws[NotFoundException]
+  @throws[MinMaxQuantityException]
   def createBOReturnedItem(storeCode: String, accountUuid: Option[String], boCartItemUuid: String, quantity: Int, motivation: String) : Unit = {
     val customer = accountUuid.map { uuid =>
       accountHandler.load(uuid).map { account =>
@@ -132,6 +137,7 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     val boCartItem = BOCartItemDao.load(boCartItemUuid).getOrElse(throw new NotFoundException(""))
     val boCart = BOCartDao.findByBOCartItem(boCartItem).getOrElse(throw new NotFoundException(""))
+    if (boCart.buyer != customer.email) throw new NotAuthorizedException("")
 
     if (quantity < 1 || quantity > boCartItem.quantity) throw new MinMaxQuantityException(1, boCartItem.quantity)
 
@@ -150,6 +156,46 @@ class BackofficeHandler extends JsonUtil with BoService {
         bOReturnedItemFk = boReturnedItem.id,
         motivation = Some(motivation),
         status = ReturnStatus.RETURN_SUBMITTED,
+        dateCreated = DateTime.now,
+        lastUpdated = DateTime.now,
+        uuid = UUID.randomUUID().toString))
+
+      cartHandler.exportBOCartIntoES(storeCode, boCart, true)
+    }
+  }
+
+  @throws[NotAuthorizedException]
+  @throws[NotFoundException]
+  @throws[IllegalStatusException]
+  def updateBOReturnedItem(storeCode: String, accountUuid: Option[String], boReturnedItemUuid: String, status: ReturnedItemStatus, refunded : Long, totalRefunded : Long, returnStatus: ReturnStatus, motivation: String) : Unit = {
+    val merchant = accountUuid.map { uuid =>
+      accountHandler.load(uuid).map { account =>
+        account.roles.find { role => role == RoleName.MERCHANT}.map { r => account}
+      }.flatten
+    }.flatten getOrElse (throw new NotAuthorizedException(""))
+
+    val boReturnedItem = BOReturnedItemDao.load(boReturnedItemUuid).getOrElse(throw new NotFoundException(""))
+    val boCartItem = BOCartItemDao.findByBOReturnedItem(boReturnedItem).getOrElse(throw new NotFoundException(""))
+    val boCart = BOCartDao.findByBOCartItem(boCartItem).getOrElse(throw new NotFoundException(""))
+    val lastReturn = BOReturnDao.findByBOReturnedItem(boReturnedItem).head
+
+    // Calcul du nouveau statut en fonction du statut existant
+    val newReturnStatus = (lastReturn.status, returnStatus) match {
+      case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_TO_BE_RECEIVED) => returnStatus
+      case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_REFUSED) => returnStatus
+      case (ReturnStatus.RETURN_TO_BE_RECEIVED, ReturnStatus.RETURN_RECEIVED) => returnStatus
+      case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_ACCEPTED) => returnStatus
+      case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_REFUSED) => returnStatus
+      case (_, _) => throw new IllegalStatusException()
+    }
+
+    DB localTx { implicit session =>
+      BOReturnedItemDao.save(boReturnedItem.copy(status = status, refunded = refunded, totalRefunded = totalRefunded))
+
+      val boReturn = BOReturnDao.create(new BOReturn(id = newId(),
+        bOReturnedItemFk = boReturnedItem.id,
+        motivation = Some(motivation),
+        status = newReturnStatus,
         dateCreated = DateTime.now,
         lastUpdated = DateTime.now,
         uuid = UUID.randomUUID().toString))

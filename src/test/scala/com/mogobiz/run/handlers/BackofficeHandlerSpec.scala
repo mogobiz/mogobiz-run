@@ -3,6 +3,7 @@ package com.mogobiz.run.handlers
 import com.mogobiz.MogobizRouteTest
 import com.mogobiz.run.exceptions.NotFoundException
 import com.mogobiz.run.model.ES.{BOCartItem, BOCart}
+import com.mogobiz.run.model.Mogobiz.ReturnStatus._
 import com.mogobiz.run.model.Mogobiz.{ReturnStatus, ReturnedItemStatus}
 import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
 import org.json4s.JsonAST._
@@ -16,6 +17,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
   val storeCode = "acmesports"
   val merchantUuid = "d7b864c8-4567-4603-abd4-5f85e9ff56e6"
   val customerUuid = "8a53ef3e-34e8-4569-8f68-ac0dfc548a0f"
+  val boCartItemUuid = "734b0e5b-49f0-4dff-9732-8b28b5827518"
 
   "BackofficeHandler list orders" should {
 
@@ -323,20 +325,86 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
 
   "BackofficeHandler" should {
     "create BOReturnedItem for customer" in {
-      val boCartItemUuid = "734b0e5b-49f0-4dff-9732-8b28b5827518"
       handler.createBOReturnedItem(storeCode, Some(customerUuid), boCartItemUuid, 1, "test init return")
 
-      val boCartOpt = BOCartESDao.load(storeCode, "782a1be4-7d4f-458c-80ab-25648590a36c")
-      boCartOpt must beSome[BOCart]
-      val boCartItemOpt =  boCartOpt.get.cartItems.find{boCartItem => boCartItem.uuid == boCartItemUuid}
-      boCartItemOpt must beSome[BOCartItem]
-      boCartItemOpt.get.bOReturnedItems must size(1)
-      boCartItemOpt.get.bOReturnedItems(0).quantity must be_==(1)
-      boCartItemOpt.get.bOReturnedItems(0).status must be_==(ReturnedItemStatus.UNDEFINED)
-      boCartItemOpt.get.bOReturnedItems(0).boReturns must size(1)
-      boCartItemOpt.get.bOReturnedItems(0).boReturns(0).motivation must beSome("test init return")
-      boCartItemOpt.get.bOReturnedItems(0).boReturns(0).status must be_==(ReturnStatus.RETURN_SUBMITTED)
+      val bOReturnedItem = retreiveBoReturnedItem()
+      bOReturnedItem.refunded must be_==(0)
+      bOReturnedItem.totalRefunded must be_==(0)
+      bOReturnedItem.quantity must be_==(1)
+      bOReturnedItem.status must be_==(ReturnedItemStatus.UNDEFINED)
+      bOReturnedItem.boReturns must size(1)
+      bOReturnedItem.boReturns(0).motivation must beSome("test init return")
+      bOReturnedItem.boReturns(0).status must be_==(ReturnStatus.RETURN_SUBMITTED)
     }
+
+    "accepte returned submitted for merchant" in {
+      val boReturnedItemUudi = retreiveBoReturnedItem().uuid
+      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), boReturnedItemUudi, ReturnedItemStatus.UNDEFINED, 0, 0, ReturnStatus.RETURN_TO_BE_RECEIVED, "return is possible")
+
+      val bOReturnedItem = retreiveBoReturnedItem()
+      bOReturnedItem.refunded must be_==(0)
+      bOReturnedItem.totalRefunded must be_==(0)
+      bOReturnedItem.quantity must be_==(1)
+      bOReturnedItem.status must be_==(ReturnedItemStatus.UNDEFINED)
+      bOReturnedItem.boReturns must size(2)
+      bOReturnedItem.boReturns(0).motivation must beSome("return is possible")
+      bOReturnedItem.boReturns(0).status must be_==(ReturnStatus.RETURN_TO_BE_RECEIVED)
+      bOReturnedItem.boReturns(1).motivation must beSome("test init return")
+      bOReturnedItem.boReturns(1).status must be_==(ReturnStatus.RETURN_SUBMITTED)
+    }
+
+    "received returned for merchant" in {
+      val boReturnedItemUudi = retreiveBoReturnedItem().uuid
+      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), boReturnedItemUudi, ReturnedItemStatus.UNDEFINED, 0, 0, ReturnStatus.RETURN_RECEIVED, "item received")
+
+      val bOReturnedItem = retreiveBoReturnedItem()
+      bOReturnedItem.refunded must be_==(0)
+      bOReturnedItem.totalRefunded must be_==(0)
+      bOReturnedItem.quantity must be_==(1)
+      bOReturnedItem.status must be_==(ReturnedItemStatus.UNDEFINED)
+      bOReturnedItem.boReturns must size(3)
+      bOReturnedItem.boReturns(0).motivation must beSome("item received")
+      bOReturnedItem.boReturns(0).status must be_==(ReturnStatus.RETURN_RECEIVED)
+      bOReturnedItem.boReturns(1).motivation must beSome("return is possible")
+      bOReturnedItem.boReturns(1).status must be_==(ReturnStatus.RETURN_TO_BE_RECEIVED)
+      bOReturnedItem.boReturns(2).motivation must beSome("test init return")
+      bOReturnedItem.boReturns(2).status must be_==(ReturnStatus.RETURN_SUBMITTED)
+    }
+
+    "accpete returned for merchant" in {
+      val boReturnedItemUudi = retreiveBoReturnedItem().uuid
+      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), boReturnedItemUudi, ReturnedItemStatus.BACK_TO_STOCK, 1000, 2000, ReturnStatus.RETURN_ACCEPTED, "accepted")
+
+      val bOReturnedItem = retreiveBoReturnedItem()
+      bOReturnedItem.refunded must be_==(1000)
+      bOReturnedItem.totalRefunded must be_==(2000)
+      bOReturnedItem.quantity must be_==(1)
+      bOReturnedItem.status must be_==(ReturnedItemStatus.BACK_TO_STOCK)
+      bOReturnedItem.boReturns must size(4)
+      bOReturnedItem.boReturns(0).motivation must beSome("accepted")
+      bOReturnedItem.boReturns(0).status must be_==(ReturnStatus.RETURN_ACCEPTED)
+      bOReturnedItem.boReturns(1).motivation must beSome("item received")
+      bOReturnedItem.boReturns(1).status must be_==(ReturnStatus.RETURN_RECEIVED)
+      bOReturnedItem.boReturns(2).motivation must beSome("return is possible")
+      bOReturnedItem.boReturns(2).status must be_==(ReturnStatus.RETURN_TO_BE_RECEIVED)
+      bOReturnedItem.boReturns(3).motivation must beSome("test init return")
+      bOReturnedItem.boReturns(3).status must be_==(ReturnStatus.RETURN_SUBMITTED)
+    }
+  }
+
+  private def createBOReturnedItem() : String = {
+    handler.createBOReturnedItem(storeCode, Some(customerUuid), boCartItemUuid, 1, "test init return")
+
+    retreiveBoReturnedItem().uuid
+  }
+
+  private def retreiveBoReturnedItem() = {
+    val boCartOpt = BOCartESDao.load(storeCode, "782a1be4-7d4f-458c-80ab-25648590a36c")
+    boCartOpt must beSome[BOCart]
+    val boCartItemOpt =  boCartOpt.get.cartItems.find{boCartItem => boCartItem.uuid == boCartItemUuid}
+    boCartItemOpt must beSome[BOCartItem]
+    boCartItemOpt.get.bOReturnedItems must size(1)
+    boCartItemOpt.get.bOReturnedItems(0)
   }
 
   private def assertOrder13200(order: JValue) = {

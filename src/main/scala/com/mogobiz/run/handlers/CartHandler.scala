@@ -1283,6 +1283,14 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))
 
+
+  def load(boReturnedItemUuid: String)(implicit session: DBSession = AutoSession):Option[BOReturnedItem] = {
+    val t = BOReturnedItemDao.syntax("t")
+    withSQL {
+      select.from(BOReturnedItemDao as t).where.eq(t.uuid, boReturnedItemUuid)
+    }.map(BOReturnedItemDao(t.resultName)).single().apply()
+  }
+
   def findByBOCartItem(boCartItem: BOCartItem)(implicit session: DBSession): List[BOReturnedItem] = {
     val t = BOReturnedItemDao.syntax("t")
     withSQL {
@@ -1307,6 +1315,21 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
 
     boReturnedItem
   }
+
+  def save(boReturnedItem : BOReturnedItem)(implicit session: DBSession) : BOReturnedItem = {
+    val updatedBoReturnedItem = boReturnedItem.copy(lastUpdated = DateTime.now())
+
+    withSQL {
+      update(BOReturnedItemDao).set(
+        BOReturnedItemDao.column.refunded -> updatedBoReturnedItem.refunded,
+        BOReturnedItemDao.column.totalRefunded -> updatedBoReturnedItem.totalRefunded,
+        BOReturnedItemDao.column.status -> updatedBoReturnedItem.status.toString(),
+        BOReturnedItemDao.column.lastUpdated -> updatedBoReturnedItem.lastUpdated
+      ).where.eq(BOReturnedItemDao.column.id, updatedBoReturnedItem.id)
+    }.update.apply()
+
+    updatedBoReturnedItem
+  }
 }
 
 object BOReturnDao extends SQLSyntaxSupport[BOReturn] with BoService {
@@ -1322,10 +1345,10 @@ object BOReturnDao extends SQLSyntaxSupport[BOReturn] with BoService {
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))
 
-  def findByBOReturnedItem(boReturnedItem: BOReturnedItem)(implicit session: DBSession): List[BOReturn] = {
+  def findByBOReturnedItem(boReturnedItem: BOReturnedItem)(implicit session: DBSession = AutoSession): List[BOReturn] = {
     val t = BOReturnDao.syntax("t")
     withSQL {
-      select.from(BOReturnDao as t).where.eq(t.bOReturnedItemFk, boReturnedItem.id)
+      select.from(BOReturnDao as t).where.eq(t.bOReturnedItemFk, boReturnedItem.id).orderBy(t.dateCreated).desc
     }.map(BOReturnDao(t.resultName)).list().apply()
   }
 
@@ -1423,6 +1446,13 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     withSQL {
       select.from(BOCartItemDao as t).where.eq(t.bOCartFk, boCart.id)
     }.map(BOCartItemDao(t.resultName)).list().apply()
+  }
+
+  def findByBOReturnedItem(boReturnedItem:BOReturnedItem)(implicit session: DBSession = AutoSession):Option[BOCartItem] = {
+    val t = BOCartItemDao.syntax("t")
+    withSQL {
+      select.from(BOCartItemDao as t).where.eq(t.id, boReturnedItem.bOCartItemFk)
+    }.map(BOCartItemDao(t.resultName)).single().apply()
   }
 
   def load(boCartItemUuid: String)(implicit session: DBSession = AutoSession):Option[BOCartItem] = {
