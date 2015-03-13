@@ -60,15 +60,22 @@ object ES {
                         extra: Option[String] = None,
                         uuid: String)
 
-  case class BOReturnedItem(motivation: Option[String],
-                            @JsonScalaEnumeration(classOf[ReturnStatusRef])
-                            returnStatus: ReturnStatus,
-                            quantity: Int,
+  case class BOReturnedItem(quantity: Int,
                             refunded: Long,
                             totalRefunded: Long,
                             @JsonScalaEnumeration(classOf[ReturnedItemStatusRef])
                             status: ReturnedItemStatus,
+                            boReturns: List[BOReturn],
+                            dateCreated:Date,
+                            lastUpdated:Date,
                             uuid: String)
+
+  case class BOReturn(motivation: Option[String],
+                      @JsonScalaEnumeration(classOf[ReturnStatusRef])
+                      status: ReturnStatus,
+                      dateCreated:Date,
+                      lastUpdated:Date,
+                      uuid : String)
 
   case class BOProduct(acquittement:Boolean,
                        principal:Boolean,
@@ -76,6 +83,7 @@ object ES {
                        product:Product,
                        registeredCartItem: List[BORegisteredCartItem],
                        uuid : String)
+
 
   case class BORegisteredCartItem(age:Int,
                                   quantity:Int,
@@ -96,5 +104,4 @@ object ES {
                                   @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                                   endDate:Option[DateTime],
                                   uuid:String)
-
 }

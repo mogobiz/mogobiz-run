@@ -13,11 +13,9 @@ import com.mogobiz.run.handlers.EmailHandler.Mail
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.{CartRegistration, UserActionRegistration}
 import com.mogobiz.run.model.Learning.UserAction
-import com.mogobiz.run.model.Mogobiz.DeliveryStatus
-import com.mogobiz.run.model.Mogobiz.TransactionStatus
-import com.mogobiz.run.model.Mogobiz.TransactionStatus._
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.ES.{BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES}
+import com.mogobiz.run.model.Mogobiz.TransactionStatus._
+import com.mogobiz.run.model.ES.{BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES}
 import com.mogobiz.run.model.Render.{Coupon, RegisteredCartItem, CartItem, Cart}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
@@ -433,7 +431,6 @@ class CartHandler {
    * @param buyer
    * @param company
    * @param shippingAddress
-   * @param session
    * @return
    */
   private def _createBOCart(storeCart: StoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String) : StoreCart = {
@@ -991,92 +988,98 @@ class CartHandler {
     )
   }
 
-  def exportBOCartIntoES(storeCode: String, boCart: BOCart) = {
-    DB readOnly { implicit session =>
-
-      // Conversion des BOCartItem
-      val cartItems = BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
-        // Conversion des BOProducts
-        val boProducts = BOCartItemDao.getBOProducts(boCartItem).map { boProduct =>
-          // Convertion des BOTicketType
-          val boRegisteredCartItems = BOTicketTypeDao.findByBOProduct(boProduct.id).map { boTicketType =>
-            // Instanciation du BORegisteredCartItem pour ES
-            BORegisteredCartItemES(age = boTicketType.age,
-              quantity = boTicketType.quantity,
-              price = boTicketType.price,
-              ticketType = boTicketType.ticketType,
-              firstname = boTicketType.firstname,
-              lastname = boTicketType.lastname,
-              email = boTicketType.email,
-              phone = boTicketType.phone,
-              birthdate = boTicketType.birthdate,
-              shortCode = boTicketType.shortCode,
-              startDate = boTicketType.startDate,
-              endDate = boTicketType.endDate,
-              uuid = boTicketType.uuid)
-          }
-
-          // Instanciation du BOProduct pour ES
-          BOProductES(acquittement = boProduct.acquittement,
-            principal = boProduct.principal,
-            price = boProduct.price,
-            product = ProductDao.get(storeCode, boProduct.productFk).get,
-            registeredCartItem = boRegisteredCartItems,
-            uuid = boProduct.uuid)
+  def exportBOCartIntoES(storeCode: String, boCart: BOCart, refresh: Boolean = false)(implicit session : DBSession = AutoSession) = {
+    // Conversion des BOCartItem
+    val cartItems = BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
+      // Conversion des BOProducts
+      val boProducts = BOCartItemDao.getBOProducts(boCartItem).map { boProduct =>
+        // Convertion des BOTicketType
+        val boRegisteredCartItems = BOTicketTypeDao.findByBOProduct(boProduct.id).map { boTicketType =>
+          // Instanciation du BORegisteredCartItem pour ES
+          BORegisteredCartItemES(age = boTicketType.age,
+            quantity = boTicketType.quantity,
+            price = boTicketType.price,
+            ticketType = boTicketType.ticketType,
+            firstname = boTicketType.firstname,
+            lastname = boTicketType.lastname,
+            email = boTicketType.email,
+            phone = boTicketType.phone,
+            birthdate = boTicketType.birthdate,
+            shortCode = boTicketType.shortCode,
+            startDate = boTicketType.startDate,
+            endDate = boTicketType.endDate,
+            uuid = boTicketType.uuid)
         }
 
-        // Convertion du BODelivery pour ES
-        val boDeliveryEs = BODeliveryDao.findByBOCartItem(boCartItem).map { boDelivery =>
-          new BODeliveryES(status = boDelivery.status,
-            tracking = boDelivery.tracking,
-            extra = boDelivery.extra,
-            uuid = boDelivery.uuid)
-        }
-
-        // Concertion des BOReturnedItem pour ES
-        val boReturnedItems = BOReturnedItemDao.findByBOCartItem(boCartItem).map { boReturnedItem =>
-          val boreturn = BOReturnDao.findByBOReturnedItem(boReturnedItem).get
-
-          BOReturnedItemES(motivation = boreturn.motivation,
-            returnStatus = boreturn.status,
-            quantity = boReturnedItem.quantity,
-            refunded = boReturnedItem.refunded,
-            totalRefunded = boReturnedItem.totalRefunded,
-            status = boReturnedItem.status,
-            uuid = boReturnedItem.uuid)
-        }
-
-        BOCartItemES(code = boCartItem.code,
-          price = boCartItem.price,
-          tax = boCartItem.tax,
-          endPrice = boCartItem.endPrice,
-          totalPrice = boCartItem.totalPrice,
-          totalEndPrice = boCartItem.totalEndPrice,
-          hidden = boCartItem.hidden,
-          quantity = boCartItem.quantity,
-          startDate = boCartItem.startDate,
-          endDate = boCartItem.endDate,
-          sku = ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).get._2,
-          bOProducts = boProducts,
-          bODelivery = boDeliveryEs,
-          bOReturnedItems = boReturnedItems,
-          uuid = boCartItem.uuid)
+        // Instanciation du BOProduct pour ES
+        BOProductES(acquittement = boProduct.acquittement,
+          principal = boProduct.principal,
+          price = boProduct.price,
+          product = ProductDao.get(storeCode, boProduct.productFk).get,
+          registeredCartItem = boRegisteredCartItems,
+          uuid = boProduct.uuid)
       }
 
-      val boCartES = new BOCartES(transactionUuid = boCart.transactionUuid,
-        buyer = boCart.buyer,
-        xdate = boCart.xdate,
-        price = boCart.price,
-        status = boCart.status,
-        currencyCode = boCart.currencyCode,
-        currencyRate = boCart.currencyRate,
-        cartItems = cartItems,
-        dateCreated = boCart.dateCreated.toDate,
-        lastUpdated = boCart.lastUpdated.toDate,
-        uuid = boCart.uuid)
+      // Convertion du BODelivery pour ES
+      val boDelivery = BODeliveryDao.findByBOCartItem(boCartItem).map { boDelivery =>
+        new BODeliveryES(status = boDelivery.status,
+          tracking = boDelivery.tracking,
+          extra = boDelivery.extra,
+          uuid = boDelivery.uuid)
+      }
 
-      BOCartESDao.save(storeCode, boCartES)
+      // Concertion des BOReturnedItem pour ES
+      val boReturnedItems = BOReturnedItemDao.findByBOCartItem(boCartItem).map { boReturnedItem =>
+        val boReturns = BOReturnDao.findByBOReturnedItem(boReturnedItem).map { boReturn =>
+          BOReturnES(
+            motivation = boReturn.motivation,
+            status = boReturn.status,
+            dateCreated = boReturn.dateCreated.toDate,
+            lastUpdated = boReturn.lastUpdated.toDate,
+            uuid = boReturn.uuid)
+        }
+
+        BOReturnedItemES(
+          quantity = boReturnedItem.quantity,
+          refunded = boReturnedItem.refunded,
+          totalRefunded = boReturnedItem.totalRefunded,
+          status = boReturnedItem.status,
+          boReturns = boReturns,
+          dateCreated = boReturnedItem.dateCreated.toDate,
+          lastUpdated = boReturnedItem.lastUpdated.toDate,
+          uuid = boReturnedItem.uuid)
+      }
+
+      BOCartItemES(code = boCartItem.code,
+        price = boCartItem.price,
+        tax = boCartItem.tax,
+        endPrice = boCartItem.endPrice,
+        totalPrice = boCartItem.totalPrice,
+        totalEndPrice = boCartItem.totalEndPrice,
+        hidden = boCartItem.hidden,
+        quantity = boCartItem.quantity,
+        startDate = boCartItem.startDate,
+        endDate = boCartItem.endDate,
+        sku = ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).get._2,
+        bOProducts = boProducts,
+        bODelivery = boDelivery,
+        bOReturnedItems = boReturnedItems,
+        uuid = boCartItem.uuid)
     }
+
+    val boCartES = new BOCartES(transactionUuid = boCart.transactionUuid,
+      buyer = boCart.buyer,
+      xdate = boCart.xdate,
+      price = boCart.price,
+      status = boCart.status,
+      currencyCode = boCart.currencyCode,
+      currencyRate = boCart.currencyRate,
+      cartItems = cartItems,
+      dateCreated = boCart.dateCreated.toDate,
+      lastUpdated = boCart.lastUpdated.toDate,
+      uuid = boCart.uuid)
+
+    BOCartESDao.save(storeCode, boCartES, refresh)
   }
 }
 
@@ -1112,8 +1115,8 @@ object BOCartESDao {
 
   def buildIndex(storeCode: String) = s"${storeCode}_bo"
 
-  def save(storeCode: String, boCart: BOCartES): Boolean = {
-    EsClient.update[BOCartES](buildIndex(storeCode), boCart, true, false)
+  def save(storeCode: String, boCart: BOCartES, refresh: Boolean = false): Boolean = {
+    EsClient.update[BOCartES](buildIndex(storeCode), boCart, true, refresh)
   }
 
   def delete(storeCode: String, uuid: String) : Unit = {
@@ -1144,6 +1147,11 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
     DB readOnly { implicit session =>
       withSQL {select.from(BOCartDao as t).where.eq(t.uuid, uuid)}.map(BOCartDao(t.resultName)).single().apply()
     }
+  }
+
+  def findByBOCartItem(boCartItem: BOCartItem)(implicit session: DBSession = AutoSession) : Option[BOCart] = {
+    val t = BOCartDao.syntax("t")
+    withSQL {select.from(BOCartDao as t).where.eq(t.id, boCartItem.bOCartFk)}.map(BOCartDao(t.resultName)).single().apply()
   }
 
   def updateStatus(boCart: BOCart) : Unit = {
@@ -1263,7 +1271,6 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
   def apply(rn: ResultName[BOReturnedItem])(rs:WrappedResultSet): BOReturnedItem = new BOReturnedItem(
     rs.get(rn.id),
     rs.get(rn.bOCartItemFk),
-    rs.get(rn.bOReturnFk),
     rs.get(rn.quantity),
     rs.get(rn.refunded),
     rs.get(rn.totalRefunded),
@@ -1278,6 +1285,24 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
       select.from(BOReturnedItemDao as t).where.eq(t.bOCartItemFk, boCartItem.id)
     }.map(BOReturnedItemDao(t.resultName)).list().apply()
   }
+
+  def create(boReturnedItem : BOReturnedItem)(implicit session: DBSession) : BOReturnedItem = {
+    applyUpdate {
+      insert.into(BOReturnedItemDao).namedValues(
+        BOReturnedItemDao.column.id -> boReturnedItem.id,
+        BOReturnedItemDao.column.bOCartItemFk -> boReturnedItem.bOCartItemFk,
+        BOReturnedItemDao.column.quantity -> boReturnedItem.quantity,
+        BOReturnedItemDao.column.refunded -> boReturnedItem.refunded,
+        BOReturnedItemDao.column.totalRefunded -> boReturnedItem.totalRefunded,
+        BOReturnedItemDao.column.status -> boReturnedItem.status.toString(),
+        BOReturnedItemDao.column.dateCreated -> boReturnedItem.dateCreated,
+        BOReturnedItemDao.column.lastUpdated -> boReturnedItem.lastUpdated,
+        BOReturnedItemDao.column.uuid -> boReturnedItem.uuid
+      )
+    }
+
+    boReturnedItem
+  }
 }
 
 object BOReturnDao extends SQLSyntaxSupport[BOReturn] with BoService {
@@ -1286,18 +1311,34 @@ object BOReturnDao extends SQLSyntaxSupport[BOReturn] with BoService {
 
   def apply(rn: ResultName[BOReturn])(rs:WrappedResultSet): BOReturn = new BOReturn(
     rs.get(rn.id),
-    rs.get(rn.bOCartFk),
+    rs.get(rn.bOReturnedItemFk),
     rs.get(rn.motivation),
     ReturnStatus(rs.get(rn.status)),
     rs.get(rn.dateCreated),
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))
 
-  def findByBOReturnedItem(boReturnedItem: BOReturnedItem)(implicit session: DBSession): Option[BOReturn] = {
+  def findByBOReturnedItem(boReturnedItem: BOReturnedItem)(implicit session: DBSession): List[BOReturn] = {
     val t = BOReturnDao.syntax("t")
     withSQL {
-      select.from(BOReturnDao as t).where.eq(t.id, boReturnedItem.bOReturnFk)
-    }.map(BOReturnDao(t.resultName)).single().apply()
+      select.from(BOReturnDao as t).where.eq(t.bOReturnedItemFk, boReturnedItem.id)
+    }.map(BOReturnDao(t.resultName)).list().apply()
+  }
+
+  def create(boReturn : BOReturn)(implicit session: DBSession) : BOReturn = {
+    applyUpdate {
+      insert.into(BOReturnDao).namedValues(
+        BOReturnDao.column.id -> boReturn.id,
+        BOReturnDao.column.bOReturnedItemFk -> boReturn.bOReturnedItemFk,
+        BOReturnDao.column.motivation -> boReturn.motivation,
+        BOReturnDao.column.status -> boReturn.status.toString(),
+        BOReturnDao.column.dateCreated -> boReturn.dateCreated,
+        BOReturnDao.column.lastUpdated -> boReturn.lastUpdated,
+        BOReturnDao.column.uuid -> boReturn.uuid
+      )
+    }
+
+    boReturn
   }
 }
 
@@ -1373,14 +1414,21 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     newBOCartItem
   }
 
-  def findByBOCart(boCart:BOCart)(implicit session: DBSession):List[BOCartItem] = {
+  def findByBOCart(boCart:BOCart)(implicit session: DBSession = AutoSession):List[BOCartItem] = {
     val t = BOCartItemDao.syntax("t")
     withSQL {
       select.from(BOCartItemDao as t).where.eq(t.bOCartFk, boCart.id)
     }.map(BOCartItemDao(t.resultName)).list().apply()
   }
 
-  def getBOProducts(boCartItem: BOCartItem)(implicit session: DBSession): List[BOProduct] = {
+  def load(boCartItemId: Long)(implicit session: DBSession = AutoSession):Option[BOCartItem] = {
+    val t = BOCartItemDao.syntax("t")
+    withSQL {
+      select.from(BOCartItemDao as t).where.eq(t.id, boCartItemId)
+    }.map(BOCartItemDao(t.resultName)).single().apply()
+  }
+
+  def getBOProducts(boCartItem: BOCartItem)(implicit session: DBSession = AutoSession): List[BOProduct] = {
     sql"select p.* from b_o_cart_item_b_o_product ass inner join b_o_product p on ass.boproduct_id=p.id where b_o_products_fk=${boCartItem.id}"
       .map(rs => BOProductDao(rs)).list().apply()
   }

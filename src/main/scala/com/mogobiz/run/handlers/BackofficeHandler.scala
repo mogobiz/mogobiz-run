@@ -1,29 +1,30 @@
 package com.mogobiz.run.handlers
 
-import java.text.DateFormat
-import java.util.Locale
+import java.util.{UUID, Locale}
 
 import com.mogobiz.es._
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers._
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.model.Mogopay.RoleName
-import com.mogobiz.run.exceptions.{NotFoundException, NotAuthorizedException}
+import com.mogobiz.run.exceptions.{MinMaxQuantityException, NotFoundException, NotAuthorizedException}
+import com.mogobiz.run.model.Mogobiz.{BOReturn, ReturnedItemStatus, ReturnStatus, BOReturnedItem}
 import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest}
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.mogobiz.run.es._
 import org.elasticsearch.common.joda.time.format.ISODateTimeFormat
-import org.elasticsearch.search.SearchHit
 import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
 import org.json4s.JsonAST._
 import com.mogobiz.json.JsonUtil
+import com.mogobiz.run.config.HandlersConfig.cartHandler
+import scalikejdbc.DB
 
 /**
  * Created by yoannbaudy on 19/02/2015.
  */
-class BackofficeHandler extends JsonUtil {
+class BackofficeHandler extends JsonUtil with BoService {
 
   private val mogopayIndex = Settings.Mogopay.EsIndex
 
@@ -120,6 +121,41 @@ class BackofficeHandler extends JsonUtil {
     EsClient.searchRaw(
       search in BOCartESDao.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid", esTransactionUuid)
     ).getOrElse(throw new NotFoundException(""))
+  }
+
+  def createBOReturnedItem(storeCode: String, accountUuid: Option[String], boCartItemId: Long, quantity: Int, motivation: String) : Unit = {
+    val customer = accountUuid.map { uuid =>
+      accountHandler.load(uuid).map { account =>
+        account.roles.find{role => role == RoleName.CUSTOMER}.map{r => account}
+      }.flatten
+    }.flatten getOrElse(throw new NotAuthorizedException(""))
+
+    val boCartItem = BOCartItemDao.load(boCartItemId).getOrElse(throw new NotFoundException(""))
+    val boCart = BOCartDao.findByBOCartItem(boCartItem).getOrElse(throw new NotFoundException(""))
+
+    if (quantity < 1 || quantity > boCartItem.quantity) throw new MinMaxQuantityException(1, boCartItem.quantity)
+
+    DB localTx { implicit session =>
+      val boReturnedItem = BOReturnedItemDao.create(new BOReturnedItem(id = newId(),
+        bOCartItemFk = boCartItem.id,
+        quantity = quantity,
+        refunded = 0,
+        totalRefunded = 0,
+        status = ReturnedItemStatus.UNDEFINED,
+        dateCreated = DateTime.now,
+        lastUpdated = DateTime.now,
+        uuid = UUID.randomUUID().toString))
+
+      val boReturn = BOReturnDao.create(new BOReturn(id = newId(),
+        bOReturnedItemFk = boReturnedItem.id,
+        motivation = Some(motivation),
+        status = ReturnStatus.RETURN_SUBMITTED,
+        dateCreated = DateTime.now,
+        lastUpdated = DateTime.now,
+        uuid = UUID.randomUUID().toString))
+
+      cartHandler.exportBOCartIntoES(storeCode, boCart, true)
+    }
   }
 
   private def completeBOTransactionWithDeliveryStatus(storeCode: String) : PartialFunction[JValue, JValue] = {

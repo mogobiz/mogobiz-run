@@ -243,7 +243,7 @@ object Mogobiz {
                         uuid: String)
 
   case class BOReturn(id: Long,
-                      bOCartFk: Long,
+                      bOReturnedItemFk: Long,
                       motivation: Option[String],
                       @JsonScalaEnumeration(classOf[ReturnStatusRef])
                       status: ReturnStatus,
@@ -253,7 +253,6 @@ object Mogobiz {
 
   case class BOReturnedItem(id: Long,
                             bOCartItemFk: Long,
-                            bOReturnFk: Long,
                             quantity: Int,
                             refunded: Long,
                             totalRefunded: Long,
@@ -420,6 +419,7 @@ object Mogobiz {
   object ReturnedItemStatus extends Enumeration {
     class ReturnedItemStatusType(s: String) extends Val(s)
     type ReturnedItemStatus = ReturnedItemStatusType
+    val UNDEFINED = new ReturnedItemStatusType("UNDEFINED")
     val NOT_AVAILABLE = new ReturnedItemStatusType("NOT_AVAILABLE")
     val BACK_TO_STOCK = new ReturnedItemStatusType("BACK_TO_STOCK")
     val DISCARDED = new ReturnedItemStatusType("DISCARDED")
