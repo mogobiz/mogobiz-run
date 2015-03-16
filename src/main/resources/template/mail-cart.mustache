@@ -17,11 +17,8 @@ Thank You for your command.<br/>
         {{email}} {{firstname}} {{lastname}}<br/>
         <img src="{{qrCodeContent}}" /><br/>
     {{/registeredCartItemVOs}}
-    {{#downloadableLink}}
-        link test 1 {{.}}
-    {{/downloadableLink}}
     {{#downloadableLink?}}
-        link test 2 {{.}}
+        {{.}}
     {{/downloadableLink?}}
 {{/cartItemVOs}}
 </body>

@@ -799,7 +799,7 @@ class CartHandler {
       val newCartItem = CartItem(cartItem.id, cartItem.productId, cartItem.productName, cartItem.xtype, cartItem.calendarType,
         cartItem.skuId, cartItem.skuName, cartItem.quantity, price, endPrice, tax, totalPrice, totalEndPrice,
         salePrice, saleEndPrice, saleTotalPrice, saleTotalEndPrice,
-        cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping)
+        cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping, cartItem.downloadableLink.getOrElse(null))
 
       (priceEndPriceAndCartItems._1 + saleTotalPrice, priceEndPriceAndCartItems._2 + saleTotalEndPrice.getOrElse(saleTotalPrice), newCartItem :: priceEndPriceAndCartItems._3)
     }

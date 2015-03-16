@@ -18,11 +18,28 @@ object Render {
   case class Cart(price: Long = 0, endPrice: Long = 0, reduction: Long = 0, finalPrice: Long = 0, count: Int = 0,
                   cartItemVOs: Array[CartItem] = Array(), coupons: Array[Coupon] = Array())
 
-  case class CartItem
-  (id: String, productId: Long, productName: String, xtype: ProductType, calendarType: ProductCalendar, skuId: Long, skuName: String,
-   quantity: Int, price: Long, endPrice: Option[Long], tax: Option[Float], totalPrice: Long, totalEndPrice: Option[Long],
-   salePrice: Long, saleEndPrice: Option[Long], saleTotalPrice: Long, saleTotalEndPrice: Option[Long],
-   startDate: Option[DateTime], endDate: Option[DateTime], registeredCartItemVOs: Array[RegisteredCartItem], shipping: Option[Shipping])
+  case class CartItem(id: String,
+                      productId: Long,
+                      productName: String,
+                      xtype: ProductType,
+                      calendarType: ProductCalendar,
+                      skuId: Long,
+                      skuName: String,
+                      quantity: Int,
+                      price: Long,
+                      endPrice: Option[Long],
+                      tax: Option[Float],
+                      totalPrice: Long,
+                      totalEndPrice: Option[Long],
+                      salePrice: Long,
+                      saleEndPrice: Option[Long],
+                      saleTotalPrice: Long,
+                      saleTotalEndPrice: Option[Long],
+                      startDate: Option[DateTime],
+                      endDate: Option[DateTime],
+                      registeredCartItemVOs: Array[RegisteredCartItem],
+                      shipping: Option[Shipping],
+                      downloadableLink: String)
 
   case class Coupon(id: Long,
                     name: String,
