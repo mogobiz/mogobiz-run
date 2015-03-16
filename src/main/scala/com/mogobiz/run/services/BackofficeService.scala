@@ -31,23 +31,21 @@ class BackofficeService(storeCode: String) extends Directives with DefaultComple
             listCustomers(accountUuid)
           }
         } ~
-        path("cartDetails" / Segment) { transactionUuid =>
+        pathPrefix("cartDetails" / Segment) { transactionUuid =>
           pathEnd {
             get {
               cartDetails(accountUuid, transactionUuid)
             }
           } ~
-          path(Segment) { boCartItemUuid =>
+          pathPrefix(Segment) { boCartItemUuid =>
             pathEnd {
               post {
                 createBoReturnedItem(accountUuid, transactionUuid, boCartItemUuid)
               }
             } ~
             path(Segment) { boReturnedUuid =>
-              pathEnd {
-                put {
-                  updateBoReturnedItem(accountUuid, transactionUuid, boCartItemUuid, boReturnedUuid)
-                }
+              put {
+                updateBoReturnedItem(accountUuid, transactionUuid, boCartItemUuid, boReturnedUuid)
               }
             }
           }
