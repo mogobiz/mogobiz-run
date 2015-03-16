@@ -342,10 +342,10 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     "accepte returned submitted for merchant" in {
       val boReturnedItemUudi = retreiveBoReturnedItem().uuid
       val req = new UpdateBOReturnedItemRequest(
-        status = ReturnedItemStatus.UNDEFINED,
+        status = ReturnedItemStatus.UNDEFINED.toString(),
         refunded = 0,
         totalRefunded = 0,
-        returnStatus = ReturnStatus.RETURN_TO_BE_RECEIVED,
+        returnStatus = ReturnStatus.RETURN_TO_BE_RECEIVED.toString(),
         motivation = "return is possible"
       )
       handler.updateBOReturnedItem(storeCode, Some(merchantUuid), transactionUuid, boCartItemUuid, boReturnedItemUudi, req)
@@ -365,10 +365,10 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     "received returned for merchant" in {
       val boReturnedItemUudi = retreiveBoReturnedItem().uuid
       val req = new UpdateBOReturnedItemRequest(
-        status = ReturnedItemStatus.UNDEFINED,
+        status = ReturnedItemStatus.UNDEFINED.toString(),
         refunded = 0,
         totalRefunded = 0,
-        returnStatus = ReturnStatus.RETURN_RECEIVED,
+        returnStatus = ReturnStatus.RETURN_RECEIVED.toString(),
         motivation = "item received"
       )
       handler.updateBOReturnedItem(storeCode, Some(merchantUuid), transactionUuid, boCartItemUuid, boReturnedItemUudi, req)
@@ -390,10 +390,10 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
     "accpete returned for merchant" in {
       val boReturnedItemUudi = retreiveBoReturnedItem().uuid
       val req = new UpdateBOReturnedItemRequest(
-        status = ReturnedItemStatus.BACK_TO_STOCK,
+        status = ReturnedItemStatus.BACK_TO_STOCK.toString(),
         refunded = 1000,
         totalRefunded = 2000,
-        returnStatus = ReturnStatus.RETURN_ACCEPTED,
+        returnStatus = ReturnStatus.RETURN_ACCEPTED.toString(),
         motivation = "accepted"
       )
       handler.updateBOReturnedItem(storeCode, Some(merchantUuid), transactionUuid, boCartItemUuid, boReturnedItemUudi, req)

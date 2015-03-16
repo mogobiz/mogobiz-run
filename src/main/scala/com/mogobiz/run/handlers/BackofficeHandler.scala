@@ -183,7 +183,8 @@ class BackofficeHandler extends JsonUtil with BoService {
     val lastReturn = BOReturnDao.findByBOReturnedItem(boReturnedItem).head
 
     // Calcul du nouveau statut en fonction du statut existant
-    val newReturnStatus = (lastReturn.status, req.returnStatus) match {
+    val newStatus = ReturnedItemStatus(req.status)
+    val newReturnStatus = (lastReturn.status, ReturnStatus(req.returnStatus)) match {
       case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_TO_BE_RECEIVED) => ReturnStatus.RETURN_TO_BE_RECEIVED
       case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_REFUSED) => ReturnStatus.RETURN_REFUSED
       case (ReturnStatus.RETURN_TO_BE_RECEIVED, ReturnStatus.RETURN_RECEIVED) => ReturnStatus.RETURN_RECEIVED
@@ -193,7 +194,7 @@ class BackofficeHandler extends JsonUtil with BoService {
     }
 
     DB localTx { implicit session =>
-      BOReturnedItemDao.save(boReturnedItem.copy(status = req.status, refunded = req.refunded, totalRefunded = req.totalRefunded))
+      BOReturnedItemDao.save(boReturnedItem.copy(status = newStatus, refunded = req.refunded, totalRefunded = req.totalRefunded))
 
       val boReturn = BOReturnDao.create(new BOReturn(id = newId(),
         bOReturnedItemFk = boReturnedItem.id,

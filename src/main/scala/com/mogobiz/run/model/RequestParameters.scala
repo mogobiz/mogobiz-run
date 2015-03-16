@@ -159,6 +159,6 @@ object RequestParameters {
 
   case class CreateBOReturnedItemRequest(quantity: Int, motivation: String)
 
-  case class UpdateBOReturnedItemRequest(status: ReturnedItemStatus, refunded : Long, totalRefunded : Long, returnStatus: ReturnStatus, motivation: String)
+  case class UpdateBOReturnedItemRequest(status: String, refunded : Long, totalRefunded : Long, returnStatus: String, motivation: String)
 
 }
