@@ -53,7 +53,9 @@ case class StoreCartItem(id: String,
                          @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                          endDate: Option[DateTime],
                          registeredCartItems: List[RegisteredCartItem],
-                         shipping: Option[Shipping])
+                         shipping: Option[Shipping],
+                         boCartItemId: Option[Long],
+                         downloadableLink: Option[String])
 
 case class StoreCoupon(id: Long, code : String)
 

@@ -140,6 +140,8 @@ object Mogobiz {
                      datePeriods:Option[List[DatePeriod]],
                      poi: Option[Poi],
                      nbSales: Long,
+                     downloadMaxTimes: Long,
+                     downloadMaxDelay: Long,
                      var lastUpdated: Date,
                      var dateCreated: Date)
 
