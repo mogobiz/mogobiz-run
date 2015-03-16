@@ -385,13 +385,14 @@ class CartHandler {
             val sku = productAndSku.get._2
             salesHandler.incrementSales(transactionCart.storeCode, product, sku, cartItem.quantity)
 
-            cartItem.downloadableLink.map { downloadableLink =>
-              cartItem.boCartItemId.map {boCartItemId =>
-                val srcFile = Paths.get(s"${Settings.ResourcesRootPath}/resources/$storeCode/sku/${cartItem.skuId}")
-                if (Files.exists(srcFile)) {
-                  val targetFile = Paths.get(s"${Settings.ResourcesRootPath}/download/$boCartItemId")
-                  Files.copy(srcFile, targetFile)
+            cartItem.downloadableLink.map { downloadableLink: String =>
+              val srcFile = Paths.get(s"${Settings.ResourcesRootPath}/resources/$storeCode/sku/${cartItem.skuId}")
+              if (Files.exists(srcFile)) {
+                val targetFile = Paths.get(s"${Settings.ResourcesRootPath}/download/${cartItem.boCartItemId.get}")
+                if (!Files.exists(targetFile.getParent)) {
+                  Files.createDirectories(targetFile.getParent)
                 }
+                Files.copy(srcFile, targetFile)
               }
             }
           }
