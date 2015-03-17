@@ -388,7 +388,7 @@ class CartHandler {
             cartItem.downloadableLink.map { downloadableLink: String =>
               val srcFile = Paths.get(s"${Settings.ResourcesRootPath}/resources/$storeCode/sku/${cartItem.skuId}")
               if (Files.exists(srcFile)) {
-                val targetFile = Paths.get(s"${Settings.ResourcesRootPath}/download/${cartItem.boCartItemId.get}")
+                val targetFile = Paths.get(s"${Settings.ResourcesRootPath}/download/${cartItem.boCartItemUuid.get}")
                 if (!Files.exists(targetFile.getParent)) {
                   Files.createDirectories(targetFile.getParent)
                 }
@@ -493,16 +493,16 @@ class CartHandler {
         val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
 
         // Downloadable Ling
-        val boCartItemId = BOCartItemDao.create(sku, cartItem, boCart, Some(boDelivery), boProduct.id).id
+        val boCartItemUuid = BOCartItemDao.create(sku, cartItem, boCart, Some(boDelivery), boProduct.id).uuid
         val downloadableLink = product.xtype match {
           case ProductType.DOWNLOADABLE => {
-            val params = s"BoCartItemId:$boCartItemId;storeCode:$storeCode;maxDelay:${product.downloadMaxDelay}};maxTimes:${product.downloadMaxTimes}"
+            val params = s"boCartItemUuid:$boCartItemUuid;storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
             val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES")
-            Some(s"${Settings.accessUrl}/download/$encryptedParams")
+            Some(s"${Settings.accessUrl}/store/$storeCode/download/$encryptedParams")
           }
           case _ => None
         }
-        storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList, boCartItemId = Some(boCartItemId), downloadableLink = downloadableLink)
+        storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
       }
       (boCart, storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList))
     }}

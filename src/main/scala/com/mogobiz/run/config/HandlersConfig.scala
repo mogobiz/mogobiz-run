@@ -27,4 +27,5 @@ object HandlersConfig {
   val backofficeHandler = new BackofficeHandler
 
   val learningHandler = new LearningHandler
+  val validatorHandler = new ValidatorHandler
 }
