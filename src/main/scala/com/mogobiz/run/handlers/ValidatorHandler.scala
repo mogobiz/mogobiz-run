@@ -30,15 +30,15 @@ class ValidatorHandler {
     val paramMaxDelay=paramsMap.find{kv => kv._1 == "maxDelay"}.getOrElse(throw new NotFoundException(""))._2.toInt
     val paramMaxTimes=paramsMap.find{kv => kv._1 == "maxTimes"}.getOrElse(throw new NotFoundException(""))._2.toInt
 
-    val expiredDate = DateTime.now().plusDays(paramMaxDelay).toLocalDate
-
     DB localTx { implicit session =>
       val boCartItem = BOCartItemDao.load(paramBOCartItemUuid).getOrElse(throw new NotFoundException(""))
       val boProducts = BOCartItemDao.getBOProducts(boCartItem)
 
+      val expiredDate = boCartItem.dateCreated.plusDays(paramMaxDelay).toLocalDate
+
       if (storeCode == paramStoreCode &&
-          !expiredDate.isBefore(DateTime.now().toLocalDate) &&
-          ConsumptionDao.countByBOProducts(boProducts) < paramMaxTimes) {
+          (paramMaxDelay == 0 || !expiredDate.isBefore(DateTime.now().toLocalDate)) &&
+          (paramMaxTimes == 0 || ConsumptionDao.countByBOProducts(boProducts) < paramMaxTimes)) {
 
         if (ConsumptionDao.createConsumption(boProducts)) {
           val file = new File(s"${Settings.ResourcesRootPath}/download/$paramBOCartItemUuid")

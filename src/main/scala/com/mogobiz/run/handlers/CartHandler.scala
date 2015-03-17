@@ -498,7 +498,7 @@ class CartHandler {
           case ProductType.DOWNLOADABLE => {
             val params = s"boCartItemUuid:$boCartItemUuid;storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
             val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES")
-            Some(s"${Settings.accessUrl}/store/$storeCode/download/$encryptedParams")
+            Some(s"${Settings.accessUrl}/$storeCode/download/$encryptedParams")
           }
           case _ => None
         }
