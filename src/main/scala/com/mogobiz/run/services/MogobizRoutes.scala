@@ -32,7 +32,7 @@ trait MogobizRoutes extends Directives {
           case None =>
             val id = UUID.randomUUID.toString
             println(s"new uuid=$id")
-            setCookie(HttpCookie(CookieTracking, content = id, path = Some("/store/" + storeCode))) {
+            setCookie(HttpCookie(CookieTracking, content = id, path = Some("/api/store/" + storeCode))) {
               storeRoutes(storeCode, id)
             }
         }
