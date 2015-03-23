@@ -819,7 +819,8 @@ class CartHandler {
         from = (Settings.Mail.defaultFrom -> storeCode),
         to = Seq(email),
         subject = subject,
-        message = body
+        message = body,
+        richMessage = Some(body)
       ))
   }
 

@@ -65,8 +65,8 @@ object Settings {
       val IsSSLCheckServerIdentity = config.getBoolean("mail.smtp.checkserveridentity")
       val IsStartTLSEnabled = config.getBoolean("mail.smtp.starttls")
     }
-    val defaultFrom = config getString "mail.defaultFrom"
-    val MaxAge = (config getInt "mail.maxAgeInHours") * 3600
+    val defaultFrom = config getString "mail.from"
+    val MaxAge = (config getInt "mail.confirmation.maxage") * 3600
   }
 
   val Dialect = if (config hasPath "dialect") config getString "dialect" else "test"
