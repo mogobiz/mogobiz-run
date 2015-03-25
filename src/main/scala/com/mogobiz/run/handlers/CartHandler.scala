@@ -816,13 +816,11 @@ class CartHandler {
     val (subject, body) = templateHandler.mustache(template, write(renderCart))
     EmailHandler.Send.to(
       Mail(
-        (Settings.Mail.defaultFrom -> storeCode),
-        List(email),
-        List(),
-        List(),
-        subject,
-        body,
-        Some(body)
+        from = (Settings.Mail.defaultFrom -> storeCode),
+        to = Seq(email),
+        subject = subject,
+        message = body,
+        richMessage = Some(body)
       ))
   }
 

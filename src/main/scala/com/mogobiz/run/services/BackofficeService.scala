@@ -12,9 +12,6 @@ import spray.routing.Directives
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import Json4sProtocol._
 
-/**
- * Created by yoannbaudy on 19/02/2015.
- */
 class BackofficeService(storeCode: String) extends Directives with DefaultComplete {
 
   val route = {
