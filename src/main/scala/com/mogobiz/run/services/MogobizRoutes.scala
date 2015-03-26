@@ -72,7 +72,7 @@ trait DefaultComplete {
     import com.mogobiz.run.implicits.JsonSupport._
     Try(call) match {
       case Failure(t: MogobizException) => t.printStackTrace(); complete(t.code -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
-      case Failure(t) => complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+      case Failure(t:Throwable) => t.printStackTrace();  complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
       case Success(res) => handler(res)
     }
   }
