@@ -113,10 +113,8 @@ class StockHandler extends IndexesTypesDsl {
   def updateEsStock(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar:StockCalendar): Unit = {
     if (stockCalendar.startDate.isEmpty) {
       // Stock produit (sans date)
-      val script = "ctx._source.stock = ctx._source.initialStock - sold"
-      val req = esupdate id stock.uuid in s"$storeCode/stock" script script params {
-        "sold" -> s"${stockCalendar.sold}"
-      } retryOnConflict 4
+      val script = s"ctx._source.stock = ctx._source.initialStock - ${stockCalendar.sold}"
+      val req = esupdate id stock.uuid in s"$storeCode/stock" script script retryOnConflict 4
       EsClient().execute(req).await.getGetResult
     }
     else {
