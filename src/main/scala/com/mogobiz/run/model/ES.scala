@@ -50,7 +50,8 @@ object ES {
                         bOProducts: List[BOProduct],
                         bODelivery: Option[BODelivery],
                         bOReturnedItems: List[BOReturnedItem],
-                        uuid : String)
+                        uuid : String,
+                        url: String)
 
   case class BODelivery(@JsonScalaEnumeration(classOf[DeliveryStatusRef])
                         status: DeliveryStatus,

@@ -129,6 +129,7 @@ object RequestParameters {
 
   case class AddCartItemRequest(uuid: Option[String],
                                 skuId: Long,
+                                productUrl: String,
                                 quantity: Int,
                                 dateTime: Option[DateTime],
                                 registeredCartItems: List[RegisteredCartItemRequest])

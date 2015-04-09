@@ -230,7 +230,8 @@ object Mogobiz {
                         bODeliveryFk : Option[Long],
                         dateCreated:DateTime,
                         lastUpdated:DateTime,
-                        uuid : String)
+                        uuid : String,
+                        url: String)
 
   case class BODelivery(id: Long,
                         bOCartFk: Long,

@@ -131,7 +131,7 @@ class CartHandler {
     }
 
     val salePrice = if (sku.salePrice > 0) sku.salePrice else sku.price
-    val cartItem = StoreCartItem(newCartItemId, product.id, product.name, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
+    val cartItem = StoreCartItem(newCartItemId, product.id, product.name, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
       sku.price, salePrice, startDate, endDate, registeredItems, product.shipping)
 
     val updatedCart = _addCartItemIntoCart(_unvalidateCart(cart), cartItem)
@@ -480,7 +480,7 @@ class CartHandler {
         //create Sale
         val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
 
-        BOCartItemDao.create(sku, cartItem, boCart, Some(boDelivery), boProduct.id)
+        BOCartItemDao.create(sku, cartItem, storeCartItem, boCart, Some(boDelivery), boProduct.id)
 
         storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList)
       }
@@ -1062,7 +1062,8 @@ class CartHandler {
         bOProducts = boProducts,
         bODelivery = boDelivery,
         bOReturnedItems = boReturnedItems,
-        uuid = boCartItem.uuid)
+        uuid = boCartItem.uuid,
+        url = boCartItem.url)
     }
 
     val boCartES = new BOCartES(transactionUuid = boCart.transactionUuid,
@@ -1388,9 +1389,10 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     rs.get(rn.bODeliveryFk),
     rs.get(rn.dateCreated),
     rs.get(rn.lastUpdated),
-    rs.get(rn.uuid))
+    rs.get(rn.uuid),
+    rs.get(rn.url))
 
-  def create(sku: Mogobiz.Sku, cartItem : Render.CartItem, boCart: BOCart, bODelivery: Option[BODelivery], boProductId : Long)(implicit session: DBSession) : BOCartItem = {
+  def create(sku: Mogobiz.Sku, cartItem : Render.CartItem, storeCartItem: StoreCartItem, boCart: BOCart, bODelivery: Option[BODelivery], boProductId : Long)(implicit session: DBSession) : BOCartItem = {
     val newBOCartItem = new BOCartItem(
       newId(),
       "SALE_" + boCart.id + "_" + boProductId,
@@ -1408,7 +1410,8 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
       if (bODelivery.isDefined) Some(bODelivery.get.id) else None,
       DateTime.now,
       DateTime.now,
-      UUID.randomUUID().toString
+      UUID.randomUUID().toString,
+      storeCartItem.productUrl
     )
 
     applyUpdate {
@@ -1429,7 +1432,8 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
         BOCartItemDao.column.bODeliveryFk -> newBOCartItem.bODeliveryFk,
         BOCartItemDao.column.dateCreated -> newBOCartItem.dateCreated,
         BOCartItemDao.column.lastUpdated -> newBOCartItem.lastUpdated,
-        BOCartItemDao.column.uuid -> newBOCartItem.uuid
+        BOCartItemDao.column.uuid -> newBOCartItem.uuid,
+        BOCartItemDao.column.url -> newBOCartItem.url
       )
     }
 

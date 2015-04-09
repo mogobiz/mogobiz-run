@@ -37,6 +37,7 @@ case class StoreCart(storeCode: String,
 case class StoreCartItem(id: String,
                          productId: Long,
                          productName: String,
+                         productUrl: String,
                          @JsonScalaEnumeration(classOf[ProductTypeRef])
                          xtype: ProductType,
                          @JsonScalaEnumeration(classOf[ProductCalendarRef])
