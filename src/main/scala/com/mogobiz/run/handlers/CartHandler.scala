@@ -1,6 +1,7 @@
 package com.mogobiz.run.handlers
 
-import java.io.ByteArrayOutputStream
+import java.io.{File, ByteArrayOutputStream}
+import java.nio.file.{Paths, Files}
 import java.util.{UUID, Locale}
 
 import com.mogobiz.es.EsClient
@@ -132,7 +133,7 @@ class CartHandler {
 
     val salePrice = if (sku.salePrice > 0) sku.salePrice else sku.price
     val cartItem = StoreCartItem(newCartItemId, product.id, product.name, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
-      sku.price, salePrice, startDate, endDate, registeredItems, product.shipping)
+      sku.price, salePrice, startDate, endDate, registeredItems, product.shipping, None, None)
 
     val updatedCart = _addCartItemIntoCart(_unvalidateCart(cart), cartItem)
     StoreCartDao.save(updatedCart)
@@ -383,6 +384,17 @@ class CartHandler {
             val product = productAndSku.get._1
             val sku = productAndSku.get._2
             salesHandler.incrementSales(transactionCart.storeCode, product, sku, cartItem.quantity)
+
+            cartItem.downloadableLink.map { downloadableLink: String =>
+              val srcFile = Paths.get(s"${Settings.ResourcesRootPath}/resources/$storeCode/sku/${cartItem.skuId}")
+              if (Files.exists(srcFile)) {
+                val targetFile = Paths.get(s"${Settings.ResourcesRootPath}/download/${cartItem.boCartItemUuid.get}")
+                if (!Files.exists(targetFile.getParent)) {
+                  Files.createDirectories(targetFile.getParent)
+                }
+                Files.copy(srcFile, targetFile)
+              }
+            }
           }
           val updatedCart = StoreCart(storeCode = transactionCart.storeCode, dataUuid = transactionCart.dataUuid, userUuid = transactionCart.userUuid)
           StoreCartDao.save(updatedCart)
@@ -480,9 +492,17 @@ class CartHandler {
         //create Sale
         val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
 
-        BOCartItemDao.create(sku, cartItem, storeCartItem, boCart, Some(boDelivery), boProduct.id)
-
-        storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList)
+        // Downloadable Link
+        val boCartItemUuid = BOCartItemDao.create(sku, cartItem, storeCartItem, boCart, Some(boDelivery), boProduct.id).uuid
+        val downloadableLink = product.xtype match {
+          case ProductType.DOWNLOADABLE => {
+            val params = s"boCartItemUuid:$boCartItemUuid;storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
+            val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES")
+            Some(s"${Settings.accessUrl}/$storeCode/download/$encryptedParams")
+          }
+          case _ => None
+        }
+        storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
       }
       (boCart, storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList))
     }}
@@ -779,7 +799,7 @@ class CartHandler {
       val newCartItem = CartItem(cartItem.id, cartItem.productId, cartItem.productName, cartItem.xtype, cartItem.calendarType,
         cartItem.skuId, cartItem.skuName, cartItem.quantity, price, endPrice, tax, totalPrice, totalEndPrice,
         salePrice, saleEndPrice, saleTotalPrice, saleTotalEndPrice,
-        cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping)
+        cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping, cartItem.downloadableLink.getOrElse(null))
 
       (priceEndPriceAndCartItems._1 + saleTotalPrice, priceEndPriceAndCartItems._2 + saleTotalEndPrice.getOrElse(saleTotalPrice), newCartItem :: priceEndPriceAndCartItems._3)
     }

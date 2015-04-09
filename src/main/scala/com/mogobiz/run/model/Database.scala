@@ -140,6 +140,8 @@ object Mogobiz {
                      datePeriods:Option[List[DatePeriod]],
                      poi: Option[Poi],
                      nbSales: Long,
+                     downloadMaxTimes: Long,
+                     downloadMaxDelay: Long,
                      var lastUpdated: Date,
                      var dateCreated: Date)
 
@@ -269,6 +271,16 @@ object Mogobiz {
                       name: String,
                       uuid: String,
                       code: String)
+
+  case class Consumption(id: Long,
+                         bOTicketTypeFk: Option[Long],
+                         xdate: DateTime,
+                         dateCreated: DateTime = DateTime.now,
+                         lastUpdated: DateTime = DateTime.now,
+                         uuid: String)
+
+  case class BOProductConsumption(consumptionsFk: Long,
+                                  consumptionId: Long)
 
   object TransactionStatus extends Enumeration {
     class TransactionStatusType(s: String) extends Val(s)

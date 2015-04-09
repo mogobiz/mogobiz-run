@@ -58,7 +58,8 @@ trait MogobizRoutes extends Directives {
       new FacetService(storeCode).route ~
       new ResourceService(storeCode).route ~
       new BackofficeService(storeCode).route ~
-      new LearningService(storeCode).route
+      new LearningService(storeCode).route ~
+      new ValidatorService(storeCode).route
   }
 
 
@@ -80,7 +81,7 @@ trait DefaultComplete {
   def handleComplete[T](call: Try[Try[T]], handler: T => Route): Route = {
     import com.mogobiz.run.implicits.JsonSupport._
     call match {
-      case Failure(t) => complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+      case Failure(t) => t.printStackTrace(); complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
       case Success(res) =>
         res match {
           case Success(id) => handler(id)
