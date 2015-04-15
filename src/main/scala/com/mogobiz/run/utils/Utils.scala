@@ -51,12 +51,12 @@ object Utils {
   def verifyAndExtractStartEndDate(product: Product, sku: Sku, optDate: Option[DateTime]): Option[(DateTime, DateTime)] = {
     if (optDate.isDefined) {
       val date = optDate.get
-      val dateWithTimeReset = date.withTimeAtStartOfDay()
-      val start = sku.startDate.getOrElse(DateTime.now().withTimeAtStartOfDay)
-      val stop = sku.stopDate
+      val localDate = date.toLocalDate
+      val start = sku.startDate.getOrElse(DateTime.now()).toLocalDate
+      val stop = sku.stopDate.map {date => date.toLocalDate}
 
-      val dateValidForTicketType = (dateWithTimeReset.isAfter(start) || dateWithTimeReset.isEqual(start)) &&
-        (stop.isEmpty || dateWithTimeReset.isBefore(stop.get) || dateWithTimeReset.isEqual(stop.get))
+      val dateValidForTicketType = (localDate.isAfter(start) || localDate.isEqual(start)) &&
+        (stop.isEmpty || localDate.isBefore(stop.get) || localDate.isEqual(stop.get))
 
       if (!dateValidForTicketType) None
       else {
@@ -68,7 +68,6 @@ object Utils {
             if (isExcludeDate(product, date)) None
             else {
               // On cherche si la date est dans une période autorisée
-              val localDate = date.toLocalDate
               val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period => {
                 val start = period.startDate.toLocalDate
                 val end = period.endDate.toLocalDate
