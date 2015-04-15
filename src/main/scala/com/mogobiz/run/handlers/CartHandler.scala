@@ -1,6 +1,6 @@
 package com.mogobiz.run.handlers
 
-import java.io.{File, ByteArrayOutputStream}
+import java.io.{FileOutputStream, File, ByteArrayOutputStream}
 import java.nio.file.{Paths, Files}
 import java.util.{UUID, Locale}
 
@@ -23,7 +23,9 @@ import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Utils
 import com.mogobiz.utils.{QRCodeUtils, SymmetricCrypt}
+import com.sksamuel.elastic4s.ElasticDsl.{get, tuple2indexestypes}
 import com.sun.org.apache.xml.internal.security.utils.Base64
+import org.elasticsearch.common.bytes.ChannelBufferBytesReference
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.json4s.ext.JodaTimeSerializers
@@ -386,7 +388,12 @@ class CartHandler {
             salesHandler.incrementSales(transactionCart.storeCode, product, sku, cartItem.quantity)
 
             cartItem.downloadableLink.map { downloadableLink: String =>
-              val srcFile = Paths.get(s"${Settings.ResourcesRootPath}/resources/$storeCode/sku/${cartItem.skuId}")
+              val filePath = s"${Settings.ResourcesRootPath}/resources/$storeCode/sku/${cartItem.skuId}"
+              DownloadableDao.load(storeCode, s"${cartItem.skuId}").map { content =>
+                new File(s"${Settings.ResourcesRootPath}/resources/$storeCode/sku").mkdirs()
+                content.writeTo(new FileOutputStream(new File(filePath)))
+              }
+              val srcFile = Paths.get(filePath)
               if (Files.exists(srcFile)) {
                 val targetFile = Paths.get(s"${Settings.ResourcesRootPath}/download/${cartItem.boCartItemUuid.get}")
                 if (!Files.exists(targetFile.getParent)) {
@@ -1128,6 +1135,21 @@ object StoreCartDao {
 
     EsClient.searchAll[StoreCart](req).toList
   }
+}
+
+object DownloadableDao {
+
+  def load(storeCode: String, skuId: String) : Option[ChannelBufferBytesReference] = {
+    EsClient.loadRaw(get id skuId from storeCode -> "downloadable" fields "content" fetchSourceContext true) match {
+      case Some(response) =>
+        if(response.getFields.containsKey("_content")){
+          Some(response.getField("content").getValue.asInstanceOf[ChannelBufferBytesReference])
+        }
+        else None
+      case _ => None
+    }
+  }
+
 }
 
 object BOCartESDao {
