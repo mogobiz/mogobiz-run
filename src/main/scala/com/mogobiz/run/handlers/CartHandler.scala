@@ -386,22 +386,6 @@ class CartHandler {
             val product = productAndSku.get._1
             val sku = productAndSku.get._2
             salesHandler.incrementSales(transactionCart.storeCode, product, sku, cartItem.quantity)
-
-            cartItem.downloadableLink.map { downloadableLink: String =>
-              val filePath = s"${Settings.ResourcesRootPath}/resources/$storeCode/sku/${cartItem.skuId}"
-              DownloadableDao.load(storeCode, s"${cartItem.skuId}").map { content =>
-                new File(s"${Settings.ResourcesRootPath}/resources/$storeCode/sku").mkdirs()
-                content.writeTo(new FileOutputStream(new File(filePath)))
-              }
-              val srcFile = Paths.get(filePath)
-              if (Files.exists(srcFile)) {
-                val targetFile = Paths.get(s"${Settings.ResourcesRootPath}/download/${cartItem.boCartItemUuid.get}")
-                if (!Files.exists(targetFile.getParent)) {
-                  Files.createDirectories(targetFile.getParent)
-                }
-                Files.copy(srcFile, targetFile)
-              }
-            }
           }
           val updatedCart = StoreCart(storeCode = transactionCart.storeCode, dataUuid = transactionCart.dataUuid, userUuid = transactionCart.userUuid)
           StoreCartDao.save(updatedCart)
@@ -503,7 +487,7 @@ class CartHandler {
         val boCartItemUuid = BOCartItemDao.create(sku, cartItem, storeCartItem, boCart, Some(boDelivery), boProduct.id).uuid
         val downloadableLink = product.xtype match {
           case ProductType.DOWNLOADABLE => {
-            val params = s"boCartItemUuid:$boCartItemUuid;storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
+            val params = s"boCartItemUuid:$boCartItemUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
             val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES")
             Some(s"${Settings.accessUrl}/$storeCode/download/$encryptedParams")
           }
@@ -1140,16 +1124,15 @@ object StoreCartDao {
 object DownloadableDao {
 
   def load(storeCode: String, skuId: String) : Option[ChannelBufferBytesReference] = {
-    EsClient.loadRaw(get id skuId from storeCode -> "downloadable" fields "content" fetchSourceContext true) match {
+    EsClient.loadRaw(get id skuId from storeCode -> "downloadable" fields "file.content" fetchSourceContext true) match {
       case Some(response) =>
-        if(response.getFields.containsKey("_content")){
-          Some(response.getField("content").getValue.asInstanceOf[ChannelBufferBytesReference])
+        if(response.getFields.containsKey("file.content")){
+          Some(response.getField("file.content").getValue.asInstanceOf[ChannelBufferBytesReference])
         }
         else None
       case _ => None
     }
   }
-
 }
 
 object BOCartESDao {

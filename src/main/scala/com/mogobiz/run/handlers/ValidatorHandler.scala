@@ -1,6 +1,7 @@
 package com.mogobiz.run.handlers
 
-import java.io.File
+import java.io.{FileOutputStream, File}
+import java.nio.file.{Files, Paths}
 import java.util.UUID
 
 import com.mogobiz.run.config.Settings
@@ -26,6 +27,7 @@ class ValidatorHandler {
       (kv(0), kv(1))
     }}
     val paramBOCartItemUuid=paramsMap.find{kv => kv._1 == "boCartItemUuid"}.getOrElse(throw new NotFoundException(""))._2
+    val paramSkuId=paramsMap.find{kv => kv._1 == "skuId"}.getOrElse(throw new NotFoundException(""))._2
     val paramStoreCode=paramsMap.find{kv => kv._1 == "storeCode"}.getOrElse(throw new NotFoundException(""))._2
     val paramMaxDelay=paramsMap.find{kv => kv._1 == "maxDelay"}.getOrElse(throw new NotFoundException(""))._2.toInt
     val paramMaxTimes=paramsMap.find{kv => kv._1 == "maxTimes"}.getOrElse(throw new NotFoundException(""))._2.toInt
@@ -41,9 +43,22 @@ class ValidatorHandler {
           (paramMaxTimes == 0 || ConsumptionDao.countByBOProducts(boProducts) < paramMaxTimes)) {
 
         if (ConsumptionDao.createConsumption(boProducts)) {
-          val file = new File(s"${Settings.ResourcesRootPath}/download/$paramBOCartItemUuid")
-          val productName = ProductDao.get(storeCode, boProducts.find{p => p.principal}.get.productFk).map {p => p.name }.getOrElse(file.getName)
-          if (file.exists()) (productName, file) else throw new NotFoundException("")
+          val file = new File(s"${Settings.ResourcesRootPath}/download/$paramSkuId")
+          if (!file.exists()) {
+            val parentFile = file.getParentFile()
+            if (!parentFile.exists()) {
+              parentFile.mkdirs()
+            }
+            DownloadableDao.load(storeCode, paramSkuId).map { content =>
+              content.writeTo(new FileOutputStream(file))
+            }
+          }
+
+          if (file.exists()) {
+            val productName = ProductDao.get(storeCode, boProducts.find{p => p.principal}.get.productFk).map {p => p.name }.getOrElse(file.getName)
+            (productName, file)
+          }
+          else throw new NotFoundException("")
         }
         else throw new NotFoundException("")
       }
