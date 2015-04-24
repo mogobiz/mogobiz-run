@@ -159,7 +159,7 @@ object StockDao {
   }
 
   def update(storeCode: String, stock: EsStock) = {
-    EsClient.update[EsStock](storeCode, stock, true, false)
+    EsClient.update[EsStock](storeCode, stock, "stock", true, false)
   }
 }
 

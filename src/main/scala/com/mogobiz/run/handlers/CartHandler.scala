@@ -411,7 +411,7 @@ class CartHandler {
 
     val cart = _initCart(storeCode, uuid, accountId)
 
-    val updatedCart = _cancelCart(cart)
+    val updatedCart = _cancelCart(_unvalidateCart(cart))
     val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
     _renderCart(computeCart, currency, locale)
   }
