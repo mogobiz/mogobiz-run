@@ -4,22 +4,39 @@ import java.io.File
 
 import com.mogobiz.run.config.Settings
 import com.mogobiz.template.Mustache
+import org.apache.commons.lang.LocaleUtils
 
 /**
  * Created by yoannbaudy on 28/11/2014.
  */
 class TemplateHandler {
 
-  def getTemplate(storeCode: String, templateName: String) = {
-    val templateFile = new File(new File(Settings.TemplatesPath, storeCode), templateName)
-    if (templateFile.exists()) {
-      val source = scala.io.Source.fromFile(templateFile)
-      val lines = source.mkString
-      source.close()
-      lines
+  def getTemplate(storeCode: String, templateName: String, locale: Option[String]) = {
+    def findExternalTemplate(templateName: String) = {
+      val file = new File(new File(Settings.TemplatesPath, storeCode), s"$templateName.mustache")
+      if (file.exists()) {
+        val source = scala.io.Source.fromFile(file)
+        val lines = source.mkString
+        source.close()
+        Some(lines)
+      }
+      else None
     }
-    else {
-      scala.io.Source.fromInputStream(getClass.getResourceAsStream(s"/template/$templateName")).mkString
+
+    def defaultTemplate() = scala.io.Source.fromInputStream(getClass.getResourceAsStream(s"/template/$templateName.mustache")).mkString
+
+    locale.map { l =>
+      findExternalTemplate(s"${templateName}_$l") getOrElse {
+        findExternalTemplate(s"${templateName}_${LocaleUtils.toLocale(l).getLanguage}") getOrElse {
+          findExternalTemplate(templateName) getOrElse {
+            defaultTemplate()
+          }
+        }
+      }
+    } getOrElse {
+      findExternalTemplate(templateName) getOrElse {
+        defaultTemplate()
+      }
     }
   }
 

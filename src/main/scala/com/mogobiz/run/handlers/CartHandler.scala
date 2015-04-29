@@ -822,7 +822,7 @@ class CartHandler {
     val cartTTC = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
     val renderCart = _renderTransactionCart(cart, cartTTC, cart.rate.get, locale)
 
-    val template = templateHandler.getTemplate(storeCode, "mail-cart.mustache")
+    val template = templateHandler.getTemplate(storeCode, "mail-cart", Some(locale.toString))
 
     val (subject, body) = templateHandler.mustache(template, write(renderCart))
     EmailHandler.Send.to(
