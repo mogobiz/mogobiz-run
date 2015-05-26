@@ -27,11 +27,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beTrue
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(1)
-      result.pageCount mustEqual(3)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(1)
-      result.totalCount mustEqual(3)
+      result.maxItemsPerPage mustEqual (1)
+      result.pageCount mustEqual (3)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (1)
+      result.totalCount mustEqual (3)
       result.list must size(1)
 
       assertOrder6000(result.list(0))
@@ -42,11 +42,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beTrue
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(2)
-      result.pageCount mustEqual(2)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(2)
-      result.totalCount mustEqual(3)
+      result.maxItemsPerPage mustEqual (2)
+      result.pageCount mustEqual (2)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (2)
+      result.totalCount mustEqual (3)
       result.list must size(2)
 
       assertOrder6000(result.list(0))
@@ -58,11 +58,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(3)
-      result.totalCount mustEqual(3)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (3)
+      result.totalCount mustEqual (3)
       result.list must size(3)
 
       assertOrder6000(result.list(0))
@@ -75,11 +75,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(1)
-      result.totalCount mustEqual(1)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (1)
+      result.totalCount mustEqual (1)
       result.list must size(1)
 
       assertOrder13200(result.list(0))
@@ -90,11 +90,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(3)
-      result.totalCount mustEqual(3)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (3)
+      result.totalCount mustEqual (3)
       result.list must size(3)
 
       assertOrder6000(result.list(0))
@@ -107,11 +107,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(3)
-      result.totalCount mustEqual(3)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (3)
+      result.totalCount mustEqual (3)
       result.list must size(3)
 
       assertOrder6000(result.list(0))
@@ -124,11 +124,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(3)
-      result.totalCount mustEqual(3)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (3)
+      result.totalCount mustEqual (3)
       result.list must size(3)
 
       assertOrder6000(result.list(0))
@@ -141,11 +141,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(0)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(0)
-      result.totalCount mustEqual(0)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (0)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (0)
+      result.totalCount mustEqual (0)
       result.list must size(0)
     }
 
@@ -154,11 +154,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(2)
-      result.totalCount mustEqual(2)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (2)
+      result.totalCount mustEqual (2)
       result.list must size(2)
 
       assertOrder6000(result.list(0))
@@ -170,11 +170,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(2)
-      result.totalCount mustEqual(2)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (2)
+      result.totalCount mustEqual (2)
       result.list must size(2)
 
       assertOrder13200(result.list(0))
@@ -186,11 +186,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listOrders(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(1)
-      result.totalCount mustEqual(1)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (1)
+      result.totalCount mustEqual (1)
       result.list must size(1)
 
       assertOrder13200(result.list(0))
@@ -204,11 +204,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(6)
-      result.totalCount mustEqual(6)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (6)
+      result.totalCount mustEqual (6)
       result.list must size(6)
 
       result.list(0) \ "uuid" must be_==(JString("15995735-56ca-4d19-806b-a6bc7fedc162"))
@@ -230,11 +230,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(1)
-      result.totalCount mustEqual(1)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (1)
+      result.totalCount mustEqual (1)
       result.list must size(1)
 
       val customer = result.list(0)
@@ -247,11 +247,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(0)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(0)
-      result.totalCount mustEqual(0)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (0)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (0)
+      result.totalCount mustEqual (0)
       result.list must size(0)
     }
 
@@ -260,11 +260,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(1)
-      result.totalCount mustEqual(1)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (1)
+      result.totalCount mustEqual (1)
       result.list must size(1)
 
       val customer = result.list(0)
@@ -277,11 +277,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(1)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(1)
-      result.totalCount mustEqual(1)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (1)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (1)
+      result.totalCount mustEqual (1)
       result.list must size(1)
 
       val customer = result.list(0)
@@ -294,11 +294,11 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       val result = handler.listCustomers(storeCode, Some(merchantUuid), req)
       result.hasNext must beFalse
       result.hasPrevious must beFalse
-      result.maxItemsPerPage mustEqual(100)
-      result.pageCount mustEqual(0)
-      result.pageOffset mustEqual(0)
-      result.pageSize mustEqual(0)
-      result.totalCount mustEqual(0)
+      result.maxItemsPerPage mustEqual (100)
+      result.pageCount mustEqual (0)
+      result.pageOffset mustEqual (0)
+      result.pageSize mustEqual (0)
+      result.totalCount mustEqual (0)
       result.list must size(0)
     }
   }
@@ -319,7 +319,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       }
       catch {
         case ex: NotFoundException => success
-        case _ => failure
+        case _: Throwable => failure
       }
     }
   }
@@ -418,7 +418,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
   private def retreiveBoReturnedItem() = {
     val boCartOpt = BOCartESDao.load(storeCode, "782a1be4-7d4f-458c-80ab-25648590a36c")
     boCartOpt must beSome[BOCart]
-    val boCartItemOpt =  boCartOpt.get.cartItems.find{boCartItem => boCartItem.uuid == boCartItemUuid}
+    val boCartItemOpt = boCartOpt.get.cartItems.find { boCartItem => boCartItem.uuid == boCartItemUuid }
     boCartItemOpt must beSome[BOCartItem]
     boCartItemOpt.get.bOReturnedItems must size(1)
     boCartItemOpt.get.bOReturnedItems(0)

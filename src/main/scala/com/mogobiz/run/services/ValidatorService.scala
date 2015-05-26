@@ -3,6 +3,7 @@ package com.mogobiz.run.services
 import java.io.File
 
 import akka.actor.ActorRefFactory
+import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.utils.MimeTypeTools
 import spray.http.{ContentType, MediaType, HttpHeaders}

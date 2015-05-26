@@ -4,6 +4,7 @@ import java.io.{IOException, File}
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 
+import com.mogobiz.run.config.MogobizRoutes
 import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.es.EmbeddedElasticSearchNode
 import com.mogobiz.system.MogobizSystem
@@ -14,7 +15,6 @@ import org.specs2.time.NoTimeConversions
 import spray.http.{MediaTypes, HttpHeaders, ContentType, MediaType}
 import spray.testkit.Specs2RouteTest
 import spray.routing.HttpService
-import com.mogobiz.run.services.MogobizRoutes
 import com.mogobiz.run.actors.{ActorSystemLocator}
 import com.mogobiz.json.JsonUtil
 import org.specs2.matcher.JsonMatchers

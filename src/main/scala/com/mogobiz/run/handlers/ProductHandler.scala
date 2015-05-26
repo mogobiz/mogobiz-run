@@ -29,6 +29,7 @@ import org.json4s.JsonAST.{JObject, JArray, JNothing}
 import org.json4s.JsonDSL._
 import org.json4s._
 
+
 import scala.util.{Failure, Success, Try}
 
 class ProductHandler extends JsonUtil {
@@ -584,7 +585,6 @@ class ProductHandler extends JsonUtil {
 
   def renderProduct(storeCode: String, product: JsonAST.JValue, country: Option[String], currency: Option[String], lang: String, cur: com.mogobiz.run.model.Currency, fieldsToRemove: List[String], includeNotations: Boolean = false): JsonAST.JValue = {
     implicit def json4sFormats: Formats = DefaultFormats
-
     val notation = if (includeNotations) {
       // récupération du nombre de commentaires par note + calcul de la moyenne
       val JInt(productId) = (product \ "id")

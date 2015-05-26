@@ -1,5 +1,6 @@
 package com.mogobiz.run.services
 
+import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.model.RequestParameters.FacetRequest
 import spray.http.StatusCodes
