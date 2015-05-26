@@ -1,19 +1,16 @@
-package com.mogobiz.run.services
+package com.mogobiz.run.config
 
 import java.util.UUID
 
-import akka.actor.{Props}
-import com.mogobiz.run.config.Settings
+import akka.actor.Props
+import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.exceptions.MogobizException
-import Settings._
-import com.mogobiz.system.MogobizSystem
-
-import spray.http.{StatusCodes, HttpCookie}
+import com.mogobiz.run.services._
+import com.mogobiz.system.{MogobizSystem, RoutedHttpService}
+import spray.http.{HttpCookie, StatusCodes}
 import spray.routing.{Directives, _}
 
-import com.mogobiz.system.RoutedHttpService
-
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 
 trait MogobizRoutes extends Directives {
@@ -90,4 +87,39 @@ trait DefaultComplete {
         }
     }
   }
+}
+
+trait MogolearnRoutes extends Directives {
+  this: MogobizSystem =>
+
+  private implicit val _ = system.dispatcher
+
+  def routes =
+    logRequestResponse(showRequest _) {
+      pathPrefix((("api" / "store") | "store") / Segment) {
+        storeCode => {
+          optionalCookie(CookieTracking) {
+            case Some(mogoCookie) =>
+              println(s"mogoCookie=${mogoCookie.content}")
+              storeRoutes(storeCode, mogoCookie.content)
+            case None =>
+              val id = UUID.randomUUID.toString
+              println(s"new uuid=$id")
+              setCookie(HttpCookie(CookieTracking, content = id, path = Some("/api/store/" + storeCode))) {
+                storeRoutes(storeCode, id)
+              }
+          }
+        }
+      }
+    }
+
+  def storeRoutes(storeCode: String, uuid: String) = {
+    pathEnd {
+      complete("the store code is " + storeCode)
+    } ~
+      new LearningService(storeCode).route
+  }
+
+
+  def routesServices = system.actorOf(Props(new RoutedHttpService(routes)))
 }
