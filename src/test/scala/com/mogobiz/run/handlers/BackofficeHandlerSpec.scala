@@ -319,7 +319,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
       }
       catch {
         case ex: NotFoundException => success
-        case _ => failure
+        case _: Throwable => failure
       }
     }
   }
