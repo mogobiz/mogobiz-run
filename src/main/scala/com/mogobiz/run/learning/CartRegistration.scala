@@ -31,7 +31,6 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
         val transform = Flow[List[Seq[String]]].map(_.map(seq => {
           val now = Calendar.getInstance().getTime
           val uuid = seq.mkString("-")
-          println("Upserting -->"+uuid)
           update(uuid)
             .in(s"${esFISStore(store)}/CartCombination")
             .upsert(
@@ -59,7 +58,7 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
       val sum: Future[Int] = g.runWith(sumSink)
 
       import scala.concurrent.duration._
-      Await.result(sum, 100 seconds)
+      Await.result(sum, 100 seconds) //FIXME
 
       import system.dispatcher
 
