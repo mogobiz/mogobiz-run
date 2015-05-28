@@ -16,7 +16,7 @@ import com.mogobiz.run.learning.{CartRegistration, UserActionRegistration}
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.Mogobiz.TransactionStatus._
-import com.mogobiz.run.model.ES.{BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES}
+import com.mogobiz.run.model.ES.{BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOCartItemEx, BOCartEx}
 import com.mogobiz.run.model.Render.{Coupon, RegisteredCartItem, CartItem, Cart}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
@@ -46,7 +46,7 @@ class CartHandler {
    * @param accountId
    * @return
    */
-  def queryCartInit(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartInit(storeCode: String, uuid: String, params: CartParameters, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
@@ -64,7 +64,7 @@ class CartHandler {
    * @param accountId
    * @return
    */
-  def queryCartClear(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartClear(storeCode: String, uuid: String, params: CartParameters, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
@@ -89,7 +89,7 @@ class CartHandler {
   @throws[DateIsNullException]
   @throws[UnsaleableDateException]
   @throws[NotEnoughRegisteredCartItemException]
-  def queryCartItemAdd(storeCode: String, uuid: String, params: CartParameters, cmd: AddCartItemRequest, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartItemAdd(storeCode: String, uuid: String, params: CartParameters, cmd: AddCartItemRequest, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
@@ -152,7 +152,7 @@ class CartHandler {
    * @param accountId
    * @return
    */
-  def queryCartValidate(storeCode: String, uuid: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartValidate(storeCode: String, uuid: String, params: CartParameters, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
@@ -175,13 +175,13 @@ class CartHandler {
    */
   @throws[InsufficientStockCartItemException]
   @throws[NotFoundException]
-  def queryCartItemUpdate(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, cmd: UpdateCartItemRequest, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartItemUpdate(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, cmd: UpdateCartItemRequest, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
     val cart = _initCart(storeCode, uuid, accountId)
 
-    val optCartItem = cart.cartItems.find { item => item.id == cartItemId}
+    val optCartItem = cart.cartItems.find { item => item.id == cartItemId }
     if (optCartItem.isDefined) {
       val existCartItem = optCartItem.get
       val updatedCart = if (ProductType.SERVICE != existCartItem.xtype && existCartItem.quantity != cmd.quantity) {
@@ -217,13 +217,13 @@ class CartHandler {
    * @param accountId
    * @return
    */
-  def queryCartItemRemove(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartItemRemove(storeCode: String, uuid: String, cartItemId: String, params: CartParameters, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
     val cart = _initCart(storeCode, uuid, accountId)
 
-    val optCartItem = cart.cartItems.find { item => item.id == cartItemId}
+    val optCartItem = cart.cartItems.find { item => item.id == cartItemId }
     val updatedCart = if (optCartItem.isDefined) {
       val existCartItem = optCartItem.get
 
@@ -249,7 +249,7 @@ class CartHandler {
    */
   @throws[DuplicateException]
   @throws[InsufficientStockCouponException]
-  def queryCartCouponAdd(storeCode: String, uuid: String, couponCode: String, params: CouponParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartCouponAdd(storeCode: String, uuid: String, couponCode: String, params: CouponParameters, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
@@ -258,7 +258,7 @@ class CartHandler {
     val optCoupon = CouponDao.findByCode(cart.storeCode, couponCode)
     if (optCoupon.isDefined) {
       val coupon = optCoupon.get
-      if (cart.coupons.exists { c => couponCode == c.code}) {
+      if (cart.coupons.exists { c => couponCode == c.code }) {
         throw new DuplicateException("")
       } else if (!couponHandler.consumeCoupon(cart.storeCode, coupon)) {
         throw new InsufficientStockCouponException()
@@ -270,7 +270,7 @@ class CartHandler {
         val updatedCart = _unvalidateCart(cart).copy(coupons = coupons)
         StoreCartDao.save(updatedCart)
 
-        val computeCart = _computeStoreCart( updatedCart, params.country, params.state)
+        val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
         _renderCart(computeCart, currency, locale)
       }
     }
@@ -289,7 +289,7 @@ class CartHandler {
    * @return
    */
   @throws[NotFoundException]
-  def queryCartCouponDelete(storeCode: String, uuid: String, couponCode: String, params: CouponParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartCouponDelete(storeCode: String, uuid: String, couponCode: String, params: CouponParameters, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
@@ -297,7 +297,7 @@ class CartHandler {
 
     val optCoupon = CouponDao.findByCode(cart.storeCode, couponCode)
     if (optCoupon.isDefined) {
-      val existCoupon = cart.coupons.find { c => couponCode == c.code}
+      val existCoupon = cart.coupons.find { c => couponCode == c.code }
       if (existCoupon.isEmpty) throw new NotFoundException("")
       else {
         couponHandler.releaseCoupon(cart.storeCode, optCoupon.get)
@@ -323,7 +323,7 @@ class CartHandler {
    * @return
    */
   @throws[InsufficientStockException]
-  def queryCartPaymentPrepare(storeCode: String, uuid: String, params: PrepareTransactionParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartPaymentPrepare(storeCode: String, uuid: String, params: PrepareTransactionParameters, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
@@ -362,14 +362,14 @@ class CartHandler {
    * @param params
    * @param accountId
    */
-  def queryCartPaymentCommit(storeCode: String, uuid: String, params: CommitTransactionParameters, accountId:Option[Mogopay.Document]): Unit = {
+  def queryCartPaymentCommit(storeCode: String, uuid: String, params: CommitTransactionParameters, accountId: Option[Mogopay.Document]): Unit = {
     val locale = _buildLocal(params.lang, params.country)
 
     val cart = _initCart(storeCode, uuid, accountId)
 
     val productIds = cart.cartItems.map { item =>
-        UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase)
-        item.productId.toString
+      UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase)
+      item.productId.toString
     }
     CartRegistration.register(storeCode, uuid, productIds)
 
@@ -381,7 +381,7 @@ class CartHandler {
           BOCartDao.updateStatus(transactionBoCart)
           exportBOCartIntoES(storeCode, transactionBoCart)
 
-          cart.cartItems.foreach {cartItem =>
+          cart.cartItems.foreach { cartItem =>
             val productAndSku = ProductDao.getProductAndSku(transactionCart.storeCode, cartItem.skuId)
             val product = productAndSku.get._1
             val sku = productAndSku.get._2
@@ -405,7 +405,7 @@ class CartHandler {
    * @param accountId
    * @return
    */
-  def queryCartPaymentCancel(storeCode: String, uuid: String, params: CancelTransactionParameters, accountId:Option[Mogopay.Document]): Map[String, Any] = {
+  def queryCartPaymentCancel(storeCode: String, uuid: String, params: CancelTransactionParameters, accountId: Option[Mogopay.Document]): Map[String, Any] = {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
@@ -436,7 +436,7 @@ class CartHandler {
    * @param shippingAddress
    * @return
    */
-  private def _createBOCart(storeCart: StoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String) : StoreCart = {
+  private def _createBOCart(storeCart: StoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String): StoreCart = {
     val boCartAndStoreCart = DB localTx { implicit session => {
       val storeCode = storeCart.storeCode
       val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
@@ -496,7 +496,8 @@ class CartHandler {
         storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
       }
       (boCart, storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList))
-    }}
+    }
+    }
 
     exportBOCartIntoES(storeCart.storeCode, boCartAndStoreCart._1)
 
@@ -509,7 +510,7 @@ class CartHandler {
    * @param cart
    * @return
    */
-  private def _deletePendingBOCart(cart: StoreCart) : StoreCart = {
+  private def _deletePendingBOCart(cart: StoreCart): StoreCart = {
     if (cart.boCartUuid.isDefined) {
       DB localTx { implicit session =>
         val boCart = BOCartDao.load(cart.boCartUuid.get)
@@ -543,7 +544,7 @@ class CartHandler {
    * @param country
    * @return
    */
-  private def _buildLocal(lang: String, country: Option[String]) : Locale = {
+  private def _buildLocal(lang: String, country: Option[String]): Locale = {
     val defaultLocal = Locale.getDefault
     val l = if (lang == "_all") defaultLocal.getLanguage else lang
     val c = if (country.isEmpty) defaultLocal.getCountry else country.get
@@ -558,7 +559,7 @@ class CartHandler {
    * @return
    */
   private def _initCart(storeCode: String, uuid: String, currentAccountId: Option[String]): StoreCart = {
-    def getOrCreateStoreCart(cart: Option[StoreCart]) : StoreCart = {
+    def getOrCreateStoreCart(cart: Option[StoreCart]): StoreCart = {
       cart match {
         case Some(c) => c
         case None =>
@@ -622,7 +623,7 @@ class CartHandler {
       val updatedCart = cart.copy(boCartUuid = None, transactionUuid = None)
       StoreCartDao.save(updatedCart)
       updatedCart
-    } getOrElse(cart)
+    } getOrElse (cart)
   }
 
   /**
@@ -631,7 +632,7 @@ class CartHandler {
    * @return
    */
   @throws[InsufficientStockException]
-  private def _validateCart(cart: StoreCart) : StoreCart = {
+  private def _validateCart(cart: StoreCart): StoreCart = {
     if (!cart.validate) {
       DB localTx { implicit session =>
         cart.cartItems.foreach { cartItem =>
@@ -654,7 +655,7 @@ class CartHandler {
    * @param cart
    * @return
    */
-  private def _unvalidateCart(cart: StoreCart) : StoreCart = {
+  private def _unvalidateCart(cart: StoreCart): StoreCart = {
     if (cart.validate) {
       DB localTx { implicit session =>
         cart.cartItems.foreach { cartItem =>
@@ -679,12 +680,12 @@ class CartHandler {
    * @param target
    * @return
    */
-  private def _fusion(source: StoreCart, target: StoreCart) : StoreCart = {
-    def _fusionCartItem(source: List[StoreCartItem], target: StoreCart) : StoreCart = {
+  private def _fusion(source: StoreCart, target: StoreCart): StoreCart = {
+    def _fusionCartItem(source: List[StoreCartItem], target: StoreCart): StoreCart = {
       if (source.isEmpty) target
       else _fusionCartItem(source.tail, _addCartItemIntoCart(target, source.head))
     }
-    def _fusionCoupon(source: List[StoreCoupon], target: StoreCart) : StoreCart = {
+    def _fusionCoupon(source: List[StoreCoupon], target: StoreCart): StoreCart = {
       if (source.isEmpty) target
       else _fusionCoupon(source.tail, _addCouponIntoCart(target, source.head))
     }
@@ -698,7 +699,7 @@ class CartHandler {
    * @param cartItem
    * @return
    */
-  private def _addCartItemIntoCart(cart: StoreCart, cartItem : StoreCartItem) : StoreCart = {
+  private def _addCartItemIntoCart(cart: StoreCart, cartItem: StoreCartItem): StoreCart = {
     val existCartItem = _findCartItem(cart, cartItem)
     if (existCartItem.isDefined) {
       val newCartItems = existCartItem.get.copy(id = cartItem.id, quantity = existCartItem.get.quantity + cartItem.quantity) :: Utils.remove(cart.cartItems, existCartItem.get)
@@ -709,6 +710,7 @@ class CartHandler {
       cart.copy(cartItems = newCartItems)
     }
   }
+
   /**
    * Retrouve un item parmi la liste des items du panier. L'item est recherche si le type
    * n'est pas SERVICE et si l'id du produit et du sku sont identiques
@@ -716,9 +718,9 @@ class CartHandler {
    * @param cartItem
    * @return
    */
-  private def _findCartItem(cart: StoreCart, cartItem : StoreCartItem) : Option[StoreCartItem] = {
+  private def _findCartItem(cart: StoreCart, cartItem: StoreCartItem): Option[StoreCartItem] = {
     if (cartItem.xtype == ProductType.SERVICE) None
-    else cart.cartItems.find {ci: StoreCartItem => ci.productId == cartItem.productId && ci.skuId == cartItem.skuId}
+    else cart.cartItems.find { ci: StoreCartItem => ci.productId == cartItem.productId && ci.skuId == cartItem.skuId }
   }
 
   /**
@@ -727,8 +729,8 @@ class CartHandler {
    * @param coupon
    * @return
    */
-  private def _addCouponIntoCart(cart: StoreCart, coupon : StoreCoupon) : StoreCart = {
-    val existCoupon = cart.coupons.find {c: StoreCoupon => c.code == coupon.code}
+  private def _addCouponIntoCart(cart: StoreCart, coupon: StoreCoupon): StoreCart = {
+    val existCoupon = cart.coupons.find { c: StoreCoupon => c.code == coupon.code }
     if (existCoupon.isDefined) {
       cart
     }
@@ -745,7 +747,7 @@ class CartHandler {
    * @param stateCode
    * @return
    */
-  private def _computeStoreCart(cart: StoreCart, countryCode: Option[String], stateCode: Option[String]) : Cart = {
+  private def _computeStoreCart(cart: StoreCart, countryCode: Option[String], stateCode: Option[String]): Cart = {
     val priceEndPriceCartItems = _computeCartItem(cart.storeCode, cart.cartItems, countryCode, stateCode)
     val price = priceEndPriceCartItems._1
     val endPrice = priceEndPriceCartItems._2
@@ -770,7 +772,7 @@ class CartHandler {
    * @param stateCode
    * @return
    */
-  private def _computeCartItem(storeCode: String, cartItems: List[StoreCartItem], countryCode: Option[String], stateCode: Option[String]) : (Long, Long, List[CartItem]) = {
+  private def _computeCartItem(storeCode: String, cartItems: List[StoreCartItem], countryCode: Option[String], stateCode: Option[String]): (Long, Long, List[CartItem]) = {
     if (cartItems.isEmpty) (0, 0, List())
     else {
       val priceEndPriceAndCartItems = _computeCartItem(storeCode, cartItems.tail, countryCode, stateCode)
@@ -801,7 +803,7 @@ class CartHandler {
    * @param list
    * @return
    */
-  private def _calculateCount(list: List[CartItem]) : Int = {
+  private def _calculateCount(list: List[CartItem]): Int = {
     if (list.isEmpty) 0
     else {
       list.head.quantity + _calculateCount(list.tail)
@@ -822,7 +824,7 @@ class CartHandler {
     val cartTTC = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
     val renderCart = _renderTransactionCart(cart, cartTTC, cart.rate.get, locale)
 
-    val template = templateHandler.getTemplate(storeCode, "mail-cart.mustache")
+    val template = templateHandler.getTemplate(storeCode, "mail-cart", Some(locale.toString))
 
     val (subject, body) = templateHandler.mustache(template, write(renderCart))
     EmailHandler.Send.to(
@@ -835,12 +837,12 @@ class CartHandler {
       ))
   }
 
-  private def _renderCart(cart:Cart, currency:Currency, locale:Locale):Map[String,Any]={
-    var map :Map[String,Any]= Map()
-    map+=("count" -> cart.count)
-    map+=("cartItemVOs" -> cart.cartItemVOs.map(item => _renderCartItem(item,currency,locale)))
-    map+=("coupons"-> cart.coupons.map(c => _renderCoupon(c,currency, locale)))
-    map++=_renderPriceCart(cart,currency,locale)
+  private def _renderCart(cart: Cart, currency: Currency, locale: Locale): Map[String, Any] = {
+    var map: Map[String, Any] = Map()
+    map += ("count" -> cart.count)
+    map += ("cartItemVOs" -> cart.cartItemVOs.map(item => _renderCartItem(item, currency, locale)))
+    map += ("coupons" -> cart.coupons.map(c => _renderCoupon(c, currency, locale)))
+    map ++= _renderPriceCart(cart, currency, locale)
     map
   }
 
@@ -850,15 +852,15 @@ class CartHandler {
    * @param rate
    * @return
    */
-  private def _renderTransactionCart(storeCart: StoreCart, cart:Cart, rate:Currency, locale: Locale):Map[String,Any]={
-    var map :Map[String,Any]= Map(
+  private def _renderTransactionCart(storeCart: StoreCart, cart: Cart, rate: Currency, locale: Locale): Map[String, Any] = {
+    var map: Map[String, Any] = Map(
       "boCartUuid" -> storeCart.boCartUuid.getOrElse(""),
       "transactionUuid" -> storeCart.transactionUuid.getOrElse(""),
       "count" -> cart.count,
-      "cartItemVOs" -> cart.cartItemVOs.map(item => _renderTransactionCartItem(item,rate, locale)),
-      "coupons"-> cart.coupons.map(c => _renderTransactionCoupon(c,rate, locale))
+      "cartItemVOs" -> cart.cartItemVOs.map(item => _renderTransactionCartItem(item, rate, locale)),
+      "coupons" -> cart.coupons.map(c => _renderTransactionCoupon(c, rate, locale))
     )
-    map++=_renderTransactionPriceCart(cart,rate, locale)
+    map ++= _renderTransactionPriceCart(cart, rate, locale)
     map
   }
 
@@ -869,7 +871,7 @@ class CartHandler {
    * @param locale
    * @return
    */
-  private def _renderCoupon(coupon:Coupon, currency:Currency, locale:Locale) = {
+  private def _renderCoupon(coupon: Coupon, currency: Currency, locale: Locale) = {
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Coupon]() ++ JodaTimeSerializers.all
     val jsonCoupon = parse(write(coupon))
 
@@ -880,7 +882,7 @@ class CartHandler {
     jsonCoupon merge additionalsData
   }
 
-  private def _renderTransactionCoupon(coupon:Coupon, rate:Currency, locale: Locale) = {
+  private def _renderTransactionCoupon(coupon: Coupon, rate: Currency, locale: Locale) = {
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Coupon]() ++ JodaTimeSerializers.all
     val jsonCoupon = parse(write(coupon))
 
@@ -900,7 +902,7 @@ class CartHandler {
    * @param locale
    * @return
    */
-  private def _renderCartItem(item:CartItem,currency:Currency,locale:Locale) ={
+  private def _renderCartItem(item: CartItem, currency: Currency, locale: Locale) = {
     import org.json4s.native.JsonMethods._
     //import org.json4s.native.Serialization
     import org.json4s.native.Serialization.write
@@ -908,9 +910,9 @@ class CartHandler {
     val jsonItem = parse(write(item))
 
     val formatedPrice = rateService.formatPrice(item.price, currency, locale)
-    val formatedEndPrice = if(item.endPrice.isEmpty) None else Some(rateService.formatPrice(item.endPrice.get, currency, locale))
+    val formatedEndPrice = if (item.endPrice.isEmpty) None else Some(rateService.formatPrice(item.endPrice.get, currency, locale))
     val formatedTotalPrice = rateService.formatPrice(item.totalPrice, currency, locale)
-    val formatedTotalEndPrice = if(item.totalEndPrice.isEmpty) None else Some(rateService.formatPrice(item.totalEndPrice.get, currency, locale))
+    val formatedTotalEndPrice = if (item.totalEndPrice.isEmpty) None else Some(rateService.formatPrice(item.totalEndPrice.get, currency, locale))
 
     val additionalsData = parse(write(Map(
       "formatedPrice" -> formatedPrice,
@@ -928,7 +930,7 @@ class CartHandler {
     jsonItem merge additionalsData
   }
 
-  private def _renderTransactionCartItem(item:CartItem,rate:Currency, locale: Locale) ={
+  private def _renderTransactionCartItem(item: CartItem, rate: Currency, locale: Locale) = {
     import org.json4s.native.JsonMethods._
     import org.json4s.native.Serialization.write
     //implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
@@ -961,11 +963,11 @@ class CartHandler {
    * @param locale
    * @return
    */
-  private def _renderPriceCart(cart:Cart, currency:Currency,locale:Locale)={
+  private def _renderPriceCart(cart: Cart, currency: Currency, locale: Locale) = {
     val formatedPrice = rateService.formatLongPrice(cart.price, currency, locale)
     val formatedEndPrice = rateService.formatLongPrice(cart.endPrice, currency, locale)
     val formatedReduction = rateService.formatLongPrice(cart.reduction, currency, locale)
-    val formatedFinalPrice =  rateService.formatLongPrice(cart.finalPrice, currency, locale)
+    val formatedFinalPrice = rateService.formatLongPrice(cart.finalPrice, currency, locale)
 
     Map(
       "price" -> cart.price,
@@ -979,11 +981,11 @@ class CartHandler {
     )
   }
 
-  private def _renderTransactionPriceCart(cart:Cart, rate:Currency, locale: Locale)={
+  private def _renderTransactionPriceCart(cart: Cart, rate: Currency, locale: Locale) = {
     val price = rateService.calculateAmount(cart.price, rate)
     val endPrice = rateService.calculateAmount(cart.endPrice, rate)
     val reduction = rateService.calculateAmount(cart.reduction, rate)
-    val finalPrice= rateService.calculateAmount(cart.finalPrice, rate)
+    val finalPrice = rateService.calculateAmount(cart.finalPrice, rate)
 
     Map(
       "price" -> price,
@@ -997,11 +999,11 @@ class CartHandler {
     )
   }
 
-  def exportBOCartIntoES(storeCode: String, boCart: BOCart, refresh: Boolean = false)(implicit session : DBSession = AutoSession) = {
+  def exportBOCartIntoES(storeCode: String, boCart: BOCart, refresh: Boolean = false)(implicit session: DBSession = AutoSession) = {
     // Conversion des BOCartItem
     val cartItems = BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
       // Conversion des BOProducts
-      val boProducts = BOCartItemDao.getBOProducts(boCartItem).map { boProduct =>
+      val boProducts : List[ES.BOProduct] = BOCartItemDao.getBOProducts(boCartItem).map { boProduct =>
         // Convertion des BOTicketType
         val boRegisteredCartItems = BOTicketTypeDao.findByBOProduct(boProduct.id).map { boTicketType =>
           // Instanciation du BORegisteredCartItem pour ES
@@ -1059,6 +1061,7 @@ class CartHandler {
           uuid = boReturnedItem.uuid)
       }
 
+      val (principal, secondary) = boProducts.partition(_.principal)
       BOCartItemES(code = boCartItem.code,
         price = boCartItem.price,
         tax = boCartItem.tax,
@@ -1070,7 +1073,8 @@ class CartHandler {
         startDate = boCartItem.startDate,
         endDate = boCartItem.endDate,
         sku = ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).get._2,
-        bOProducts = boProducts,
+        principal = principal.head,
+        secondary = secondary,
         bODelivery = boDelivery,
         bOReturnedItems = boReturnedItems,
         uuid = boCartItem.uuid,
@@ -1108,12 +1112,12 @@ object StoreCartDao {
     EsClient.update[StoreCart](buildIndex(entity.storeCode), entity.copy(expireDate = DateTime.now.plusSeconds(60 * Settings.cart.lifetime)), true, false)
   }
 
-  def delete(cart: StoreCart) : Unit = {
+  def delete(cart: StoreCart): Unit = {
     EsClient.delete[StoreCart](buildIndex(cart.storeCode), cart.uuid, false)
   }
 
-  def getExpired(storeCode: String) : List[StoreCart] = {
-    val req = search in buildIndex(storeCode) -> "StoreCart" postFilter and (
+  def getExpired(storeCode: String): List[StoreCart] = {
+    val req = search in buildIndex(storeCode) -> "StoreCart" postFilter and(
       rangeFilter("expireDate") lt "now"
     )
 
@@ -1123,10 +1127,10 @@ object StoreCartDao {
 
 object DownloadableDao {
 
-  def load(storeCode: String, skuId: String) : Option[ChannelBufferBytesReference] = {
+  def load(storeCode: String, skuId: String): Option[ChannelBufferBytesReference] = {
     EsClient.loadRaw(get id skuId from storeCode -> "downloadable" fields "file.content" fetchSourceContext true) match {
       case Some(response) =>
-        if(response.getFields.containsKey("file.content")){
+        if (response.getFields.containsKey("file.content")) {
           Some(response.getField("file.content").getValue.asInstanceOf[ChannelBufferBytesReference])
         }
         else None
@@ -1139,16 +1143,50 @@ object BOCartESDao {
 
   def buildIndex(storeCode: String) = s"${storeCode}_bo"
 
-  def load(storeCode: String, uuid: String) : Option[BOCartES] = {
+  def load(storeCode: String, uuid: String): Option[BOCartES] = {
     EsClient.load[BOCartES](buildIndex(storeCode), uuid)
   }
 
   def save(storeCode: String, boCart: BOCartES, refresh: Boolean = false): Boolean = {
-    EsClient.update[BOCartES](buildIndex(storeCode), boCart, true, refresh)
+    var result = EsClient.update[BOCartES](buildIndex(storeCode), boCart, true, refresh)
+    val cartEx = BOCartEx(transactionUuid = boCart.transactionUuid,
+      buyer = boCart.buyer,
+      xdate = boCart.xdate,
+      price = boCart.price,
+      status = boCart.status,
+      currencyCode = boCart.currencyCode,
+      currencyRate = boCart.currencyRate,
+      dateCreated = boCart.dateCreated,
+      lastUpdated = boCart.lastUpdated,
+      uuid = boCart.uuid)
+    boCart.cartItems.foreach { it =>
+      val cartItemEx = BOCartItemEx(
+        code = it.code,
+        price = it.price,
+        tax = it.tax,
+        endPrice = it.endPrice,
+        totalPrice = it.totalPrice,
+        totalEndPrice = it.totalEndPrice,
+        hidden = it.hidden,
+        quantity = it.quantity,
+        startDate = it.startDate,
+        endDate = it.endDate,
+        sku = it.sku,
+        secondary = it.secondary,
+        principal = it.principal,
+        bODelivery = it.bODelivery,
+        bOReturnedItems = it.bOReturnedItems,
+        uuid = it.uuid,
+        url = it.url,
+        boCart = cartEx
+      )
+      result = result || EsClient.update[BOCartItemEx](buildIndex(storeCode), cartItemEx, true, refresh)
+    }
+    result
   }
 
-  def delete(storeCode: String, uuid: String) : Unit = {
-    EsClient.delete[StoreCart](buildIndex(storeCode), uuid, false)
+  def delete(storeCode: String, uuid: String): Unit = {
+    EsClient.delete[BOCartES](buildIndex(storeCode), uuid, false)
   }
 }
 
@@ -1173,16 +1211,20 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
   def load(uuid: String): Option[BOCart] = {
     val t = BOCartDao.syntax("t")
     DB readOnly { implicit session =>
-      withSQL {select.from(BOCartDao as t).where.eq(t.uuid, uuid)}.map(BOCartDao(t.resultName)).single().apply()
+      withSQL {
+        select.from(BOCartDao as t).where.eq(t.uuid, uuid)
+      }.map(BOCartDao(t.resultName)).single().apply()
     }
   }
 
-  def findByTransactionUuid(transactionUuid: String)(implicit session: DBSession = AutoSession) : Option[BOCart] = {
+  def findByTransactionUuid(transactionUuid: String)(implicit session: DBSession = AutoSession): Option[BOCart] = {
     val t = BOCartDao.syntax("t")
-    withSQL {select.from(BOCartDao as t).where.eq(t.transactionUuid, transactionUuid)}.map(BOCartDao(t.resultName)).single().apply()
+    withSQL {
+      select.from(BOCartDao as t).where.eq(t.transactionUuid, transactionUuid)
+    }.map(BOCartDao(t.resultName)).single().apply()
   }
 
-  def updateStatus(boCart: BOCart) : Unit = {
+  def updateStatus(boCart: BOCart): Unit = {
     DB localTx { implicit session =>
       withSQL {
         update(BOCartDao).set(
@@ -1194,7 +1236,7 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
     }
   }
 
-  def create(buyer: String, companyId: Long, rate: Currency, price: Long)(implicit session: DBSession):BOCart = {
+  def create(buyer: String, companyId: Long, rate: Currency, price: Long)(implicit session: DBSession): BOCart = {
 
     val newBoCart = new BOCart(
       newId(),
@@ -1233,7 +1275,7 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
 
   def delete(boCart: BOCart)(implicit session: DBSession) = {
     withSQL {
-      deleteFrom(BOCartDao).where.eq(BOCartDao.column.id,  boCart.id)
+      deleteFrom(BOCartDao).where.eq(BOCartDao.column.id, boCart.id)
     }.update.apply()
   }
 
@@ -1243,7 +1285,7 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
 
   override val tableName = "b_o_delivery"
 
-  def apply(rn: ResultName[BODelivery])(rs:WrappedResultSet): BODelivery = new BODelivery(
+  def apply(rn: ResultName[BODelivery])(rs: WrappedResultSet): BODelivery = new BODelivery(
     rs.get(rn.id),
     rs.get(rn.bOCartFk),
     DeliveryStatus(rs.get(rn.status)),
@@ -1253,7 +1295,7 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))
 
-  def create(boCart: BOCart, extra: Option[String])(implicit session: DBSession) : BODelivery = {
+  def create(boCart: BOCart, extra: Option[String])(implicit session: DBSession): BODelivery = {
     val newBODelivery = new BODelivery(
       id = newId(),
       bOCartFk = boCart.id,
@@ -1285,7 +1327,7 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
     }.map(BODeliveryDao(t.resultName)).single().apply()
   }
 
-  def delete(boDeliveryId : Long)(implicit session: DBSession) = {
+  def delete(boDeliveryId: Long)(implicit session: DBSession) = {
     withSQL {
       deleteFrom(BODeliveryDao).where.eq(BODeliveryDao.column.id, boDeliveryId)
     }.update.apply()
@@ -1296,7 +1338,7 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
 
   override val tableName = "b_o_returned_item"
 
-  def apply(rn: ResultName[BOReturnedItem])(rs:WrappedResultSet): BOReturnedItem = new BOReturnedItem(
+  def apply(rn: ResultName[BOReturnedItem])(rs: WrappedResultSet): BOReturnedItem = new BOReturnedItem(
     rs.get(rn.id),
     rs.get(rn.bOCartItemFk),
     rs.get(rn.quantity),
@@ -1308,7 +1350,7 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
     rs.get(rn.uuid))
 
 
-  def load(boReturnedItemUuid: String)(implicit session: DBSession = AutoSession):Option[BOReturnedItem] = {
+  def load(boReturnedItemUuid: String)(implicit session: DBSession = AutoSession): Option[BOReturnedItem] = {
     val t = BOReturnedItemDao.syntax("t")
     withSQL {
       select.from(BOReturnedItemDao as t).where.eq(t.uuid, boReturnedItemUuid)
@@ -1322,7 +1364,7 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
     }.map(BOReturnedItemDao(t.resultName)).list().apply()
   }
 
-  def create(boReturnedItem : BOReturnedItem)(implicit session: DBSession) : BOReturnedItem = {
+  def create(boReturnedItem: BOReturnedItem)(implicit session: DBSession): BOReturnedItem = {
     applyUpdate {
       insert.into(BOReturnedItemDao).namedValues(
         BOReturnedItemDao.column.id -> boReturnedItem.id,
@@ -1340,7 +1382,7 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
     boReturnedItem
   }
 
-  def save(boReturnedItem : BOReturnedItem)(implicit session: DBSession) : BOReturnedItem = {
+  def save(boReturnedItem: BOReturnedItem)(implicit session: DBSession): BOReturnedItem = {
     val updatedBoReturnedItem = boReturnedItem.copy(lastUpdated = DateTime.now())
 
     withSQL {
@@ -1360,7 +1402,7 @@ object BOReturnDao extends SQLSyntaxSupport[BOReturn] with BoService {
 
   override val tableName = "b_o_return"
 
-  def apply(rn: ResultName[BOReturn])(rs:WrappedResultSet): BOReturn = new BOReturn(
+  def apply(rn: ResultName[BOReturn])(rs: WrappedResultSet): BOReturn = new BOReturn(
     rs.get(rn.id),
     rs.get(rn.bOReturnedItemFk),
     rs.get(rn.motivation),
@@ -1376,7 +1418,7 @@ object BOReturnDao extends SQLSyntaxSupport[BOReturn] with BoService {
     }.map(BOReturnDao(t.resultName)).list().apply()
   }
 
-  def create(boReturn : BOReturn)(implicit session: DBSession) : BOReturn = {
+  def create(boReturn: BOReturn)(implicit session: DBSession): BOReturn = {
     applyUpdate {
       insert.into(BOReturnDao).namedValues(
         BOReturnDao.column.id -> boReturn.id,
@@ -1397,7 +1439,7 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
 
   override val tableName = "b_o_cart_item"
 
-  def apply(rn: ResultName[BOCartItem])(rs:WrappedResultSet): BOCartItem = new BOCartItem(
+  def apply(rn: ResultName[BOCartItem])(rs: WrappedResultSet): BOCartItem = new BOCartItem(
     rs.get(rn.id),
     rs.get(rn.code),
     rs.get(rn.price),
@@ -1417,7 +1459,7 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     rs.get(rn.uuid),
     rs.get(rn.url))
 
-  def create(sku: Mogobiz.Sku, cartItem : Render.CartItem, storeCartItem: StoreCartItem, boCart: BOCart, bODelivery: Option[BODelivery], boProductId : Long)(implicit session: DBSession) : BOCartItem = {
+  def create(sku: Mogobiz.Sku, cartItem: Render.CartItem, storeCartItem: StoreCartItem, boCart: BOCart, bODelivery: Option[BODelivery], boProductId: Long)(implicit session: DBSession): BOCartItem = {
     val newBOCartItem = new BOCartItem(
       newId(),
       "SALE_" + boCart.id + "_" + boProductId,
@@ -1468,21 +1510,21 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     newBOCartItem
   }
 
-  def findByBOCart(boCart:BOCart)(implicit session: DBSession = AutoSession):List[BOCartItem] = {
+  def findByBOCart(boCart: BOCart)(implicit session: DBSession = AutoSession): List[BOCartItem] = {
     val t = BOCartItemDao.syntax("t")
     withSQL {
       select.from(BOCartItemDao as t).where.eq(t.bOCartFk, boCart.id)
     }.map(BOCartItemDao(t.resultName)).list().apply()
   }
 
-  def findByBOReturnedItem(boReturnedItem:BOReturnedItem)(implicit session: DBSession = AutoSession):Option[BOCartItem] = {
+  def findByBOReturnedItem(boReturnedItem: BOReturnedItem)(implicit session: DBSession = AutoSession): Option[BOCartItem] = {
     val t = BOCartItemDao.syntax("t")
     withSQL {
       select.from(BOCartItemDao as t).where.eq(t.id, boReturnedItem.bOCartItemFk)
     }.map(BOCartItemDao(t.resultName)).single().apply()
   }
 
-  def load(boCartItemUuid: String)(implicit session: DBSession = AutoSession):Option[BOCartItem] = {
+  def load(boCartItemUuid: String)(implicit session: DBSession = AutoSession): Option[BOCartItem] = {
     val t = BOCartItemDao.syntax("t")
     withSQL {
       select.from(BOCartItemDao as t).where.eq(t.uuid, boCartItemUuid)
@@ -1494,7 +1536,7 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
       .map(rs => BOProductDao(rs)).list().apply()
   }
 
-  def delete(boCartItem : BOCartItem)(implicit session: DBSession) = {
+  def delete(boCartItem: BOCartItem)(implicit session: DBSession) = {
     sql"delete from b_o_cart_item_b_o_product where b_o_products_fk=${boCartItem.id}".update.apply()
 
     val result = withSQL {
@@ -1508,7 +1550,7 @@ object BOTicketTypeDao extends SQLSyntaxSupport[BOTicketType] with BoService {
 
   override val tableName = "b_o_ticket_type"
 
-  def apply(rn: ResultName[BOTicketType])(rs:WrappedResultSet): BOTicketType = new BOTicketType(
+  def apply(rn: ResultName[BOTicketType])(rs: WrappedResultSet): BOTicketType = new BOTicketType(
     rs.get(rn.id),
     rs.get(rn.quantity),
     rs.get(rn.price),
@@ -1529,10 +1571,10 @@ object BOTicketTypeDao extends SQLSyntaxSupport[BOTicketType] with BoService {
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))
 
-  def create(boTicketId: Long, sku: Sku, cartItem: Render.CartItem, registeredCartItem: Render.RegisteredCartItem, shortCode: Option[String], qrCode: Option[String], qrCodeContent: Option[String], boProductId: Long)(implicit session: DBSession) : BOTicketType = {
+  def create(boTicketId: Long, sku: Sku, cartItem: Render.CartItem, registeredCartItem: Render.RegisteredCartItem, shortCode: Option[String], qrCode: Option[String], qrCodeContent: Option[String], boProductId: Long)(implicit session: DBSession): BOTicketType = {
     val newBOTicketType = new BOTicketType(
       boTicketId,
-      1,  // Un seul ticket par bénéficiaire
+      1, // Un seul ticket par bénéficiaire
       cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice),
       shortCode,
       Some(sku.name),
@@ -1579,14 +1621,14 @@ object BOTicketTypeDao extends SQLSyntaxSupport[BOTicketType] with BoService {
     newBOTicketType
   }
 
-  def findByBOProduct(boProductId:Long)(implicit session: DBSession):List[BOTicketType]={
+  def findByBOProduct(boProductId: Long)(implicit session: DBSession): List[BOTicketType] = {
     val t = BOTicketTypeDao.syntax("t")
     withSQL {
       select.from(BOTicketTypeDao as t).where.eq(t.bOProductFk, boProductId)
     }.map(BOTicketTypeDao(t.resultName)).list().apply()
   }
 
-  def delete(boTicketType:BOTicketType)(implicit session: DBSession) {
+  def delete(boTicketType: BOTicketType)(implicit session: DBSession) {
     withSQL {
       deleteFrom(BOTicketTypeDao).where.eq(BOTicketTypeDao.column.id, boTicketType.id)
     }.update.apply()
@@ -1597,7 +1639,7 @@ object BOProductDao extends SQLSyntaxSupport[BOProduct] with BoService {
 
   override val tableName = "b_o_product"
 
-  def apply(rs:WrappedResultSet): BOProduct = new BOProduct(
+  def apply(rs: WrappedResultSet): BOProduct = new BOProduct(
     rs.long("id"),
     rs.boolean("acquittement"),
     rs.long("price"),
@@ -1607,7 +1649,7 @@ object BOProductDao extends SQLSyntaxSupport[BOProduct] with BoService {
     rs.get("last_updated"),
     rs.get("uuid"))
 
-  def create(price:Long, principal:Boolean, productId:Long)(implicit session: DBSession) : BOProduct = {
+  def create(price: Long, principal: Boolean, productId: Long)(implicit session: DBSession): BOProduct = {
     val newBOProduct = new BOProduct(
       newId(),
       false,
@@ -1636,7 +1678,7 @@ object BOProductDao extends SQLSyntaxSupport[BOProduct] with BoService {
     newBOProduct
   }
 
-  def delete(boProduct:BOProduct)(implicit session: DBSession) {
+  def delete(boProduct: BOProduct)(implicit session: DBSession) {
     withSQL {
       deleteFrom(BOProductDao).where.eq(BOProductDao.column.id, boProduct.id)
     }.update.apply()

@@ -16,14 +16,23 @@ import org.elasticsearch.search.sort.SortOrder
 
 import scala.concurrent.Future
 
-class LearningHandler extends BootedMogobizSystem  with LazyLogging {
+class LearningHandler extends BootedMogobizSystem with LazyLogging {
   def cooccurences(store: String, productId: String, action: UserAction): Seq[String] = {
-    val actionString = action.toString
-    EsClient.load[Prediction](esStore(store), productId).map(_.purchase).getOrElse(Nil)
+    val index = action match {
+      case UserAction.Purchase => esPurchasePredictions _
+      case UserAction.View => esViewPredictions _
+    }
+    EsClient.load[Prediction](index(store), productId).map { p =>
+      action match {
+        case UserAction.Purchase => p.purchase
+        case UserAction.View => p.view
+      }
+    }.getOrElse(Nil)
   }
 
   def browserHistory(store: String, uuid: String, action: UserAction, historyCount: Int, count: Int, matchCount: Int): Seq[String] = {
-    val historyReq = esearch4s in esInputStore(store) -> "UserItemAction" limit historyCount from 0 postFilter {
+    val indices = EsClient.listIndices(esLearningStorePattern(store)).mkString(",")
+    val historyReq = esearch4s in s"${store}_learning" -> "UserItemAction" limit historyCount from 0 postFilter {
       and(
         termFilter("action", action.toString),
         termFilter("uuid", uuid)
@@ -34,7 +43,7 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
 
     val itemids = (EsClient searchAllRaw historyReq).getHits map (_.sourceAsMap().get("itemid"))
 
-    val req = esearch4s in esStore(store) -> "Prediction" limit count query {
+    val req = esearch4s in esViewPredictions(store) -> "Prediction" limit count query {
       bool {
         must(
           termsQuery(action.toString, itemids: _*)
@@ -65,7 +74,7 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
 
     val head = Sink.head[(Seq[String], Seq[String])]
 
-    val runnable:RunnableFlow = source
+    val runnable: RunnableFlow = source
       .transform(() => new LoggingStage[(String, Double)]("Learning"))
       .via(frequentItemSets(store))
       .via(extract)
@@ -79,17 +88,20 @@ class LearningHandler extends BootedMogobizSystem  with LazyLogging {
 
 // Logging elements of a stream
 // mysource.transform(() => new LoggingStage(name))
-class LoggingStage[T](private val name:String)(implicit system:ActorSystem) extends PushStage[T, T] {
+class LoggingStage[T](private val name: String)(implicit system: ActorSystem) extends PushStage[T, T] {
   private val log = Logging(system, name)
+
   override def onPush(elem: T, ctx: Context[T]): Directive = {
     log.info(s"$name -> Element flowing through: {}", elem)
     ctx.push(elem)
   }
+
   override def onUpstreamFailure(cause: Throwable,
                                  ctx: Context[T]): TerminationDirective = {
     log.error(cause, s"$name -> Upstream failed.")
     super.onUpstreamFailure(cause, ctx)
   }
+
   override def onUpstreamFinish(ctx: Context[T]): TerminationDirective = {
     log.info(s"$name -> Upstream finished")
     super.onUpstreamFinish(ctx)

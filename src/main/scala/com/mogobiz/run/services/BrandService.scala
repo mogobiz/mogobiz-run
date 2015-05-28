@@ -1,5 +1,6 @@
 package com.mogobiz.run.services
 
+import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import org.json4s._

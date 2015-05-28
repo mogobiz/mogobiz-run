@@ -1,5 +1,6 @@
 package com.mogobiz.run.services
 
+import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.model.RequestParameters.{UpdateBOReturnedItemRequest, CreateBOReturnedItemRequest, BOListCustomersRequest, BOListOrdersRequest}

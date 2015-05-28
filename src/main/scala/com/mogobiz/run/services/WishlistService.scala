@@ -2,6 +2,7 @@ package com.mogobiz.run.services
 
 import akka.pattern.ask
 import akka.util.Timeout
+import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.implicits.JsonSupport._
 import com.mogobiz.run.model._

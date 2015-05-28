@@ -19,11 +19,11 @@ package object learning {
   val combinationsFlow = Flow(){implicit b =>
     import FlowGraphImplicits._
 
-    val undefinedSource = UndefinedSource[Seq[Long]]
-    val undefinedSink = UndefinedSink[List[Seq[Long]]]
+    val undefinedSource = UndefinedSource[Seq[String]]
+    val undefinedSink = UndefinedSink[List[Seq[String]]]
 
-    undefinedSource ~> Flow[Seq[Long]].map[List[Seq[Long]]](s => {
-      val combinations : ListBuffer[Seq[Long]] = ListBuffer.empty
+    undefinedSource ~> Flow[Seq[String]].map[List[Seq[String]]](s => {
+      val combinations : ListBuffer[Seq[String]] = ListBuffer.empty
       1 to s.length foreach {i => combinations ++= s.combinations(i)/*.map(_.sorted)*/.toList}
       combinations.toList
     }) ~> undefinedSink
@@ -34,12 +34,12 @@ package object learning {
   val sumSink = FoldSink[Int, Int](0)(_ + _)
 
   def calculateSupportThreshold(store:String) = Flow[(String, Double)]
-    .map(d => (load[CartCombination](esInputStore(store), d._1), d._2))
+    .map(d => (load[CartCombination](esFISStore(store), d._1), d._2))
     .map(d => d._1.map(x => Some(x.uuid, Math.ceil(x.counter * d._2).toLong)).getOrElse(None))
 
 
   def cartCombinations(store: String, x: (String, Long)): SearchDefinition = {
-    filterRequest(esearch4s in esInputStore(store) -> "CartCombination" query {
+    filterRequest(esearch4s in esFISStore(store) -> "CartCombination" query {
       matchall
     }, List(
       createTermFilter("combinations", Some(x._1)),

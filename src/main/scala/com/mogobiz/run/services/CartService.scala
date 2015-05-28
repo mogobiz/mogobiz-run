@@ -2,6 +2,7 @@ package com.mogobiz.run.services
 
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
+import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.run.model.RequestParameters._

@@ -12,3 +12,5 @@ src/main/resources/rebel.xml
 plugins/*
 *.jar
 *.iml
+
+src/main/resources/mogobiz.conf
