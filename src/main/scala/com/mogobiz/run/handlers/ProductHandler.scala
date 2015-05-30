@@ -429,7 +429,7 @@ class ProductHandler extends JsonUtil {
     val comment = Try(Comment(UUID.randomUUID().toString, userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId))
     comment match {
       case Success(s) =>
-        Comment(EsClient.index[Comment](commentIndex(storeCode), s), userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId)
+        Comment(EsClient.indexLowercase(commentIndex(storeCode), s), userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId)
       case Failure(f) => throw f
     }
   }
