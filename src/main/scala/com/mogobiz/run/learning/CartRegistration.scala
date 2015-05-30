@@ -70,7 +70,7 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
 
   def register(store: String, trackingid: String, itemids: Seq[String]): Unit = {
 
-    EsClient.index(esPurchasePredictions(store), CartAction(trackingid, itemids.mkString(" ")))
+    EsClient.index(esPurchasePredictions(store), CartAction(trackingid, itemids.mkString(" ")), false)
 
     computeFIS(store, itemids)
   }
