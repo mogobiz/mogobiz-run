@@ -1,5 +1,6 @@
 package com.mogobiz.run.config
 
+import com.mogobiz.pay.handlers.shipping.EasyPostHandler
 import com.mogobiz.run.handlers._
 import com.mogobiz.run.handlers.sql.ForUpdateHandler
 
@@ -28,4 +29,5 @@ object HandlersConfig {
 
   val learningHandler = new LearningHandler
   val validatorHandler = new ValidatorHandler
+  val easyPostHander = new EasyPostHandler
 }
