@@ -149,10 +149,14 @@ object Mogobiz {
   case class ReductionRule(id:Long,
                            @JsonScalaEnumeration(classOf[ReductionRuleRef])
                            xtype: ReductionRuleType,
+                           @JsonDeserialize(contentAs = classOf[java.lang.Long])
                            quantityMin:Option[Long],
+                           @JsonDeserialize(contentAs = classOf[java.lang.Long])
                            quantityMax:Option[Long],
                            discount:Option[String], //discount (or percent) if type is DISCOUNT (example : -1000 or 10%)
+                           @JsonDeserialize(contentAs = classOf[java.lang.Long])
                            xPurchased:Option[Long],
+                           @JsonDeserialize(contentAs = classOf[java.lang.Long])
                            yOffered:Option[Long])
 
   @JsonIgnoreProperties(ignoreUnknown=true)
@@ -165,7 +169,9 @@ object Mogobiz {
                     @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
                     @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                     endDate: Option[DateTime],
+                    @JsonDeserialize(contentAs = classOf[java.lang.Long])
                     numberOfUses:Option[Long],
+                    @JsonDeserialize(contentAs = classOf[java.lang.Long])
                     sold:Option[Long],
                     rules:List[ReductionRule],
                     active: Boolean,
@@ -229,6 +235,7 @@ object Mogobiz {
                         endDate:Option[DateTime],
                         ticketTypeFk:Long,
                         bOCartFk : Long,
+                        @JsonDeserialize(contentAs = classOf[java.lang.Long])
                         bODeliveryFk : Option[Long],
                         dateCreated:DateTime,
                         lastUpdated:DateTime,
@@ -273,6 +280,7 @@ object Mogobiz {
                       code: String)
 
   case class Consumption(id: Long,
+                         @JsonDeserialize(contentAs = classOf[java.lang.Long])
                          bOTicketTypeFk: Option[Long],
                          xdate: DateTime,
                          dateCreated: DateTime = DateTime.now,
