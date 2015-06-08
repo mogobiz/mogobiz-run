@@ -909,16 +909,15 @@ class CartHandler {
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItem]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar) ++ JodaTimeSerializers.all
     val jsonItem = parse(write(item))
 
-    val formatedPrice = rateService.formatPrice(item.price, currency, locale)
-    val formatedEndPrice = if (item.endPrice.isEmpty) None else Some(rateService.formatPrice(item.endPrice.get, currency, locale))
-    val formatedTotalPrice = rateService.formatPrice(item.totalPrice, currency, locale)
-    val formatedTotalEndPrice = if (item.totalEndPrice.isEmpty) None else Some(rateService.formatPrice(item.totalEndPrice.get, currency, locale))
-
     val additionalsData = parse(write(Map(
-      "formatedPrice" -> formatedPrice,
-      "formatedEndPrice" -> formatedEndPrice,
-      "formatedTotalPrice" -> formatedTotalPrice,
-      "formatedTotalEndPrice" -> formatedTotalEndPrice
+      "formatedPrice" -> rateService.formatPrice(item.price, currency, locale),
+      "formatedSalePrice" -> rateService.formatPrice(item.salePrice, currency, locale),
+      "formatedEndPrice" -> item.endPrice.map {rateService.formatPrice(_, currency, locale)},
+      "formatedSaleEndPrice" -> item.saleEndPrice.map {rateService.formatPrice(_, currency, locale)},
+      "formatedTotalPrice" -> rateService.formatPrice(item.totalPrice, currency, locale),
+      "formatedSaleTotalPrice" -> rateService.formatPrice(item.saleTotalPrice, currency, locale),
+      "formatedTotalEndPrice" -> item.totalEndPrice.map {rateService.formatPrice(_, currency, locale)},
+      "formatedSaleTotalEndPrice" -> item.saleTotalEndPrice.map {rateService.formatPrice(_, currency, locale)}
     )))
 
     //TODO Traduction aussi du nom en traduisant le produit et le sku
@@ -938,19 +937,31 @@ class CartHandler {
     val jsonItem = parse(write(item))
 
     val price = rateService.calculateAmount(item.price, rate)
+    val salePrice = rateService.calculateAmount(item.salePrice, rate)
     val endPrice = rateService.calculateAmount(item.endPrice.getOrElse(item.price), rate)
+    val saleEndPrice = rateService.calculateAmount(item.saleEndPrice.getOrElse(item.salePrice), rate)
     val totalPrice = rateService.calculateAmount(item.totalPrice, rate)
+    val saleTotalPrice = rateService.calculateAmount(item.saleTotalPrice, rate)
     val totalEndPrice = rateService.calculateAmount(item.totalEndPrice.getOrElse(item.totalPrice), rate)
+    val saleTotalEndPrice = rateService.calculateAmount(item.saleTotalEndPrice.getOrElse(item.saleTotalPrice), rate)
 
     val updatedData = parse(write(Map(
       "price" -> price,
+      "salePrice" -> salePrice,
       "endPrice" -> endPrice,
+      "saleEndPrice" -> saleEndPrice,
       "totalPrice" -> totalPrice,
+      "saleTotalPrice" -> saleTotalPrice,
       "totalEndPrice" -> totalEndPrice,
+      "saleTotalEndPrice" -> saleTotalEndPrice,
       "formatedPrice" -> rateService.formatLongPrice(item.price, rate, locale),
+      "formatedSalePrice" -> rateService.formatLongPrice(item.salePrice, rate, locale),
       "formatedEndPrice" -> rateService.formatLongPrice(item.endPrice.getOrElse(item.price), rate, locale),
+      "formatedSaleEndPrice" -> rateService.formatLongPrice(item.saleEndPrice.getOrElse(item.salePrice), rate, locale),
       "formatedTotalPrice" -> rateService.formatLongPrice(item.totalPrice, rate, locale),
-      "formatedTotalEndPrice" -> rateService.formatLongPrice(item.totalEndPrice.getOrElse(item.totalPrice), rate, locale)
+      "formatedSaleTotalPrice" -> rateService.formatLongPrice(item.saleTotalPrice, rate, locale),
+      "formatedTotalEndPrice" -> rateService.formatLongPrice(item.totalEndPrice.getOrElse(item.totalPrice), rate, locale),
+      "formatedSaleTotalEndPrice" -> rateService.formatLongPrice(item.saleTotalEndPrice.getOrElse(item.saleTotalPrice), rate, locale)
     )))
 
     jsonItem merge updatedData
