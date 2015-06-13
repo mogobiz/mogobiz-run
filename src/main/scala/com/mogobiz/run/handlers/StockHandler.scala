@@ -20,15 +20,15 @@ import scalikejdbc._
  */
 class StockHandler extends IndexesTypesDsl {
 
-  def checkStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date:Option[DateTime]):Boolean = {
+  def checkStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime]): Boolean = {
     val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
     stockOpt match {
       case Some(stock) => DB localTx { implicit session =>
         // Search the corresponding StockCalendar
-        val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
+        val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date, false)
 
         // stock verification
-        return stock.stockUnlimited || stock.stockOutSelling || stockCalendarOpt.map {stockCalendar =>
+        return stock.stockUnlimited || stock.stockOutSelling || stockCalendarOpt.map { stockCalendar =>
           stockCalendar.stock >= (quantity + stockCalendar.sold)
         }.getOrElse(stock.initialStock >= quantity)
       }
@@ -37,16 +37,16 @@ class StockHandler extends IndexesTypesDsl {
   }
 
   @throws[InsufficientStockException]
-  def decrementStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date:Option[DateTime]):Unit = {
+  def decrementStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime]): Unit = {
     val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
     stockOpt match {
       case Some(stock) => DB localTx { implicit session =>
 
         //In order to avoid locking on concurrents updates, we catch and retry 5 times until the update succeed else throw exception
-        def doSelectUpdateStockOperation(retryTime: Int):Unit = {
+        def doSelectUpdateStockOperation(retryTime: Int): Unit = {
           try {
             // Search the corresponding StockCalendar or create it if necessary
-            val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
+            val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date, true)
             val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
             else StockCalendarDao.create(product, sku, stock, date)
 
@@ -63,7 +63,7 @@ class StockHandler extends IndexesTypesDsl {
 
           } catch {
             case e: ConcurrentUpdateStockException =>
-              if(retryTime>5) throw new ConcurrentUpdateStockException("update error while decrementing stock")
+              if (retryTime > 5) throw new ConcurrentUpdateStockException("update error while decrementing stock")
               else doSelectUpdateStockOperation(retryTime + 1)
           }
         }
@@ -74,7 +74,7 @@ class StockHandler extends IndexesTypesDsl {
     }
   }
 
-  def incrementStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date:Option[DateTime])(implicit session: DBSession):Unit = {
+  def incrementStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime])(implicit session: DBSession): Unit = {
     val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
     stockOpt match {
       case Some(stock) =>
@@ -82,7 +82,7 @@ class StockHandler extends IndexesTypesDsl {
         def doSelectUpdateStockOperation(retryTime: Int): Unit = {
           try {
             // Search the corresponding StockCalendar or create it if necessary
-            val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
+            val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date, true)
             val stockCalendar = if (stockCalendarOpt.isDefined) stockCalendarOpt.get
             else StockCalendarDao.create(product, sku, stock, date)
 
@@ -110,7 +110,7 @@ class StockHandler extends IndexesTypesDsl {
     stockActor ! StockUpdateRequest(storeCode, product, sku, stock, stockCalendar)
   }
 
-  def updateEsStock(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar:StockCalendar): Unit = {
+  def updateEsStock(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar): Unit = {
     if (stockCalendar.startDate.isEmpty) {
       // Stock produit (sans date)
       val script = s"ctx._source.stock = ctx._source.initialStock - ${stockCalendar.sold}"
@@ -147,7 +147,7 @@ class StockHandler extends IndexesTypesDsl {
 
 object StockDao {
 
-  def findByProductAndSku(storeCode: String, product: Product, sku: Sku) : Option[EsStock] = {
+  def findByProductAndSku(storeCode: String, product: Product, sku: Sku): Option[EsStock] = {
     // Création de la requête
     val req = search in storeCode -> "stock" postFilter and(
       termFilter("stock.productId", product.id),
@@ -179,14 +179,14 @@ object StockCalendarDao extends SQLSyntaxSupport[StockCalendar] with BoService {
     rs.get("uuid")
   )
 
-  def findBySkuAndDate(sku: Sku, date:Option[DateTime])(implicit session: DBSession) : Option[StockCalendar] = {
-    val req = if (date.isDefined) forUpdateHandler.selectStockCalendarBySkuAndDate(sku, date.get)
-    else forUpdateHandler.selectStockCalendarBySkuAndNullDate(sku)
+  def findBySkuAndDate(sku: Sku, date: Option[DateTime], lock: Boolean)(implicit session: DBSession): Option[StockCalendar] = {
+    val req = if (date.isDefined) forUpdateHandler.selectStockCalendarBySkuAndDate(sku, date.get, lock)
+    else forUpdateHandler.selectStockCalendarBySkuAndNullDate(sku, lock)
 
     req.map(rs => StockCalendarDao(rs)).single.apply()
   }
 
-  def create(product:Product, sku: Sku, stock:EsStock, date:Option[DateTime])(implicit session: DBSession) : StockCalendar = {
+  def create(product: Product, sku: Sku, stock: EsStock, date: Option[DateTime])(implicit session: DBSession): StockCalendar = {
     val newStockCalendar = new StockCalendar(
       newId(),
       DateTime.now,
@@ -215,11 +215,11 @@ object StockCalendarDao extends SQLSyntaxSupport[StockCalendar] with BoService {
     newStockCalendar
   }
 
-  def update(stockCalendar:StockCalendar, addQuantity: Long)(implicit session:DBSession) : StockCalendar = {
+  def update(stockCalendar: StockCalendar, addQuantity: Long)(implicit session: DBSession): StockCalendar = {
 
     val newStockCalendar = stockCalendar.copy(sold = Math.max(stockCalendar.sold + addQuantity, 0))
     val res = sql"update stock_calendar set sold = ${newStockCalendar.sold},last_updated = $now where id=${stockCalendar.id} and last_updated = ${stockCalendar.lastUpdated}".update().apply()
-    if(res==0)
+    if (res == 0)
       throw new ConcurrentUpdateStockException()
 
     newStockCalendar

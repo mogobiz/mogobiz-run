@@ -117,7 +117,7 @@ class StockHandlerSpec extends MogobizRouteTest {
 
   private def simulateDecrement(product: Product, sku: Sku, stock: Stock, date: Option[DateTime], quantity: Long) = {
     DB localTx { implicit session =>
-      val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date)
+      val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date, true)
       if (stockCalendarOpt.isEmpty) {
         // on crée la ligne et on modifie le sold pour considéré qu'on a fait le décrément
         val stockCalendar = StockCalendarDao.create(product, sku, stock, date)

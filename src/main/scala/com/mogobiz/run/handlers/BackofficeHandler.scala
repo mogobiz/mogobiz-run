@@ -145,6 +145,7 @@ class BackofficeHandler extends JsonUtil with BoService {
       createTermFilter("transactionUUID", Some(transactionUuid))
     ).flatten
 
+    // Make sure the customer accesses his own transactions
     val transactionRequest = search in mogopayIndex types "BOTransaction" sourceInclude "transactionUUID" postFilter and(transactionFilters: _*)
     val esTransactionUuid = EsClient.searchRaw(transactionRequest).map {
       hit =>
