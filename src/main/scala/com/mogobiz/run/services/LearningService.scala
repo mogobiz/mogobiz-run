@@ -14,16 +14,16 @@ import scala.util.{Failure, Success}
 import com.mogobiz.run.config.HandlersConfig._
 
 
-class LearningService(storeCode: String)(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
+class LearningService (implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
   val route = {
-    pathPrefix("learning") {
+    pathPrefix(Segment / "learning") { implicit storeCode =>
       fis ~
         cooccurrence ~
         similarity
     }
   }
 
-  lazy val similarity = path(Segment / "history") { uuid =>
+  def similarity(implicit storeCode: String) = path(Segment / "history") { uuid =>
     get {
       parameters('action, 'history_count.as[Int], 'count.as[Int], 'match_count.as[Int]) {
         (action, historyCount, count, matchCount) =>
@@ -34,7 +34,7 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
     }
   }
 
-  lazy val cooccurrence = path(Segment / "cooccurrence") { productId =>
+  def cooccurrence(implicit storeCode: String) = path(Segment / "cooccurrence") { productId =>
     get {
       parameter('action) { action =>
         handleCall(learningHandler.cooccurences(storeCode, productId, UserAction.withName(action)),
@@ -46,7 +46,7 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
     }
   }
 
-  lazy val fis = path(Segment / "fis") { productId =>
+  def fis(implicit storeCode: String) = path(Segment / "fis") { productId =>
     get {
       parameter('frequency.as[Double]) {
         frequency =>

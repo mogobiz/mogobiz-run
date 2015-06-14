@@ -1,5 +1,7 @@
 package com.mogobiz.run.services
 
+import java.util.UUID
+
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.implicits.Json4sProtocol
@@ -10,40 +12,60 @@ import com.mogobiz.session.Session
 import com.mogobiz.session.SessionESDirectives._
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import spray.http.StatusCodes
+import spray.http.{HttpCookie, StatusCodes}
 import spray.routing.Directives
 import com.mogobiz.pay.config.MogopayHandlers.accountHandler
 
-import scala.util.{Try}
 
-class ProductService(storeCode: String, uuid: String) extends Directives with DefaultComplete {
+import com.mogobiz.run.config.Settings._
+class ProductService extends Directives with DefaultComplete {
   import org.json4s._
 
   val route = {
-    pathPrefix("products") {
-      products ~
-        find ~
-        compare ~
-        notation ~
-        product
-    } ~
-      history
+    pathPrefix(Segment / "products") { implicit storeCode =>
+      optionalCookie(CookieTracking) {
+        case Some(mogoCookie) =>
+          productRoutes(mogoCookie.content)
+        case None =>
+          val id = UUID.randomUUID.toString
+          setCookie(HttpCookie(CookieTracking, content = id, path = Some("/api/store/" + storeCode))) {
+            productRoutes(id)
+          }
+      }
+    } ~ historyRoute
   }
 
-  lazy val history = path("history") {
-    get {
-      parameters('currency.?, 'country.?, 'lang ? "_all") {
-        (currency: Option[String], country: Option[String], lang: String) => {
-          handleCall(productHandler.getProductHistory(storeCode, uuid, currency, country, lang),
-            (products: List[JValue]) => complete(StatusCodes.OK, products))
+  def productRoutes(uuid:String)(implicit storeCode: String) = products ~
+    find ~
+      compare ~
+      notation ~
+      product(uuid)
+
+  val historyRoute = path(Segment / "history") { implicit storeCode =>
+    optionalCookie(CookieTracking) {
+      case Some(mogoCookie) =>
+        history(mogoCookie.content)
+      case None =>
+        val id = UUID.randomUUID.toString
+        setCookie(HttpCookie(CookieTracking, content = id, path = Some("/api/store/" + storeCode))) {
+          history(id)
         }
+    }
+  }
+
+  def history(uuid:String)(implicit storeCode:String) = get {
+    parameters('currency.?, 'country.?, 'lang ? "_all") {
+      (currency: Option[String], country: Option[String], lang: String) => {
+        handleCall(productHandler.getProductHistory(storeCode, uuid, currency, country, lang),
+          (products: List[JValue]) => complete(StatusCodes.OK, products))
       }
     }
   }
 
+
   import shapeless._
 
-  lazy val products = pathEnd {
+  def products(implicit storeCode: String) = pathEnd {
     get {
       val productsParams = parameters(
 
@@ -98,7 +120,7 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  lazy val find = path("find") {
+  def find(implicit storeCode: String) = path("find") {
     get {
       parameters(
         'lang ? "_all"
@@ -114,7 +136,7 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  lazy val compare = path("compare") {
+  def compare(implicit storeCode: String) = path("compare") {
     get {
       parameters(
         'lang ? "_all"
@@ -127,7 +149,7 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  lazy val notation = path("notation") {
+  def notation(implicit storeCode: String) = path("notation") {
     get {
       parameters('lang ? "_all") { lang =>
         handleCall(productHandler.getProductsByNotation(storeCode, lang),
@@ -136,16 +158,16 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  lazy val product = pathPrefix(Segment) {
+  def product(uuid:String)(implicit storeCode: String) = pathPrefix(Segment) {
     productId =>
-      comments(productId.toLong) ~
-        suggestions(productId.toLong) ~
-        details(productId.toLong) ~
-        dates(productId.toLong) ~
-        times(productId.toLong)
+      comments(storeCode, productId.toLong) ~
+        suggestions(storeCode, productId.toLong) ~
+        details(storeCode,uuid, productId.toLong) ~
+        dates(storeCode,uuid, productId.toLong) ~
+        times(storeCode,uuid, productId.toLong)
   }
 
-  def details(productId: Long) = get {
+  def details(storeCode:String, uuid:String, productId: Long) = get {
     get {
       parameters(
         'historize ? false // historize is set to true when accessed by end user. Else this may be a technical call to display the product
@@ -159,7 +181,7 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  def dates(productId: Long) = path("dates") {
+  def dates(storeCode:String, uuid:String, productId: Long) = path("dates") {
     get {
       parameters('date.?) { date =>
         handleCall(productHandler.getProductDates(storeCode, date, productId.toLong, uuid),
@@ -168,7 +190,7 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  def times(productId: Long) = path("times") {
+  def times(storeCode:String, uuid:String, productId: Long) = path("times") {
     get {
       parameters('date.?) { date =>
         handleCall(productHandler.getProductTimes(storeCode, date, productId.toLong, uuid),
@@ -177,21 +199,21 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  def comments(productId: Long) = pathPrefix("comments") {
+  def comments(storeCode:String, productId: Long) = pathPrefix("comments") {
     pathEnd {
-      createComment(productId) ~
-        getComment(productId)
+      createComment(storeCode, productId) ~
+        getComment(storeCode, productId)
     } ~
     path(Segment) {
       commentId => {
-        updateComment(productId, commentId) ~
-        noteComment(productId, commentId) ~
-        deleteComment(productId, commentId)
+        updateComment(storeCode, productId, commentId) ~
+        noteComment(storeCode, productId, commentId) ~
+        deleteComment(storeCode, productId, commentId)
       }
     }
   }
 
-  def updateComment(productId: Long, commentId: String) = put {
+  def updateComment(storeCode:String, productId: Long, commentId: String) = put {
     optionalSession { optSession =>
       entity(as[CommentPutRequest]) { req =>
         val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
@@ -202,14 +224,14 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  def noteComment(productId: Long, commentId: String) = post {
+  def noteComment(storeCode:String, productId: Long, commentId: String) = post {
     entity(as[NoteCommentRequest]) { req =>
       handleCall(productHandler.noteComment(storeCode, productId, commentId, req),
         (res: Unit) => complete(StatusCodes.OK))
     }
   }
 
-  def deleteComment(productId: Long, commentId: String) = delete {
+  def deleteComment(storeCode:String, productId: Long, commentId: String) = delete {
     optionalSession { optSession =>
       val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
       val account = accountId.map{id => accountHandler.load(id)}.getOrElse(None)
@@ -218,14 +240,14 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  def getComment(productId: Long) = get {
+  def getComment(storeCode:String, productId: Long) = get {
     parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest) { req =>
       handleCall(productHandler.getComment(storeCode, productId, req),
         (json: JValue) => complete(StatusCodes.OK, json))
     }
   }
 
-  def createComment(productId: Long) = post {
+  def createComment(storeCode:String, productId: Long) = post {
     entity(as[CommentRequest]) { req =>
       optionalSession { optSession =>
         val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
@@ -236,7 +258,7 @@ class ProductService(storeCode: String, uuid: String) extends Directives with De
     }
   }
 
-  def suggestions(productId: Long) = pathPrefix("suggestions") {
+  def suggestions(storeCode:String, productId: Long) = pathPrefix("suggestions") {
     pathEnd {
       get {
         parameters('lang ? "_all") { lang =>

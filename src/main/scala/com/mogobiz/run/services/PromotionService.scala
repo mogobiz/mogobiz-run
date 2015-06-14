@@ -10,14 +10,27 @@ import spray.routing.Directives
 
 import scala.concurrent.ExecutionContext
 
-class PromotionService(storeCode: String) extends Directives with DefaultComplete {
+class PromotionService extends Directives with DefaultComplete {
 
   val route = {
-    pathPrefix("promotions") {
-      promotions
+    pathPrefix(Segment / "promotions") { storeCode =>
+      pathEnd {
+        get {
+          parameters(
+            'maxItemPerPage.?
+            , 'pageOffset.?
+            , 'orderBy.?
+            , 'orderDirection.?
+            , 'categoryPath.?
+            , 'lang ? "_all").as(PromotionRequest) { params =>
+            handleCall(promotionHandler.getPromotions(storeCode, params), (json: JValue) => complete(StatusCodes.OK, json))
+          }
+        }
+      }
     }
   }
 
+  /*
   lazy val promotions = pathEnd {
     get {
       parameters(
@@ -30,5 +43,5 @@ class PromotionService(storeCode: String) extends Directives with DefaultComplet
         handleCall(promotionHandler.getPromotions(storeCode, params), (json: JValue) => complete(StatusCodes.OK, json))
       }
     }
-  }
+  }*/
 }

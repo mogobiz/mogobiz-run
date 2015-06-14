@@ -13,17 +13,17 @@ import org.json4s._
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
-class FacetService (storeCode: String) extends Directives with DefaultComplete {
-  val route = {
+class FacetService extends Directives with DefaultComplete {
 
-    pathPrefix("facets") {
+  val route = {
+    pathPrefix(Segment / "facets") { implicit storeCode =>
       getFacets
     }
   }
 
   import shapeless._
 
-  lazy val getFacets = pathEnd{
+  def getFacets(implicit storeCode:String) = pathEnd{
     get {
       val facetParam = parameters('priceInterval.as[Long] ::
         'xtype.? ::

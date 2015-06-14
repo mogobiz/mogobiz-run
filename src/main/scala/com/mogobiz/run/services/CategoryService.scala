@@ -9,14 +9,23 @@ import spray.http.StatusCodes
 import spray.routing.Directives
 
 
-class CategoryService(storeCode: String) extends Directives with DefaultComplete {
+class CategoryService extends Directives with DefaultComplete {
 
   val route = {
-    pathPrefix("categories") {
-      categories
+    pathPrefix(Segment / "categories") { storeCode =>
+      pathEnd {
+        get {
+          parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang ? "_all", 'promotionId.?, 'size.as[Option[Int]]) {
+            (hidden, parentId, brandId, categoryPath, lang, promotionId, size) =>
+              handleCall(categoryHandler.queryCategories(storeCode, hidden, parentId, brandId, categoryPath, lang, promotionId, size),
+                (json: JValue) => complete(StatusCodes.OK, json))
+          }
+        }
+      }
     }
   }
 
+  /*
   lazy val categories = pathEnd {
     get {
       parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang ? "_all", 'promotionId ?, 'size.as[Option[Int]]) {
@@ -25,5 +34,5 @@ class CategoryService(storeCode: String) extends Directives with DefaultComplete
             (json: JValue) => complete(StatusCodes.OK, json))
       }
     }
-  }
+  }*/
 }

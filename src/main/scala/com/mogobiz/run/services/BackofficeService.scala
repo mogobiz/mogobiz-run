@@ -13,37 +13,37 @@ import spray.routing.Directives
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import Json4sProtocol._
 
-class BackofficeService(storeCode: String) extends Directives with DefaultComplete {
+class BackofficeService extends Directives with DefaultComplete {
 
   val route = {
     optionalSession { optSession =>
       val accountUuid = optSession.flatMap { session: Session => session.sessionData.accountId}
-      pathPrefix("backoffice") {
+      pathPrefix(Segment / "backoffice") { implicit storeCode =>
         path("listOrders") {
           get {
-            listOrders(accountUuid)
+            listOrders(storeCode, accountUuid)
           }
         } ~
         path("listCustomers") {
           get {
-            listCustomers(accountUuid)
+            listCustomers(storeCode, accountUuid)
           }
         } ~
         pathPrefix("cartDetails" / Segment) { transactionUuid =>
           pathEnd {
             get {
-              cartDetails(accountUuid, transactionUuid)
+              cartDetails(storeCode, accountUuid, transactionUuid)
             }
           } ~
           pathPrefix(Segment) { boCartItemUuid =>
             pathEnd {
               post {
-                createBoReturnedItem(accountUuid, transactionUuid, boCartItemUuid)
+                createBoReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid)
               }
             } ~
             path(Segment) { boReturnedUuid =>
               put {
-                updateBoReturnedItem(accountUuid, transactionUuid, boCartItemUuid, boReturnedUuid)
+                updateBoReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, boReturnedUuid)
               }
             }
           }
@@ -52,8 +52,8 @@ class BackofficeService(storeCode: String) extends Directives with DefaultComple
     }
   }
 
-  def listOrders(accountUuid: Option[String]) = parameters(
-    'maxItemPerPage ?,
+  def listOrders(storeCode: String, accountUuid: Option[String])  = parameters(
+    'maxItemPerPage.?,
     'pageOffset ?,
     'lastName.?,
     'email.?,
@@ -66,26 +66,26 @@ class BackofficeService(storeCode: String) extends Directives with DefaultComple
         (res : Paging[JValue]) => complete(StatusCodes.OK, res))
     }
 
-  def listCustomers(accountUuid: Option[String]) = parameters(
-    'maxItemPerPage ?,
-    'pageOffset ?,
+  def listCustomers(storeCode: String, accountUuid: Option[String]) = parameters(
+    'maxItemPerPage.?,
+    'pageOffset.?,
     'lastName.?,
     'email.?).as(BOListCustomersRequest) { req =>
       handleCall(backofficeHandler.listCustomers(storeCode, accountUuid, req),
         (res : Paging[JValue]) => complete(StatusCodes.OK, res))
     }
 
-  def cartDetails(accountUuid: Option[String], transactionUuid: String) =
+  def cartDetails(storeCode: String, accountUuid: Option[String], transactionUuid: String) =
       handleCall(backofficeHandler.cartDetails(storeCode, accountUuid, transactionUuid),
         (res: JValue) => complete(StatusCodes.OK, res))
 
-  def createBoReturnedItem(accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String) =
+  def createBoReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String) =
     entity(as[CreateBOReturnedItemRequest]) { req =>
       handleCall(backofficeHandler.createBOReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, req),
         (res: Unit) => complete(StatusCodes.OK))
     }
 
-  def updateBoReturnedItem(accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String, boReturnedUuid: String) =
+  def updateBoReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String, boReturnedUuid: String) =
     entity(as[UpdateBOReturnedItemRequest]) { req =>
       handleCall(backofficeHandler.updateBOReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, boReturnedUuid, req),
         (res: Unit) => complete(StatusCodes.OK))

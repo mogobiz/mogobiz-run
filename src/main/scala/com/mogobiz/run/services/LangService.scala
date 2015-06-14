@@ -8,17 +8,22 @@ import org.json4s._
 import spray.http.StatusCodes
 import spray.routing.Directives
 
-class LangService(storeCode: String) extends Directives with DefaultComplete {
+class LangService extends Directives with DefaultComplete {
 
   val route = {
-    pathPrefix("langs") {
-      langs
+    pathPrefix(Segment / "langs") { storeCode =>
+      pathEnd {
+        get {
+          handleCall(langHandler.queryLang(storeCode), (json: JValue) => complete(StatusCodes.OK, json))
+        }
+      }
     }
   }
-
+  /*
   lazy val langs = pathEnd {
     get {
       handleCall(langHandler.queryLang(storeCode), (json: JValue) => complete(StatusCodes.OK, json))
     }
   }
+  */
 }

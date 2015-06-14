@@ -1,7 +1,5 @@
 package com.mogobiz.run.services
 
-import akka.pattern.ask
-import akka.util.Timeout
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.implicits.JsonSupport._
@@ -11,12 +9,12 @@ import spray.http.StatusCodes
 import spray.routing.Directives
 
 
-class WishlistService(storeCode: String) extends Directives with DefaultComplete {
+class WishlistService extends Directives with DefaultComplete {
 
 
   val serviceName = "wishlists"
   val route = {
-    pathPrefix(serviceName) {
+    pathPrefix(Segment / serviceName) { implicit storeCode =>
       addItem ~
         removeItem ~
         addIdea ~
@@ -35,7 +33,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
     }
   }
 
-  lazy val addItem = path(Segment / "wishlist" / Segment / "item") { (wishlist_list_uuid, wishlist_uuid) =>
+  def addItem(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "item") { (wishlist_list_uuid, wishlist_uuid) =>
     post {
       entity(as[AddItemCommand]) { cmd =>
         val wishItem = WishItem(GlobalUtil.newUUID, cmd.name, cmd.product, cmd.product_sku)
@@ -45,7 +43,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
     }
   }
 
-  lazy val removeItem = path(Segment / "wishlist" / Segment / "item" / Segment) { (wishlist_list_uuid, wishlist_uuid, item_uuid) =>
+  def removeItem(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "item" / Segment) { (wishlist_list_uuid, wishlist_uuid, item_uuid) =>
     delete {
       parameters('owner_email) { owner_email =>
         handleCall(wishlistHandler.removeItem(storeCode, wishlist_list_uuid, wishlist_uuid, item_uuid, owner_email),
@@ -55,7 +53,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
   }
 
 
-  lazy val addIdea = path(Segment / "wishlist" / Segment / "idea") { (wishlist_list_uuid, wishlist_uuid) =>
+  def addIdea(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "idea") { (wishlist_list_uuid, wishlist_uuid) =>
     post {
       parameters('idea, 'owner_email) { (idea, owner_email) =>
         handleCall(wishlistHandler.addIdea(storeCode, wishlist_list_uuid, wishlist_uuid, WishIdea(GlobalUtil.newUUID, idea), owner_email),
@@ -64,7 +62,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
     }
   }
 
-  lazy val removeIdea = path(Segment / "wishlist" / Segment / "idea" / Segment) { (wishlist_list_uuid, wishlist_uuid, idea_uuid) =>
+  def removeIdea(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "idea" / Segment) { (wishlist_list_uuid, wishlist_uuid, idea_uuid) =>
     delete {
       parameters('owner_email) {
         (owner_email) =>
@@ -74,7 +72,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
     }
   }
 
-  lazy val addBrand = path(Segment / "wishlist" / Segment / "brand") {
+  def addBrand(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "brand") {
     (wishlist_list_uuid, wishlist_uuid) =>
       post {
         entity(as[AddBrandCommand]) {
@@ -85,7 +83,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
       }
   }
 
-  lazy val removeBrand = path(Segment / "wishlist" / Segment / "brand" / Segment) {
+  def removeBrand(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "brand" / Segment) {
     (wishlist_list_uuid, wishlist_uuid, brand_uuid) =>
       delete {
         parameters('owner_email) {
@@ -96,7 +94,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
       }
   }
 
-  lazy val addCategory = path(Segment / "wishlist" / Segment / "category") {
+  def addCategory(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "category") {
     (wishlist_list_uuid, wishlist_uuid) =>
       post {
         entity(as[AddCategoryCommand]) {
@@ -107,7 +105,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
       }
   }
 
-  lazy val removeCategory = path(Segment / "wishlist" / Segment / "category" / Segment) {
+  def removeCategory(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "category" / Segment) {
     (wishlist_list_uuid, wishlist_uuid, category_uuid) =>
       delete {
         parameters('owner_email) {
@@ -121,7 +119,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
   /*
   Does not update email. owner email is used for security check only
    */
-  lazy val setOwnerInfo = path(Segment / "owner") {
+  def setOwnerInfo(implicit storeCode:String) = path(Segment / "owner") {
     wishlist_list_uuid =>
       post {
         parameters('owner_email, 'owner_name.?, 'owner_day_of_birth.?.as[Option[Int]], 'owner_month_of_birth.?.as[Option[Int]], 'owner_description.?) {
@@ -132,7 +130,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
       }
   }
 
-  lazy val addWishlist = path(Segment / "wishlist") {
+  def addWishlist(implicit storeCode:String) = path(Segment / "wishlist") {
     wishlist_list_uuid =>
       post {
         entity(as[AddWishlistCommand]) {
@@ -144,7 +142,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
       }
   }
 
-  lazy val removeWishlist = path(Segment / "wishlist" / Segment) {
+  def removeWishlist(implicit storeCode:String) = path(Segment / "wishlist" / Segment) {
     (wishlist_list_uuid, wishlist_uuid) =>
       delete {
         parameters('owner_email) {
@@ -155,7 +153,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
       }
   }
 
-  lazy val getWishlistList = pathEnd {
+  def getWishlistList(implicit storeCode:String) = pathEnd {
     get {
       parameters('owner_email, 'wishlist_uuid.?) {
         (owner_email, wishlist_uuid) =>
@@ -165,7 +163,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
     }
   }
 
-  lazy val getWishlistToken = path(Segment / "wishlist" / Segment / "token") {
+  def getWishlistToken(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "token") {
     (wishlist_list_uuid, wishlist_uuid) =>
       get {
         parameters('owner_email) {
@@ -176,7 +174,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
       }
   }
 
-  lazy val getWishlistByToken = path("wishlist" / Segment) {
+  def getWishlistByToken(implicit storeCode:String) = path("wishlist" / Segment) {
     token =>
       get {
         handleCall(wishlistHandler.getWishlistByToken(token),
@@ -184,7 +182,7 @@ class WishlistService(storeCode: String) extends Directives with DefaultComplete
       }
   }
 
-  lazy val setDefaultWishlist = path(Segment / "wishlist" / Segment / "default") {
+  def setDefaultWishlist(implicit storeCode:String) = path(Segment / "wishlist" / Segment / "default") {
     (wishlist_list_uuid, wishlist_uuid) =>
       post {
         parameters('owner_email) {

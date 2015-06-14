@@ -9,7 +9,7 @@ import spray.routing._
 
 import com.mogobiz.run.config.HandlersConfig._
 
-class BrandService(storeCode: String) extends Directives with DefaultComplete {
+class BrandService extends Directives with DefaultComplete {
 
   import akka.util.Timeout
 
@@ -18,11 +18,19 @@ class BrandService(storeCode: String) extends Directives with DefaultComplete {
   implicit val timeout = Timeout(2.seconds)
 
   val route = {
-    pathPrefix("brands") {
-      brands
+    pathPrefix(Segment / "brands") { storeCode =>
+      pathEnd {
+        get {
+          parameters('hidden ? false, 'categoryPath.?, 'lang ? "_all", 'promotionId.?, 'size.as[Option[Int]]) {
+            (hidden, categoryPath, lang, promotionId, size) =>
+              handleCall(brandHandler.queryBrands(storeCode, hidden, categoryPath, lang, promotionId, size),
+                (json: JValue) => complete(StatusCodes.OK, json))
+          }
+        }
+      }
     }
   }
-
+  /*
   lazy val brands = pathEnd {
     get {
       parameters('hidden ? false, 'categoryPath.?, 'lang ? "_all", 'promotionId.?, 'size.as[Option[Int]]) {
@@ -31,5 +39,5 @@ class BrandService(storeCode: String) extends Directives with DefaultComplete {
             (json: JValue) => complete(StatusCodes.OK, json))
       }
     }
-  }
+  }*/
 }

@@ -9,13 +9,10 @@ import com.mogobiz.utils.MimeTypeTools
 import spray.http.{ContentType, MediaType, HttpHeaders}
 import spray.routing.{RoutingSettings, Directives}
 
-/**
- * Created by yoannbaudy on 16/03/2015.
- */
-class ValidatorService(storeCode: String)(implicit settings:RoutingSettings, refFactory:ActorRefFactory) extends Directives with DefaultComplete {
+class ValidatorService (implicit settings:RoutingSettings, refFactory:ActorRefFactory) extends Directives with DefaultComplete {
 
   val route = {
-    path("download" / Segment) { key =>
+    path(Segment / "download" / Segment) { (storeCode, key) =>
       get {
         handleCall(validatorHandler.download(storeCode, key),
           (res: (String, File)) => {

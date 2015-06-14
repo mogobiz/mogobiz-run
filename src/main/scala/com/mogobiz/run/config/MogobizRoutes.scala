@@ -1,13 +1,10 @@
 package com.mogobiz.run.config
 
-import java.util.UUID
-
 import akka.actor.Props
-import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.exceptions.MogobizException
 import com.mogobiz.run.services._
 import com.mogobiz.system.{MogobizSystem, RoutedHttpService}
-import spray.http.{HttpCookie, StatusCodes}
+import spray.http.StatusCodes
 import spray.routing.{Directives, _}
 
 import scala.util.{Failure, Success, Try}
@@ -18,47 +15,31 @@ trait MogobizRoutes extends Directives {
 
   private implicit val _ = system.dispatcher
 
+  lazy val apiRoutes = new TagService().route ~
+    new BrandService().route ~
+    new LangService().route ~
+    new CountryService().route ~
+    new CurrencyService().route ~
+    new CategoryService().route ~
+    new PromotionService().route ~
+    new WishlistService().route ~
+    new FacetService().route ~
+    new ResourceService().route ~
+    new BackofficeService().route ~
+    new LearningService().route ~
+    new ValidatorService().route ~
+    new ProductService().route ~
+    new PreferenceService().route ~
+    new CartService().route
+
   def routes =
     logRequestResponse(showRequest _) {
-    pathPrefix((("api" / "store") | "store") / Segment) {
-      storeCode => {
-        optionalCookie(CookieTracking) {
-          case Some(mogoCookie) =>
-            println(s"mogoCookie=${mogoCookie.content}")
-            storeRoutes(storeCode, mogoCookie.content)
-          case None =>
-            val id = UUID.randomUUID.toString
-            println(s"new uuid=$id")
-            setCookie(HttpCookie(CookieTracking, content = id, path = Some("/api/store/" + storeCode))) {
-              storeRoutes(storeCode, id)
-            }
-        }
-      }
+    pathPrefix(("api" / "store") | "store") {
+      pathEnd {
+        complete("this is the root of all things")
+      } ~ apiRoutes
     }
   }
-
-  def storeRoutes(storeCode: String, uuid: String) = {
-    pathEnd {
-      complete("the store code is " + storeCode)
-    } ~
-      new TagService(storeCode).route ~
-      new BrandService(storeCode).route ~
-      new LangService(storeCode).route ~
-      new CountryService(storeCode).route ~
-      new CurrencyService(storeCode).route ~
-      new CategoryService(storeCode).route ~
-      new ProductService(storeCode, uuid).route ~
-      new PreferenceService(storeCode, uuid).route ~
-      new CartService(storeCode, uuid).route ~
-      new PromotionService(storeCode).route ~
-      new WishlistService(storeCode).route ~
-      new FacetService(storeCode).route ~
-      new ResourceService(storeCode).route ~
-      new BackofficeService(storeCode).route ~
-      new LearningService(storeCode).route ~
-      new ValidatorService(storeCode).route
-  }
-
 
   def routesServices = system.actorOf(Props(new RoutedHttpService(routes)))
 }
@@ -94,32 +75,14 @@ trait MogolearnRoutes extends Directives {
 
   private implicit val _ = system.dispatcher
 
+  lazy val learningRoute = new LearningService().route
+
   def routes =
     logRequestResponse(showRequest _) {
-      pathPrefix((("api" / "store") | "store") / Segment) {
-        storeCode => {
-          optionalCookie(CookieTracking) {
-            case Some(mogoCookie) =>
-              println(s"mogoCookie=${mogoCookie.content}")
-              storeRoutes(storeCode, mogoCookie.content)
-            case None =>
-              val id = UUID.randomUUID.toString
-              println(s"new uuid=$id")
-              setCookie(HttpCookie(CookieTracking, content = id, path = Some("/api/store/" + storeCode))) {
-                storeRoutes(storeCode, id)
-              }
-          }
-        }
-      }
+      pathPrefix(("api" / "store") | "store"){
+        pathEnd{complete("this is the root of all knowledge")}
+      } ~ learningRoute
     }
-
-  def storeRoutes(storeCode: String, uuid: String) = {
-    pathEnd {
-      complete("the store code is " + storeCode)
-    } ~
-      new LearningService(storeCode).route
-  }
-
 
   def routesServices = system.actorOf(Props(new RoutedHttpService(routes)))
 }

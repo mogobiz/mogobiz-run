@@ -9,15 +9,21 @@ import spray.http.StatusCodes
 import spray.routing.Directives
 
 
-class CountryService(storeCode: String) extends Directives with DefaultComplete {
-
+class CountryService extends Directives with DefaultComplete {
 
   val route = {
-    pathPrefix("countries") {
-      countries
+    pathPrefix(Segment / "countries") { storeCode =>
+      pathEnd {
+        get {
+          parameters('lang ? "_all") {
+            lang =>
+              handleCall(countryHandler.queryCountries(storeCode, lang), (json: JValue) => complete(StatusCodes.OK, json))
+          }
+        }
+      }
     }
   }
-
+  /*
   lazy val countries = pathEnd {
     get {
       parameters('lang ? "_all") {
@@ -25,5 +31,5 @@ class CountryService(storeCode: String) extends Directives with DefaultComplete 
           handleCall(countryHandler.queryCountries(storeCode, lang), (json: JValue) => complete(StatusCodes.OK, json))
       }
     }
-  }
+  }*/
 }
