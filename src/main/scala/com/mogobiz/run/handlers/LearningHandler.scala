@@ -11,18 +11,19 @@ import com.mogobiz.run.model.Learning.UserAction.UserAction
 import com.mogobiz.run.model.Learning._
 import com.mogobiz.system.BootedMogobizSystem
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
+import com.sksamuel.elastic4s.IndexesTypes
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.elasticsearch.search.sort.SortOrder
 
 import scala.concurrent.Future
 
 class LearningHandler extends BootedMogobizSystem with LazyLogging {
-  def cooccurences(store: String, productId: String, action: UserAction): Seq[String] = {
+  def cooccurences(store: String, productId: String, action: UserAction, customer: Option[String]): Seq[String] = {
     val index = action match {
       case UserAction.Purchase => esPurchasePredictions _
       case UserAction.View => esViewPredictions _
     }
-    EsClient.load[Prediction](index(store), productId).map { p =>
+    EsClient.load[Prediction](index(store, customer), productId).map { p =>
       action match {
         case UserAction.Purchase => p.purchase
         case UserAction.View => p.view
@@ -30,9 +31,10 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
     }.getOrElse(Nil)
   }
 
-  def browserHistory(store: String, uuid: String, action: UserAction, historyCount: Int, count: Int, matchCount: Int): Seq[String] = {
-    val indices = EsClient.listIndices(esLearningStorePattern(store)).mkString(",")
-    val historyReq = esearch4s in s"${store}_learning" -> "UserItemAction" limit historyCount from 0 postFilter {
+  def browserHistory(store: String, uuid: String, action: UserAction, historyCount: Int, count: Int, matchCount: Int, customer: Option[String]): Seq[String] = {
+    val indices = EsClient.listIndices(esLearningStorePattern(store))
+    //s"${store}_learning"
+    val historyReq = esearch4s in "*" types("UserItemAction") limit historyCount from 0 postFilter {
       and(
         termFilter("action", action.toString),
         termFilter("uuid", uuid)
@@ -41,23 +43,28 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
       by field "dateCreated" order SortOrder.DESC
     }
 
-    val itemids = (EsClient searchAllRaw historyReq).getHits map (_.sourceAsMap().get("itemid"))
+    val itemids = (EsClient searchAllRaw historyReq).getHits map (_.sourceAsMap().get("itemid").toString)
 
-    val req = esearch4s in esViewPredictions(store) -> "Prediction" limit count query {
-      bool {
-        must(
-          termsQuery(action.toString, itemids: _*)
-            minimumShouldMatch matchCount
-        )
+    if (matchCount > -1) {
+      val req = esearch4s in esViewPredictions(store, customer) -> "Prediction" limit count query {
+        bool {
+          must(
+            termsQuery(action.toString, itemids: _*)
+              minimumShouldMatch matchCount
+          )
+        }
       }
+      logger.debug(req._builder.toString)
+      val predictions = EsClient.searchAll[Prediction](req).map(_.uid)
+      predictions.foreach(p => logger.debug(p))
+      predictions
     }
-    logger.debug(req._builder.toString)
-    val predictions = EsClient.searchAll[Prediction](req).map(_.uid)
-    predictions.foreach(p => logger.debug(p))
-    predictions
+    else {
+      itemids
+    }
   }
 
-  def fis(store: String, productId: String, frequency: Double = 0.2): Future[(Seq[String], Seq[String])] = {
+  def fis(store: String, productId: String, frequency: Double = 0.2, segment: Option[String]): Future[(Seq[String], Seq[String])] = {
     implicit val _ = ActorFlowMaterializer()
 
     import com.mogobiz.run.learning._
@@ -76,7 +83,7 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
 
     val runnable: RunnableFlow = source
       .transform(() => new LoggingStage[(String, Double)]("Learning"))
-      .via(frequentItemSets(store))
+      .via(frequentItemSets(store, segment))
       .via(extract)
       .via(exclude)
       .to(head)
@@ -113,6 +120,6 @@ object LearningHandler extends App {
   import UserAction._
 
   val l = new LearningHandler()
-  val res = l.cooccurences("mogobiz", "718", Purchase)
-  l.browserHistory("mogobiz", "119", Purchase, 10, 20, 3)
+  val res = l.cooccurences("mogobiz", "718", Purchase, None)
+  l.browserHistory("mogobiz", "119", Purchase, 10, 20, 3, None)
 }

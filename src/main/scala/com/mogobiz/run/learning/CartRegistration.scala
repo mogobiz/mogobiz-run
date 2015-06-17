@@ -15,7 +15,7 @@ import akka.stream.scaladsl._
 import scala.concurrent.{Await, Future}
 
 object CartRegistration extends BootedMogobizSystem with LazyLogging {
-  def computeFIS(store: String, itemids: Seq[String]): Unit = {
+  def computeFIS(store: String, itemids: Seq[String], segment: Option[String]): Unit = {
     val sorted: Seq[String] = itemids.distinct.sorted
 
     if (sorted.length < 100) {
@@ -32,7 +32,7 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
           val now = Calendar.getInstance().getTime
           val uuid = seq.mkString("-")
           update(uuid)
-            .in(s"${esFISStore(store)}/CartCombination")
+            .in(s"${esFISStore(store, segment)}/CartCombination")
             .upsert(
               "uuid" -> uuid,
               "combinations" -> seq,
@@ -70,9 +70,9 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
 
   def register(store: String, trackingid: String, itemids: Seq[String]): Unit = {
 
-    EsClient.index(esPurchasePredictions(store), CartAction(trackingid, itemids.mkString(" ")), false)
+    EsClient.index(esPurchasePredictions(store, None), CartAction(trackingid, itemids.mkString(" ")), false)
 
-    computeFIS(store, itemids)
+    computeFIS(store, itemids, None)
   }
 
 }

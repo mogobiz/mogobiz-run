@@ -18,6 +18,7 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
   val route = {
     pathPrefix("learning") {
       fis ~
+      last ~
         cooccurrence ~
         similarity
     }
@@ -25,9 +26,20 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
 
   lazy val similarity = path(Segment / "history") { uuid =>
     get {
-      parameters('action, 'history_count.as[Int], 'count.as[Int], 'match_count.as[Int]) {
-        (action, historyCount, count, matchCount) =>
-          handleCall(learningHandler.browserHistory(storeCode, uuid, UserAction.withName(action), historyCount, count, matchCount),
+      parameters('action, 'history_count.as[Int], 'count.as[Int], 'match_count.as[Int], 'customer.?) {
+        (action, historyCount, count, matchCount, customer) =>
+          handleCall(learningHandler.browserHistory(storeCode, uuid, UserAction.withName(action), historyCount, count, matchCount, customer),
+            (res: Seq[String]) => complete(StatusCodes.OK, res)
+          )
+      }
+    }
+  }
+
+  lazy val last = path(Segment / "last") { uuid =>
+    get {
+      parameter('count.as[Int]) {
+        count =>
+          handleCall(learningHandler.browserHistory(storeCode, uuid, UserAction.View, count, -1, -1, None),
             (res: Seq[String]) => complete(StatusCodes.OK, res)
           )
       }
@@ -36,8 +48,8 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
 
   lazy val cooccurrence = path(Segment / "cooccurrence") { productId =>
     get {
-      parameter('action) { action =>
-        handleCall(learningHandler.cooccurences(storeCode, productId, UserAction.withName(action)),
+      parameters('action, 'customer.?) { (action, customer) =>
+        handleCall(learningHandler.cooccurences(storeCode, productId, UserAction.withName(action), customer),
           (res: Seq[String]) => {
             complete(StatusCodes.OK, res)
           }
@@ -48,9 +60,9 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
 
   lazy val fis = path(Segment / "fis") { productId =>
     get {
-      parameter('frequency.as[Double]) {
-        frequency =>
-          handleCall(learningHandler.fis(storeCode, productId, frequency),
+      parameters('frequency.as[Double], 'customer.?) {
+        (frequency, customer) =>
+          handleCall(learningHandler.fis(storeCode, productId, frequency, customer),
             (res: Future[(Seq[String], Seq[String])]) =>
               onComplete(res) {
                 case Success(tuple) => complete(StatusCodes.OK, tuple)

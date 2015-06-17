@@ -10,10 +10,6 @@ import org.elasticsearch.search.sort.SortOrder
 
 import scala.collection.mutable.ListBuffer
 
-/**
- *
- * Created by smanciot on 22/02/15.
- */
 package object learning {
 
   val combinationsFlow = Flow(){implicit b =>
@@ -33,13 +29,13 @@ package object learning {
 
   val sumSink = FoldSink[Int, Int](0)(_ + _)
 
-  def calculateSupportThreshold(store:String) = Flow[(String, Double)]
-    .map(d => (load[CartCombination](esFISStore(store), d._1), d._2))
+  def calculateSupportThreshold(store:String, segment:Option[String]) = Flow[(String, Double)]
+    .map(d => (load[CartCombination](esFISStore(store, segment), d._1), d._2))
     .map(d => d._1.map(x => Some(x.uuid, Math.ceil(x.counter * d._2).toLong)).getOrElse(None))
 
 
-  def cartCombinations(store: String, x: (String, Long)): SearchDefinition = {
-    filterRequest(esearch4s in esFISStore(store) -> "CartCombination" query {
+  def cartCombinations(store: String, segment:Option[String], x: (String, Long)): SearchDefinition = {
+    filterRequest(esearch4s in esFISStore(store, segment) -> "CartCombination" query {
       matchall
     }, List(
       createTermFilter("combinations", Some(x._1)),
@@ -48,18 +44,18 @@ package object learning {
     ).flatten) from 0 size 1
   }
 
-  def loadMostFrequentItemSet(store: String) = Flow[Option[(String, Long)]].map(_.map((x) =>
-    searchAll[CartCombination](cartCombinations(store, x) sort {
+  def loadMostFrequentItemSet(store: String, segment:Option[String]) = Flow[Option[(String, Long)]].map(_.map((x) =>
+    searchAll[CartCombination](cartCombinations(store, segment, x) sort {
       by field "counter" order SortOrder.DESC
     }).headOption).getOrElse(None))
 
-  def loadLargerFrequentItemSet(store: String) = Flow[Option[(String, Long)]].map(_.map((x) =>
-    searchAll[CartCombination](cartCombinations(store, x) sort {
+  def loadLargerFrequentItemSet(store: String, segment:Option[String]) = Flow[Option[(String, Long)]].map(_.map((x) =>
+    searchAll[CartCombination](cartCombinations(store, segment, x) sort {
       by script "doc['combinations'].values.size()" order SortOrder.DESC
     }).headOption).getOrElse(None))
 
 
-  def frequentItemSets(store: String) = Flow() { implicit builder =>
+  def frequentItemSets(store: String, segment:Option[String]) = Flow() { implicit builder =>
     import FlowGraphImplicits._
 
     val undefinedSource = UndefinedSource[(String, Double)]
@@ -67,8 +63,8 @@ package object learning {
     val zip = Zip[Option[CartCombination], Option[CartCombination]]
     val undefinedSink = UndefinedSink[(Option[CartCombination], Option[CartCombination])]
 
-    undefinedSource ~> calculateSupportThreshold(store) ~> broadcast ~> loadMostFrequentItemSet(store)   ~> zip.left
-                                                           broadcast ~> loadLargerFrequentItemSet(store) ~> zip.right
+    undefinedSource ~> calculateSupportThreshold(store, segment) ~> broadcast ~> loadMostFrequentItemSet(store, segment)   ~> zip.left
+                                                           broadcast ~> loadLargerFrequentItemSet(store, segment) ~> zip.right
     zip.out ~> undefinedSink
 
     (undefinedSource, undefinedSink)
