@@ -63,11 +63,8 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
       parameters('frequency.as[Double], 'customer.?) {
         (frequency, customer) =>
           handleCall(learningHandler.fis(storeCode, productId, frequency, customer),
-            (res: Future[(Seq[String], Seq[String])]) =>
-              onComplete(res) {
-                case Success(tuple) => complete(StatusCodes.OK, tuple)
-                case Failure(e) => complete(StatusCodes.InternalServerError, e)
-              }
+            (res: (Seq[String], Seq[String])) =>
+              complete(StatusCodes.OK, res)
           )
       }
     }

@@ -2,20 +2,22 @@ package com.mogobiz.run.handlers
 
 import akka.actor.ActorSystem
 import akka.event.Logging
-import akka.stream.ActorFlowMaterializer
-import akka.stream.scaladsl._
+//import akka.stream.ActorFlowMaterializer
+//import akka.stream.scaladsl._
 import akka.stream.stage.{TerminationDirective, Directive, Context, PushStage}
 import com.mogobiz.es.EsClient
+import com.mogobiz.es.EsClient._
 import com.mogobiz.run.model.Learning.UserAction.UserAction
 
 import com.mogobiz.run.model.Learning._
 import com.mogobiz.system.BootedMogobizSystem
+//import com.sksamuel.elastic4s.ElasticDsl.index
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
-import com.sksamuel.elastic4s.IndexesTypes
+//import com.sksamuel.elastic4s.IndexesTypes
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.elasticsearch.search.sort.SortOrder
 
-import scala.concurrent.Future
+//import scala.concurrent.Future
 
 class LearningHandler extends BootedMogobizSystem with LazyLogging {
   def cooccurences(store: String, productId: String, action: UserAction, customer: Option[String]): Seq[String] = {
@@ -34,7 +36,7 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
   def browserHistory(store: String, uuid: String, action: UserAction, historyCount: Int, count: Int, matchCount: Int, customer: Option[String]): Seq[String] = {
     val indices = EsClient.listIndices(esLearningStorePattern(store))
     //s"${store}_learning"
-    val historyReq = esearch4s in "*" types("UserItemAction") limit historyCount from 0 postFilter {
+    val historyReq = esearch4s in "*" types "UserItemAction" limit historyCount from 0 postFilter {
       and(
         termFilter("action", action.toString),
         termFilter("uuid", uuid)
@@ -64,31 +66,49 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
     }
   }
 
-  def fis(store: String, productId: String, frequency: Double = 0.2, segment: Option[String]): Future[(Seq[String], Seq[String])] = {
-    implicit val _ = ActorFlowMaterializer()
+  def fis(store: String, productId: String, frequency: Double = 0.2, segment: Option[String]): (Seq[String], Seq[String]) = {
 
     import com.mogobiz.run.learning._
 
-    val source = Source.single((productId, frequency))
+//    implicit val _ = ActorFlowMaterializer()
+//    val source = Source.single((productId, frequency))
+//
+//    val extract = Flow[(Option[CartCombination], Option[CartCombination])].map((x) => {
+//      (
+//        x._1.map(_.combinations.toSeq).getOrElse(Seq.empty),
+//        x._2.map(_.combinations.toSeq).getOrElse(Seq.empty))
+//    })
+//
+//    val exclude = Flow[(Seq[String], Seq[String])].map(x => (x._1.filter(_ != productId), x._2.filter(_ != productId)))
+//
+//    val head = Sink.head[(Seq[String], Seq[String])]
+//
+//    val runnable: RunnableFlow = source
+//      .transform(() => new LoggingStage[(String, Double)]("Learning"))
+//      .via(frequentItemSets(store, segment))
+//      .via(extract)
+//      .via(exclude)
+//      .to(head)
+//
+//    runnable.run().get(head)
 
-    val extract = Flow[(Option[CartCombination], Option[CartCombination])].map((x) => {
-      (
-        x._1.map(_.combinations.toSeq).getOrElse(Seq.empty),
-        x._2.map(_.combinations.toSeq).getOrElse(Seq.empty))
-    })
+    val supportThreshold: Option[(String, Long)] = load[CartCombination](
+      esFISStore(store, segment), productId
+    )
+    .map(
+      x => Some(x.uuid, Math.ceil(x.counter * frequency).toLong)
+    ).getOrElse(None)
 
-    val exclude = Flow[(Seq[String], Seq[String])].map(x => (x._1.filter(_ != productId), x._2.filter(_ != productId)))
+    val lmfis: Seq[String] = supportThreshold.map(x => searchAll[CartCombination](cartCombinations(store, segment, x) sort {
+      by field "counter" order SortOrder.DESC
+    }).headOption).getOrElse(None).map(_.combinations.toSeq).getOrElse(Seq.empty).filter(_ != productId)
 
-    val head = Sink.head[(Seq[String], Seq[String])]
+    val llfis: Seq[String] = supportThreshold.map(x => searchAll[CartCombination](cartCombinations(store, segment, x) sort {
+      by script "doc['combinations'].values.size()" order SortOrder.DESC
+    }).headOption).getOrElse(None).map(_.combinations.toSeq).getOrElse(Seq.empty).filter(_ != productId)
 
-    val runnable: RunnableFlow = source
-      .transform(() => new LoggingStage[(String, Double)]("Learning"))
-      .via(frequentItemSets(store, segment))
-      .via(extract)
-      .via(exclude)
-      .to(head)
+    (lmfis, llfis)
 
-    runnable.run().get(head)
   }
 }
 
