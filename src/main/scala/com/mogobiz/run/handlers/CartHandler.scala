@@ -16,7 +16,7 @@ import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.ES.{BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOCartItemEx, BOCartEx}
 import com.mogobiz.run.model.Render.{Coupon, RegisteredCartItem, CartItem, Cart}
-import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, Shipping => ShippingPay, RegisteredCartItem => RegisteredCartItemPay }
+import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, Shipping => ShippingPay, RegisteredCartItem => RegisteredCartItemPay, CartRate}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
@@ -882,7 +882,8 @@ class CartHandler {
       new CouponPay(coupon.code, coupon.startDate, coupon.endDate, coupon.price, customCoupon)
     }
 
-    new CartPay(rate.code, cart.price, cart.endPrice, cart.reduction, cart.finalPrice, cartItemsPay, couponsPay, Map())
+    val cartRate = CartRate(rate.code, rate.numericCode, rate.rate, rate.currencyFractionDigits)
+    new CartPay(cartRate, cart.price, cart.endPrice, cart.reduction, cart.finalPrice, cartItemsPay, couponsPay, Map())
   }
 
   /**
