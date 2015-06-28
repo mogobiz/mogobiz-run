@@ -1,9 +1,19 @@
 package com.mogobiz.run.handlers
 
+import java.text.SimpleDateFormat
+import java.util
+import java.util.Date
+
 import akka.actor.ActorSystem
 import akka.event.Logging
+import org.elasticsearch.search.aggregations.Aggregation
+import org.elasticsearch.search.aggregations.bucket.terms.Terms
+
+import scala.collection.mutable
+
 //import akka.stream.ActorFlowMaterializer
 //import akka.stream.scaladsl._
+
 import akka.stream.stage.{TerminationDirective, Directive, Context, PushStage}
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
@@ -11,9 +21,13 @@ import com.mogobiz.run.model.Learning.UserAction.UserAction
 
 import com.mogobiz.run.model.Learning._
 import com.mogobiz.system.BootedMogobizSystem
+
 //import com.sksamuel.elastic4s.ElasticDsl.index
+
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
+
 //import com.sksamuel.elastic4s.IndexesTypes
+
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.elasticsearch.search.sort.SortOrder
 
@@ -36,7 +50,8 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
   def browserHistory(store: String, uuid: String, action: UserAction, historyCount: Int, count: Int, matchCount: Int, customer: Option[String]): Seq[String] = {
     val indices = EsClient.listIndices(esLearningStorePattern(store))
     //s"${store}_learning"
-    val historyReq = esearch4s in "*" types "UserItemAction" limit historyCount from 0 postFilter {
+    //val historyReq = esearch4s in "*" types "UserItemAction" limit historyCount from 0 postFilter {
+    val historyReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" limit historyCount from 0 postFilter {
       and(
         termFilter("action", action.toString),
         termFilter("uuid", uuid)
@@ -70,34 +85,34 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
 
     import com.mogobiz.run.learning._
 
-//    implicit val _ = ActorFlowMaterializer()
-//    val source = Source.single((productId, frequency))
-//
-//    val extract = Flow[(Option[CartCombination], Option[CartCombination])].map((x) => {
-//      (
-//        x._1.map(_.combinations.toSeq).getOrElse(Seq.empty),
-//        x._2.map(_.combinations.toSeq).getOrElse(Seq.empty))
-//    })
-//
-//    val exclude = Flow[(Seq[String], Seq[String])].map(x => (x._1.filter(_ != productId), x._2.filter(_ != productId)))
-//
-//    val head = Sink.head[(Seq[String], Seq[String])]
-//
-//    val runnable: RunnableFlow = source
-//      .transform(() => new LoggingStage[(String, Double)]("Learning"))
-//      .via(frequentItemSets(store, segment))
-//      .via(extract)
-//      .via(exclude)
-//      .to(head)
-//
-//    runnable.run().get(head)
+    //    implicit val _ = ActorFlowMaterializer()
+    //    val source = Source.single((productId, frequency))
+    //
+    //    val extract = Flow[(Option[CartCombination], Option[CartCombination])].map((x) => {
+    //      (
+    //        x._1.map(_.combinations.toSeq).getOrElse(Seq.empty),
+    //        x._2.map(_.combinations.toSeq).getOrElse(Seq.empty))
+    //    })
+    //
+    //    val exclude = Flow[(Seq[String], Seq[String])].map(x => (x._1.filter(_ != productId), x._2.filter(_ != productId)))
+    //
+    //    val head = Sink.head[(Seq[String], Seq[String])]
+    //
+    //    val runnable: RunnableFlow = source
+    //      .transform(() => new LoggingStage[(String, Double)]("Learning"))
+    //      .via(frequentItemSets(store, segment))
+    //      .via(extract)
+    //      .via(exclude)
+    //      .to(head)
+    //
+    //    runnable.run().get(head)
 
     val supportThreshold: Option[(String, Long)] = load[CartCombination](
       esFISStore(store, segment), productId
     )
-    .map(
-      x => Some(x.uuid, Math.ceil(x.counter * frequency).toLong)
-    ).getOrElse(None)
+      .map(
+        x => Some(x.uuid, Math.ceil(x.counter * frequency).toLong)
+      ).getOrElse(None)
 
     val lmfis: Seq[String] = supportThreshold.map(x => searchAll[CartCombination](cartCombinations(store, segment, x) sort {
       by field "counter" order SortOrder.DESC
@@ -109,6 +124,28 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
 
     (lmfis, llfis)
 
+  }
+
+  def popular(store: String, action: UserAction, since: Date, count: Int, customer: Option[String]): List[String] = {
+    import scala.collection.JavaConversions._
+
+    val indices = EsClient.listIndices(esLearningStorePattern(store))
+    val filters = List(Option(action).map(x => termFilter("action", x.toString)),
+      customer.map(x => termFilter("segment", x)),
+      Option(since).map(x => rangeFilter("dateCreated").
+        gte(new SimpleDateFormat("yyyy-MM-dd").format(since)).
+        lte(new SimpleDateFormat("yyyy-MM-dd").format(new Date()))
+      )
+    ).flatten
+
+    val popularReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" limit 0 postFilter {
+      and(filters: _*)
+    } aggs {
+      aggregation terms "top-itemid" field "itemid" size count order Terms.Order.count(false)
+    }
+    logger.debug(popularReq._builder.toString)
+    val terms = EsClient().execute(popularReq).await.getAggregations.get("top-itemid").asInstanceOf[Terms]
+    terms.getBuckets.map(term => term.getKey).toList
   }
 }
 

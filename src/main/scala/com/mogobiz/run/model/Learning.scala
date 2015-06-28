@@ -8,7 +8,7 @@ object Learning {
 
   def esViewPredictions(store: String, segment: Option[String]): String = s"${store}_predictions_view" + segment.map("_" + _).getOrElse("").toLowerCase()
 
-  def esLearningStorePattern(store: String): String = s"${store}_learning_*"
+  def esLearningStorePattern(store: String): String = s"${store}_learning_.*"
 
   def esFISStore(store: String, segment: Option[String]): String = s"${store}_fis" + segment.map("_" + _).getOrElse("").toLowerCase()
 

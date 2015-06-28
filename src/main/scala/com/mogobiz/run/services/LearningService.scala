@@ -1,5 +1,7 @@
 package com.mogobiz.run.services
 
+import java.text.SimpleDateFormat
+
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.config.HandlersConfig._
@@ -18,9 +20,10 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
   val route = {
     pathPrefix("learning") {
       fis ~
-      last ~
+        last ~
         cooccurrence ~
-        similarity
+        similarity ~
+        popular
     }
   }
 
@@ -69,4 +72,18 @@ class LearningService(storeCode: String)(implicit executionContext: ExecutionCon
       }
     }
   }
+
+  lazy val popular =
+    get {
+      path("popular") {
+        parameters('action, 'since, 'count.as[Int], 'customer.?) {
+          (action, since, count, customer) =>
+            handleCall(learningHandler.popular(storeCode, UserAction.withName(action), new SimpleDateFormat("yyyyMMdd").parse(since), count, customer),
+              (res: List[String]) => complete(StatusCodes.OK, res)
+            )
+        }
+      }
+    }
+
+
 }
