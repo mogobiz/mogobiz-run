@@ -41,7 +41,7 @@ class ProductService extends Directives with DefaultComplete {
       notation ~
       product(uuid)
 
-  val historyRoute = path(Segment / "history") { implicit storeCode =>
+  def historyRoute = path(Segment / "history") { implicit storeCode =>
     optionalCookie(CookieTracking) {
       case Some(mogoCookie) =>
         history(mogoCookie.content)
