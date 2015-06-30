@@ -4,11 +4,13 @@ import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 
 object Learning {
-  def esPurchasePredictions(store: String): String = s"${store}_predictions_purchase"
-  def esViewPredictions(store: String): String = s"${store}_predictions_view"
+  def esPurchasePredictions(store: String, segment: Option[String]): String = s"${store}_predictions_purchase" + segment.map("_" + _).getOrElse("").toLowerCase()
 
-  def esLearningStorePattern(store: String): String = s"${store}_learning.*"
-  def esFISStore(store: String): String = s"${store}_fis"
+  def esViewPredictions(store: String, segment: Option[String]): String = s"${store}_predictions_view" + segment.map("_" + _).getOrElse("").toLowerCase()
+
+  def esLearningStorePattern(store: String): String = s"${store}_learning_.*"
+
+  def esFISStore(store: String, segment: Option[String]): String = s"${store}_fis" + segment.map("_" + _).getOrElse("").toLowerCase()
 
   object UserAction extends Enumeration {
     type UserAction = Value

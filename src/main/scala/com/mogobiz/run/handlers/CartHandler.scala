@@ -1,7 +1,6 @@
 package com.mogobiz.run.handlers
 
-import java.io.{FileOutputStream, File, ByteArrayOutputStream}
-import java.nio.file.{Paths, Files}
+import java.io.ByteArrayOutputStream
 import java.util.{UUID, Locale}
 
 import com.mogobiz.es.EsClient
@@ -15,9 +14,9 @@ import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.{CartRegistration, UserActionRegistration}
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.Mogobiz.TransactionStatus._
 import com.mogobiz.run.model.ES.{BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOCartItemEx, BOCartEx}
 import com.mogobiz.run.model.Render.{Coupon, RegisteredCartItem, CartItem, Cart}
+import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, Shipping => ShippingPay, RegisteredCartItem => RegisteredCartItemPay, CartRate}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
@@ -347,11 +346,22 @@ class CartHandler {
 
     val renderedCart = _renderTransactionCart(updatedCart, cartTTC, currency, locale)
     Map(
-      "amount" -> renderedCart("finalPrice"),
+      "amount" -> rateService.calculateAmount(cartTTC.finalPrice, currency),
       "currencyCode" -> currency.code,
       "currencyRate" -> currency.rate.doubleValue(),
-      "transactionExtra" -> renderedCart
+      "transactionExtra" -> renderedCart,
+      "cartProvider" -> "mogobizRun",
+      "cartKeys" -> s"$storeCode|||$uuid|||${accountId.getOrElse("")}"
     )
+  }
+
+  def getCartForPay(storeCode: String, uuid: String, accountId: Option[String]): CartPay = {
+    val cart = _initCart(storeCode, uuid, accountId)
+
+    // Calcul des données du panier
+    val cartTTC = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
+
+    transformCartForCartPay(cartTTC, cart.rate.get)
   }
 
   /**
@@ -846,6 +856,36 @@ class CartHandler {
     map
   }
 
+  private def transformCartForCartPay(cart: Cart, rate: Currency) : CartPay = {
+    val cartItemsPay = cart.cartItemVOs.map { cartItem =>
+      val registeredCartItemsPay = cartItem.registeredCartItemVOs.map { rci =>
+        new RegisteredCartItemPay(rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, Map())
+      }
+      val shippingPay = cartItem.shipping.map { shipping =>
+        new ShippingPay(shipping.weight, shipping.weightUnit.toString(), shipping.width, shipping.height, shipping.depth,
+        shipping.linearUnit.toString(), shipping.amount, shipping.free, Map())
+      }
+      val customCartItem = Map("productId" -> cartItem.productId,
+        "productName" -> cartItem.productName,
+        "xtype" -> cartItem.xtype.toString(),
+        "calendarType" -> cartItem.calendarType.toString(),
+        "skuId" -> cartItem.skuId,
+        "skuName" -> cartItem.skuName,
+        "startDate" -> cartItem.startDate,
+        "endDate" -> cartItem.endDate)
+      new CartItemPay(cartItem.quantity, cartItem.price, cartItem.endPrice.getOrElse(cartItem.price), cartItem.tax.getOrElse(0), cartItem.totalPrice,
+      cartItem.totalEndPrice.getOrElse(cartItem.totalPrice), cartItem.salePrice, cartItem.saleEndPrice.getOrElse(cartItem.salePrice), cartItem.saleTotalPrice,
+      cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), registeredCartItemsPay, shippingPay, customCartItem)
+    }
+    val couponsPay = cart.coupons.map {coupon =>
+      val customCoupon = Map("name" -> coupon.name, "active" -> coupon.active)
+      new CouponPay(coupon.code, coupon.startDate, coupon.endDate, coupon.price, customCoupon)
+    }
+
+    val cartRate = CartRate(rate.code, rate.numericCode, rate.rate, rate.currencyFractionDigits)
+    new CartPay(cart.count, cartRate, cart.price, cart.endPrice, cart.reduction, cart.finalPrice, cartItemsPay, couponsPay, Map())
+  }
+
   /**
    * Idem que renderCart à quelques différences près d'où la dupplication de code
    * @param cart
@@ -909,16 +949,15 @@ class CartHandler {
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItem]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar) ++ JodaTimeSerializers.all
     val jsonItem = parse(write(item))
 
-    val formatedPrice = rateService.formatPrice(item.price, currency, locale)
-    val formatedEndPrice = if (item.endPrice.isEmpty) None else Some(rateService.formatPrice(item.endPrice.get, currency, locale))
-    val formatedTotalPrice = rateService.formatPrice(item.totalPrice, currency, locale)
-    val formatedTotalEndPrice = if (item.totalEndPrice.isEmpty) None else Some(rateService.formatPrice(item.totalEndPrice.get, currency, locale))
-
     val additionalsData = parse(write(Map(
-      "formatedPrice" -> formatedPrice,
-      "formatedEndPrice" -> formatedEndPrice,
-      "formatedTotalPrice" -> formatedTotalPrice,
-      "formatedTotalEndPrice" -> formatedTotalEndPrice
+      "formatedPrice" -> rateService.formatPrice(item.price, currency, locale),
+      "formatedSalePrice" -> rateService.formatPrice(item.salePrice, currency, locale),
+      "formatedEndPrice" -> item.endPrice.map {rateService.formatPrice(_, currency, locale)},
+      "formatedSaleEndPrice" -> item.saleEndPrice.map {rateService.formatPrice(_, currency, locale)},
+      "formatedTotalPrice" -> rateService.formatPrice(item.totalPrice, currency, locale),
+      "formatedSaleTotalPrice" -> rateService.formatPrice(item.saleTotalPrice, currency, locale),
+      "formatedTotalEndPrice" -> item.totalEndPrice.map {rateService.formatPrice(_, currency, locale)},
+      "formatedSaleTotalEndPrice" -> item.saleTotalEndPrice.map {rateService.formatPrice(_, currency, locale)}
     )))
 
     //TODO Traduction aussi du nom en traduisant le produit et le sku
@@ -938,19 +977,31 @@ class CartHandler {
     val jsonItem = parse(write(item))
 
     val price = rateService.calculateAmount(item.price, rate)
+    val salePrice = rateService.calculateAmount(item.salePrice, rate)
     val endPrice = rateService.calculateAmount(item.endPrice.getOrElse(item.price), rate)
+    val saleEndPrice = rateService.calculateAmount(item.saleEndPrice.getOrElse(item.salePrice), rate)
     val totalPrice = rateService.calculateAmount(item.totalPrice, rate)
+    val saleTotalPrice = rateService.calculateAmount(item.saleTotalPrice, rate)
     val totalEndPrice = rateService.calculateAmount(item.totalEndPrice.getOrElse(item.totalPrice), rate)
+    val saleTotalEndPrice = rateService.calculateAmount(item.saleTotalEndPrice.getOrElse(item.saleTotalPrice), rate)
 
     val updatedData = parse(write(Map(
       "price" -> price,
+      "salePrice" -> salePrice,
       "endPrice" -> endPrice,
+      "saleEndPrice" -> saleEndPrice,
       "totalPrice" -> totalPrice,
+      "saleTotalPrice" -> saleTotalPrice,
       "totalEndPrice" -> totalEndPrice,
+      "saleTotalEndPrice" -> saleTotalEndPrice,
       "formatedPrice" -> rateService.formatLongPrice(item.price, rate, locale),
+      "formatedSalePrice" -> rateService.formatLongPrice(item.salePrice, rate, locale),
       "formatedEndPrice" -> rateService.formatLongPrice(item.endPrice.getOrElse(item.price), rate, locale),
+      "formatedSaleEndPrice" -> rateService.formatLongPrice(item.saleEndPrice.getOrElse(item.salePrice), rate, locale),
       "formatedTotalPrice" -> rateService.formatLongPrice(item.totalPrice, rate, locale),
-      "formatedTotalEndPrice" -> rateService.formatLongPrice(item.totalEndPrice.getOrElse(item.totalPrice), rate, locale)
+      "formatedSaleTotalPrice" -> rateService.formatLongPrice(item.saleTotalPrice, rate, locale),
+      "formatedTotalEndPrice" -> rateService.formatLongPrice(item.totalEndPrice.getOrElse(item.totalPrice), rate, locale),
+      "formatedSaleTotalEndPrice" -> rateService.formatLongPrice(item.saleTotalEndPrice.getOrElse(item.saleTotalPrice), rate, locale)
     )))
 
     jsonItem merge updatedData

@@ -1,5 +1,7 @@
 package com.mogobiz.run.services
 
+import java.text.SimpleDateFormat
+
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.config.HandlersConfig._
@@ -18,16 +20,29 @@ class LearningService (implicit executionContext: ExecutionContext) extends Dire
   val route = {
     pathPrefix(Segment / "learning") { implicit storeCode =>
       fis ~
+        last ~
         cooccurrence ~
-        similarity
+        similarity ~
+        popular
     }
   }
 
   def similarity(implicit storeCode: String) = path(Segment / "history") { uuid =>
     get {
-      parameters('action, 'history_count.as[Int], 'count.as[Int], 'match_count.as[Int]) {
-        (action, historyCount, count, matchCount) =>
-          handleCall(learningHandler.browserHistory(storeCode, uuid, UserAction.withName(action), historyCount, count, matchCount),
+      parameters('action, 'history_count.as[Int], 'count.as[Int], 'match_count.as[Int], 'customer.?) {
+        (action, historyCount, count, matchCount, customer) =>
+          handleCall(learningHandler.browserHistory(storeCode, uuid, UserAction.withName(action), historyCount, count, matchCount, customer),
+            (res: Seq[String]) => complete(StatusCodes.OK, res)
+          )
+      }
+    }
+  }
+
+  lazy val last = path(Segment / "last") { uuid =>
+    get {
+      parameter('count.as[Int]) {
+        count =>
+          handleCall(learningHandler.browserHistory(storeCode, uuid, UserAction.View, count, -1, -1, None),
             (res: Seq[String]) => complete(StatusCodes.OK, res)
           )
       }
@@ -36,8 +51,8 @@ class LearningService (implicit executionContext: ExecutionContext) extends Dire
 
   def cooccurrence(implicit storeCode: String) = path(Segment / "cooccurrence") { productId =>
     get {
-      parameter('action) { action =>
-        handleCall(learningHandler.cooccurences(storeCode, productId, UserAction.withName(action)),
+      parameters('action, 'customer.?) { (action, customer) =>
+        handleCall(learningHandler.cooccurences(storeCode, productId, UserAction.withName(action), customer),
           (res: Seq[String]) => {
             complete(StatusCodes.OK, res)
           }
@@ -48,16 +63,27 @@ class LearningService (implicit executionContext: ExecutionContext) extends Dire
 
   def fis(implicit storeCode: String) = path(Segment / "fis") { productId =>
     get {
-      parameter('frequency.as[Double]) {
-        frequency =>
-          handleCall(learningHandler.fis(storeCode, productId, frequency),
-            (res: Future[(Seq[String], Seq[String])]) =>
-              onComplete(res) {
-                case Success(tuple) => complete(StatusCodes.OK, tuple)
-                case Failure(e) => complete(StatusCodes.InternalServerError, e)
-              }
+      parameters('frequency.as[Double], 'customer.?) {
+        (frequency, customer) =>
+          handleCall(learningHandler.fis(storeCode, productId, frequency, customer),
+            (res: (Seq[String], Seq[String])) =>
+              complete(StatusCodes.OK, res)
           )
       }
     }
   }
+
+  lazy val popular =
+    get {
+      path("popular") {
+        parameters('action, 'since, 'count.as[Int], 'customer.?) {
+          (action, since, count, customer) =>
+            handleCall(learningHandler.popular(storeCode, UserAction.withName(action), new SimpleDateFormat("yyyyMMdd").parse(since), count, customer),
+              (res: List[String]) => complete(StatusCodes.OK, res)
+            )
+        }
+      }
+    }
+
+
 }
