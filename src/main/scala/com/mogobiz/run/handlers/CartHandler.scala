@@ -1,7 +1,6 @@
 package com.mogobiz.run.handlers
 
-import java.io.{FileOutputStream, File, ByteArrayOutputStream}
-import java.nio.file.{Paths, Files}
+import java.io.ByteArrayOutputStream
 import java.util.{UUID, Locale}
 
 import com.mogobiz.es.EsClient
@@ -15,9 +14,9 @@ import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.{CartRegistration, UserActionRegistration}
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.Mogobiz.TransactionStatus._
 import com.mogobiz.run.model.ES.{BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOCartItemEx, BOCartEx}
 import com.mogobiz.run.model.Render.{Coupon, RegisteredCartItem, CartItem, Cart}
+import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, Shipping => ShippingPay, RegisteredCartItem => RegisteredCartItemPay, CartRate}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
@@ -347,11 +346,22 @@ class CartHandler {
 
     val renderedCart = _renderTransactionCart(updatedCart, cartTTC, currency, locale)
     Map(
-      "amount" -> renderedCart("finalPrice"),
+      "amount" -> rateService.calculateAmount(cartTTC.finalPrice, currency),
       "currencyCode" -> currency.code,
       "currencyRate" -> currency.rate.doubleValue(),
-      "transactionExtra" -> renderedCart
+      "transactionExtra" -> renderedCart,
+      "cartProvider" -> "mogobizRun",
+      "cartKeys" -> s"$storeCode|||$uuid|||${accountId.getOrElse("")}"
     )
+  }
+
+  def getCartForPay(storeCode: String, uuid: String, accountId: Option[String]): CartPay = {
+    val cart = _initCart(storeCode, uuid, accountId)
+
+    // Calcul des données du panier
+    val cartTTC = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
+
+    transformCartForCartPay(cartTTC, cart.rate.get)
   }
 
   /**
@@ -844,6 +854,36 @@ class CartHandler {
     map += ("coupons" -> cart.coupons.map(c => _renderCoupon(c, currency, locale)))
     map ++= _renderPriceCart(cart, currency, locale)
     map
+  }
+
+  private def transformCartForCartPay(cart: Cart, rate: Currency) : CartPay = {
+    val cartItemsPay = cart.cartItemVOs.map { cartItem =>
+      val registeredCartItemsPay = cartItem.registeredCartItemVOs.map { rci =>
+        new RegisteredCartItemPay(rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, Map())
+      }
+      val shippingPay = cartItem.shipping.map { shipping =>
+        new ShippingPay(shipping.weight, shipping.weightUnit.toString(), shipping.width, shipping.height, shipping.depth,
+        shipping.linearUnit.toString(), shipping.amount, shipping.free, Map())
+      }
+      val customCartItem = Map("productId" -> cartItem.productId,
+        "productName" -> cartItem.productName,
+        "xtype" -> cartItem.xtype.toString(),
+        "calendarType" -> cartItem.calendarType.toString(),
+        "skuId" -> cartItem.skuId,
+        "skuName" -> cartItem.skuName,
+        "startDate" -> cartItem.startDate,
+        "endDate" -> cartItem.endDate)
+      new CartItemPay(cartItem.quantity, cartItem.price, cartItem.endPrice.getOrElse(cartItem.price), cartItem.tax.getOrElse(0), cartItem.totalPrice,
+      cartItem.totalEndPrice.getOrElse(cartItem.totalPrice), cartItem.salePrice, cartItem.saleEndPrice.getOrElse(cartItem.salePrice), cartItem.saleTotalPrice,
+      cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), registeredCartItemsPay, shippingPay, customCartItem)
+    }
+    val couponsPay = cart.coupons.map {coupon =>
+      val customCoupon = Map("name" -> coupon.name, "active" -> coupon.active)
+      new CouponPay(coupon.code, coupon.startDate, coupon.endDate, coupon.price, customCoupon)
+    }
+
+    val cartRate = CartRate(rate.code, rate.numericCode, rate.rate, rate.currencyFractionDigits)
+    new CartPay(cart.count, cartRate, cart.price, cart.endPrice, cart.reduction, cart.finalPrice, cartItemsPay, couponsPay, Map())
   }
 
   /**

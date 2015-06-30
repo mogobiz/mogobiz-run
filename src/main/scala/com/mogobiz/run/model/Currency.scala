@@ -1,4 +1,6 @@
 package com.mogobiz.run.model
 
-case class Currency(currencyFractionDigits: Int, rate: Double, name:String, code: String)
+case class Currency(currencyFractionDigits: Int, rate: Double, name:String, code: String) {
+  val numericCode = java.util.Currency.getInstance(code).getNumericCode
+}
 
