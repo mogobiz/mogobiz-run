@@ -873,9 +873,9 @@ class CartHandler {
         "skuName" -> cartItem.skuName,
         "startDate" -> cartItem.startDate,
         "endDate" -> cartItem.endDate)
-      new CartItemPay(cartItem.quantity, cartItem.price, cartItem.endPrice, cartItem.tax, cartItem.totalPrice,
-      cartItem.totalEndPrice, cartItem.salePrice, cartItem.saleEndPrice, cartItem.saleTotalPrice,
-      cartItem.saleTotalEndPrice, registeredCartItemsPay, shippingPay, customCartItem)
+      new CartItemPay(cartItem.quantity, cartItem.price, cartItem.endPrice.getOrElse(cartItem.price), cartItem.tax.getOrElse(0), cartItem.totalPrice,
+      cartItem.totalEndPrice.getOrElse(cartItem.totalPrice), cartItem.salePrice, cartItem.saleEndPrice.getOrElse(cartItem.salePrice), cartItem.saleTotalPrice,
+      cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), registeredCartItemsPay, shippingPay, customCartItem)
     }
     val couponsPay = cart.coupons.map {coupon =>
       val customCoupon = Map("name" -> coupon.name, "active" -> coupon.active)
@@ -883,7 +883,7 @@ class CartHandler {
     }
 
     val cartRate = CartRate(rate.code, rate.numericCode, rate.rate, rate.currencyFractionDigits)
-    new CartPay(cartRate, cart.price, cart.endPrice, cart.reduction, cart.finalPrice, cartItemsPay, couponsPay, Map())
+    new CartPay(cart.count, cartRate, cart.price, cart.endPrice, cart.reduction, cart.finalPrice, cartItemsPay, couponsPay, Map())
   }
 
   /**
