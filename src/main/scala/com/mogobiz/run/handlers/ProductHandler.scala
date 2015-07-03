@@ -665,7 +665,7 @@ class ProductHandler extends JsonUtil {
   }
 
   private val sdf = new SimpleDateFormat ("yyyy-MM-dd")
-//THH:mm:ssZ
+  //THH:mm:ssZ
   private val hours = new SimpleDateFormat ("HH:mm")
 
   /**
@@ -714,6 +714,7 @@ class ProductHandler extends JsonUtil {
       Some (
         or (
           must (
+<<<<<<< HEAD
           List (
           createTermFilter (s"skus.variation1.name.raw", Some (k) ),
           createTermFilter (s"skus.variation1.value.raw", Some (v) )
@@ -730,11 +731,30 @@ class ProductHandler extends JsonUtil {
           createTermFilter (s"skus.variation3.name.raw", Some (k) ),
           createTermFilter (s"skus.variation3.value.raw", Some (v) )
           ).flatten: _*
+=======
+            List (
+              createTermFilter (s"skus.variation1.name.raw", Some (k) ),
+              createTermFilter (s"skus.variation1.value.raw", Some (v) )
+            ).flatten: _*
+          )
+          , must (
+            List (
+              createTermFilter (s"skus.variation2.name.raw", Some (k) ),
+              createTermFilter (s"skus.variation2.value.raw", Some (v) )
+            ).flatten: _*
+          )
+          , must (
+            List (
+              createTermFilter (s"skus.variation3.name.raw", Some (k) ),
+              createTermFilter (s"skus.variation3.value.raw", Some (v) )
+            ).flatten: _*
+>>>>>>> Fix a bug introduced in 99c53a38
           )
         )
       )
     })
   }
+<<<<<<< HEAD
 
   private def getCalendar (d: Date): Calendar = {
     val cal = Calendar.getInstance ()
@@ -780,13 +800,65 @@ class ProductHandler extends JsonUtil {
   day.getTime.compareTo (period.endDate) <= 0
   cond
   })
+=======
+  private def getCalendar (d: Date): Calendar = {
+    val cal = Calendar.getInstance ()
+    cal.setTime (d)
+    cal
+  }
+
+  /**
+   * Fix the date according to the timezone
+   * @param d - date
+   * @return
+   */
+  private def getFixedDate (d: Date): Calendar = {
+    val fixeddate = Calendar.getInstance ()
+    fixeddate.setTime (new Date (d.getTime - fixeddate.getTimeZone.getRawOffset) )
+    fixeddate
+  }
+
+  /**
+   *
+   * http://tutorials.jenkov.com/java-date-time/java-util-timezone.html
+   * http://stackoverflow.com/questions/19330564/scala-how-to-customize-date-format-using-simpledateformat-using-json4s
+   *
+   */
+
+  private def isDateIncluded (periods: List[IntraDayPeriod], day: Calendar): Boolean = {
+
+    periods.exists (period => {
+      val dow = day.get (Calendar.DAY_OF_WEEK)
+      //TODO rework weekday definition !!!
+      val included = dow match {
+        case Calendar.MONDAY => period.weekday1
+        case Calendar.TUESDAY => period.weekday2
+        case Calendar.WEDNESDAY => period.weekday3
+        case Calendar.THURSDAY => period.weekday4
+        case Calendar.FRIDAY => period.weekday5
+        case Calendar.SATURDAY => period.weekday6
+        case Calendar.SUNDAY => period.weekday7
+      }
+
+      val cond = included &&
+        day.getTime.compareTo (period.startDate) >= 0 &&
+        day.getTime.compareTo (period.endDate) <= 0
+      cond
+    })
+>>>>>>> Fix a bug introduced in 99c53a38
 
   }
 
   private def isDateExcluded (periods: List[EndPeriod], day: Calendar): Boolean = {
+<<<<<<< HEAD
   periods.exists (period => {
   day.getTime.compareTo (period.startDate) >= 0 && day.getTime.compareTo (period.endDate) <= 0
   })
+=======
+    periods.exists (period => {
+      day.getTime.compareTo (period.startDate) >= 0 && day.getTime.compareTo (period.endDate) <= 0
+    })
+>>>>>>> Fix a bug introduced in 99c53a38
   }
 
 }
