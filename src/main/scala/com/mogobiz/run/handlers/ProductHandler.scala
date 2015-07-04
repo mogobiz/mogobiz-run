@@ -659,131 +659,131 @@ class ProductHandler extends JsonUtil {
       product merge additionalFields merge notation
     }
   }
-}
 
-private val sdf = new SimpleDateFormat ("yyyy-MM-dd")
+  private val sdf = new SimpleDateFormat ("yyyy-MM-dd")
 //THH:mm:ssZ
-private val hours = new SimpleDateFormat ("HH:mm")
+  private val hours = new SimpleDateFormat ("HH:mm")
 
-/**
- * Renvoie le filtres permettant de filtrer les produits mis en avant
- * si la requête le demande
- * @param req - product request
- * @return FilterDefinition
- */
-private def createFeaturedRangeFilters (req: ProductRequest): Option[FilterDefinition] = {
-if (req.featured.getOrElse (false) ) {
-val today = sdf.format (Calendar.getInstance ().getTime)
-val list = List (
-createRangeFilter ("startFeatureDate", None, Some (s"$today") ),
-createRangeFilter ("stopFeatureDate", Some (s"$today"), None)
-).flatten
-Some (and (list: _*) )
-}
-else None
-}
+  /**
+   * Renvoie le filtres permettant de filtrer les produits mis en avant
+   * si la requête le demande
+   * @param req - product request
+   * @return FilterDefinition
+   */
+  private def createFeaturedRangeFilters (req: ProductRequest): Option[FilterDefinition] = {
+    if (req.featured.getOrElse (false) ) {
+      val today = sdf.format (Calendar.getInstance ().getTime)
+      val list = List (
+        createRangeFilter ("startFeatureDate", None, Some (s"$today") ),
+        createRangeFilter ("stopFeatureDate", Some (s"$today"), None)
+      ).flatten
+      Some (and (list: _*) )
+    }
+    else None
+  }
 
-/**
- * Renvoie le filtre pour les features
- * @param req - product request
- * @return FilterDefinition
- */
-private def createFeaturesFilters (req: ProductRequest): Option[FilterDefinition] = {
-createAndOrFilterBySplitKeyValues (req.feature, (k, v) => {
-Some (
-must (
-List (
-createNestedTermFilter ("features", s"features.name.raw", Some (k) ),
-createNestedTermFilter ("features", s"features.value.raw", Some (v) )
-).flatten: _*
-)
-)
-})
-}
+  /**
+   * Renvoie le filtre pour les features
+   * @param req - product request
+   * @return FilterDefinition
+   */
+  private def createFeaturesFilters (req: ProductRequest): Option[FilterDefinition] = {
+    createAndOrFilterBySplitKeyValues (req.feature, (k, v) => {
+      Some (
+        must (
+          List (
+            createNestedTermFilter ("features", s"features.name.raw", Some (k) ),
+            createNestedTermFilter ("features", s"features.value.raw", Some (v) )
+          ).flatten: _*
+        )
+      )
+    })
+  }
 
-/**
- * Renvoie la liste des filtres pour les variations
- * @param req - product request
- * @return FilterDefinition
- */
-private def createVariationsFilters (req: ProductRequest): Option[FilterDefinition] = {
-createAndOrFilterBySplitKeyValues (req.variations, (k, v) => {
-Some (
-or (
-must (
-List (
-createTermFilter (s"skus.variation1.name.raw", Some (k) ),
-createTermFilter (s"skus.variation1.value.raw", Some (v) )
-).flatten: _*
-)
-, must (
-List (
-createTermFilter (s"skus.variation2.name.raw", Some (k) ),
-createTermFilter (s"skus.variation2.value.raw", Some (v) )
-).flatten: _*
-)
-, must (
-List (
-createTermFilter (s"skus.variation3.name.raw", Some (k) ),
-createTermFilter (s"skus.variation3.value.raw", Some (v) )
-).flatten: _*
-)
-)
-)
-})
-}
-private def getCalendar (d: Date): Calendar = {
-val cal = Calendar.getInstance ()
-cal.setTime (d)
-cal
-}
+  /**
+   * Renvoie la liste des filtres pour les variations
+   * @param req - product request
+   * @return FilterDefinition
+   */
+  private def createVariationsFilters (req: ProductRequest): Option[FilterDefinition] = {
+    createAndOrFilterBySplitKeyValues (req.variations, (k, v) => {
+      Some (
+        or (
+          must (
+          List (
+          createTermFilter (s"skus.variation1.name.raw", Some (k) ),
+          createTermFilter (s"skus.variation1.value.raw", Some (v) )
+          ).flatten: _*
+          )
+        , must (
+          List (
+          createTermFilter (s"skus.variation2.name.raw", Some (k) ),
+          createTermFilter (s"skus.variation2.value.raw", Some (v) )
+          ).flatten: _*
+          )
+        , must (
+          List (
+          createTermFilter (s"skus.variation3.name.raw", Some (k) ),
+          createTermFilter (s"skus.variation3.value.raw", Some (v) )
+          ).flatten: _*
+          )
+        )
+      )
+    })
+  }
 
-/**
- * Fix the date according to the timezone
- * @param d - date
- * @return
- */
-private def getFixedDate (d: Date): Calendar = {
-val fixeddate = Calendar.getInstance ()
-fixeddate.setTime (new Date (d.getTime - fixeddate.getTimeZone.getRawOffset) )
-fixeddate
-}
+  private def getCalendar (d: Date): Calendar = {
+    val cal = Calendar.getInstance ()
+    cal.setTime (d)
+    cal
+  }
 
-/**
- *
- * http://tutorials.jenkov.com/java-date-time/java-util-timezone.html
- * http://stackoverflow.com/questions/19330564/scala-how-to-customize-date-format-using-simpledateformat-using-json4s
- *
- */
+  /**
+   * Fix the date according to the timezone
+   * @param d - date
+   * @return
+   */
+  private def getFixedDate (d: Date): Calendar = {
+  val fixeddate = Calendar.getInstance ()
+  fixeddate.setTime (new Date (d.getTime - fixeddate.getTimeZone.getRawOffset) )
+  fixeddate
+  }
 
-private def isDateIncluded (periods: List[IntraDayPeriod], day: Calendar): Boolean = {
+  /**
+   *
+   * http://tutorials.jenkov.com/java-date-time/java-util-timezone.html
+   * http://stackoverflow.com/questions/19330564/scala-how-to-customize-date-format-using-simpledateformat-using-json4s
+   *
+   */
 
-periods.exists (period => {
-val dow = day.get (Calendar.DAY_OF_WEEK)
-//TODO rework weekday definition !!!
-val included = dow match {
-case Calendar.MONDAY => period.weekday1
-case Calendar.TUESDAY => period.weekday2
-case Calendar.WEDNESDAY => period.weekday3
-case Calendar.THURSDAY => period.weekday4
-case Calendar.FRIDAY => period.weekday5
-case Calendar.SATURDAY => period.weekday6
-case Calendar.SUNDAY => period.weekday7
-}
+  private def isDateIncluded (periods: List[IntraDayPeriod], day: Calendar): Boolean = {
 
-val cond = included &&
-day.getTime.compareTo (period.startDate) >= 0 &&
-day.getTime.compareTo (period.endDate) <= 0
-cond
-})
+  periods.exists (period => {
+  val dow = day.get (Calendar.DAY_OF_WEEK)
+  //TODO rework weekday definition !!!
+  val included = dow match {
+  case Calendar.MONDAY => period.weekday1
+  case Calendar.TUESDAY => period.weekday2
+  case Calendar.WEDNESDAY => period.weekday3
+  case Calendar.THURSDAY => period.weekday4
+  case Calendar.FRIDAY => period.weekday5
+  case Calendar.SATURDAY => period.weekday6
+  case Calendar.SUNDAY => period.weekday7
+  }
 
-}
+  val cond = included &&
+  day.getTime.compareTo (period.startDate) >= 0 &&
+  day.getTime.compareTo (period.endDate) <= 0
+  cond
+  })
 
-private def isDateExcluded (periods: List[EndPeriod], day: Calendar): Boolean = {
-periods.exists (period => {
-day.getTime.compareTo (period.startDate) >= 0 && day.getTime.compareTo (period.endDate) <= 0
-})
-}
+  }
+
+  private def isDateExcluded (periods: List[EndPeriod], day: Calendar): Boolean = {
+  periods.exists (period => {
+  day.getTime.compareTo (period.startDate) >= 0 && day.getTime.compareTo (period.endDate) <= 0
+  })
+  }
 
 }
 
