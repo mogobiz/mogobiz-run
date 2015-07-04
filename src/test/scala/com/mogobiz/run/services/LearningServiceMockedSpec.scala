@@ -40,5 +40,25 @@ class LearningServiceMockedSpec extends MogobizRouteMocked  {
         status.isSuccess must beTrue
       }
     }
+
+
+    " respond when ask for last " in {
+      val uuid =  UUID.randomUUID().toString
+      val path = rootPath + "/" + uuid + "/last?count="+10
+      Get(path) ~> sealRoute(routes) ~> check {
+        status.intValue must_== 200
+        status.isSuccess must beTrue
+      }
+    }
+
+    " respond when ask for popular " in {
+      val uuid =  UUID.randomUUID().toString
+      val path = rootPath + "/popular?action=view&since=20150101&count="+10
+      Get(path) ~> sealRoute(routes) ~> check {
+        status.intValue must_== 200
+        status.isSuccess must beTrue
+      }
+    }
+
   }
 }
