@@ -30,6 +30,7 @@ object RequestParameters {
                            , creationDateMin: Option[String]
                            , featured: Option[Boolean]
                            , lang: String
+                           , country: Option[String]
                            , promotionId: Option[String]
                            , hasPromotion: Option[Boolean]
                            , property: Option[String]
@@ -44,7 +45,7 @@ object RequestParameters {
                            , multiVariations: Option[Boolean]
                            , multiNotation: Option[Boolean]
                            , multiPrices: Option[Boolean]) {
-    def this(priceInterval: Long, lang: String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+    def this(priceInterval: Long, lang: String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
   }
 
   //--- Products

@@ -23,6 +23,13 @@ class FacetHandler {
     val lang = if(req.lang=="_all") "" else s"${req.lang}."
     val _lang = if(req.lang=="_all") "_" else s"_${req.lang}"
 
+    val priceWithVatField = req.country match{
+      case Some(countryCode) => s"${countryCode}.endPrice"
+      case _ => "price"
+    }
+
+    println(s"priceWithVatField=${priceWithVatField}")
+
     val fixeFilters: List[Option[FilterDefinition]] = List(
       createOrFilterBySplitValues(req.code, v => createTermFilter("product.code", Some(v))),
       createOrFilterBySplitValues(req.xtype, v => createTermFilter("product.xtype", Some(v))),
@@ -101,11 +108,11 @@ class FacetHandler {
     }
 
     val priceQuery = buildQueryAndFilters(FilterBuilder(withPrice = !req.multiPrices.getOrElse(false)), storeCode, req, fixeFilters) aggs {
-      aggregation histogram "prices" field "product.price" interval req.priceInterval minDocCount 0
+      aggregation histogram "prices" field s"product.${priceWithVatField}" interval req.priceInterval minDocCount 0
     } aggs {
-      aggregation min "price_min" field "product.price"
+      aggregation min "price_min" field s"product.${priceWithVatField}"
     } aggs {
-      aggregation max "price_max" field "product.price"
+      aggregation max "price_max" field s"product.${priceWithVatField}"
     }
 
     val multiQueries = List(
@@ -122,6 +129,11 @@ class FacetHandler {
   }
 
   private def buildQueryAndFilters(builder: FilterBuilder, storeCode: String, req: FacetRequest, fixeFilters: List[Option[FilterDefinition]]) : SearchDefinition = {
+    val priceWithVatField = req.country match{
+      case Some(countryCode) => s"${countryCode}.endPrice"
+      case _ => "price"
+    }
+
     val filters = (
       fixeFilters
       :+ (if (builder.withCategory) createOrFilterBySplitValues(req.categoryPath, v => createRegexFilter("product.category.path", Some(v))) else None)
@@ -132,7 +144,7 @@ class FacetHandler {
       :+ (if (builder.withFeatures) createFeaturesFilters(req) else None)
       :+ (if (builder.withVariations) createVariationsFilters(req) else None)
       :+ (if (builder.withNotation) createOrFilterBySplitValues(req.notations, v => createNestedTermFilter("notations","product.notations.notation", Some(v))) else None)
-      :+ (if (builder.withPrice) createOrFilterBySplitKeyValues(req.priceRange, (min, max) => createNumericRangeFilter("product.price", min, max)) else None)
+      :+ (if (builder.withPrice) createOrFilterBySplitKeyValues(req.priceRange, (min, max) => createNumericRangeFilter(s"product.${priceWithVatField}", min, max)) else None)
     ).flatten
 
     filterRequest(buildQueryPart(storeCode, req), filters)
