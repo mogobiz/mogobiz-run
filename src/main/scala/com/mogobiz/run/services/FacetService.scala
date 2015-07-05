@@ -37,6 +37,7 @@ class FacetService extends Directives with DefaultComplete {
         'creationDateMin.? ::
         'featured.?.as[Option[Boolean]] ::
         'lang ? "_all" ::
+        'country.? ::
         'promotionId.? ::
         'hasPromotion.?.as[Option[Boolean]] ::
         'property.? ::
@@ -56,12 +57,12 @@ class FacetService extends Directives with DefaultComplete {
 
       facetParam.happly {
         case (priceInterval :: xtype :: name :: code :: categoryPath :: brandId :: tags :: notations :: priceRange ::
-          creationDateMin :: featured :: lang :: promotionId :: hasPromotion :: property :: features :: variations ::
+          creationDateMin :: featured :: lang :: country :: promotionId :: hasPromotion :: property :: features :: variations ::
           brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations ::
           multiNotation :: multiPrices :: HNil) =>
 
           val param = new FacetRequest(priceInterval, xtype, name, code, categoryPath, brandId, tags, notations, priceRange,
-            creationDateMin, featured, lang, promotionId, hasPromotion, property, features, variations,
+            creationDateMin, featured, lang, country, promotionId, hasPromotion, property, features, variations,
             brandName, categoryName, multiCategory, multiBrand, multiTag, multiFeatures, multiVariations,
             multiNotation, multiPrices)
 
