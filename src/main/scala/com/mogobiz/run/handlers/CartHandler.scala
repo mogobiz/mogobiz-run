@@ -7,6 +7,7 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.config.Settings
+import com.mogobiz.run.dashboards.Dashboard
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions._
 import com.mogobiz.run.handlers.EmailHandler.Mail
@@ -372,7 +373,8 @@ class CartHandler {
    * @param params
    * @param accountId
    */
-  def queryCartPaymentCommit(storeCode: String, uuid: String, params: CommitTransactionParameters, accountId: Option[Mogopay.Document]): Unit = {
+  def queryCartPaymentCommit(storeCode: String, uuid: String,
+                             params: CommitTransactionParameters, accountId: Option[Mogopay.Document]): Unit = {
     val locale = _buildLocal(params.lang, params.country)
 
     val cart = _initCart(storeCode, uuid, accountId)
@@ -399,6 +401,8 @@ class CartHandler {
           }
           val updatedCart = StoreCart(storeCode = transactionCart.storeCode, dataUuid = transactionCart.dataUuid, userUuid = transactionCart.userUuid)
           StoreCartDao.save(updatedCart)
+
+          accountId.map(Dashboard.index(boCartToESBOCart(storeCode, boCart), _))
 
           _notifyCartCommit(transactionCart.storeCode, boCart.buyer, transactionCart, locale)
         }
@@ -1057,6 +1061,11 @@ class CartHandler {
   }
 
   def exportBOCartIntoES(storeCode: String, boCart: BOCart, refresh: Boolean = false)(implicit session: DBSession = AutoSession) = {
+    val boCartES = boCartToESBOCart(storeCode, boCart)
+    BOCartESDao.save(storeCode, boCartES, refresh)
+  }
+
+  def boCartToESBOCart(storeCode: String, boCart: BOCart)(implicit session: DBSession = AutoSession): ES.BOCart = {
     // Conversion des BOCartItem
     val cartItems = BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
       // Conversion des BOProducts
@@ -1138,7 +1147,7 @@ class CartHandler {
         url = boCartItem.url)
     }
 
-    val boCartES = new BOCartES(transactionUuid = boCart.transactionUuid,
+    new BOCartES(transactionUuid = boCart.transactionUuid,
       buyer = boCart.buyer,
       xdate = boCart.xdate,
       price = boCart.price,
@@ -1149,8 +1158,6 @@ class CartHandler {
       dateCreated = boCart.dateCreated.toDate,
       lastUpdated = boCart.lastUpdated.toDate,
       uuid = boCart.uuid)
-
-    BOCartESDao.save(storeCode, boCartES, refresh)
   }
 }
 

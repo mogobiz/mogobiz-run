@@ -12,30 +12,17 @@ import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz._
 import org.joda.time.DateTime
 
-/**
- * Created by yoannbaudy on 18/02/2015.
- */
 object ES {
-
   sealed trait BOCartBase {
     def transactionUuid: Option[String]
-
     def buyer: String
-
     def xdate: DateTime
-
     def price: Long
-
     def status: TransactionStatus
-
     def currencyCode: String
-
     def currencyRate: Double
-
     def dateCreated: Date
-
     def lastUpdated: Date
-
     def uuid: String
   }
 
@@ -70,39 +57,22 @@ object ES {
 
   sealed trait BOCartItemBase {
     def code: String
-
     def price: Long
-
     def tax: Double
-
     def endPrice: Long
-
     def totalPrice: Long
-
     def totalEndPrice: Long
-
     def hidden: Boolean
-
     def quantity: Int
-
     def startDate: Option[DateTime]
-
     def endDate: Option[DateTime]
-
     def sku: Sku
-
     def secondary: List[BOProduct]
-
     def principal: BOProduct
-
     def bODelivery: Option[BODelivery]
-
     def bOReturnedItems: List[BOReturnedItem]
-
     def uuid: String
-
     def url: String
-
   }
 
   case class BOCartItem(code: String,
@@ -126,7 +96,6 @@ object ES {
                         bOReturnedItems: List[BOReturnedItem],
                         uuid: String,
                         url: String) extends BOCartItemBase
-
 
   case class BOCartItemEx(code: String,
                           price: Long,

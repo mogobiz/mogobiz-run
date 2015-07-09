@@ -7,10 +7,6 @@ import com.typesafe.scalalogging.slf4j.Logger
 import org.slf4j.LoggerFactory
 import com.mogobiz.run.config.HandlersConfig.cartHandler
 
-/**
- * Created by yoannbaudy on 16/06/2015.
- */
-
 object TransactionActor {
   def start() {
     val system = ActorSystem("MogobizTransactionSystem", ConfigFactory.parseString("akka.remote.netty.tcp.port=2560")
