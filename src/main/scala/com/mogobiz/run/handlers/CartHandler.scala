@@ -7,7 +7,7 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.config.Settings
-import com.mogobiz.run.dashboards.Dashboard
+import com.mogobiz.run.dashboard.Dashboard
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions._
 import com.mogobiz.run.handlers.EmailHandler.Mail
