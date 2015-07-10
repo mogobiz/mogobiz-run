@@ -18,6 +18,195 @@ import com.mogobiz.run.model.Mogobiz._
 import org.joda.time.DateTime
 
 object Dashboard {
+  /*
+  {
+    "mappings": {
+      "LinearCart": {
+        "properties": {
+          "boProductAcquittement": {
+            "type": "boolean"
+          },
+          "boProductPrice": {
+            "type": "long"
+          },
+          "boUUID": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "buyerBirthdate": {
+            "type": "long"
+          },
+          "buyerCivility": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "buyerCountry": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "buyerEmail": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "buyerRoad": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "buyerUUID": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "buyerZipCode": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "calendarType": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "cartBuyer": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "cartDateCreated": {
+            "type": "long"
+          },
+          "cartLastUpdated": {
+            "type": "long"
+          },
+          "cartStatus": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "cartTotalPrice": {
+            "type": "long"
+          },
+          "cartTransactionUUID": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "cartUUID": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "cartXDate": {
+            "format": "dateOptionalTime",
+            "type": "date"
+          },
+          "currencyCode": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "currencyRate": {
+            "type": "double"
+          },
+          "dateCreated": {
+            "type": "long"
+          },
+          "endPrice": {
+            "type": "long"
+          },
+          "isItemHidden": {
+            "type": "boolean"
+          },
+          "itemCode": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "lastUpdated": {
+            "type": "long"
+          },
+          "price": {
+            "type": "long"
+          },
+          "productDateCreated": {
+            "type": "long"
+          },
+          "productDownloadMaxDelay": {
+            "type": "long"
+          },
+          "productDownloadMaxTimes": {
+            "type": "long"
+          },
+          "productLastUpdated": {
+            "type": "long"
+          },
+          "productName": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "productNbSales": {
+            "type": "long"
+          },
+          "productStockDisplay": {
+            "type": "boolean"
+          },
+          "productType": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "productUUID": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "quantity": {
+            "type": "long"
+          },
+          "skuId": {
+            "type": "long"
+          },
+          "skuMaxOrder": {
+            "type": "long"
+          },
+          "skuMinOrder": {
+            "type": "long"
+          },
+          "skuName": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "skuNbSales": {
+            "type": "long"
+          },
+          "skuPrice": {
+            "type": "long"
+          },
+          "skuSalePrice": {
+            "type": "long"
+          },
+          "skuSku": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "skuUUID": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "tax": {
+            "type": "double"
+          },
+          "totalEndPrice": {
+            "type": "long"
+          },
+          "totalPice": {
+            "type": "long"
+          },
+          "url": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "uuid": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "buyerGeoCoordinates": {
+            "type": "geo_point"
+          }
+        }
+      }
+    }
+  }
+   */
   case class LinearCart(itemCode: String,
                         price: Long,
                         tax: Double,
