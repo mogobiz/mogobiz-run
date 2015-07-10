@@ -18,7 +18,6 @@ import com.mogobiz.run.model.Mogobiz._
 import org.joda.time.DateTime
 
 object Dashboard {
-
   case class LinearCart(itemCode: String,
                         price: Long,
                         tax: Double,
