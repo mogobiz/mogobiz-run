@@ -94,7 +94,7 @@ class ProductHandler extends JsonUtil {
       }
     )
     val hits: JArray = response.getHits
-    val products: JValue = hits.map {
+    val products: JValue = hits.children.map {
       hit => renderProduct(storeCode, hit, productRequest.countryCode, productRequest.currencyCode, productRequest.lang, currency, fieldsToRemoveForProductSearchRendering)
     }
     Paging.wrap(response.getTotalHits.toInt, products, productRequest)

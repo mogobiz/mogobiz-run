@@ -29,6 +29,7 @@ trait MogobizRoutes extends Directives {
     new LearningService().route ~
     new ValidatorService().route ~
     new ProductService().route ~
+    new SkuService().route ~
     new PreferenceService().route ~
     new CartService().route
 

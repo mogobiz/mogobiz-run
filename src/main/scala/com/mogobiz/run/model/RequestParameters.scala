@@ -19,6 +19,7 @@ object RequestParameters {
 
   case class FacetRequest(
                            priceInterval: Long
+                           , productId: Option[String]
                            , xtype: Option[String]
                            , name: Option[String]
                            , code: Option[String]
@@ -45,7 +46,7 @@ object RequestParameters {
                            , multiVariations: Option[Boolean]
                            , multiNotation: Option[Boolean]
                            , multiPrices: Option[Boolean]) {
-    def this(priceInterval: Long, lang: String) = this(priceInterval, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+    def this(priceInterval: Long, lang: String) = this(priceInterval,None, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
   }
 
   //--- Products
@@ -100,6 +101,35 @@ object RequestParameters {
                                        , currency: Option[String]
                                        , country: Option[String]
                                        , ids: String)
+
+  //--- Flattened ProductSkus
+  case class SkuRequest(
+                             override val maxItemPerPage: Option[Int]
+                             , override val pageOffset: Option[Int]
+                             , id: Option[String]
+                             , productId: Option[String]
+                             , xtype: Option[String]
+                             , name: Option[String]
+                             , code: Option[String]
+                             , categoryPath: Option[String]
+                             , brandId: Option[String]
+                             , tagName: Option[String]
+                             , notations: Option[String]
+                             , priceRange: Option[String]
+                             , creationDateMin: Option[String]
+                             , featured: Option[Boolean]
+                             , orderBy: Option[String]
+                             , orderDirection: Option[String]
+                             , lang: String
+                             , currencyCode: Option[String]
+                             , countryCode: Option[String]
+                             , promotionId: Option[String]
+                             , hasPromotion: Option[Boolean]
+                             , property: Option[String]
+                             , feature: Option[String]
+                             , variations: Option[String]) extends PagingParams {
+    def this(lang: String, currencyCode: String, countryCode: String) = this(None, None, None, None, None, None, None, None, None, None, None, None, None, Some(false), None, None, lang, None, None, None, Some(false), None, None, None)
+  }
 
   //--- Comment
   case class CommentRequest(notation: Int, subject: String, comment: String, externalCode: Option[String], created: Date = new Date) {
