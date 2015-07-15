@@ -17,7 +17,7 @@ import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.ES.{BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOCartItemEx, BOCartEx}
 import com.mogobiz.run.model.Render.{Coupon, RegisteredCartItem, CartItem, Cart}
-import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, Shipping => ShippingPay, RegisteredCartItem => RegisteredCartItemPay, CartRate}
+import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, Shipping => ShippingPay, RegisteredCartItem => RegisteredCartItemPay, CompanyAddress, CartRate}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
@@ -362,7 +362,18 @@ class CartHandler {
     // Calcul des données du panier
     val cartTTC = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
 
-    transformCartForCartPay(cartTTC, cart.rate.get)
+    val shipFromAddressOpt = CompanyDao.findByCode(storeCode).map { _.shipFrom }.getOrElse(None)
+    val companyAddress = shipFromAddressOpt.map { shipFromAddress =>
+      CompanyAddress(storeCode,
+        shipFromAddress.road1,
+        shipFromAddress.road2,
+        shipFromAddress.city,
+        shipFromAddress.postalCode,
+        shipFromAddress.country.code,
+        if (shipFromAddress.state.isEmpty) Some(shipFromAddress.state) else None )
+    }
+
+    transformCartForCartPay(companyAddress, cartTTC, cart.rate.get)
   }
 
   /**
@@ -860,14 +871,14 @@ class CartHandler {
     map
   }
 
-  private def transformCartForCartPay(cart: Cart, rate: Currency) : CartPay = {
+  private def transformCartForCartPay(compagnyAddress : Option[CompanyAddress], cart: Cart, rate: Currency) : CartPay = {
     val cartItemsPay = cart.cartItemVOs.map { cartItem =>
       val registeredCartItemsPay = cartItem.registeredCartItemVOs.map { rci =>
         new RegisteredCartItemPay(rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, Map())
       }
       val shippingPay = cartItem.shipping.map { shipping =>
         new ShippingPay(shipping.weight, shipping.weightUnit.toString(), shipping.width, shipping.height, shipping.depth,
-        shipping.linearUnit.toString(), shipping.amount, shipping.free, Map())
+          shipping.linearUnit.toString(), shipping.amount, shipping.free, Map())
       }
       val customCartItem = Map("productId" -> cartItem.productId,
         "productName" -> cartItem.productName,
@@ -893,7 +904,8 @@ class CartHandler {
     }
 
     val cartRate = CartRate(rate.code, rate.numericCode, rate.rate, rate.currencyFractionDigits)
-    new CartPay(cart.count, cartRate, cart.price, cart.endPrice, cart.endPrice - cart.price, cart.reduction, cart.finalPrice, cartItemsPay, couponsPay, Map())
+
+    new CartPay(cart.count, cartRate, cart.price, cart.endPrice, cart.endPrice - cart.price, cart.reduction, cart.finalPrice, cartItemsPay, couponsPay, Map(), compagnyAddress)
   }
 
   /**

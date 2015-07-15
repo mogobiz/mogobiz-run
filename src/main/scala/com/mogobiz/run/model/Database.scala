@@ -277,7 +277,20 @@ object Mogobiz {
                       aesPassword: String,
                       name: String,
                       uuid: String,
-                      code: String)
+                      code: String,
+                      shipFrom : Option[ShipFromAddress])
+
+  @JsonIgnoreProperties(ignoreUnknown=true)
+  case class ShipFromAddress(longitude: String,
+                             latitude : String,
+                             road1: String,
+                             road2: String,
+                             road3: String,
+                             roadNum : String,
+                             postalCode: String,
+                             city : String,
+                             state : String,
+                             country : Country)
 
   case class Consumption(id: Long,
                          @JsonDeserialize(contentAs = classOf[java.lang.Long])
