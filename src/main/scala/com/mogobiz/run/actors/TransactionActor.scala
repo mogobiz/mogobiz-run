@@ -5,7 +5,7 @@ import com.mogobiz.pay.common.CartContentMessage
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.slf4j.Logger
 import org.slf4j.LoggerFactory
-import com.mogobiz.run.config.HandlersConfig.cartHandler
+import com.mogobiz.run.config.MogobizHandlers.cartHandler
 
 object TransactionActor {
   def start() {
