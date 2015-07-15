@@ -21,7 +21,7 @@ import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
 import org.json4s.JsonAST._
 import com.mogobiz.json.JsonUtil
-import com.mogobiz.run.config.HandlersConfig.cartHandler
+import com.mogobiz.run.config.MogobizHandlers.cartHandler
 import scalikejdbc.DB
 
 /**

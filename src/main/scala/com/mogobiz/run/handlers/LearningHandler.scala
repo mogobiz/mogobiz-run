@@ -49,6 +49,8 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
 
   def browserHistory(store: String, uuid: String, action: UserAction, historyCount: Int, count: Int, matchCount: Int, customer: Option[String]): Seq[String] = {
     val indices = EsClient.listIndices(esLearningStorePattern(store))
+    println("BROWSER-HISTORY-0")
+    println(indices)
     //s"${store}_learning"
     //val historyReq = esearch4s in "*" types "UserItemAction" limit historyCount from 0 postFilter {
     val historyReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" limit historyCount from 0 postFilter {
@@ -59,6 +61,9 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
     } sort {
       by field "dateCreated" order SortOrder.DESC
     }
+    println("BROWSER-HISTORY-1")
+    println(historyReq._builder.toString)
+
 
     val itemids = (EsClient searchAllRaw historyReq).getHits map (_.sourceAsMap().get("itemid").toString)
 

@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat
 
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.model.Learning.UserAction
-import com.mogobiz.run.config.HandlersConfig._
+import com.mogobiz.run.config.MogobizHandlers._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import org.json4s._
@@ -13,7 +13,7 @@ import spray.routing.Directives
 
 import scala.concurrent.{Future, ExecutionContext}
 import scala.util.{Failure, Success}
-import com.mogobiz.run.config.HandlersConfig._
+import com.mogobiz.run.config.MogobizHandlers._
 
 
 class LearningService (implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {

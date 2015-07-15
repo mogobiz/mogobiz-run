@@ -1,9 +1,9 @@
 package com.mogobiz.run.services
 
 import akka.actor.ActorRefFactory
-import com.mogobiz.run.config.HandlersConfig
+import com.mogobiz.run.config.MogobizHandlers
 import spray.routing.{RoutingSettings, Directives}
-import HandlersConfig._
+import MogobizHandlers._
 import spray.http.StatusCodes
 
 import scala.concurrent.ExecutionContext

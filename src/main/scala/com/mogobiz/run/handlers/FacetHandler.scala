@@ -5,7 +5,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.config.HandlersConfig._
+import com.mogobiz.run.config.MogobizHandlers._
 import com.mogobiz.run.es._
 import com.mogobiz.run.model.RequestParameters.FacetRequest
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s}

@@ -4,7 +4,7 @@ import com.mogobiz.pay.handlers.shipping.EasyPostHandler
 import com.mogobiz.run.handlers._
 import com.mogobiz.run.handlers.sql.ForUpdateHandler
 
-object HandlersConfig {
+object MogobizHandlers {
   val tagHandler = new TagHandler
   val brandHandler = new BrandHandler
   val langHandler = new LangHandler
@@ -31,4 +31,5 @@ object HandlersConfig {
   val learningHandler = new LearningHandler
   val validatorHandler = new ValidatorHandler
   val easyPostHander = new EasyPostHandler
+
 }
