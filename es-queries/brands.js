@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 // STATUS : OK
 // StoreController
 restpath = "/api/store/{storeCode}/brands?lang=fr&hidden=true";

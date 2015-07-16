@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 curl -POST http://localhost:9200/mogobiz/product/_search
 
 //recherche par filtre

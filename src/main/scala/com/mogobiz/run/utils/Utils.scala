@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 package com.mogobiz.run.utils
 
 import com.mogobiz.run.model.Mogobiz.{ProductCalendar, IntraDayPeriod, Sku, Product}

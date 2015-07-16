@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 //Statut : mapping ES en attente
 // StoreController
 restpath = "/api/store/{storeCode}/history/{visitorId}"; //currency={curCode}&country={countryCode} ???

@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 // Statut : requete fausse, manque de donnnées valorisé (endPeriods) ==> revoir le jeu de données
 // StoreController
 restpath = "/api/store/{storeCode}/product/productId}/dates?start={startDate}&end={endDate}";

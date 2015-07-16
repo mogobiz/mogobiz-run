@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 // Statut : comme add-to-history, en attente mapping ES parent/enfant + jeux de données pour tester requete
 // StoreController
 restpath = "/api/store/{storeCode}/history/{visitorId}?lang={lang}&currency={curCode}&country={countryCode}";

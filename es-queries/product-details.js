@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 // Statut : OK
 // StoreController
 restpath = "/api/store/{storeCode}/products/{productId}?lang=fr&historize=true&visitorId={visitorId}&currency={curCode}&country={countryCode}";

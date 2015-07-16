@@ -1,4 +1,8 @@
 
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 var json = {
     "userId": "userId_soapui",
     "surname": "username_soapui",

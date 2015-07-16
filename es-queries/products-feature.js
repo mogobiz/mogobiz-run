@@ -1,3 +1,7 @@
+/*
+ * Copyright (C) 2015 Mogobiz SARL. All rights reserved.
+ */
+
 // Statut : OK
 // StoreController
 //REMARQUE : idem que products avec un query parameter featured supplémentaire
