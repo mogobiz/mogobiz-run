@@ -142,8 +142,10 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
     val filters = List(Option(action).map(x => termFilter("action", x.toString)),
       customer.map(x => termFilter("segment", x)),
       Option(since).map(x => rangeFilter("dateCreated").
-        gte(new SimpleDateFormat("yyyy-MM-dd").format(since)).
-        lte(new SimpleDateFormat("yyyy-MM-dd").format(new Date()))
+                gte(since.getTime.toString).
+                lte(new Date().getTime.toString)
+        //        gte(new SimpleDateFormat("yyyy-MM-dd").format(since)).
+        //        lte(new SimpleDateFormat("yyyy-MM-dd").format(new Date()))
       )
     ).flatten
 
