@@ -374,7 +374,9 @@ class CartHandler {
         shipFromAddress.city,
         shipFromAddress.postalCode,
         shipFromAddress.country.code,
-        if (shipFromAddress.state.isEmpty) Some(shipFromAddress.state) else None )
+        if (!shipFromAddress.state.isEmpty) Some(shipFromAddress.state) else None,
+        Some("(248) 123-7654")
+      )
     }
 
     transformCartForCartPay(companyAddress, cartTTC, cart.rate.get)
@@ -892,11 +894,12 @@ class CartHandler {
         "skuName" -> cartItem.skuName,
         "startDate" -> cartItem.startDate,
         "endDate" -> cartItem.endDate)
+      val name = s"${cartItem.productName} ${cartItem.skuName}"
       val endPrice = cartItem.endPrice.getOrElse(cartItem.price)
       val totalEndPrice = cartItem.totalEndPrice.getOrElse(cartItem.totalPrice)
       val saleEndPrice = cartItem.saleEndPrice.getOrElse(cartItem.salePrice)
       val saleTotalEndPrice = cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice)
-      new CartItemPay(cartItem.quantity, cartItem.price, endPrice, cartItem.tax.getOrElse(0), endPrice - cartItem.price,
+      new CartItemPay(name, cartItem.quantity, cartItem.price, endPrice, cartItem.tax.getOrElse(0), endPrice - cartItem.price,
         cartItem.totalPrice, totalEndPrice, totalEndPrice - cartItem.totalPrice,
         cartItem.salePrice, saleEndPrice, saleEndPrice - cartItem.salePrice,
         cartItem.saleTotalPrice, saleTotalEndPrice, saleTotalEndPrice - cartItem.saleTotalPrice,
