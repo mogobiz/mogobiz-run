@@ -7,9 +7,13 @@ package com.mogobiz.run.handlers
 import java.io.ByteArrayOutputStream
 import java.util.{UUID, Locale}
 
+import akka.actor.Props
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.config.MogobizHandlers._
+import com.mogobiz.run.actors.EsUpdateActor.{ProductStockAvailabilityUpdateRequest, StockUpdateRequest}
+import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
+import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.dashboard.Dashboard
 import com.mogobiz.run.es._
@@ -500,6 +504,10 @@ class CartHandler {
               QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
               val qrCodeBase64 = Base64.encode(output.toByteArray)
 
+              /* for debug purpose only
+              val qrCodeBase64 = "test"
+              val encryptedQrCodeContent = "test"
+              */
               (Some(shortCode), Some(qrCodeBase64), Some(encryptedQrCodeContent))
             }
             case _ => (None, None, None)
@@ -665,14 +673,19 @@ class CartHandler {
   @throws[InsufficientStockException]
   private def _validateCart(cart: StoreCart): StoreCart = {
     if (!cart.validate) {
+      val productsToUpdate = scala.collection.mutable.Set[Long]()
       DB localTx { implicit session =>
         cart.cartItems.foreach { cartItem =>
           val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
           val product = productAndSku.get._1
           val sku = productAndSku.get._2
           stockHandler.decrementStock(cart.storeCode, product, sku, cartItem.quantity, cartItem.startDate)
+
+          productsToUpdate += product.id
         }
       }
+
+      _updateProductStockAvailability(cart.storeCode, productsToUpdate.toSet)
 
       val updatedCart = cart.copy(validate = true)
       StoreCartDao.save(updatedCart)
@@ -688,20 +701,42 @@ class CartHandler {
    */
   private def _unvalidateCart(cart: StoreCart): StoreCart = {
     if (cart.validate) {
+      val productsToUpdate = scala.collection.mutable.Set[Long]()
       DB localTx { implicit session =>
         cart.cartItems.foreach { cartItem =>
           val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
           val product = productAndSku.get._1
           val sku = productAndSku.get._2
           stockHandler.incrementStock(cart.storeCode, product, sku, cartItem.quantity, cartItem.startDate)
+
+          productsToUpdate += product.id
         }
       }
+
+      _updateProductStockAvailability(cart.storeCode, productsToUpdate.toSet)
 
       val updatedCart = cart.copy(validate = false)
       StoreCartDao.save(updatedCart)
       updatedCart
     }
     else cart
+  }
+
+  /**
+   * Update products stock availability
+   * @param storeCode
+   * @param productIds
+   */
+  private def _updateProductStockAvailability(storeCode:String, productIds:Set[Long]) = {
+    import scala.concurrent.duration._
+    import system.dispatcher
+    val system = ActorSystemLocator.get
+    val stockActor = system.actorOf(Props[EsUpdateActor])
+    productIds.foreach{ pid =>
+      system.scheduler.scheduleOnce(2 seconds) {
+        stockActor ! ProductStockAvailabilityUpdateRequest(storeCode, pid)
+      }
+    }
   }
 
   /**

@@ -10,6 +10,8 @@ import akka.actor.Props
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.MogobizHandlers._
 import com.mogobiz.run.actors.EsUpdateActor.StockUpdateRequest
+import com.mogobiz.run.config.HandlersConfig._
+import com.mogobiz.run.actors.EsUpdateActor.{SkuStockAvailabilityUpdateRequest, StockUpdateRequest}
 import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.{Stock => EsStock, StockByDateTime, StockCalendar}
@@ -114,12 +116,34 @@ class StockHandler extends IndexesTypesDsl {
     stockActor ! StockUpdateRequest(storeCode, product, sku, stock, stockCalendar)
   }
 
+  private def fireUpdateStockAvailability(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar) = {
+//    println("---------------- fireUpdateStockAvailability -----------------")
+    val system = ActorSystemLocator.get
+    val stockActor = system.actorOf(Props[EsUpdateActor])
+    stockActor ! SkuStockAvailabilityUpdateRequest(storeCode, product, sku, stock, stockCalendar)
+
+
+  }
+
   def updateEsStock(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar): Unit = {
     if (stockCalendar.startDate.isEmpty) {
       // Stock produit (sans date)
       val script = s"ctx._source.stock = ctx._source.initialStock - ${stockCalendar.sold}"
       val req = esupdate id stock.uuid in s"$storeCode/stock" script script retryOnConflict 4
       EsClient().execute(req).await.getGetResult
+
+      /*
+      if(sku.stock.available){
+        // Check if no more stock available, set sku stock availability to false and then maybe the product (if all skus unavailable)
+        if(stock.initialStock - stockCalendar.sold == 0){
+          fireUpdateStockAvailability(storeCode, product, sku, stock, stockCalendar)
+        }
+      }else{
+        // undo the above
+        if(stock.initialStock - stockCalendar.sold > 0){
+          //TODO
+        }
+      }*/
     }
     else {
       val esStockCalendarOpt = stock.stockByDateTime.getOrElse(Seq()).find(_.uuid == stockCalendar.uuid)
@@ -146,6 +170,9 @@ class StockHandler extends IndexesTypesDsl {
           StockDao.update(storeCode, stock.copy(stockByDateTime = Some(newStockByDateTime)))
       }
     }
+
+    fireUpdateStockAvailability(storeCode, product, sku, stock, stockCalendar)
+
   }
 }
 
@@ -157,6 +184,8 @@ object StockDao {
       termFilter("stock.productId", product.id),
       termFilter("stock.id", sku.id)
     )
+
+//    println("stock request=",req)
 
     // Lancement de la requête
     EsClient.search[EsStock](req);

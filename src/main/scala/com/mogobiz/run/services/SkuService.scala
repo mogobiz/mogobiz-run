@@ -48,7 +48,7 @@ class SkuService  extends Directives with DefaultComplete {
     product(uuid)
   */
 
-  def skuRoutes(implicit storeCode: String) = skuSearchRoute
+  def skuRoutes(implicit storeCode: String) = skus ~ skuSearchRoute
 
   import shapeless._
 
@@ -77,6 +77,7 @@ class SkuService  extends Directives with DefaultComplete {
           'country.? ::
           'promotionId.? ::
           'hasPromotion.?.as[Option[Boolean]] ::
+          'inStockOnly.?.as[Option[Boolean]] ::
           'property.? ::
           'feature.? ::
           'variations.? :: HNil
@@ -84,7 +85,7 @@ class SkuService  extends Directives with DefaultComplete {
 
       productsParams.happly {
         case (maxItemPerPage :: pageOffset :: id :: productId :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin
-          :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: property :: feature :: variations :: HNil) =>
+          :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: inStockOnly :: property :: feature :: variations :: HNil) =>
 
           val promotionIds = hasPromotion.map(v => {
             if (v) {
@@ -100,7 +101,7 @@ class SkuService  extends Directives with DefaultComplete {
           val params = new SkuRequest(
             maxItemPerPage, pageOffset, id,productId,  xtype, name, code, categoryPath,
             brandId, tagName, notations, priceRange, creationDateMin,
-            featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionIds, hasPromotion, property, feature, variations
+            featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionIds, hasPromotion, inStockOnly, property, feature, variations
           )
           handleCall(skuHandler.querySkusByCriteria(storeCode, params),
             (json: JValue) => complete(StatusCodes.OK, json))
@@ -108,4 +109,12 @@ class SkuService  extends Directives with DefaultComplete {
     }
   }
 
+  def skus(implicit storeCode: String) = pathPrefix(Segment) {
+    skuId =>
+      get {
+        parameters('update ? false, 'stock ? false, 'date ? ) { (update, stock, date) =>
+          handleCall(skuHandler.getSku(storeCode, skuId, update, stock, date), (json: JValue) => complete(StatusCodes.OK, json))
+        }
+      }
+  }
 }

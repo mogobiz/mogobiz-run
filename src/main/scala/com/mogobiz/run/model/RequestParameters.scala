@@ -38,6 +38,7 @@ object RequestParameters {
                            , country: Option[String]
                            , promotionId: Option[String]
                            , hasPromotion: Option[Boolean]
+                           , inStockOnly: Option[Boolean]
                            , property: Option[String]
                            , features: Option[String]
                            , variations: Option[String]
@@ -50,7 +51,7 @@ object RequestParameters {
                            , multiVariations: Option[Boolean]
                            , multiNotation: Option[Boolean]
                            , multiPrices: Option[Boolean]) {
-    def this(priceInterval: Long, lang: String) = this(priceInterval,None, None, None, None, None, None, None, None, None, None, None, lang, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None)
+    def this(priceInterval: Long, lang: String) = this(priceInterval,None, None, None, None, None, None, None, None, None, None, None, lang, None, None, None,Some(true), None, None, None, None, None, None, None, None, None, None, None, None)
   }
 
   //--- Products
@@ -77,10 +78,11 @@ object RequestParameters {
                              , countryCode: Option[String]
                              , promotionId: Option[String]
                              , hasPromotion: Option[Boolean]
+                             , inStockOnly: Option[Boolean]
                              , property: Option[String]
                              , feature: Option[String]
                              , variations: Option[String]) extends PagingParams {
-    def this(lang: String, currencyCode: String, countryCode: String) = this(None, None, None, None, None, None, None, None, None, None, None, None, Some(false), None, None, lang, None, None, None, Some(false), None, None, None)
+    def this(lang: String, currencyCode: String, countryCode: String) = this(None, None, None, None, None, None, None, None, None, None, None, None, Some(false), None, None, lang, None, None, None, Some(false),Some(true), None, None, None)
   }
 
   case class ProductDetailsRequest(
@@ -129,10 +131,11 @@ object RequestParameters {
                              , countryCode: Option[String]
                              , promotionId: Option[String]
                              , hasPromotion: Option[Boolean]
+                             , inStockOnly: Option[Boolean]
                              , property: Option[String]
                              , feature: Option[String]
                              , variations: Option[String]) extends PagingParams {
-    def this(lang: String, currencyCode: String, countryCode: String) = this(None, None, None, None, None, None, None, None, None, None, None, None, None, Some(false), None, None, lang, None, None, None, Some(false), None, None, None)
+    def this(lang: String, currencyCode: String, countryCode: String) = this(None, None, None, None, None, None, None, None, None, None, None, None, None, Some(false), None, None, lang, None, None, None, Some(false), Some(true), None, None, None)
   }
 
   //--- Comment

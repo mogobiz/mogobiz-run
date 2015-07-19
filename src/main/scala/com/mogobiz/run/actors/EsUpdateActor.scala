@@ -21,6 +21,10 @@ object EsUpdateActor {
   case class SalesUpdateRequest(storeCode: String, product: Product, sku: Sku, newNbProductSales : Long, newNbSkuSales: Long)
 
   case class ProductNotationsUpdateRequest(storeCode: String, productId: Long)
+
+  case class SkuStockAvailabilityUpdateRequest(storeCode: String, product: Product, sku: Sku, stock: Stock, stockCalendar:StockCalendar)
+
+  case class ProductStockAvailabilityUpdateRequest(storeCode: String, productId: Long)
 }
 
 class EsUpdateActor extends Actor {
@@ -37,6 +41,22 @@ class EsUpdateActor extends Actor {
     case q: ProductNotationsUpdateRequest =>
       val notations = facetHandler.getCommentNotations(q.storeCode, Some(q.productId))
       productHandler.updateProductNotations(q.storeCode, q.productId, notations)
+      context.stop(self)
+
+    case q: SkuStockAvailabilityUpdateRequest =>
+      skuHandler.updateStockAvailability(q.storeCode, q.sku, q.stock, q.stockCalendar)
+      context.stop(self)
+
+    case q: ProductStockAvailabilityUpdateRequest =>
+      //then query skus stock availability filtered on productId
+      val skusAvailable = skuHandler.existsAvailableSkus(q.storeCode, q.productId)
+
+      productHandler.updateStockAvailability(q.storeCode, q.productId, skusAvailable)
+    /*
+    if(!skusAvailable){
+      //if no skus returned, then updateStockProductAvailability
+      productHandler.updateStockAvailability(q.storeCode, q.product.id,false)
+    }*/
       context.stop(self)
 
   }

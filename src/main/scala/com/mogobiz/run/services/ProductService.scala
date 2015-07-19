@@ -93,6 +93,7 @@ class ProductService extends Directives with DefaultComplete {
           'country.? ::
           'promotionId.? ::
           'hasPromotion.?.as[Option[Boolean]] ::
+          'inStockOnly.?.as[Option[Boolean]] ::
           'property.? ::
           'feature.? ::
           'variations.? :: HNil
@@ -100,7 +101,7 @@ class ProductService extends Directives with DefaultComplete {
 
       productsParams.happly {
         case (maxItemPerPage :: pageOffset :: id :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin
-          :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: property :: feature :: variations :: HNil) =>
+          :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: inStock :: property :: feature :: variations :: HNil) =>
 
           val promotionIds = hasPromotion.map(v => {
             if (v) {
@@ -116,7 +117,7 @@ class ProductService extends Directives with DefaultComplete {
           val params = new ProductRequest(
             maxItemPerPage, pageOffset, id, xtype, name, code, categoryPath,
             brandId, tagName, notations, priceRange, creationDateMin,
-            featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionIds, hasPromotion, property, feature, variations
+            featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionIds, hasPromotion, inStock, property, feature, variations
           )
           handleCall(productHandler.queryProductsByCriteria(storeCode, params),
             (json: JValue) => complete(StatusCodes.OK, json))

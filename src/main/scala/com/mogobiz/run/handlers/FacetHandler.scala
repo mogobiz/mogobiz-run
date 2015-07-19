@@ -41,7 +41,18 @@ class FacetHandler {
       case _ => "price"
     }
 
+    val defaultStockFilter = if(req.inStockOnly.getOrElse(true)){
+      val orFilters = List(
+        not(existsFilter("stock")),
+        createTermFilter("stock.available", Some(true)).get
+      )
+      Some(or(orFilters: _*) )
+    }else{
+      None
+    }
+
     val fixeFilters: List[Option[FilterDefinition]] = List(
+      defaultStockFilter,
       createTermFilter("sku.product.id",req.productId),
       createOrFilterBySplitValues(req.code, v => createTermFilter("sku.product.code", Some(v))),
       createOrFilterBySplitValues(req.xtype, v => createTermFilter("sku.product.xtype", Some(v))),
@@ -156,7 +167,18 @@ class FacetHandler {
       case _ => "price"
     }
 
+    val defaultStockFilter = if(req.inStockOnly.getOrElse(true)){
+      val orFilters = List(
+        not(existsFilter("stockAvailable")),
+        createTermFilter("stockAvailable", Some(true)).get
+      )
+      Some(or(orFilters: _*) )
+    }else{
+      None
+    }
+
     val fixeFilters: List[Option[FilterDefinition]] = List(
+      defaultStockFilter,
       createOrFilterBySplitValues(req.code, v => createTermFilter("product.code", Some(v))),
       createOrFilterBySplitValues(req.xtype, v => createTermFilter("product.xtype", Some(v))),
       createOrFilterBySplitValues(req.creationDateMin, v => createRangeFilter("product.dateCreated", Some(v), None)),

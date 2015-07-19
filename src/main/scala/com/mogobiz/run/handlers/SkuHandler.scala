@@ -11,12 +11,14 @@ import com.mogobiz.es._
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
 import com.mogobiz.pay.model.Mogopay.Account
+import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
 import com.mogobiz.run.exceptions.{CommentAlreadyExistsException, NotAuthorizedException}
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.Learning.UserAction
+import com.mogobiz.run.model.Mogobiz.{ProductCalendar, Sku, Product}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
@@ -32,6 +34,8 @@ import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JObject, JArray, JNothing}
 import org.json4s.JsonDSL._
 import org.json4s._
+import org.json4s.native.JsonMethods._
+import org.json4s.native.Serialization._
 
 
 class SkuHandler  extends JsonUtil {
@@ -64,7 +68,18 @@ class SkuHandler  extends JsonUtil {
       case _ => "price"
     }
 
+    val defaultStockFilter = if(skuRequest.inStockOnly.getOrElse(true)){
+      val orFilters = List(
+        not(existsFilter("stock")),
+        createTermFilter("stock.available", Some(true)).get
+      )
+      Some(or(orFilters: _*) )
+    }else{
+      None
+    }
+
     val filters: List[FilterDefinition] = List(
+      defaultStockFilter,
       createOrFilterBySplitValues(skuRequest.id, v => createTermFilter("id", Some(v))),
       createOrFilterBySplitValues(skuRequest.productId, v => createTermFilter("product.id", Some(v))),
       createOrFilterBySplitValues(skuRequest.code, v => createTermFilter("product.code", Some(v))),
@@ -177,5 +192,166 @@ class SkuHandler  extends JsonUtil {
         )
       )
     })
+  }
+
+  case class AvailableStockByDateTime(startDate:String, available:Boolean)
+  case class AvailableStock(available:Boolean, byDateTime: List[AvailableStockByDateTime])
+
+  def getSku(storeCode: String, skuId: String,update:Boolean, stockValue: Boolean, date: Option[String]) = {
+//    println(s"--------------------------------- getSku update=$update, stock=$stockValue, date="+date)
+    val res = EsClient.loadRaw(get(skuId) from storeCode+"/"+ES_TYPE_SKU).get
+    val sku = response2JValue(res)
+
+    /* for debug purpose only
+    if(update) {
+      println("should update stock")
+      val stockInfo = if(date.isEmpty){
+        JObject(JField("stock", JObject(JField("available",JBool(stockValue)))))
+      }else{
+//.as[Option[Int]
+        val startDate = date.get + ".000+02:00" //"2015-07-18T17:00:00.000+02:00" //stockCalendar.startDate.get
+
+        implicit val formats = native.Serialization.formats(NoTypeHints)
+
+        val jsonStock = sku \ "stock"
+        val stockInfo = jsonStock.extract[AvailableStock]
+//        println("stockINfo=",stockInfo)
+
+        val dtStockOpt = stockInfo.byDateTime.find(_.startDate == startDate)
+//          println("dtStockOpt=",dtStockOpt)
+        val newDtStock = dtStockOpt match {
+          case Some(dtStock) => dtStock.copy(startDate = dtStock.startDate, available = stockValue)
+          case None => AvailableStockByDateTime(startDate = startDate, available = stockValue)
+        }
+//          println("newDtStock=",newDtStock)
+        val newDtStockList = stockInfo.byDateTime.filter(_.startDate != startDate):+ newDtStock
+//          println("newDtStockList=",newDtStockList)
+        val stockAvailability = !newDtStockList.forall(_.available == false)
+
+        val newStock = stockInfo.copy(available = stockAvailability, byDateTime = newDtStockList)
+//        println("newStock = ",newStock )
+
+        JObject(JField("stock", parse(write(newStock))))
+
+      }
+
+      val updatedSku = (sku removeField { f => f._1 == "stock"})merge stockInfo
+      EsClient.updateRaw(esupdate4s id skuId in storeCode -> ES_TYPE_SKU doc updatedSku retryOnConflict 4)
+      updatedSku
+    }else{ */
+      sku
+    //}
+
+  }
+
+  /**
+   * Return all available sku (in stock)
+   * @param storeCode
+   * @param productId
+   */
+  def existsAvailableSkus(storeCode: String, productId: Long):Boolean = {
+    // prendre tous ceux qui n'ont pas le term stock ou que stock.available = true
+
+    val _query = esearch4s in storeCode -> ES_TYPE_SKU query {
+      matchall
+    }
+    val orFilters = List(
+      not(existsFilter("stock")),
+      createTermFilter("stock.available", Some(true)).get
+    )
+    val filters: List[FilterDefinition] = List(createTermFilter("product.id", Some(productId)).get, or(orFilters: _*) )
+
+    val response: SearchHits = EsClient.searchAllRaw(
+      filterRequest(_query, filters)
+    )
+//    println(s"----- existsAvailableSkus for productId=$productId => nb skus that have stock : "+response.getTotalHits)
+    response.getTotalHits > 0
+  }
+
+  /**
+   * Update sku stock availability (global and by DateTime)
+   */
+  def updateStockAvailability(storeCode: String, pSku: Sku, stock: Stock, stockCalendar:StockCalendar) = {
+//    println("**** updateStockAvailability ****")
+
+    val stockValue = ((stock.initialStock - stockCalendar.sold) > 0)
+//    println(s"stockValue = $stockValue ")
+
+    val res = EsClient.loadRaw(get(pSku.id) from storeCode+"/"+ES_TYPE_SKU).get
+    val sku = response2JValue(res)
+//    println(sku)
+
+    val stockAvailable = sku \ "stock" \ "available" match {
+      case JBool(v) => v
+      case _ => true
+    }
+
+
+    val newStock = stock.calendarType match {
+      case ProductCalendar.NO_DATE =>
+//        println("should update stock of NO_DATE sku")
+        val stockInfo = JObject(JField("stock", JObject(JField("available",JBool(stockValue)))))
+        stockInfo
+
+      case _ =>
+//        println("should update stock of DATE_ONLY & DATE_TIME sku")
+
+        /*
+        val newESStockCalendar = StockByDateTime(
+          stockCalendar.id,
+          stockCalendar.uuid,
+          dateCreated = stockCalendar.dateCreated.toDate,
+          lastUpdated = stockCalendar.lastUpdated.toDate,
+          startDate = stockCalendar.startDate.get,
+          stock = stockCalendar.stock - stockCalendar.sold
+        )*/
+
+        val startDate = stockCalendar.startDate.get.toString
+//        println("startDate=",startDate)
+
+        implicit val formats = native.Serialization.formats(NoTypeHints)
+
+        val jsonStock = sku \ "stock"
+//        println("jsonStock=",jsonStock)
+        val stockInfo: AvailableStock = jsonStock match {
+          case JObject(_) => jsonStock.extract[AvailableStock]
+          case JNothing => AvailableStock(available = stockValue, byDateTime = List())
+        }
+//        println("stockINfo=",stockInfo)
+
+        val dtStockOpt = stockInfo.byDateTime.find(_.startDate == startDate)
+//        println("dtStockOpt=",dtStockOpt)
+        val newDtStock = dtStockOpt match {
+          case Some(dtStock) => dtStock.copy(startDate = dtStock.startDate, available = stockValue)
+          case None => AvailableStockByDateTime(startDate = startDate, available = stockValue)
+        }
+//        println("newDtStock=",newDtStock)
+        val newDtStockList = stockInfo.byDateTime.filter(_.startDate != startDate):+ newDtStock
+//        println("newDtStockList=",newDtStockList)
+        val stockAvailability = !newDtStockList.forall(_.available == false)
+
+        JObject(JField("stock", parse(write(stockInfo.copy(available = stockAvailability, byDateTime = newDtStockList)))))
+    }
+
+//    println("newStock = ",newStock )
+
+    val updatedSku = (sku removeField { f => f._1 == "stock"})merge newStock
+    EsClient.updateRaw(esupdate4s id pSku.id in storeCode -> ES_TYPE_SKU doc updatedSku retryOnConflict 4)
+
+
+    /*
+    //not possible if(sku.stock.available){
+    if(stockAvailable){
+      // Check if no more stock available, set sku stock availability to false and then maybe the product (if all skus unavailable)
+      if(stock.initialStock - stockCalendar.sold == 0){
+        //TODO
+      }
+    }else{
+      // undo the above
+      if(stock.initialStock - stockCalendar.sold > 0){
+        //TODO
+      }
+    }
+    */
   }
 }

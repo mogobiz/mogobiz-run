@@ -41,6 +41,7 @@ class ProductHandler extends JsonUtil {
 
   private val MIN_NOTATION = 1
   private val MAX_NOTATION = 5
+  private val ES_TYPE_PRODUCT = "product"
 
   val rateService = RateBoService
   private val fieldsToRemoveForProductSearchRendering = List("skus", "features", "resources", "datePeriods", "intraDayPeriods")
@@ -65,7 +66,18 @@ class ProductHandler extends JsonUtil {
       case _ => "price"
     }
 
+    val defaultStockFilter = if(productRequest.inStockOnly.getOrElse(true)){
+      val orFilters = List(
+        not(existsFilter("stockAvailable")),
+        createTermFilter("stockAvailable", Some(true)).get
+      )
+      Some(or(orFilters: _*) )
+    }else{
+      None
+    }
+
     val filters: List[FilterDefinition] = List(
+      defaultStockFilter,
       createOrFilterBySplitValues(productRequest.id, v => createTermFilter("id", Some(v))),
       createOrFilterBySplitValues(productRequest.code, v => createTermFilter("code", Some(v))),
       createOrFilterBySplitValues(productRequest.xtype, v => createTermFilter("xtype", Some(v))),
@@ -594,6 +606,20 @@ class ProductHandler extends JsonUtil {
       case None => None
     }
   }
+
+  /**
+   * Update product field "stock_available" to qualifie stock state
+   * @param storeCode
+   * @param productId
+   * @param stockAvailable
+   * @return
+   */
+  def updateStockAvailability(storeCode: String, productId: Long, stockAvailable: Boolean) = {
+//    println(s"product.updateStockAvailability productId=$productId, stockValue=$stockAvailable")
+    val script = s"ctx._source.stockAvailable=$stockAvailable"
+    EsClient.updateRaw(esupdate4s id productId in storeCode -> ES_TYPE_PRODUCT script script retryOnConflict 4)
+  }
+
 
   def renderProduct(storeCode: String, product: JsonAST.JValue, country: Option[String], currency: Option[String], lang: String, cur: com.mogobiz.run.model.Currency, fieldsToRemove: List[String], includeNotations: Boolean = false): JsonAST.JValue = {
     implicit def json4sFormats: Formats = DefaultFormats
