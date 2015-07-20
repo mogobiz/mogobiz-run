@@ -11,7 +11,6 @@ import com.mogobiz.es._
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
 import com.mogobiz.pay.model.Mogopay.Account
-import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
@@ -238,7 +237,7 @@ class SkuHandler  extends JsonUtil {
       val updatedSku = (sku removeField { f => f._1 == "stock"})merge stockInfo
       EsClient.updateRaw(esupdate4s id skuId in storeCode -> ES_TYPE_SKU doc updatedSku retryOnConflict 4)
       updatedSku
-    }else{ */
+    }else{*/
       sku
     //}
 
@@ -315,7 +314,7 @@ class SkuHandler  extends JsonUtil {
 //        println("jsonStock=",jsonStock)
         val stockInfo: AvailableStock = jsonStock match {
           case JObject(_) => jsonStock.extract[AvailableStock]
-          case JNothing => AvailableStock(available = stockValue, byDateTime = List())
+          case _ => AvailableStock(available = stockValue, byDateTime = List())
         }
 //        println("stockINfo=",stockInfo)
 

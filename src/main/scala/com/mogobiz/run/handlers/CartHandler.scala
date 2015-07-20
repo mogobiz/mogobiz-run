@@ -13,7 +13,6 @@ import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.config.MogobizHandlers._
 import com.mogobiz.run.actors.EsUpdateActor.{ProductStockAvailabilityUpdateRequest, StockUpdateRequest}
 import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
-import com.mogobiz.run.config.HandlersConfig._
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.dashboard.Dashboard
 import com.mogobiz.run.es._
