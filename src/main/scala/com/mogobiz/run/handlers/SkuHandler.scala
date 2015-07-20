@@ -71,8 +71,7 @@ class SkuHandler  extends JsonUtil {
       createOrFilterBySplitValues(skuRequest.xtype, v => createTermFilter("product.xtype", Some(v))),
       createOrFilterBySplitValues(skuRequest.categoryPath, v => createRegexFilter("path", Some(v))),
       createOrFilterBySplitValues(skuRequest.brandId, v => createTermFilter("product.brand.id", Some(v))),
-//      createOrFilterBySplitValues(skuRequest.tagName.map(_.toLowerCase), v => createNestedTermFilter("tags", "tags.name.raw", Some(v))),
-      createOrFilterBySplitValues(skuRequest.tagName.map(_.toLowerCase), v => createTermFilter("product.tags.name", Some(v))),
+      createOrFilterBySplitValues(skuRequest.tagName.map(_.toLowerCase), v => createNestedTermFilter("product.tags", "product.tags.name", Some(v))),
 //TODO      createOrFilterBySplitValues(skuRequest.notations, v => createNestedTermFilter("notations", "notations.notation", Some(v))),
       createOrFilterBySplitKeyValues(skuRequest.priceRange, (min, max) => createNumericRangeFilter(s"${priceWithVatField}", min, max)),
       createOrFilterBySplitValues(skuRequest.creationDateMin, v => createRangeFilter("product.dateCreated", Some(v), None)),
@@ -140,10 +139,8 @@ class SkuHandler  extends JsonUtil {
       Some (
         must (
           List (
-            createTermFilter (s"product.features.name", Some (k) ),
-            createTermFilter (s"product.features.value", Some (v) )
-//            createNestedTermFilter ("features", s"features.name.raw", Some (k) ),
-//            createNestedTermFilter ("features", s"features.value.raw", Some (v) )
+            createNestedTermFilter ("product.features", s"product.features.name.raw", Some (k) ),
+            createNestedTermFilter ("product.features", s"product.features.value.raw", Some (v) )
           ).flatten: _*
         )
       )

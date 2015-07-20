@@ -67,20 +67,14 @@ class FacetHandler {
       }
     }
 
-    /* the one from product facets
     val tagQuery = buildQueryAndFilters(FilterBuilder(withTags = !req.multiTag.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs {
-      aggregation nested ("tags") path("tags") aggs {
+      aggregation nested ("tags") path("sku.product.tags") aggs {
         aggregation terms "tags" field "sku.product.tags.name.raw"
       }
     }
-    */
-
-    val tagQuery = buildQueryAndFilters(FilterBuilder(withTags = !req.multiTag.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs {
-      aggregation terms "tags" field "sku.product.tags.name"
-    }
 
     val featuresQuery = buildQueryAndFilters(FilterBuilder(withFeatures = !req.multiFeatures.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs {
-      aggregation nested ("features") path("features") aggs {
+      aggregation nested ("features") path("sku.product.features") aggs {
         aggregation terms "features_name" field s"sku.product.features.name.raw" aggs {
           aggregation terms s"features_name${_lang}" field s"sku.product.features.${lang}name.raw"
         } aggs {
@@ -290,9 +284,21 @@ class FacetHandler {
           :+ (if (builder.withCategory) createOrFilterBySplitValues (req.categoryName.map (_.toLowerCase), v => createTermFilter ("sku.product.category.name", Some (v) ) ) else None)
           :+ (if (builder.withBrand) createOrFilterBySplitValues (req.brandId, v => createTermFilter ("sku.product.brand.id", Some (v) ) ) else None)
           :+ (if (builder.withBrand) createOrFilterBySplitValues (req.brandName.map (_.toLowerCase), v => createTermFilter ("sku.product.brand.name", Some (v) ) ) else None)
-          //:+ (if (builder.withTags) createOrFilterBySplitValues (req.tags.map (_.toLowerCase), v => createNestedTermFilter ("tags", "sku.product.tags.name", Some (v) ) ) else None)
-          :+ (if (builder.withTags) createOrFilterBySplitValues (req.tags.map (_.toLowerCase), v => createTermFilter ("sku.product.tags.name", Some (v) ) ) else None)
-          :+ (if (builder.withFeatures) createFeaturesFilters (req,"sku.product") else None)
+          :+ (if (builder.withTags) createOrFilterBySplitValues (req.tags.map (_.toLowerCase), v => createNestedTermFilter ("product.tags", "product.tags.name", Some (v) ) ) else None)
+          :+ (if (builder.withFeatures) {
+            //createFeaturesFilters (req,"product")
+            createAndOrFilterBySplitKeyValues(req.features, (k, v) => {
+              Some(
+                must(
+                  List(
+                    createNestedTermFilter("product.features", "product.features.name.raw", Some(k)),
+                    createNestedTermFilter("product.features", "product.features.value.raw", Some(v))
+                  ).flatten: _*
+                )
+              )
+            })
+          }
+          else None)
           :+ (if (builder.withVariations) createVariationsFilters (req, "sku") else None)
           //:+ (if (builder.withNotation) createOrFilterBySplitValues (req.notations, v => createNestedTermFilter ("notations", "product.notations.notation", Some (v) ) ) else None)
           :+ (if (builder.withPrice) createOrFilterBySplitKeyValues (req.priceRange, (min, max) => createNumericRangeFilter (s"sku.${priceWithVatField}", min, max) ) else None)

@@ -71,7 +71,7 @@ class ProductHandler extends JsonUtil {
       createOrFilterBySplitValues(productRequest.xtype, v => createTermFilter("xtype", Some(v))),
       createOrFilterBySplitValues(productRequest.categoryPath, v => createRegexFilter("path", Some(v))),
       createOrFilterBySplitValues(productRequest.brandId, v => createTermFilter("brand.id", Some(v))),
-      createOrFilterBySplitValues(productRequest.tagName.map(_.toLowerCase), v => createNestedTermFilter("tags", "tags.name.raw", Some(v))),
+      createOrFilterBySplitValues(productRequest.tagName.map(_.toLowerCase), v => createNestedTermFilter("tags", "tags.name", Some(v))),
       createOrFilterBySplitValues(productRequest.notations, v => createNestedTermFilter("notations", "notations.notation", Some(v))),
       createOrFilterBySplitKeyValues(productRequest.priceRange, (min, max) => createNumericRangeFilter(s"${priceWithVatField}", min, max)),
       createOrFilterBySplitValues(productRequest.creationDateMin, v => createRangeFilter("dateCreated", Some(v), None)),
