@@ -62,7 +62,7 @@ class ProductHandler extends JsonUtil {
 
     val lang = if (productRequest.lang == "_all") "" else s"${productRequest.lang}."
     val priceWithVatField = productRequest.countryCode match{
-      case Some(countryCode) => s"${countryCode}.endPrice"
+      case Some(countryCode) => s"$countryCode.endPrice"
       case _ => "price"
     }
 
@@ -85,7 +85,7 @@ class ProductHandler extends JsonUtil {
       createOrFilterBySplitValues(productRequest.brandId, v => createTermFilter("brand.id", Some(v))),
       createOrFilterBySplitValues(productRequest.tagName.map(_.toLowerCase), v => createNestedTermFilter("tags", "tags.name", Some(v))),
       createOrFilterBySplitValues(productRequest.notations, v => createNestedTermFilter("notations", "notations.notation", Some(v))),
-      createOrFilterBySplitKeyValues(productRequest.priceRange, (min, max) => createNumericRangeFilter(s"${priceWithVatField}", min, max)),
+      createOrFilterBySplitKeyValues(productRequest.priceRange, (min, max) => createNumericRangeFilter(s"$priceWithVatField", min, max)),
       createOrFilterBySplitValues(productRequest.creationDateMin, v => createRangeFilter("dateCreated", Some(v), None)),
       createOrFilterBySplitValues(productRequest.promotionId, v => createTermFilter("coupons.id", Some(v))),
       createFeaturedRangeFilters(productRequest),
