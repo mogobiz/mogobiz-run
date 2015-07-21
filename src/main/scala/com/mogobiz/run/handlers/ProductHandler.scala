@@ -97,7 +97,10 @@ class ProductHandler extends JsonUtil {
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(storeCode, productRequest.lang) ::: fieldsToRemoveForProductSearchRendering
     val _size: Int = productRequest.maxItemPerPage.getOrElse(100)
     val _from: Int = productRequest.pageOffset.getOrElse(0) * _size
-    val _sort = s"$lang${productRequest.orderBy.getOrElse("name.raw")}"
+    val _sort = productRequest.orderBy.getOrElse("name.raw") match {
+      case a if a startsWith "name" => s"${lang}name.raw"
+      case s => s
+    }
     val _sortOrder = productRequest.orderDirection.getOrElse("asc")
     lazy val currency = queryCurrency(storeCode, productRequest.currencyCode)
     val response: SearchHits = EsClient.searchAllRaw(
