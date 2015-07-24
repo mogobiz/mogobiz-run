@@ -282,7 +282,8 @@ object Mogobiz {
                       name: String,
                       uuid: String,
                       code: String,
-                      shipFrom : Option[ShipFromAddress])
+                      shipFrom : Option[ShipFromAddress],
+                      phone : Option[String])
 
   @JsonIgnoreProperties(ignoreUnknown=true)
   case class ShipFromAddress(longitude: String,

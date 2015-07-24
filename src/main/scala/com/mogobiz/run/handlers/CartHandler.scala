@@ -369,7 +369,8 @@ class CartHandler {
     // Calcul des données du panier
     val cartTTC = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
 
-    val shipFromAddressOpt = CompanyDao.findByCode(storeCode).map { _.shipFrom }.getOrElse(None)
+    val compagny = CompanyDao.findByCode(storeCode)
+    val shipFromAddressOpt = compagny.map { _.shipFrom }.getOrElse(None)
     val companyAddress = shipFromAddressOpt.map { shipFromAddress =>
       CompanyAddress(storeCode,
         shipFromAddress.road1,
@@ -378,7 +379,7 @@ class CartHandler {
         shipFromAddress.postalCode,
         shipFromAddress.country.code,
         if (!shipFromAddress.state.isEmpty) Some(shipFromAddress.state) else None,
-        Some("(248) 123-7654")
+        compagny.map {_.phone }.flatten
       )
     }
 
