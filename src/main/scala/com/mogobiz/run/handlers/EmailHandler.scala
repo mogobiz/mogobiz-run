@@ -79,10 +79,16 @@ object EmailHandler {
       mail.cc foreach (commonsMail.addCc(_))
       mail.bcc foreach (commonsMail.addBcc(_))
 
-      commonsMail.
-        setFrom(mail.from._1, mail.from._2).
-        setSubject(mail.subject).
-        send()
+      try {
+        commonsMail.
+          setFrom(mail.from._1, mail.from._2).
+          setSubject(mail.subject).
+          send()
+      }
+      catch {
+        case e: EmailException =>
+          e.printStackTrace()
+      }
     }
   }
 
