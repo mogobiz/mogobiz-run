@@ -279,7 +279,7 @@ class FacetHandler {
 
   private def buildQueryAndFilters(builder: FilterBuilder, storeCode: String, esType:String, req: FacetRequest, fixeFilters: List[Option[FilterDefinition]]) : SearchDefinition = {
 
-    println("filterBuilder=",builder)
+    //println("filterBuilder=",builder)
     val priceWithVatField = req.country match{
       case Some(countryCode) => s"${countryCode}.endPrice"
       case _ => "price"
@@ -293,7 +293,7 @@ class FacetHandler {
           :+ (if (builder.withCategory) createOrFilterBySplitValues (req.categoryName.map (_.toLowerCase), v => createTermFilter ("product.category.name", Some (v) ) ) else None)
           :+ (if (builder.withBrand) createOrFilterBySplitValues (req.brandId, v => createTermFilter ("product.brand.id", Some (v) ) ) else None)
           :+ (if (builder.withBrand) createOrFilterBySplitValues (req.brandName.map (_.toLowerCase), v => createTermFilter ("product.brand.name", Some (v) ) ) else None)
-          :+ (if (builder.withTags) createOrFilterBySplitValues (req.tags.map (_.toLowerCase), v => createNestedTermFilter ("tags", "product.tags.name", Some (v) ) ) else None)
+          :+ (if (builder.withTags) createOrFilterBySplitValues (req.tags.map (_.toLowerCase), v => createNestedTermFilter ("tags", "tags.name", Some (v) ) ) else None)
           :+ (if (builder.withFeatures) createFeaturesFilters (req, "product") else None)
           :+ (if (builder.withVariations) createVariationsFilters (req, "product.skus") else None)
           :+ (if (builder.withNotation) createOrFilterBySplitValues (req.notations, v => createNestedTermFilter ("notations", "product.notations.notation", Some (v) ) ) else None)
