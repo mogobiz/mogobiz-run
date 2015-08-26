@@ -25,6 +25,8 @@ case class StoreCart(storeCode: String,
                      cartItems: List[StoreCartItem] = List(), // liste des items du panier
                      coupons: List[StoreCoupon] = List(), // liste des coupons du panier
                      validate: Boolean = false, // Indique si le panier a été validé, c'est à dire si les stocks ont été décrémenté
+                     validateUuid: Option[String] = None, // Identifiant qui change à chaque validation. Permet au client de déterminer
+                                                  // s'il doit mettre à jour ces stocks (utilisé par Jahia par exemple pour flusher les caches)
                      @JsonSerialize(using = classOf[JodaDateTimeSerializer])
                      @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
                      expireDate: DateTime = DateTime.now.plusSeconds(60 * Settings.cart.lifetime), // Date d'expiration du panier

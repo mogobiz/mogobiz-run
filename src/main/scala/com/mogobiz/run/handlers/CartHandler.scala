@@ -687,7 +687,7 @@ class CartHandler {
 
       _updateProductStockAvailability(cart.storeCode, productsToUpdate.toSet)
 
-      val updatedCart = cart.copy(validate = true)
+      val updatedCart = cart.copy(validate = true, validateUuid = Some(UUID.randomUUID().toString()))
       StoreCartDao.save(updatedCart)
       updatedCart
     }
@@ -715,7 +715,7 @@ class CartHandler {
 
       _updateProductStockAvailability(cart.storeCode, productsToUpdate.toSet)
 
-      val updatedCart = cart.copy(validate = false)
+      val updatedCart = cart.copy(validate = false, validateUuid = None)
       StoreCartDao.save(updatedCart)
       updatedCart
     }
@@ -828,7 +828,8 @@ class CartHandler {
     val coupons = reductionCoupons.coupons ::: reductionPromotions.coupons
 
     val count = _calculateCount(cartItems)
-    Cart(price, endPrice, reduction, endPrice - reduction, count, cartItems.toArray, coupons.toArray)
+    val validateUuid = if (cart.validate) cart.validateUuid else None
+    Cart(validateUuid, price, endPrice, reduction, endPrice - reduction, count, cartItems.toArray, coupons.toArray)
   }
 
   /**
@@ -905,6 +906,7 @@ class CartHandler {
 
   private def _renderCart(cart: Cart, currency: Currency, locale: Locale): Map[String, Any] = {
     var map: Map[String, Any] = Map()
+    map += ("validateUuid" -> cart.validateUuid.getOrElse(""))
     map += ("count" -> cart.count)
     map += ("cartItemVOs" -> cart.cartItemVOs.map(item => _renderCartItem(item, currency, locale)))
     map += ("coupons" -> cart.coupons.map(c => _renderCoupon(c, currency, locale)))
