@@ -499,7 +499,7 @@ class CartHandler {
                 registeredCartItem.firstname.getOrElse("") + ";LastName:" + registeredCartItem.lastname.getOrElse("") +
                 ";Phone:" + registeredCartItem.phone.getOrElse("") + ";TicketType:" + sku.name + ";shortCode:" + shortCode
 
-              val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, company.aesPassword, "AES")
+              val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, company.aesPassword, "AES", true)
               val output = new ByteArrayOutputStream()
               QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
               val qrCodeBase64 = Base64.encode(output.toByteArray)
@@ -527,7 +527,7 @@ class CartHandler {
         val downloadableLink = product.xtype match {
           case ProductType.DOWNLOADABLE => {
             val params = s"boCartItemUuid:$boCartItemUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
-            val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES")
+            val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES", true)
             Some(s"${Settings.accessUrl}/$storeCode/download/$encryptedParams")
           }
           case _ => None

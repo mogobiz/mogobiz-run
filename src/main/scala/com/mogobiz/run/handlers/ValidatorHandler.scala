@@ -25,7 +25,7 @@ class ValidatorHandler {
   def download(storeCode: String, key: String) : (String, File) = {
     val company = CompanyDao.findByCode(storeCode).getOrElse(throw new NotFoundException(""))
 
-    val params = SymmetricCrypt.decrypt(key, company.aesPassword, "AES")
+    val params = SymmetricCrypt.decrypt(key, company.aesPassword, "AES", true)
     val paramsMap = params.split(";").map{ s => {
       val kv = s.split(":")
       (kv(0), kv(1))
