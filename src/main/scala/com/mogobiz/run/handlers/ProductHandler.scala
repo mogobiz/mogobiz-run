@@ -22,7 +22,7 @@ import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s, search => esearch4s, delete => esdelete4s, _}
-import com.sksamuel.elastic4s.{SearchType, FilterDefinition}
+import com.sksamuel.elastic4s.{QueryDefinition, SearchType, FilterDefinition}
 import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.action.get.MultiGetItemResponse
 import org.elasticsearch.action.search.SearchResponse
@@ -50,13 +50,13 @@ class ProductHandler extends JsonUtil {
     if (productRequest.hasPromotion.getOrElse(false) && productRequest.promotionId.isEmpty) {
       return Paging.wrap(0, JArray(List.empty), productRequest)
     }
-    val _query = productRequest.name match {
-      case Some(s) =>
-        esearch4s in storeCode -> "product" query {
+
+    val _query: QueryDefinition = productRequest.fullText match {
+      case Some(ft) => ft
+      case None => productRequest.name match {
+        case Some(s) =>
           matchQuery("name", s)
-        }
-      case None => esearch4s in storeCode -> "product" query {
-        matchall
+        case None => matchall
       }
     }
 
@@ -104,7 +104,7 @@ class ProductHandler extends JsonUtil {
     val _sortOrder = productRequest.orderDirection.getOrElse("asc")
     lazy val currency = queryCurrency(storeCode, productRequest.currencyCode)
     val response: SearchHits = EsClient.searchAllRaw(
-      filterRequest(_query, filters)
+      filterRequest(esearch4s in storeCode -> "product", filters, _query)
         sourceExclude (fieldsToExclude: _*)
         from _from
         size _size

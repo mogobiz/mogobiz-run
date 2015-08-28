@@ -227,7 +227,7 @@ package object es {
       else
         req query {filteredQuery query _query filter filters(0)}
     }
-    else req
+    else req query _query
 
   def filterOrRequest(req:SearchDefinition, filters:List[FilterDefinition], _query:QueryDefinition = matchall) : SearchDefinition =
     if(filters.nonEmpty){

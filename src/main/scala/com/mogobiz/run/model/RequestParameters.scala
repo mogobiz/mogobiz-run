@@ -63,6 +63,7 @@ object RequestParameters {
                              , id: Option[String]
                              , xtype: Option[String]
                              , name: Option[String]
+                             , fullText: Option[String]
                              , code: Option[String]
                              , categoryPath: Option[String]
                              , brandId: Option[String]
@@ -82,7 +83,7 @@ object RequestParameters {
                              , property: Option[String]
                              , feature: Option[String]
                              , variations: Option[String]) extends PagingParams {
-    def this(lang: String, currencyCode: String, countryCode: String) = this(None, None, None, None, None, None, None, None, None, None, None, None, Some(false), None, None, lang, None, None, None, Some(false),Some(true), None, None, None)
+    def this(lang: String, currencyCode: String, countryCode: String) = this(None, None, None, None, None, None, None, None, None, None, None, None, None, Some(false), None, None, lang, None, None, None, Some(false),Some(true), None, None, None)
   }
 
   case class ProductDetailsRequest(

@@ -78,6 +78,7 @@ class ProductService extends Directives with DefaultComplete {
           'id.? ::
           'xtype.? ::
           'name.? ::
+          'fullText.? ::
           'code.? ::
           'categoryPath.? ::
           'brandId.? ::
@@ -100,7 +101,7 @@ class ProductService extends Directives with DefaultComplete {
       )
 
       productsParams.happly {
-        case (maxItemPerPage :: pageOffset :: id :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin
+        case (maxItemPerPage :: pageOffset :: id :: xtype :: name :: fullText :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin
           :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: inStock :: property :: feature :: variations :: HNil) =>
 
           val promotionIds = hasPromotion.map(v => {
@@ -115,7 +116,7 @@ class ProductService extends Directives with DefaultComplete {
           }
 
           val params = new ProductRequest(
-            maxItemPerPage, pageOffset, id, xtype, name, code, categoryPath,
+            maxItemPerPage, pageOffset, id, xtype, name, fullText, code, categoryPath,
             brandId, tagName, notations, priceRange, creationDateMin,
             featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionIds, hasPromotion, inStock, property, feature, variations
           )
