@@ -61,7 +61,7 @@ object Settings {
 
 
   object learning {
-    val rotate = config.getString("index.rotate")
+    val rotate = config.getString("learning.index.rotate")
   }
 
   object Mail {
