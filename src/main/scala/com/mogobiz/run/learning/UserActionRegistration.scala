@@ -7,6 +7,7 @@ package com.mogobiz.run.learning
 import java.util.Calendar
 
 import com.mogobiz.es.EsClient
+import com.mogobiz.run.config.Settings
 import com.mogobiz.run.model.Learning.UserAction.UserAction
 import com.mogobiz.run.model.Learning.UserItemAction
 
@@ -14,7 +15,7 @@ import com.mogobiz.run.model.Learning.UserItemAction
 object UserActionRegistration {
   def esLearning(store: String): String = s"${store}_learning"
 
-  val esIndexRotate = "MONTHLY"
+  val esIndexRotate = Settings.learning.rotate
 
   private def indexName(esIndex:String): String = {
     def dateFormat(date: Calendar, dateFormat: String) = {

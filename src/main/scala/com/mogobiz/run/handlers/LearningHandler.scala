@@ -10,8 +10,11 @@ import java.util.Date
 
 import akka.actor.ActorSystem
 import akka.event.Logging
-import org.elasticsearch.search.aggregations.Aggregation
-import org.elasticsearch.search.aggregations.bucket.terms.Terms
+import com.sksamuel.elastic4s.DefinitionAttributes.{DefinitionAttributeCacheKey, DefinitionAttributeCache}
+import com.sksamuel.elastic4s._
+import org.elasticsearch.search.aggregations.{AggregationBuilder, Aggregation}
+import org.elasticsearch.search.aggregations.bucket.filters.FiltersAggregationBuilder
+import org.elasticsearch.search.aggregations.bucket.terms.{TermsBuilder, Terms}
 
 import scala.collection.mutable
 
@@ -65,9 +68,6 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
     } sort {
       by field "dateCreated" order SortOrder.DESC
     }
-    println("BROWSER-HISTORY-1")
-    println(historyReq._builder.toString)
-
 
     val itemids = (EsClient searchAllRaw historyReq).getHits map (_.sourceAsMap().get("itemid").toString)
 
@@ -142,17 +142,21 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
     val filters = List(Option(action).map(x => termFilter("action", x.toString)),
       customer.map(x => termFilter("segment", x)),
       Option(since).map(x => rangeFilter("dateCreated").
-                gte(since.getTime.toString).
-                lte(new Date().getTime.toString)
+        gte(since.getTime.toString).
+        lte(new Date().getTime.toString)
         //        gte(new SimpleDateFormat("yyyy-MM-dd").format(since)).
         //        lte(new SimpleDateFormat("yyyy-MM-dd").format(new Date()))
       )
     ).flatten
 
-    val popularReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" limit 0 postFilter {
-      and(filters: _*)
+    val popularReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" limit 0 query {
+      filteredQuery filter {
+        and {
+          filters: _*
+        }
+      }
     } aggs {
-      aggregation terms "top-itemid" field "itemid" size count order Terms.Order.count(false)
+      agg terms "top-itemid" field "itemid" size count order Terms.Order.count(false)
     }
     logger.debug(popularReq._builder.toString)
     val terms = EsClient().execute(popularReq).await.getAggregations.get("top-itemid").asInstanceOf[Terms]

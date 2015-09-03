@@ -35,6 +35,8 @@ object Settings {
   //  val RememberCookieName = config getString "session.remember.cookie.name"
   //  val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
 
+
+
   val accessUrl = config getString "mogobiz.accessUrl"
 
   object cart {
@@ -55,6 +57,11 @@ object Settings {
     val password = ""
     val apiId = ""
     val sender = ""
+  }
+
+
+  object learning {
+    val rotate = config.getString("index.rotate")
   }
 
   object Mail {
