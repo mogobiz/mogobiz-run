@@ -173,7 +173,7 @@ class ProductService extends Directives with DefaultComplete {
         times(storeCode,uuid, productId.toLong)
   }
 
-  def details(storeCode:String, uuid:String, productId: Long) = get {
+  def details(storeCode:String, uuid:String, productId: Long) =
     get {
       parameters(
         'historize ? false // historize is set to true when accessed by end user. Else this may be a technical call to display the product
@@ -185,7 +185,6 @@ class ProductService extends Directives with DefaultComplete {
           (json: JValue) => complete(StatusCodes.OK, json))
       }
     }
-  }
 
   def dates(storeCode:String, uuid:String, productId: Long) = path("dates") {
     get {

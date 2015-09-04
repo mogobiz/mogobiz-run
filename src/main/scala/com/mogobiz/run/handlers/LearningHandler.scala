@@ -159,8 +159,11 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
       agg terms "top-itemid" field "itemid" size count order Terms.Order.count(false)
     }
     logger.debug(popularReq._builder.toString)
+    val xxx = EsClient().execute(popularReq).await
     val terms = EsClient().execute(popularReq).await.getAggregations.get("top-itemid").asInstanceOf[Terms]
-    terms.getBuckets.map(term => term.getKey).toList
+    terms.getBuckets.map {
+      term => logger.debug(term.getKey+"/"+term.getDocCount); term.getKey
+    } toList
   }
 }
 

@@ -4,7 +4,7 @@
 
 package com.mogobiz.run.learning
 
-import java.util.Calendar
+import java.util.{UUID, Calendar}
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.Settings
@@ -35,6 +35,6 @@ object UserActionRegistration {
 
 
   def register(store: String, trackingid: String, itemid: String, action: UserAction): String = {
-    EsClient.index(indexName(esLearning(store)), UserItemAction(trackingid, itemid, action), false)
+    EsClient.index(indexName(esLearning(store)), UserItemAction(trackingid, itemid, action), false, Some(UUID.randomUUID().toString))
   }
 }
