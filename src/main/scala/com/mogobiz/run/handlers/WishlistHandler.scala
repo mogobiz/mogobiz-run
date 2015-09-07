@@ -58,7 +58,7 @@ class WishlistHandler {
     if (owneremail != wishlistList.owner.email)
       throw NotAuthorizedException("Not Authorized")
     val wishlist = wishlistList.wishlists.find(_.uuid == wishlistId) getOrElse (throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
-    if (wishlist.brands.exists(_.brand == cat.category))
+    if (wishlist.categories.exists(_.category == cat.category))
       throw new DuplicateException(s"${cat.name}")
     else {
       val now = Calendar.getInstance().getTime
