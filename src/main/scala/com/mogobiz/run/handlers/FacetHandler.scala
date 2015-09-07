@@ -256,11 +256,11 @@ class FacetHandler {
     }
 
     val priceQuery = buildQueryAndFilters(FilterBuilder(withPrice = !req.multiPrices.getOrElse(false)), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs {
-      aggregation histogram "prices" field s"product.${priceWithVatField}" interval req.priceInterval minDocCount 0
+      aggregation histogram "prices" field s"product.skus.${priceWithVatField}" interval req.priceInterval minDocCount 0
     } aggs {
-      aggregation min "price_min" field s"product.${priceWithVatField}"
+      aggregation min "price_min" field s"product.skus.${priceWithVatField}"
     } aggs {
-      aggregation max "price_max" field s"product.${priceWithVatField}"
+      aggregation max "price_max" field s"product.skus.${priceWithVatField}"
     }
 
     val multiQueries = List(
@@ -297,7 +297,7 @@ class FacetHandler {
           :+ (if (builder.withFeatures) createFeaturesFilters (req, "product") else None)
           :+ (if (builder.withVariations) createVariationsFilters (req, "product.skus") else None)
           :+ (if (builder.withNotation) createOrFilterBySplitValues (req.notations, v => createNestedTermFilter ("notations", "product.notations.notation", Some (v) ) ) else None)
-          :+ (if (builder.withPrice) createOrFilterBySplitKeyValues (req.priceRange, (min, max) => createNumericRangeFilter (s"product.${priceWithVatField}", min, max) ) else None)
+          :+ (if (builder.withPrice) createOrFilterBySplitKeyValues (req.priceRange, (min, max) => createNumericRangeFilter (s"product.skus.${priceWithVatField}", min, max) ) else None)
         ).flatten
       case ES_TYPE_SKU =>
         (
