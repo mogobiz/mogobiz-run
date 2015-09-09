@@ -265,20 +265,25 @@ class CartHandler {
     val optCoupon = CouponDao.findByCode(cart.storeCode, couponCode)
     if (optCoupon.isDefined) {
       val coupon = optCoupon.get
-      if (cart.coupons.exists { c => couponCode == c.code }) {
-        throw new DuplicateException("")
-      } else if (!couponHandler.consumeCoupon(cart.storeCode, coupon)) {
-        throw new InsufficientStockCouponException()
+      if (!coupon.anonymous) {
+        if (cart.coupons.exists { c => couponCode == c.code}) {
+          throw new DuplicateException("")
+        } else if (!couponHandler.consumeCoupon(cart.storeCode, coupon)) {
+          throw new InsufficientStockCouponException()
+        }
+        else {
+          val newCoupon = StoreCoupon(coupon.id, coupon.code)
+
+          val coupons = newCoupon :: cart.coupons
+          val updatedCart = _unvalidateCart(cart).copy(coupons = coupons)
+          StoreCartDao.save(updatedCart)
+
+          val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
+          _renderCart(computeCart, currency, locale)
+        }
       }
       else {
-        val newCoupon = StoreCoupon(coupon.id, coupon.code)
-
-        val coupons = newCoupon :: cart.coupons
-        val updatedCart = _unvalidateCart(cart).copy(coupons = coupons)
-        StoreCartDao.save(updatedCart)
-
-        val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
-        _renderCart(computeCart, currency, locale)
+        throw new NotFoundException("")
       }
     }
     else {
