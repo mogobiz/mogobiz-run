@@ -196,6 +196,15 @@ class SkuHandler  extends JsonUtil {
   case class AvailableStockByDateTime(startDate:String, available:Boolean)
   case class AvailableStock(available:Boolean, byDateTime: List[AvailableStockByDateTime])
 
+  /**
+   * Helper method to debug sku resource
+   * @param storeCode
+   * @param skuId
+   * @param update
+   * @param stockValue
+   * @param date
+   * @return
+   */
   def getSku(storeCode: String, skuId: String,update:Boolean, stockValue: Boolean, date: Option[String]) = {
 //    println(s"--------------------------------- getSku update=$update, stock=$stockValue, date="+date)
     val res = EsClient.loadRaw(get(skuId) from storeCode+"/"+ES_TYPE_SKU).get
@@ -244,21 +253,17 @@ class SkuHandler  extends JsonUtil {
   }
 
   /**
-   * Return all available sku (in stock)
+   * Return all available sku (in stock) for a specific product
    * @param storeCode
    * @param productId
    */
   def existsAvailableSkus(storeCode: String, productId: Long):Boolean = {
-    // prendre tous ceux qui n'ont pas le term stock ou que stock.available = true
 
     val _query = esearch4s in storeCode -> ES_TYPE_SKU query {
       matchall
     }
-    val orFilters = List(
-      not(existsFilter("stock")),
-      createTermFilter("stock.available", Some(true)).get
-    )
-    val filters: List[FilterDefinition] = List(createTermFilter("product.id", Some(productId)).get, or(orFilters: _*) )
+
+    val filters: List[FilterDefinition] = List(createTermFilter("product.id", Some(productId)).get, createTermFilter("available", Some(true)).get )
 
     val response: SearchHits = EsClient.searchAllRaw(
       filterRequest(_query, filters)
@@ -268,89 +273,17 @@ class SkuHandler  extends JsonUtil {
   }
 
   /**
-   * Update sku stock availability (global and by DateTime)
+   * Update sku stock availability only for NO_DATE product
    */
   def updateStockAvailability(storeCode: String, pSku: Sku, stock: Stock, stockCalendar:StockCalendar) = {
-//    println("**** updateStockAvailability ****")
 
-    val stockValue = ((stock.initialStock - stockCalendar.sold) > 0)
-//    println(s"stockValue = $stockValue ")
-
-    val res = EsClient.loadRaw(get(pSku.id) from storeCode+"/"+ES_TYPE_SKU).get
-    val sku = response2JValue(res)
-//    println(sku)
-
-    val stockAvailable = sku \ "stock" \ "available" match {
-      case JBool(v) => v
-      case _ => true
-    }
-
-
-    val newStock = stock.calendarType match {
+    stock.calendarType match {
       case ProductCalendar.NO_DATE =>
-//        println("should update stock of NO_DATE sku")
-        val stockInfo = JObject(JField("stock", JObject(JField("available",JBool(stockValue)))))
-        stockInfo
-
-      case _ =>
-//        println("should update stock of DATE_ONLY & DATE_TIME sku")
-
-        /*
-        val newESStockCalendar = StockByDateTime(
-          stockCalendar.id,
-          stockCalendar.uuid,
-          dateCreated = stockCalendar.dateCreated.toDate,
-          lastUpdated = stockCalendar.lastUpdated.toDate,
-          startDate = stockCalendar.startDate.get,
-          stock = stockCalendar.stock - stockCalendar.sold
-        )*/
-
-        val startDate = stockCalendar.startDate.get.toString
-//        println("startDate=",startDate)
-
-        implicit val formats = native.Serialization.formats(NoTypeHints)
-
-        val jsonStock = sku \ "stock"
-//        println("jsonStock=",jsonStock)
-        val stockInfo: AvailableStock = jsonStock match {
-          case JObject(_) => jsonStock.extract[AvailableStock]
-          case _ => AvailableStock(available = stockValue, byDateTime = List())
-        }
-//        println("stockINfo=",stockInfo)
-
-        val dtStockOpt = stockInfo.byDateTime.find(_.startDate == startDate)
-//        println("dtStockOpt=",dtStockOpt)
-        val newDtStock = dtStockOpt match {
-          case Some(dtStock) => dtStock.copy(startDate = dtStock.startDate, available = stockValue)
-          case None => AvailableStockByDateTime(startDate = startDate, available = stockValue)
-        }
-//        println("newDtStock=",newDtStock)
-        val newDtStockList = stockInfo.byDateTime.filter(_.startDate != startDate):+ newDtStock
-//        println("newDtStockList=",newDtStockList)
-        val stockAvailability = !newDtStockList.forall(_.available == false)
-
-        JObject(JField("stock", parse(write(stockInfo.copy(available = stockAvailability, byDateTime = newDtStockList)))))
+        val stockAvailable = ((stock.initialStock - stockCalendar.sold) > 0)
+        val script = s"ctx._source.available=$stockAvailable"
+        EsClient.updateRaw(esupdate4s id pSku.id in storeCode -> ES_TYPE_SKU script script retryOnConflict 4)
+        true
+      case _ => false
     }
-
-//    println("newStock = ",newStock )
-
-    val updatedSku = (sku removeField { f => f._1 == "stock"})merge newStock
-    EsClient.updateRaw(esupdate4s id pSku.id in storeCode -> ES_TYPE_SKU doc updatedSku retryOnConflict 4)
-
-
-    /*
-    //not possible if(sku.stock.available){
-    if(stockAvailable){
-      // Check if no more stock available, set sku stock availability to false and then maybe the product (if all skus unavailable)
-      if(stock.initialStock - stockCalendar.sold == 0){
-        //TODO
-      }
-    }else{
-      // undo the above
-      if(stock.initialStock - stockCalendar.sold > 0){
-        //TODO
-      }
-    }
-    */
   }
 }
