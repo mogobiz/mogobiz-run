@@ -99,6 +99,7 @@ class ProductHandler extends JsonUtil {
     val _from: Int = productRequest.pageOffset.getOrElse(0) * _size
     val _sort = productRequest.orderBy.getOrElse("name.raw") match {
       case a if a startsWith "name" => s"${lang}name.raw"
+      case b if b startsWith "price" => s"skus.$priceWithVatField"
       case s => s
     }
     val _sortOrder = productRequest.orderDirection.getOrElse("asc")
