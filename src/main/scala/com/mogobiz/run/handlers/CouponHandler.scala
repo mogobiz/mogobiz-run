@@ -103,7 +103,7 @@ class CouponHandler {
     }
   }
   private def _createCouponVOFromCoupon(coupon: Mogobiz.Coupon, active: Boolean, price: Long) : Render.Coupon = {
-    Render.Coupon(id = coupon.id, name = coupon.name, code = coupon.code, startDate = coupon.startDate, endDate = coupon.endDate, active = active, price = price)
+    Render.Coupon(id = coupon.id, name = coupon.name, promotion = coupon.anonymous, code = coupon.code, startDate = coupon.startDate, endDate = coupon.endDate, active = active, price = price)
   }
 
   private def _isCouponActive(coupon : Mogobiz.Coupon) : Boolean = {

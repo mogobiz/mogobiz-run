@@ -48,6 +48,7 @@ object Render {
   case class Coupon(id: Long,
                     name: String,
                     code: String,
+                    promotion: Boolean,
                     @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
                     @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                     startDate: Option[DateTime] = None,
