@@ -927,7 +927,7 @@ class CartHandler {
   private def transformCartForCartPay(compagnyAddress : Option[CompanyAddress], cart: Cart, rate: Currency) : CartPay = {
     val cartItemsPay = cart.cartItemVOs.map { cartItem =>
       val registeredCartItemsPay = cartItem.registeredCartItemVOs.map { rci =>
-        new RegisteredCartItemPay(rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, Map())
+        new RegisteredCartItemPay(rci.id, rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, Map())
       }
       val shippingPay = cartItem.shipping.map { shipping =>
         new ShippingPay(shipping.weight, shipping.weightUnit.toString(), shipping.width, shipping.height, shipping.depth,
@@ -946,7 +946,7 @@ class CartHandler {
       val totalEndPrice = cartItem.totalEndPrice.getOrElse(cartItem.totalPrice)
       val saleEndPrice = cartItem.saleEndPrice.getOrElse(cartItem.salePrice)
       val saleTotalEndPrice = cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice)
-      new CartItemPay(name, cartItem.quantity, cartItem.price, endPrice, cartItem.tax.getOrElse(0), endPrice - cartItem.price,
+      new CartItemPay(cartItem.id, name, cartItem.quantity, cartItem.price, endPrice, cartItem.tax.getOrElse(0), endPrice - cartItem.price,
         cartItem.totalPrice, totalEndPrice, totalEndPrice - cartItem.totalPrice,
         cartItem.salePrice, saleEndPrice, saleEndPrice - cartItem.salePrice,
         cartItem.saleTotalPrice, saleTotalEndPrice, saleTotalEndPrice - cartItem.saleTotalPrice,
