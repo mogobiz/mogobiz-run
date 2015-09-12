@@ -45,6 +45,7 @@ object Settings {
     object cleanJob {
       val delay = config.getInt("mogobiz.cart.cleanJob.delay")
       val interval = config.getInt("mogobiz.cart.cleanJob.interval")
+      val querySize = config.getInt("mogobiz.cart.cleanJob.querySize")
     }
   }
 

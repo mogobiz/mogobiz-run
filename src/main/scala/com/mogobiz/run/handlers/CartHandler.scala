@@ -457,11 +457,16 @@ class CartHandler {
   }
 
   /**
-   * Supprime tous les paniers expirés
+   * Supprime tous les paniers expirés pour l'index fourni
    */
-  def cleanup(storeCode: String): Unit = {
-    StoreCartDao.getExpired(storeCode).map { cart =>
-      StoreCartDao.delete(_clearCart(cart))
+  def cleanup(index: String, querySize: Int): Unit = {
+    StoreCartDao.getExpired(index, querySize).map { cart =>
+      try {
+        StoreCartDao.delete(_clearCart(cart))
+      }
+      catch  {
+        case t: Throwable => t.printStackTrace()
+      }
     }
   }
 
@@ -1241,11 +1246,8 @@ object StoreCartDao {
     EsClient.delete[StoreCart](buildIndex(cart.storeCode), cart.uuid, false)
   }
 
-  def getExpired(storeCode: String): List[StoreCart] = {
-    val req = search in buildIndex(storeCode) -> "StoreCart" postFilter and(
-      rangeFilter("expireDate") lt "now"
-    )
-
+  def getExpired(index: String, querySize: Int): List[StoreCart] = {
+    val req = search in index -> "StoreCart" postFilter (rangeFilter("expireDate") lt "now") size(querySize)
     EsClient.searchAll[StoreCart](req).toList
   }
 }
