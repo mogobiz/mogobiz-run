@@ -29,6 +29,7 @@ trait MogobizRoutes extends Directives {
     new WishlistService().route ~
     new FacetService().route ~
     new ResourceService().route ~
+    new LogoService().route ~
     new BackofficeService().route ~
     new LearningService().route ~
     new ValidatorService().route ~
