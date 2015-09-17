@@ -59,59 +59,53 @@ object Utils {
       val start = sku.startDate.getOrElse(DateTime.now()).toLocalDate
       val stop = sku.stopDate.map {date => date.toLocalDate}
 
-      val dateValidForTicketType = (localDate.isAfter(start) || localDate.isEqual(start)) &&
-        (stop.isEmpty || localDate.isBefore(stop.get) || localDate.isEqual(stop.get))
-
-      if (!dateValidForTicketType) None
-      else {
-        // On controle maintenant la date avec le calendrier du produit
-        product.calendarType match {
-          case ProductCalendar.NO_DATE => None // Pas de calendrier donc pas de date
-          case ProductCalendar.DATE_ONLY => {
-            // On cherche d'abord que la date n'est pas dans une période d'exclusion
-            if (isExcludeDate(product, date)) None
-            else {
-              // On cherche si la date est dans une période autorisée
-              val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period => {
-                val start = period.startDate.toLocalDate
-                val end = period.endDate.toLocalDate
-                checkWeekDay(period, date) && (start.isBefore(localDate) || start.isEqual(localDate)) && (end.isAfter(localDate) || end.isEqual(localDate))
-              }
-              }
-              if (intraDatePeriod.isDefined) {
-                val d = date.toDateTime(DateTimeZone.UTC).withTimeAtStartOfDay()
-                Some(d, d)
-              }
-              else None
+      // On controle maintenant la date avec le calendrier du produit
+      product.calendarType match {
+        case ProductCalendar.NO_DATE => None // Pas de calendrier donc pas de date
+        case ProductCalendar.DATE_ONLY => {
+          // On cherche d'abord que la date n'est pas dans une période d'exclusion
+          if (isExcludeDate(product, date)) None
+          else {
+            // On cherche si la date est dans une période autorisée
+            val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period => {
+              val start = period.startDate.toLocalDate
+              val end = period.endDate.toLocalDate
+              checkWeekDay(period, date) && (start.isBefore(localDate) || start.isEqual(localDate)) && (end.isAfter(localDate) || end.isEqual(localDate))
             }
+            }
+            if (intraDatePeriod.isDefined) {
+              val d = date.toDateTime(DateTimeZone.UTC).withTimeAtStartOfDay()
+              Some(d, d)
+            }
+            else None
           }
-          case ProductCalendar.DATE_TIME => {
-            // On charche d'abord que la date n'est pas dans une période d'exlusion
-            if (isExcludeDate(product, date)) None
-            else {
-              // On cherche si la date et l'heure sont autorisée
-              val localDate = date.toLocalDate
-              val localTime = date.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
-              val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period => {
-                val startDate = period.startDate.toLocalDate
-                val startTime = period.startDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
-                val endDate = period.endDate.toLocalDate
-                val endTime = period.endDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
-                checkWeekDay(period, date) &&
-                  (startDate.isBefore(localDate) || startDate.isEqual(localDate)) &&
-                  (endDate.isAfter(localDate) || endDate.isEqual(localDate)) &&
-                  (startTime.isBefore(localTime) || startTime.isEqual(localTime)) &&
-                  (endTime.isAfter(localTime) || endTime.isEqual(localTime))
-              }}
-              if (intraDatePeriod.isDefined) {
-                val startTime = intraDatePeriod.get.startDate.toDateTime(DateTimeZone.UTC).toLocalTime
-                val endTime = intraDatePeriod.get.endDate.toDateTime(DateTimeZone.UTC).toLocalTime
-                val start = date.toDateTime(DateTimeZone.UTC).withHourOfDay(startTime.getHourOfDay).withMinuteOfHour(startTime.getMinuteOfHour).toDateTime(date.getZone)
-                val end = date.toDateTime(DateTimeZone.UTC).withHourOfDay(endTime.getHourOfDay).withMinuteOfHour(endTime.getMinuteOfHour).toDateTime(date.getZone)
-                Some((start, end))
-              }
-              else None
+        }
+        case ProductCalendar.DATE_TIME => {
+          // On charche d'abord que la date n'est pas dans une période d'exlusion
+          if (isExcludeDate(product, date)) None
+          else {
+            // On cherche si la date et l'heure sont autorisée
+            val localDate = date.toLocalDate
+            val localTime = date.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+            val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period => {
+              val startDate = period.startDate.toLocalDate
+              val startTime = period.startDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+              val endDate = period.endDate.toLocalDate
+              val endTime = period.endDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+              checkWeekDay(period, date) &&
+                (startDate.isBefore(localDate) || startDate.isEqual(localDate)) &&
+                (endDate.isAfter(localDate) || endDate.isEqual(localDate)) &&
+                (startTime.isBefore(localTime) || startTime.isEqual(localTime)) &&
+                (endTime.isAfter(localTime) || endTime.isEqual(localTime))
+            }}
+            if (intraDatePeriod.isDefined) {
+              val startTime = intraDatePeriod.get.startDate.toDateTime(DateTimeZone.UTC).toLocalTime
+              val endTime = intraDatePeriod.get.endDate.toDateTime(DateTimeZone.UTC).toLocalTime
+              val start = date.toDateTime(DateTimeZone.UTC).withHourOfDay(startTime.getHourOfDay).withMinuteOfHour(startTime.getMinuteOfHour).toDateTime(date.getZone)
+              val end = date.toDateTime(DateTimeZone.UTC).withHourOfDay(endTime.getHourOfDay).withMinuteOfHour(endTime.getMinuteOfHour).toDateTime(date.getZone)
+              Some((start, end))
             }
+            else None
           }
         }
       }

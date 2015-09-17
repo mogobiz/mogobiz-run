@@ -387,7 +387,7 @@ class ProductHandler extends JsonUtil {
     }
   }
 
-  def updateProductNotations(storeCode: String, productId: Long, values: List[JValue]): Boolean = {
+  def updateProductNotations(indexEs: String, productId: Long, values: List[JValue]): Boolean = {
     /* marche pas avec un script :(
     val script = "ctx._source.notations4=notations"
     //val notations = compact(render(JField("notations", JArray(values))))
@@ -401,7 +401,7 @@ class ProductHandler extends JsonUtil {
     println(res)
     */
 
-    val res = EsClient.loadRaw(get(productId) from storeCode -> "product").get
+    val res = EsClient.loadRaw(get(productId) from indexEs -> "product").get
     val v1 = res.getVersion
     val product = response2JValue(res)
 
@@ -409,7 +409,7 @@ class ProductHandler extends JsonUtil {
     import org.json4s.native.JsonMethods._
     val notation = Notation(UUID.randomUUID().toString, productId, compact(render(notations)))
     val updatedProduct = (product removeField { f => f._1 == "notations" }) merge notations
-    val res2 = EsClient.updateRaw(esupdate4s id productId in storeCode -> "product" doc updatedProduct retryOnConflict 4)
+    val res2 = EsClient.updateRaw(esupdate4s id productId in indexEs -> "product" doc updatedProduct retryOnConflict 4)
     //res2.getVersion > v1
     true
   }
@@ -615,15 +615,15 @@ class ProductHandler extends JsonUtil {
 
   /**
    * Update product field "stock_available" to qualifie stock state
-   * @param storeCode
+   * @param indexEs
    * @param productId
    * @param stockAvailable
    * @return
    */
-  def updateStockAvailability(storeCode: String, productId: Long, stockAvailable: Boolean) = {
+  def updateStockAvailability(indexEs: String, productId: Long, stockAvailable: Boolean) = {
 //    println(s"product.updateStockAvailability productId=$productId, stockValue=$stockAvailable")
     val script = s"ctx._source.stockAvailable=$stockAvailable"
-    EsClient.updateRaw(esupdate4s id productId in storeCode -> ES_TYPE_PRODUCT script script retryOnConflict 4)
+    EsClient.updateRaw(esupdate4s id productId in indexEs -> ES_TYPE_PRODUCT script script retryOnConflict 4)
   }
 
 
@@ -835,9 +835,9 @@ object ProductDao extends JsonUtil {
     EsClient.search[Mogobiz.Product](req)
   }
 
-  def getProductAndSku(storeCode: String, skuId: Long): Option[(Mogobiz.Product, Mogobiz.Sku)] = {
+  def getProductAndSku(indexEs: String, skuId: Long): Option[(Mogobiz.Product, Mogobiz.Sku)] = {
     // Création de la requête
-    val req = esearch4s in storeCode -> "product" postFilter termFilter("product.skus.id", skuId)
+    val req = esearch4s in indexEs -> "product" postFilter termFilter("product.skus.id", skuId)
 
     // Lancement de la requête
     val productOpt = EsClient.search[Mogobiz.Product](req)

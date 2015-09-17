@@ -105,6 +105,9 @@ class CartHandler {
     val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cmd.skuId)
     if (productAndSku.isEmpty) throw new NotFoundException("unknown sku")
 
+    if (!_checkProductAndSkuSalabality(productAndSku.get))
+      throw new UnsaleableProductException()
+
     val product = productAndSku.get._1
     val sku = productAndSku.get._2
     val startEndDate = Utils.verifyAndExtractStartEndDate(product, sku, cmd.dateTime)
@@ -141,7 +144,8 @@ class CartHandler {
     }
 
     val salePrice = if (sku.salePrice > 0) sku.salePrice else sku.price
-    val cartItem = StoreCartItem(newCartItemId, product.id, product.name, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
+    val indexEs = EsClient.getUniqueIndexByAlias(storeCode).getOrElse(storeCode)
+    val cartItem = StoreCartItem(indexEs, newCartItemId, product.id, product.name, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
       sku.price, salePrice, startDate, endDate, registeredItems, product.shipping, None, None)
 
     val updatedCart = _addCartItemIntoCart(_unvalidateCart(cart), cartItem)
@@ -149,6 +153,15 @@ class CartHandler {
 
     val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
     _renderCart(computeCart, currency, locale)
+  }
+
+  private def _checkProductAndSkuSalabality(productAndSku : (Mogobiz.Product, Mogobiz.Sku)) : Boolean = {
+    val now = DateTime.now().toLocalDate
+    val sku = productAndSku._2
+    val skuStartDate = sku.startDate.getOrElse(DateTime.now()).toLocalDate
+    val skuEndDate = sku.stopDate.getOrElse(DateTime.now()).toLocalDate
+
+    !skuStartDate.isAfter(now) && !skuEndDate.isBefore(now)
   }
 
   /**
@@ -462,7 +475,7 @@ class CartHandler {
   def cleanup(index: String, querySize: Int): Unit = {
     StoreCartDao.getExpired(index, querySize).map { cart =>
       try {
-        StoreCartDao.delete(_clearCart(cart))
+        StoreCartDao.delete(_clearCart(_removeAllUnsalabledItem(cart)))
       }
       catch  {
         case t: Throwable => t.printStackTrace()
@@ -610,7 +623,7 @@ class CartHandler {
   private def _initCart(storeCode: String, uuid: String, currentAccountId: Option[String]): StoreCart = {
     def getOrCreateStoreCart(cart: Option[StoreCart]): StoreCart = {
       cart match {
-        case Some(c) => c
+        case Some(c) => _removeAllUnsalabledItem(c)
         case None =>
           val c = new StoreCart(storeCode = storeCode, dataUuid = uuid, userUuid = currentAccountId)
           StoreCartDao.save(c)
@@ -635,6 +648,28 @@ class CartHandler {
       // Utilisateur anonyme
       getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None));
     }
+  }
+
+  private def _removeAllUnsalabledItem(cart: StoreCart) : StoreCart = {
+    val currentIndex = EsClient.getUniqueIndexByAlias(cart.storeCode).getOrElse(cart.storeCode)
+    val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
+    val newCartItems = DB localTx { implicit session =>
+      cart.cartItems.flatMap { cartItem =>
+        val cartItemWithIndex = cartItem.copy(indexEs = Option(cartItem.indexEs).getOrElse(cart.storeCode))
+        val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId).get
+        if (currentIndex != cartItemWithIndex.indexEs || !_checkProductAndSkuSalabality(productAndSku)) {
+          if (cart.validate) indexEsAndProductsToUpdate += _unvalidateCartItem(cartItemWithIndex, productAndSku)
+          None
+        }
+        else Some(cartItemWithIndex)
+      }
+    }
+
+    _updateProductStockAvailability(indexEsAndProductsToUpdate.toSet)
+
+    val updatedCart = cart.copy(cartItems = newCartItems)
+    StoreCartDao.save(updatedCart)
+    updatedCart
   }
 
   /**
@@ -683,19 +718,20 @@ class CartHandler {
   @throws[InsufficientStockException]
   private def _validateCart(cart: StoreCart): StoreCart = {
     if (!cart.validate) {
-      val productsToUpdate = scala.collection.mutable.Set[Long]()
+      val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
       DB localTx { implicit session =>
         cart.cartItems.foreach { cartItem =>
-          val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
+          val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
           val product = productAndSku.get._1
           val sku = productAndSku.get._2
-          stockHandler.decrementStock(cart.storeCode, product, sku, cartItem.quantity, cartItem.startDate)
+          stockHandler.decrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
 
-          productsToUpdate += product.id
+          val indexEsAndProduct = (cartItem.indexEs, product.id)
+          indexEsAndProductsToUpdate += indexEsAndProduct
         }
       }
 
-      _updateProductStockAvailability(cart.storeCode, productsToUpdate.toSet)
+      _updateProductStockAvailability(indexEsAndProductsToUpdate.toSet)
 
       val updatedCart = cart.copy(validate = true, validateUuid = Some(UUID.randomUUID().toString()))
       StoreCartDao.save(updatedCart)
@@ -711,19 +747,14 @@ class CartHandler {
    */
   private def _unvalidateCart(cart: StoreCart): StoreCart = {
     if (cart.validate) {
-      val productsToUpdate = scala.collection.mutable.Set[Long]()
+      val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
       DB localTx { implicit session =>
         cart.cartItems.foreach { cartItem =>
-          val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
-          val product = productAndSku.get._1
-          val sku = productAndSku.get._2
-          stockHandler.incrementStock(cart.storeCode, product, sku, cartItem.quantity, cartItem.startDate)
-
-          productsToUpdate += product.id
+          indexEsAndProductsToUpdate += _unvalidateCartItem(cartItem)
         }
       }
 
-      _updateProductStockAvailability(cart.storeCode, productsToUpdate.toSet)
+      _updateProductStockAvailability(indexEsAndProductsToUpdate.toSet)
 
       val updatedCart = cart.copy(validate = false, validateUuid = None)
       StoreCartDao.save(updatedCart)
@@ -732,19 +763,31 @@ class CartHandler {
     else cart
   }
 
+  private def _unvalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession) : (String, Long) = {
+    val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
+    _unvalidateCartItem(cartItem, productAndSku.get)
+  }
+
+  private def _unvalidateCartItem(cartItem: StoreCartItem, productAndSku : (Mogobiz.Product, Mogobiz.Sku))(implicit session: DBSession) : (String, Long) = {
+    val product = productAndSku._1
+    val sku = productAndSku._2
+    stockHandler.incrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
+
+    (cartItem.indexEs, product.id)
+  }
+
   /**
    * Update products stock availability
-   * @param storeCode
-   * @param productIds
+   * @param indexEsAndProductId
    */
-  private def _updateProductStockAvailability(storeCode:String, productIds:Set[Long]) = {
+  private def _updateProductStockAvailability(indexEsAndProductId:Set[(String, Long)]) = {
     import scala.concurrent.duration._
     import system.dispatcher
     val system = ActorSystemLocator.get
     val stockActor = system.actorOf(Props[EsUpdateActor])
-    productIds.foreach{ pid =>
+    indexEsAndProductId.foreach{ indexEsAndProduct =>
       system.scheduler.scheduleOnce(2 seconds) {
-        stockActor ! ProductStockAvailabilityUpdateRequest(storeCode, pid)
+        stockActor ! ProductStockAvailabilityUpdateRequest(indexEsAndProduct._1, indexEsAndProduct._2)
       }
     }
   }

@@ -139,6 +139,9 @@ object Mogobiz {
                      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
                      @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                      stopDate:Option[DateTime],
+                     @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
+                     @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                     availabilityDate:Option[DateTime],
                      skus:List[Sku],
                      intraDayPeriods:Option[List[IntraDayPeriod]],
                      datePeriods:Option[List[DatePeriod]],

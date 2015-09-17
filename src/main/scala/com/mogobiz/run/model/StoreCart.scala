@@ -40,7 +40,8 @@ case class StoreCart(storeCode: String,
 
 }
 
-case class StoreCartItem(id: String,
+case class StoreCartItem(indexEs: String,
+                         id: String,
                          productId: Long,
                          productName: String,
                          productUrl: String,

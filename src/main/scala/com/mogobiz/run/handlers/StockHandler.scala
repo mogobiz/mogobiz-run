@@ -25,8 +25,8 @@ import scalikejdbc._
  */
 class StockHandler extends IndexesTypesDsl {
 
-  def checkStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime]): Boolean = {
-    val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
+  def checkStock(indexEs: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime]): Boolean = {
+    val stockOpt = StockDao.findByProductAndSku(indexEs, product, sku)
     stockOpt match {
       case Some(stock) => DB localTx { implicit session =>
         // Search the corresponding StockCalendar
@@ -42,8 +42,8 @@ class StockHandler extends IndexesTypesDsl {
   }
 
   @throws[InsufficientStockException]
-  def decrementStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime]): Unit = {
-    val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
+  def decrementStock(indexEs: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime]): Unit = {
+    val stockOpt = StockDao.findByProductAndSku(indexEs, product, sku)
     stockOpt match {
       case Some(stock) => DB localTx { implicit session =>
 
@@ -64,7 +64,7 @@ class StockHandler extends IndexesTypesDsl {
             val newStockCalendar = StockCalendarDao.update(stockCalendar, quantity)
 
             // Mise à jour du stock dans ES via un actor pour ne pas bloquer la méthode
-            fireUpdateEsStock(storeCode, product, sku, stock, newStockCalendar)
+            fireUpdateEsStock(indexEs, product, sku, stock, newStockCalendar)
 
           } catch {
             case e: ConcurrentUpdateStockException =>
@@ -79,8 +79,8 @@ class StockHandler extends IndexesTypesDsl {
     }
   }
 
-  def incrementStock(storeCode: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime])(implicit session: DBSession): Unit = {
-    val stockOpt = StockDao.findByProductAndSku(storeCode, product, sku)
+  def incrementStock(indexEs: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime])(implicit session: DBSession): Unit = {
+    val stockOpt = StockDao.findByProductAndSku(indexEs, product, sku)
     stockOpt match {
       case Some(stock) =>
 
@@ -95,7 +95,7 @@ class StockHandler extends IndexesTypesDsl {
             val newStockCalendar = StockCalendarDao.update(stockCalendar, -quantity)
 
             // Mise à jour du stock dans ES via un actor pour ne pas bloquer la méthode
-            fireUpdateEsStock(storeCode, product, sku, stock, newStockCalendar)
+            fireUpdateEsStock(indexEs, product, sku, stock, newStockCalendar)
           } catch {
             case e: ConcurrentUpdateStockException =>
               if (retryTime > 5) throw new ConcurrentUpdateStockException("update error while incrementing stock")
@@ -109,25 +109,25 @@ class StockHandler extends IndexesTypesDsl {
     }
   }
 
-  private def fireUpdateEsStock(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar) = {
+  private def fireUpdateEsStock(indexEs: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar) = {
     val system = ActorSystemLocator.get
     val stockActor = system.actorOf(Props[EsUpdateActor])
-    stockActor ! StockUpdateRequest(storeCode, product, sku, stock, stockCalendar)
+    stockActor ! StockUpdateRequest(indexEs, product, sku, stock, stockCalendar)
   }
 
-  private def fireUpdateStockAvailability(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar) = {
+  private def fireUpdateStockAvailability(indexEs: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar) = {
     if(!stock.stockOutSelling && !stock.stockUnlimited){
       val system = ActorSystemLocator.get
       val stockActor = system.actorOf(Props[EsUpdateActor])
-      stockActor ! SkuStockAvailabilityUpdateRequest(storeCode, product, sku, stock, stockCalendar)
+      stockActor ! SkuStockAvailabilityUpdateRequest(indexEs, product, sku, stock, stockCalendar)
     }
   }
 
-  def updateEsStock(storeCode: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar): Unit = {
+  def updateEsStock(indexEs: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar): Unit = {
     if (stockCalendar.startDate.isEmpty) {
       // Stock produit (sans date)
       val script = s"ctx._source.stock = ctx._source.initialStock - ${stockCalendar.sold}"
-      val req = esupdate id stock.uuid in s"$storeCode/stock" script script retryOnConflict 4
+      val req = esupdate id stock.uuid in s"$indexEs/stock" script script retryOnConflict 4
       EsClient().execute(req).await.getGetResult
     }
     else {
@@ -140,7 +140,7 @@ class StockHandler extends IndexesTypesDsl {
             if (s.uuid == stockCalendar.uuid) newESStockCalendar
             else s
           )
-          StockDao.update(storeCode, stock.copy(stockByDateTime = Some(newStockByDateTime)))
+          StockDao.update(indexEs, stock.copy(stockByDateTime = Some(newStockByDateTime)))
         case _ =>
           // Ajout d'un nouveau StockCalendar
           val newESStockCalendar = StockByDateTime(
@@ -152,21 +152,21 @@ class StockHandler extends IndexesTypesDsl {
             stock = stockCalendar.stock - stockCalendar.sold
           )
           val newStockByDateTime = stock.stockByDateTime.getOrElse(Seq()) :+ newESStockCalendar
-          StockDao.update(storeCode, stock.copy(stockByDateTime = Some(newStockByDateTime)))
+          StockDao.update(indexEs, stock.copy(stockByDateTime = Some(newStockByDateTime)))
       }
     }
 
 
-    fireUpdateStockAvailability(storeCode, product, sku, stock, stockCalendar)
+    fireUpdateStockAvailability(indexEs, product, sku, stock, stockCalendar)
 
   }
 }
 
 object StockDao {
 
-  def findByProductAndSku(storeCode: String, product: Product, sku: Sku): Option[EsStock] = {
+  def findByProductAndSku(indexEs: String, product: Product, sku: Sku): Option[EsStock] = {
     // Création de la requête
-    val req = search in storeCode -> "stock" postFilter and(
+    val req = search in indexEs -> "stock" postFilter and(
       termFilter("stock.productId", product.id),
       termFilter("stock.id", sku.id)
     )
@@ -175,8 +175,8 @@ object StockDao {
     EsClient.search[EsStock](req);
   }
 
-  def update(storeCode: String, stock: EsStock) = {
-    EsClient.update[EsStock](storeCode, stock, "stock", true, false)
+  def update(indexEs: String, stock: EsStock) = {
+    EsClient.update[EsStock](indexEs, stock, "stock", true, false)
   }
 }
 

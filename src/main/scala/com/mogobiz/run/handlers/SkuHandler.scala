@@ -254,12 +254,12 @@ class SkuHandler  extends JsonUtil {
 
   /**
    * Return all available sku (in stock) for a specific product
-   * @param storeCode
+   * @param indexEs
    * @param productId
    */
-  def existsAvailableSkus(storeCode: String, productId: Long):Boolean = {
+  def existsAvailableSkus(indexEs: String, productId: Long):Boolean = {
 
-    val _query = esearch4s in storeCode -> ES_TYPE_SKU query {
+    val _query = esearch4s in indexEs -> ES_TYPE_SKU query {
       matchall
     }
 
@@ -275,13 +275,13 @@ class SkuHandler  extends JsonUtil {
   /**
    * Update sku stock availability only for NO_DATE product
    */
-  def updateStockAvailability(storeCode: String, pSku: Sku, stock: Stock, stockCalendar:StockCalendar) = {
+  def updateStockAvailability(indexEs: String, pSku: Sku, stock: Stock, stockCalendar:StockCalendar) = {
 
     stock.calendarType match {
       case ProductCalendar.NO_DATE =>
         val stockAvailable = ((stock.initialStock - stockCalendar.sold) > 0)
         val script = s"ctx._source.available=$stockAvailable"
-        EsClient.updateRaw(esupdate4s id pSku.id in storeCode -> ES_TYPE_SKU script script retryOnConflict 4)
+        EsClient.updateRaw(esupdate4s id pSku.id in indexEs -> ES_TYPE_SKU script script retryOnConflict 4)
         true
       case _ => false
     }

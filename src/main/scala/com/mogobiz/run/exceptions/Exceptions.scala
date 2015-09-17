@@ -20,6 +20,8 @@ case class DateIsNullException() extends MogobizException("", StatusCodes.BadReq
 
 case class UnsaleableDateException() extends MogobizException("", StatusCodes.BadRequest)
 
+case class UnsaleableProductException() extends MogobizException("", StatusCodes.BadRequest)
+
 case class NotEnoughRegisteredCartItemException() extends MogobizException("", StatusCodes.BadRequest)
 
 case class InsufficientStockCartItemException() extends MogobizException("", StatusCodes.BadRequest)

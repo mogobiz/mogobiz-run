@@ -17,7 +17,7 @@ import scalikejdbc._
 
 class SalesHandler {
 
-  def incrementSales(storeCode: String, product: Product, sku: Sku, quantity: Long):Unit = {
+  def incrementSales(indexEs: String, product: Product, sku: Sku, quantity: Long):Unit = {
     DB localTx { implicit session =>
       val nbProductSales = sql"select nb_sales from product where id=${product.id}".map(rs => rs.long("nb_sales")).single().apply().get
       val newNbProductSales = nbProductSales + quantity
@@ -27,7 +27,7 @@ class SalesHandler {
       val newNbSkuSales = nbSkuSales + quantity
       sql"update ticket_type set nb_sales = ${newNbSkuSales},last_updated = ${DateTime.now} where id=${sku.id}".update().apply()
 
-      fireUpdateEsSales(storeCode, product, sku, newNbProductSales, newNbSkuSales)
+      fireUpdateEsSales(indexEs, product, sku, newNbProductSales, newNbSkuSales)
     }
   }
 
@@ -40,11 +40,11 @@ class SalesHandler {
   /**
    * update the product and sku nbSales
    */
-  def update(storeCode: String, product: Product, sku: Sku, newNbProductSales : Long, newNbSkuSales: Long) = {
+  def update(indexEs: String, product: Product, sku: Sku, newNbProductSales : Long, newNbSkuSales: Long) = {
     val newSkus = product.skus.map(s => if (s.id == sku.id) sku.copy(nbSales = newNbSkuSales) else s)
     val newProduct = product.copy(nbSales = newNbProductSales, skus = newSkus)
     val js = JacksonConverter.serialize(newProduct)
-    val req = esupdate id product.id in storeCode -> "product" doc new DocumentSource{
+    val req = esupdate id product.id in indexEs -> "product" doc new DocumentSource{
       override def json: String = js
     }
     EsClient().execute(req)

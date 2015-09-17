@@ -16,42 +16,42 @@ import com.mogobiz.run.model.{Stock, StockCalendar}
  */
 object EsUpdateActor {
 
-  case class StockUpdateRequest(storeCode: String, product: Product, sku: Sku, stock: Stock, stockCalendar:StockCalendar)
+  case class StockUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar:StockCalendar)
 
-  case class SalesUpdateRequest(storeCode: String, product: Product, sku: Sku, newNbProductSales : Long, newNbSkuSales: Long)
+  case class SalesUpdateRequest(indexEs: String, product: Product, sku: Sku, newNbProductSales : Long, newNbSkuSales: Long)
 
-  case class ProductNotationsUpdateRequest(storeCode: String, productId: Long)
+  case class ProductNotationsUpdateRequest(indexEs: String, productId: Long)
 
-  case class SkuStockAvailabilityUpdateRequest(storeCode: String, product: Product, sku: Sku, stock: Stock, stockCalendar:StockCalendar)
+  case class SkuStockAvailabilityUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar:StockCalendar)
 
-  case class ProductStockAvailabilityUpdateRequest(storeCode: String, productId: Long)
+  case class ProductStockAvailabilityUpdateRequest(indexEs: String, productId: Long)
 }
 
 class EsUpdateActor extends Actor {
 
   def receive = {
     case q: StockUpdateRequest =>
-      stockHandler.updateEsStock(q.storeCode,  q.product, q.sku, q.stock, q.stockCalendar)
+      stockHandler.updateEsStock(q.indexEs,  q.product, q.sku, q.stock, q.stockCalendar)
       context.stop(self)
 
     case q: SalesUpdateRequest =>
-      salesHandler.update(q.storeCode, q.product, q.sku, q.newNbProductSales, q.newNbSkuSales)
+      salesHandler.update(q.indexEs, q.product, q.sku, q.newNbProductSales, q.newNbSkuSales)
       context.stop(self)
 
     case q: ProductNotationsUpdateRequest =>
-      val notations = facetHandler.getCommentNotations(q.storeCode, Some(q.productId))
-      productHandler.updateProductNotations(q.storeCode, q.productId, notations)
+      val notations = facetHandler.getCommentNotations(q.indexEs, Some(q.productId))
+      productHandler.updateProductNotations(q.indexEs, q.productId, notations)
       context.stop(self)
 
     case q: SkuStockAvailabilityUpdateRequest =>
-      skuHandler.updateStockAvailability(q.storeCode, q.sku, q.stock, q.stockCalendar)
+      skuHandler.updateStockAvailability(q.indexEs, q.sku, q.stock, q.stockCalendar)
       context.stop(self)
 
     case q: ProductStockAvailabilityUpdateRequest =>
       //then query skus stock availability filtered on productId
-      val skusAvailable = skuHandler.existsAvailableSkus(q.storeCode, q.productId)
+      val skusAvailable = skuHandler.existsAvailableSkus(q.indexEs, q.productId)
 
-      productHandler.updateStockAvailability(q.storeCode, q.productId, skusAvailable)
+      productHandler.updateStockAvailability(q.indexEs, q.productId, skusAvailable)
     /*
     if(!skusAvailable){
       //if no skus returned, then updateStockProductAvailability
