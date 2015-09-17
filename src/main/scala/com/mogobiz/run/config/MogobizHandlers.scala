@@ -36,4 +36,5 @@ object MogobizHandlers {
   val validatorHandler = new ValidatorHandler
   val easyPostHander = new EasyPostHandler
 
+  val logoHandler = new LogoHandler
 }
