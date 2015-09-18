@@ -292,6 +292,13 @@ package object es {
     }
   }
 
+  def createExistsFilter(field:Option[String]) : Option[FilterDefinition] = {
+    field match{
+      case Some(s) => Some(existsFilter(s))
+      case None => None
+    }
+  }
+
   def createRangeFilter(field:String, _gte:Option[String], _lte: Option[String]) : Option[FilterDefinition] = {
     val req = _gte match{
       case Some(g) => _lte match {

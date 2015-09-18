@@ -79,6 +79,7 @@ class SkuHandler  extends JsonUtil {
 
     val filters: List[FilterDefinition] = List(
       defaultStockFilter,
+      createExistsFilter(skuRequest.countryCode),
       createOrFilterBySplitValues(skuRequest.id, v => createTermFilter("id", Some(v))),
       createOrFilterBySplitValues(skuRequest.productId, v => createTermFilter("product.id", Some(v))),
       createOrFilterBySplitValues(skuRequest.code, v => createTermFilter("product.code", Some(v))),
