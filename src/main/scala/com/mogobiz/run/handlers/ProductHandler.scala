@@ -78,7 +78,7 @@ class ProductHandler extends JsonUtil {
 
     val filters: List[FilterDefinition] = List(
       defaultStockFilter,
-      createExistsFilter(productRequest.countryCode),
+      createTermFilter("taxRate.localTaxRates.countryCode", productRequest.countryCode),
       createOrFilterBySplitValues(productRequest.id, v => createTermFilter("id", Some(v))),
       createOrFilterBySplitValues(productRequest.code, v => createTermFilter("code", Some(v))),
       createOrFilterBySplitValues(productRequest.xtype, v => createTermFilter("xtype", Some(v))),
