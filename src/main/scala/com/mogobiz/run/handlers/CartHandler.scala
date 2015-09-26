@@ -656,9 +656,12 @@ class CartHandler {
     val newCartItems = DB localTx { implicit session =>
       cart.cartItems.flatMap { cartItem =>
         val cartItemWithIndex = cartItem.copy(indexEs = Option(cartItem.indexEs).getOrElse(cart.storeCode))
-        val productAndSku = ProductDao.getProductAndSku(cartItemWithIndex.indexEs, cartItem.skuId).get
-        if (currentIndex != cartItemWithIndex.indexEs || !_checkProductAndSkuSalabality(productAndSku)) {
-          if (cart.validate) indexEsAndProductsToUpdate += _unvalidateCartItem(cartItemWithIndex, productAndSku)
+        val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
+        if (productAndSku.isEmpty || !_checkProductAndSkuSalabality(productAndSku.get)) {
+          if (cart.validate) {
+            val realProductAndSku = ProductDao.getProductAndSku(cartItemWithIndex.indexEs, cartItem.skuId).get
+            indexEsAndProductsToUpdate += _unvalidateCartItem(cartItemWithIndex, realProductAndSku)
+          }
           None
         }
         else Some(cartItemWithIndex)
