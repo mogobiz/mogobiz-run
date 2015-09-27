@@ -72,7 +72,12 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
     val itemids = (EsClient searchAllRaw historyReq).getHits map (_.sourceAsMap().get("itemid").toString)
 
     if (matchCount > -1) {
-      val req = esearch4s in esViewPredictions(store, customer) -> "Prediction" limit count query {
+      val targetIndex = action match {
+        case UserAction.View => esViewPredictions _
+        case UserAction.Purchase => esPurchasePredictions _
+      }
+
+      val req = esearch4s in targetIndex(store, customer) -> "Prediction" limit count query {
         bool {
           must(
             termsQuery(action.toString, itemids: _*)
