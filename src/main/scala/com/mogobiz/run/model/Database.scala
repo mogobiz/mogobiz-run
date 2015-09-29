@@ -187,6 +187,14 @@ object Mogobiz {
                     description: String,
                     pastille: String)
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
+  case class Suggestion(id:Long,
+                        parentId:Long,
+                        productId:Long,
+                        discount:String,
+                        var lastUpdated: Date,
+                        var dateCreated: Date)
+
   case class BOCart(id:Long,
                     buyer:String,
                     companyFk:Long,

@@ -138,7 +138,7 @@ class CouponHandler {
    * @param prixDeBase
    * @return
    */
-  private def computeDiscount(discountRule: Option[String], prixDeBase: Long) : Long = {
+  def computeDiscount(discountRule: Option[String], prixDeBase: Long) : Long = {
     discountRule match {
       case Some(regle) => {
         if (regle.endsWith("%")) {
@@ -146,19 +146,16 @@ class CouponHandler {
           (prixDeBase * pourcentage / 100).toLong //TODO recheck the rounded value computed
         }
         else if (regle.startsWith("+")) {
-
-          val increment = java.lang.Long.parseLong(regle.substring(1))
-          prixDeBase + increment
+          - java.lang.Long.parseLong(regle.substring(1))
         }
         else if (regle.startsWith("-")) {
-          val decrement = java.lang.Long.parseLong(regle.substring(1))
-          prixDeBase - decrement
+          java.lang.Long.parseLong(regle.substring(1))
         }
         else {
-          java.lang.Long.parseLong(regle)
+          prixDeBase - java.lang.Long.parseLong(regle)
         }
       }
-      case None => prixDeBase
+      case None => 0L
     }
   }
 

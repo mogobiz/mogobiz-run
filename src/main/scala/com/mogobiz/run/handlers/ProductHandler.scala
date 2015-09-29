@@ -17,6 +17,7 @@ import com.mogobiz.json.{JacksonConverter, JsonUtil}
 import com.mogobiz.run.exceptions.{CommentAlreadyExistsException, NotAuthorizedException}
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.Learning.UserAction
+import com.mogobiz.run.model.Mogobiz.Suggestion
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
@@ -26,7 +27,7 @@ import com.sksamuel.elastic4s.{QueryDefinition, SearchType, FilterDefinition}
 import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.action.get.MultiGetItemResponse
 import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.search.{SearchHit, SearchHits}
+import org.elasticsearch.search.{SearchHitField, SearchHit, SearchHits}
 import org.elasticsearch.search.aggregations.bucket.terms.Terms
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JsonAST.{JObject, JArray, JNothing}
@@ -857,4 +858,16 @@ object ProductDao extends JsonUtil {
     productsList.toList.flatMap(p => p.skus.filter { sku => sku.coupons.exists(c => c.id == couponId) }.map(sku => sku.id))
   }
 
+}
+
+object SuggestionDao extends JsonUtil {
+  def getSuggestionsbyId(storeCode: String, productId: Long) : scala.List[Suggestion] = {
+    // Création de la requête
+    val req = esearch4s in storeCode -> "suggestion" fields("_source", "_parent") postFilter termFilter("productId", productId)
+
+    // Lancement de la requête
+    EsClient.searchAll[Mogobiz.Suggestion](req, (hit, fields) => {
+      hit.copy(parentId = fields.get("_parent").value[String]().toLong)
+    }).toList
+  }
 }
