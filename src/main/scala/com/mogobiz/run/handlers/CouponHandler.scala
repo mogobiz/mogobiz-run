@@ -145,15 +145,9 @@ class CouponHandler {
           val pourcentage = java.lang.Float.parseFloat(regle.substring(0, regle.length() - 1))
           (prixDeBase * pourcentage / 100).toLong //TODO recheck the rounded value computed
         }
-        else if (regle.startsWith("+")) {
-          - java.lang.Long.parseLong(regle.substring(1))
-        }
-        else if (regle.startsWith("-")) {
-          java.lang.Long.parseLong(regle.substring(1))
-        }
-        else {
-          prixDeBase - java.lang.Long.parseLong(regle)
-        }
+        else if (regle.startsWith("+")) - java.lang.Long.parseLong(regle.substring(1))
+        else if (regle.startsWith("-")) java.lang.Long.parseLong(regle.substring(1))
+        else 0
       }
       case None => 0L
     }
