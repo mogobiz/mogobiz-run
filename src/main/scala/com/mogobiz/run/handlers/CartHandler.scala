@@ -358,6 +358,7 @@ class CartHandler {
 
     // Validation du panier au cas où il ne l'était pas déjà
     val valideCart = _validateCart(cart).copy(countryCode = params.country, stateCode = params.state, rate = Some(currency))
+    StoreCartDao.save(valideCart)
 
     // Suppression de la transaction en cours (si elle existe). Une nouvelle transaction sera créé
     val cartWithoutBOCart = _deletePendingBOCart(valideCart)
@@ -401,7 +402,17 @@ class CartHandler {
       )
     }
 
-    transformCartForCartPay(companyAddress, cartTTC, cart.rate.get)
+    val shippingRulePrice = computeShippingRulePrice(cart.storeCode, cart.countryCode, cartTTC.finalPrice)
+
+    transformCartForCartPay(companyAddress, cartTTC, cart.rate.get, shippingRulePrice)
+  }
+
+  private def computeShippingRulePrice(storeCode: String, countryCode: Option[String], cartPice: Long) : Option[Long] = {
+    countryCode.map { country =>
+      val shippingRules = ShippingRuleDao.findByCompany(storeCode)
+      val v = shippingRules.find( sr => sr.countryCode == country && sr.minAmount <= cartPice && cartPice <= sr.maxAmount)
+      v.map { _.price }
+    }.getOrElse(None)
   }
 
   /**
@@ -994,7 +1005,7 @@ class CartHandler {
     map
   }
 
-  private def transformCartForCartPay(compagnyAddress : Option[CompanyAddress], cart: Cart, rate: Currency) : CartPay = {
+  private def transformCartForCartPay(compagnyAddress : Option[CompanyAddress], cart: Cart, rate: Currency, shippingRulePrice: Option[Long]) : CartPay = {
     val cartItemsPay = cart.cartItemVOs.map { cartItem =>
       val registeredCartItemsPay = cartItem.registeredCartItemVOs.map { rci =>
         new RegisteredCartItemPay(rci.id, rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, Map())
@@ -1029,7 +1040,7 @@ class CartHandler {
 
     val cartRate = CartRate(rate.code, rate.numericCode, rate.rate, rate.currencyFractionDigits)
 
-    new CartPay(cart.count, cartRate, cart.price, cart.endPrice, cart.endPrice - cart.price, cart.reduction, cart.finalPrice, cartItemsPay, couponsPay, Map(), compagnyAddress)
+    new CartPay(cart.count, cartRate, cart.price, cart.endPrice, cart.endPrice - cart.price, cart.reduction, cart.finalPrice, shippingRulePrice, cartItemsPay, couponsPay, Map(), compagnyAddress)
   }
 
   /**

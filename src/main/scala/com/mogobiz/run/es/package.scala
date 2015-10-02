@@ -37,7 +37,7 @@ package object es {
           filterRequest(
             esearch4s in store -> "rate",
             List(
-              createTermFilter("code", Some(currencyCode))
+              createTermFilter("code", Some(s))
             ).flatten
           )
         ) getOrElse defaultCurrency

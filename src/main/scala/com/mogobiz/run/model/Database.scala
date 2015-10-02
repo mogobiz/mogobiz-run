@@ -319,6 +319,16 @@ object Mogobiz {
   case class BOProductConsumption(consumptionsFk: Long,
                                   consumptionId: Long)
 
+  @JsonIgnoreProperties(ignoreUnknown=true)
+  case class ShippingRule(id: Long,
+                           uuid: String,
+                           countryCode: String,
+                           minAmount: Long,
+                           maxAmount: Long,
+                           price: Long,
+                           var lastUpdated: Date,
+                           var dateCreated: Date)
+
   object TransactionStatus extends Enumeration {
     class TransactionStatusType(s: String) extends Val(s)
     type TransactionStatus = TransactionStatusType
