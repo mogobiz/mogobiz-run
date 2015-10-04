@@ -105,10 +105,15 @@ class ProductHandler extends JsonUtil {
       case a if a startsWith "name" => s"${lang}name.raw"
       case b if b startsWith "price" => if(_sortOrder == "desc"){
         productRequest.countryCode match{
+          case Some(countryCode) => s"$countryCode.maxEndPrice"
+          case _ => "maxPrice"
+        }
+      } else {
+        productRequest.countryCode match{
           case Some(countryCode) => s"$countryCode.minEndPrice"
           case _ => "minPrice"
         }
-      } else s"skus.$priceWithVatField"
+      }
       case s => s
     }
     lazy val currency = queryCurrency(storeCode, productRequest.currencyCode)
