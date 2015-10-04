@@ -30,7 +30,7 @@ class BrandHandler extends JsonUtil {
           filterRequest(req, filters)
             sourceInclude "brand.*"
             sourceExclude(createExcludeLang(storeCode, lang) :+ "brand.imported" :_*)
-            sort {by field "brand.name" order SortOrder.ASC}
+            sort {by field "brand.name.raw" order SortOrder.ASC}
         ).getHits
         distinctById(r \ "brand")
       case None =>
@@ -39,7 +39,7 @@ class BrandHandler extends JsonUtil {
         val r : JArray = EsClient.searchAllRaw(
           filterRequest(req, filters)
             sourceExclude(createExcludeLang(storeCode, lang) :+ "imported" :_*)
-            sort {by field "name" order SortOrder.ASC}
+            sort {by field "name.raw" order SortOrder.ASC}
         ).getHits
         r
     }
