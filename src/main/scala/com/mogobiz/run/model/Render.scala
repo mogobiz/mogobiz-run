@@ -13,6 +13,11 @@ import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
 import com.mogobiz.run.model.Mogobiz.{WeightUnitRef, LinearUnitRef, Shipping}
 import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnit
 import org.joda.time.DateTime
+import org.joda.time.format.{ISODateTimeFormat, DateTimeFormatter}
+import org.json4s.JField
+import org.json4s.JsonAST.{JDouble, JBool, JObject, JValue}
+
+import scala.collection.immutable.HashMap
 
 /**
  * Created by yoannbaudy on 26/11/2014.
@@ -45,18 +50,18 @@ object Render {
                       shipping: Option[Shipping],
                       downloadableLink: String)
 
-  case class Coupon(id: Long,
-                    name: String,
-                    code: String,
-                    promotion: Boolean,
-                    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                    @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                    startDate: Option[DateTime] = None,
-                    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                    @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                    endDate: Option[DateTime] = None,
-                    active: Boolean = false,
-                    price: Long = 0)
+  class Coupon(private val elems : List[JField], val active: Boolean, val price: Long, val promotion: Boolean)
+    extends JObject(JField("active", JBool(active)) :: JField("promotion", JBool(promotion)) :: JField("price", JDouble(price)) :: elems.filterNot{jf : JField => jf._1 == "active" || jf._1 == "price" || jf._1 == "promotion"}) {
+
+    val code: String = values("code").asInstanceOf[String]
+    val name: String = values("name").asInstanceOf[String]
+    val startDate: Option[DateTime] = values.get("startDate").map { v: Any =>
+      JodaDateTimeOptionDeserializer.deserializeAsOption(v.asInstanceOf[String])
+    }.getOrElse(None)
+    val endDate: Option[DateTime] = values.get("endDate").map { v: Any =>
+      JodaDateTimeOptionDeserializer.deserializeAsOption(v.asInstanceOf[String])
+    }.getOrElse(None)
+  }
 
   case class RegisteredCartItem(cartItemId: String = "",
                                   id: String,

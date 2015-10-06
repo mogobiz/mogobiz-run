@@ -8,7 +8,9 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Mogobiz.{ReductionRuleType, ReductionRule}
 import com.mogobiz.run.model.{Mogobiz, Render, StoreCoupon}
 import com.sksamuel.elastic4s.ElasticDsl._
+import org.json4s.JsonAST.{JNothing, JObject, JValue}
 import scalikejdbc._
+import com.mogobiz.es._
 
 /**
  * Created by yoannbaudy on 24/11/2014.
@@ -32,9 +34,10 @@ class CouponHandler {
     if (coupons.isEmpty) new ReductionAndCouponsList(0, List())
     else {
       val coupon = coupons.head
-      val couponVO = _computeCoupon(storeCode, coupon, cartItems)
       val reductionAndCouponsList = computePromotions(storeCode, coupons.tail, cartItems)
-      new ReductionAndCouponsList(reductionAndCouponsList.reduction + couponVO.price, couponVO :: reductionAndCouponsList.coupons)
+      _computeCoupon(storeCode, coupon, cartItems, true).map { couponVO =>
+        new ReductionAndCouponsList(reductionAndCouponsList.reduction + couponVO.price, couponVO :: reductionAndCouponsList.coupons)
+      }.getOrElse(reductionAndCouponsList)
     }
   }
 
@@ -42,13 +45,14 @@ class CouponHandler {
     if (coupons.isEmpty) new ReductionAndCouponsList(0, List())
     else {
       val coupon = CouponDao.findByCode(storeCode, coupons.head.code).get
-      val couponVO = _computeCoupon(storeCode, coupon, cartItems)
       val reductionAndCouponsList = computeCoupons(storeCode, coupons.tail, cartItems)
-      new ReductionAndCouponsList(reductionAndCouponsList.reduction + couponVO.price, couponVO :: reductionAndCouponsList.coupons)
+      _computeCoupon(storeCode, coupon, cartItems, false).map { couponVO =>
+        new ReductionAndCouponsList(reductionAndCouponsList.reduction + couponVO.price, couponVO :: reductionAndCouponsList.coupons)
+      }.getOrElse(reductionAndCouponsList)
     }
   }
 
-  private def _computeCoupon(storeCode: String, coupon: Mogobiz.Coupon, cartItems: List[Render.CartItem]): Render.Coupon = {
+  private def _computeCoupon(storeCode: String, coupon: Mogobiz.Coupon, cartItems: List[Render.CartItem], promotion: Boolean): Option[Render.Coupon] = {
     if (_isCouponActive(coupon)) {
       val skusIdList = ProductDao.getSkusIdByCoupon(storeCode, coupon.id)
 
@@ -85,25 +89,33 @@ class CouponHandler {
           }
 
           val couponPrice = _calculateReduction(coupon.rules)
-          _createCouponVOFromCoupon(coupon, true, couponPrice)
+          _createCouponVOFromCoupon(storeCode, coupon, true, couponPrice, promotion)
         }
         else {
           // Pas de quantité, cela signifie que la réduction ne s'applique pas donc prix = 0
-          _createCouponVOFromCoupon(coupon, true, 0)
+          _createCouponVOFromCoupon(storeCode, coupon, true, 0, promotion)
         }
       }
       else {
         // Le coupon ne s'applique sur aucun SKU, donc prix = 0
-        _createCouponVOFromCoupon(coupon, true, 0)
+        _createCouponVOFromCoupon(storeCode, coupon, true, 0, promotion)
       }
     }
     else {
       // Le coupon n'est pas actif, donc prix = 0 et active = false
-      _createCouponVOFromCoupon(coupon, false, 0)
+      _createCouponVOFromCoupon(storeCode, coupon, false, 0, promotion)
     }
   }
-  private def _createCouponVOFromCoupon(coupon: Mogobiz.Coupon, active: Boolean, price: Long) : Render.Coupon = {
-    Render.Coupon(id = coupon.id, name = coupon.name, promotion = coupon.anonymous, code = coupon.code, startDate = coupon.startDate, endDate = coupon.endDate, active = active, price = price)
+  private def _createCouponVOFromCoupon(codeStore: String, coupon: Mogobiz.Coupon, active: Boolean, price: Long, promotion: Boolean) : Option[Render.Coupon] = {
+    CouponDao.findByCodeAsJSon(codeStore, coupon.code) match {
+      //case jobject: JObject => Some(Render.Coupon(jobject.obj, active, price))
+      case jobject: JObject => {
+        Some(new Render.Coupon(jobject.obj, active, price, promotion))
+      }
+      case _ => None
+    }
+
+    //Render.Coupon(id = coupon.id, name = coupon.name, promotion = coupon.anonymous, code = coupon.code, startDate = coupon.startDate, endDate = coupon.endDate, active = active, price = price)
   }
 
   private def _isCouponActive(coupon : Mogobiz.Coupon) : Boolean = {
@@ -158,6 +170,18 @@ class CouponHandler {
 case class ReductionAndCouponsList(reduction: Long, coupons: List[Render.Coupon])
 
 object CouponDao {
+
+  def findByCodeAsJSon(storeCode:String, couponCode:String):JValue = {
+    // Création de la requête
+    val req = search in storeCode -> "coupon" postFilter termFilter("coupon.code.raw", couponCode)
+
+    // Lancement de la requête
+    val coupon : JValue = EsClient.searchRaw(req) match {
+        case Some(jobject) => jobject
+        case _ => JNothing
+    }
+    coupon
+  }
 
   def findByCode(storeCode:String, couponCode:String):Option[Mogobiz.Coupon]={
     // Création de la requête
