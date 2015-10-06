@@ -158,15 +158,19 @@ class ProductHandler extends JsonUtil {
         req highlighting ((fieldNames ::: highlightedFields).map(s => highlight(s)): _*)
       }
 
-      if (filters.nonEmpty) {
-        if (filters.size > 1)
+      val filtersToApply:List[FilterDefinition] = if(_type == "product"){
+        filters++createTermFilter("taxRate.localTaxRates.countryCode", params.country)
+      } else filters
+
+      if (filtersToApply.nonEmpty) {
+        if (filtersToApply.size > 1)
           req query {
             params.query
           } query {
             filteredQuery query {
               params.query
             } filter {
-              and(filters: _*)
+              and(filtersToApply: _*)
             }
           }
         else
@@ -175,7 +179,7 @@ class ProductHandler extends JsonUtil {
           } query {
             filteredQuery query {
               params.query
-            } filter filters(0)
+            } filter filtersToApply(0)
           }
       }
       else {
