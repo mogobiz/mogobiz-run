@@ -97,7 +97,6 @@ object Json4sProtocol extends Json4sSupport {
     ))
 
   implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all +
-    //new JodaDateTimeSerializer() +
     new ProductTypeSerializer() +
     new ProductCalendarSerializer() +
     new WeightUnitSerializer() +
