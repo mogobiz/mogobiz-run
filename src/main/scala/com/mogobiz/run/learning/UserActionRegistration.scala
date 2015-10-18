@@ -13,7 +13,6 @@ import com.mogobiz.run.model.Learning.UserItemAction
 
 
 object UserActionRegistration {
-  def esLearning(store: String): String = s"${store}_learning"
 
   val esIndexRotate = Settings.learning.rotate
 
@@ -35,6 +34,7 @@ object UserActionRegistration {
 
 
   def register(store: String, trackingid: String, itemid: String, action: UserAction): String = {
+    def esLearning(store: String): String = s"${store}_learning"
     EsClient.index(indexName(esLearning(store)), UserItemAction(trackingid, itemid, action), false, Some(UUID.randomUUID().toString))
   }
 }

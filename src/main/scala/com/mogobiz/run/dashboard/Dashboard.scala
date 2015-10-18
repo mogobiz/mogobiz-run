@@ -5,14 +5,13 @@
 package com.mogobiz.run.dashboard
 
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.{Calendar, Date}
 
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import com.google.maps.{GeoApiContext, GeocodingApi}
 import com.mogobiz.es.EsClient
-import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.config.MogopayHandlers._
+import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.json.{JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer}
 import com.mogobiz.run.model.ES.{BOCart, BOCartItem, BOProduct}
@@ -231,6 +230,7 @@ object Dashboard {
     }
   }
    */
+
   case class LinearCart(itemCode: String,
                         price: Long,
                         tax: Double,
@@ -337,13 +337,14 @@ object Dashboard {
                         var lastUpdated: Date = new Date,
                         var dateCreated: Date = new Date)
 
-  def index(cart: BOCart, buyerUUID: String) = {
+  def index(storeCode: String, cart: BOCart, buyerUUID: String) = {
+    def esDashboard(store: String): String = s"${store}_dashboard"
     val linearizedCart = linearize(cart, buyerUUID)
-    linearizedCart.foreach(cart => EsClient.index(Settings.Dashboard.IndexName, cart, refresh = true))
+    linearizedCart.foreach(cart => EsClient.index(indexName(esDashboard(storeCode)), cart, refresh = true))
   }
 
 
-  def linearize(cart: BOCart, buyerUUID: String): Seq[LinearCart] = cart.cartItems.map { item =>
+  private def linearize(cart: BOCart, buyerUUID: String): Seq[LinearCart] = cart.cartItems.map { item =>
     val buyer: Account = accountHandler.find(buyerUUID).get
 
     LinearCart(
@@ -479,4 +480,24 @@ object Dashboard {
     c1.foreach(cart => EsClient.index("mogodashboard", cart, refresh = true))
     c2.foreach(cart => EsClient.index("mogodashboard", cart, refresh = true))
   }
+
+  val esIndexRotate = Settings.Dashboard.rotate
+
+  private def indexName(esIndex: String): String = {
+    def dateFormat(date: Calendar, dateFormat: String) = {
+      val format = new java.text.SimpleDateFormat(dateFormat)
+      val str = format.format(date.getTime())
+      str
+    }
+    val format = esIndexRotate match {
+      case "DAILY" => Some("yyyy-MM-dd")
+      case "MONTHLY" => Some("yyyy-MM")
+      case "YEARLY" => Some("yyyy")
+      case _ => None
+    }
+    val suffix = format map (dateFormat(Calendar.getInstance(), _)) map ("_" + _) getOrElse ("")
+    esIndex + suffix
+  }
+
+
 }
