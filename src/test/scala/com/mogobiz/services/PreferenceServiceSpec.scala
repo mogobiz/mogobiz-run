@@ -15,7 +15,7 @@ import spray.http.HttpHeaders.Cookie
 
 class PreferenceServiceSpec extends MogobizRouteTest {
 
-  implicit def json4sFormats: Formats = DefaultFormats
+  implicit val json4sFormats: Formats = DefaultFormats
 
   "The Preference service" should {
     val cookies = Seq(new HttpCookie("mogobiz_uuid", "UNIT_TEST"), new HttpCookie("Path","/store/"+STORE))

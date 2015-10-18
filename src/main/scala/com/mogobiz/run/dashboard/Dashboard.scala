@@ -22,6 +22,7 @@ import com.mogobiz.run.model.Mogobiz._
 import org.joda.time.DateTime
 
 object Dashboard {
+
   /*
   {
     "mappings": {
@@ -137,6 +138,25 @@ object Dashboard {
           },
           "productName": {
             "type": "string",
+            "index": "not_analyzed"
+          },
+          "productCategoryPath": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "productCategoryName": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "productCategoryUUID": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "productCategoryId": {
+            "type": "long",
+          },
+          "productCategoryParentId": {
+            "type": "long",
             "index": "not_analyzed"
           },
           "productNbSales": {
@@ -275,6 +295,11 @@ object Dashboard {
                         productDownloadMaxDelay: Long,
                         productDateCreated: Date,
                         productLastUpdated: Date,
+                        productCategoryPath: String,
+                        productCategoryName: String,
+                        productCategoryUUID: String,
+                        productCategoryId: Option[Long],
+                        productCategoryParentId: Option[Long],
                         /* End */
                         /* Delivery */
                         deliveryStatus: Option[String],
@@ -316,6 +341,7 @@ object Dashboard {
     val linearizedCart = linearize(cart, buyerUUID)
     linearizedCart.foreach(cart => EsClient.index(Settings.Dashboard.IndexName, cart, refresh = true))
   }
+
 
   def linearize(cart: BOCart, buyerUUID: String): Seq[LinearCart] = cart.cartItems.map { item =>
     val buyer: Account = accountHandler.find(buyerUUID).get
@@ -362,6 +388,11 @@ object Dashboard {
       productDownloadMaxDelay = item.principal.product.downloadMaxDelay,
       productDateCreated = item.principal.product.dateCreated,
       productLastUpdated = item.principal.product.lastUpdated,
+      productCategoryPath = item.principal.product.category.path,
+      productCategoryName = item.principal.product.category.name,
+      productCategoryUUID = item.principal.product.category.uuid,
+      productCategoryId = Some(item.principal.product.category.id),
+      productCategoryParentId = item.principal.product.category.parentId,
 
       deliveryStatus = item.bODelivery.map(_.status.toString),
       deliveryTracking = item.bODelivery.flatMap(_.tracking),
@@ -385,7 +416,7 @@ object Dashboard {
       buyerCivility = buyer.civility.map(_.toString).getOrElse("UNKNOWN"),
       buyerBirthdate = buyer.birthDate,
       buyerRoad = buyer.address.map(_.road),
-      buyerZipCode = buyer.address.map(_.zipCode.toString),
+      buyerZipCode = buyer.address.map(_.zipCode.getOrElse("")),
       buyerCountry = buyer.address.flatMap(_.country),
       buyerGeoCoordinates = buyer.address.flatMap(_.geoCoordinates)
     )
@@ -400,12 +431,12 @@ object Dashboard {
     val productA: BOProduct = BOProduct(
       acquittement = true, principal = true, price = 500, registeredCartItem = Nil, uuid = "00000000-0000-0000-0000-000000000000",
       product = Product(id = 0L, uuid = "00000000-0000-0000-0000-000000000000", name = "A", ProductType.PRODUCT, ProductCalendar.NO_DATE, None, None, true,
-        None, None, None, Nil, None, None, None, 0, 0, 0, new Date, new Date)
+        None, None, None, Nil, None, None, None, 0, 0, 0, null, new Date, new Date)
     )
     val productB: BOProduct = BOProduct(
       acquittement = true, principal = true, price = 2000, registeredCartItem = Nil, uuid = "00000000-0000-0000-0000-000000000000",
       product = Product(id = 1L, uuid = "11111111-1111-1111-1111-111111111111", name = "B", ProductType.PRODUCT, ProductCalendar.NO_DATE, None, None, true,
-        None, None, None, Nil, None, None, None, 0, 0, 0, new Date, new Date)
+        None, None, None, Nil, None, None, None, 0, 0, 0, null, new Date, new Date)
     )
 
     val item00 = BOCartItem(// 1 A

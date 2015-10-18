@@ -155,7 +155,7 @@ class CartHandler {
     _renderCart(computeCart, currency, locale)
   }
 
-  private def _checkProductAndSkuSalabality(productAndSku : (Mogobiz.Product, Mogobiz.Sku)) : Boolean = {
+  private def _checkProductAndSkuSalabality(productAndSku: (Mogobiz.Product, Mogobiz.Sku)): Boolean = {
     val now = DateTime.now().toLocalDate
     val sku = productAndSku._2
     val skuStartDate = sku.startDate.getOrElse(DateTime.now()).toLocalDate
@@ -279,7 +279,7 @@ class CartHandler {
     if (optCoupon.isDefined) {
       val coupon = optCoupon.get
       if (!coupon.anonymous) {
-        if (cart.coupons.exists { c => couponCode == c.code}) {
+        if (cart.coupons.exists { c => couponCode == c.code }) {
           throw new DuplicateException("")
         } else if (!couponHandler.consumeCoupon(cart.storeCode, coupon)) {
           throw new InsufficientStockCouponException()
@@ -389,7 +389,9 @@ class CartHandler {
     val cartTTC = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
 
     val compagny = CompanyDao.findByCode(storeCode)
-    val shipFromAddressOpt = compagny.map { _.shipFrom }.getOrElse(None)
+    val shipFromAddressOpt = compagny.map {
+      _.shipFrom
+    }.getOrElse(None)
     val companyAddress = shipFromAddressOpt.map { shipFromAddress =>
       CompanyAddress(storeCode,
         shipFromAddress.road1,
@@ -398,7 +400,9 @@ class CartHandler {
         shipFromAddress.postalCode,
         shipFromAddress.country.code,
         if (!shipFromAddress.state.isEmpty) Some(shipFromAddress.state) else None,
-        compagny.map {_.phone }.flatten
+        compagny.map {
+          _.phone
+        }.flatten
       )
     }
 
@@ -407,11 +411,13 @@ class CartHandler {
     transformCartForCartPay(companyAddress, cartTTC, cart.rate.get, shippingRulePrice)
   }
 
-  private def computeShippingRulePrice(storeCode: String, countryCode: Option[String], cartPice: Long) : Option[Long] = {
+  private def computeShippingRulePrice(storeCode: String, countryCode: Option[String], cartPice: Long): Option[Long] = {
     countryCode.map { country =>
       val shippingRules = ShippingRuleDao.findByCompany(storeCode)
-      val v = shippingRules.find( sr => sr.countryCode == country && sr.minAmount <= cartPice && cartPice <= sr.maxAmount)
-      v.map { _.price }
+      val v = shippingRules.find(sr => sr.countryCode == country && sr.minAmount <= cartPice && cartPice <= sr.maxAmount)
+      v.map {
+        _.price
+      }
     }.getOrElse(None)
   }
 
@@ -452,7 +458,7 @@ class CartHandler {
           val updatedCart = StoreCart(storeCode = transactionCart.storeCode, dataUuid = transactionCart.dataUuid, userUuid = transactionCart.userUuid)
           StoreCartDao.save(updatedCart)
 
-          accountId.map(Dashboard.index(boCartToESBOCart(storeCode, boCart), _))
+          accountId.map(Dashboard.index(boCartToESBOCart(storeCode, transactionBoCart), _))
 
           _notifyCartCommit(transactionCart.storeCode, boCart.buyer, transactionCart, locale)
         }
@@ -488,7 +494,7 @@ class CartHandler {
       try {
         StoreCartDao.delete(_clearCart(_removeAllUnsalabledItem(cart)))
       }
-      catch  {
+      catch {
         case t: Throwable => t.printStackTrace()
       }
     }
@@ -661,7 +667,7 @@ class CartHandler {
     }
   }
 
-  private def _removeAllUnsalabledItem(cart: StoreCart) : StoreCart = {
+  private def _removeAllUnsalabledItem(cart: StoreCart): StoreCart = {
     val currentIndex = EsClient.getUniqueIndexByAlias(cart.storeCode).getOrElse(cart.storeCode)
     val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
     val newCartItems = DB localTx { implicit session =>
@@ -670,8 +676,9 @@ class CartHandler {
         val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
         if (productAndSku.isEmpty || !_checkProductAndSkuSalabality(productAndSku.get)) {
           if (cart.validate) {
-            val realProductAndSku = ProductDao.getProductAndSku(cartItemWithIndex.indexEs, cartItem.skuId).get
-            indexEsAndProductsToUpdate += _unvalidateCartItem(cartItemWithIndex, realProductAndSku)
+            ProductDao.getProductAndSku(cartItemWithIndex.indexEs, cartItem.skuId).map { realProductAndSku =>
+              indexEsAndProductsToUpdate += _unvalidateCartItem(cartItemWithIndex, realProductAndSku)
+            }
           }
           None
         }
@@ -777,12 +784,12 @@ class CartHandler {
     else cart
   }
 
-  private def _unvalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession) : (String, Long) = {
+  private def _unvalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): (String, Long) = {
     val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
     _unvalidateCartItem(cartItem, productAndSku.get)
   }
 
-  private def _unvalidateCartItem(cartItem: StoreCartItem, productAndSku : (Mogobiz.Product, Mogobiz.Sku))(implicit session: DBSession) : (String, Long) = {
+  private def _unvalidateCartItem(cartItem: StoreCartItem, productAndSku: (Mogobiz.Product, Mogobiz.Sku))(implicit session: DBSession): (String, Long) = {
     val product = productAndSku._1
     val sku = productAndSku._2
     stockHandler.incrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
@@ -794,12 +801,12 @@ class CartHandler {
    * Update products stock availability
    * @param indexEsAndProductId
    */
-  private def _updateProductStockAvailability(indexEsAndProductId:Set[(String, Long)]) = {
+  private def _updateProductStockAvailability(indexEsAndProductId: Set[(String, Long)]) = {
     import scala.concurrent.duration._
     import system.dispatcher
     val system = ActorSystemLocator.get
     val stockActor = system.actorOf(Props[EsUpdateActor])
-    indexEsAndProductId.foreach{ indexEsAndProduct =>
+    indexEsAndProductId.foreach { indexEsAndProduct =>
       system.scheduler.scheduleOnce(2 seconds) {
         stockActor ! ProductStockAvailabilityUpdateRequest(indexEsAndProduct._1, indexEsAndProduct._2)
       }
@@ -899,21 +906,21 @@ class CartHandler {
     Cart(validateUuid, price, endPrice, reduction, endPrice - reduction, count, cartItems.toArray, coupons.toArray)
   }
 
-  private def _findSuggestionDiscount(cart: StoreCart, productId: Long) : List[String] = {
-    def extractDiscout(l : List[Mogobiz.Suggestion]) : List[String] = {
+  private def _findSuggestionDiscount(cart: StoreCart, productId: Long): List[String] = {
+    def extractDiscout(l: List[Mogobiz.Suggestion]): List[String] = {
       if (l.isEmpty) List()
       else {
-        val s : Mogobiz.Suggestion = l.head
-        val ci = cart.cartItems.find{ci => ci.productId == s.parentId}
+        val s: Mogobiz.Suggestion = l.head
+        val ci = cart.cartItems.find { ci => ci.productId == s.parentId }
         if (ci.isDefined) s.discount :: extractDiscout(l.tail)
         else extractDiscout(l.tail)
       }
     }
-    val suggestions : List[Mogobiz.Suggestion] = SuggestionDao.getSuggestionsbyId(cart.storeCode, productId)
+    val suggestions: List[Mogobiz.Suggestion] = SuggestionDao.getSuggestionsbyId(cart.storeCode, productId)
     extractDiscout(suggestions)
   }
 
-  private def computeDiscounts(price: Long, discounts: List[String]) : Long = {
+  private def computeDiscounts(price: Long, discounts: List[String]): Long = {
     if (discounts.isEmpty) Math.max(price, 0)
     else {
       val discountPrice = Math.max(price - couponHandler.computeDiscount(Some(discounts.head), price), 0)
@@ -1005,7 +1012,7 @@ class CartHandler {
     map
   }
 
-  private def transformCartForCartPay(compagnyAddress : Option[CompanyAddress], cart: Cart, rate: Currency, shippingRulePrice: Option[Long]) : CartPay = {
+  private def transformCartForCartPay(compagnyAddress: Option[CompanyAddress], cart: Cart, rate: Currency, shippingRulePrice: Option[Long]): CartPay = {
     val cartItemsPay = cart.cartItemVOs.map { cartItem =>
       val registeredCartItemsPay = cartItem.registeredCartItemVOs.map { rci =>
         new RegisteredCartItemPay(rci.id, rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, Map())
@@ -1033,7 +1040,7 @@ class CartHandler {
         cartItem.saleTotalPrice, saleTotalEndPrice, saleTotalEndPrice - cartItem.saleTotalPrice,
         registeredCartItemsPay, shippingPay, customCartItem)
     }
-    val couponsPay = cart.coupons.map {coupon =>
+    val couponsPay = cart.coupons.map { coupon =>
       val customCoupon = Map("name" -> coupon.name, "active" -> coupon.active)
       new CouponPay(coupon.code, coupon.startDate, coupon.endDate, coupon.price, customCoupon)
     }
@@ -1069,7 +1076,7 @@ class CartHandler {
    * @return
    */
   private def _renderCoupon(coupon: Coupon, currency: Currency, locale: Locale) = {
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Coupon]() ++ JodaTimeSerializers.all
+    implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[Coupon]()
     val jsonCoupon = parse(write(coupon))
 
     //code from renderPriceCoupon
@@ -1080,7 +1087,7 @@ class CartHandler {
   }
 
   private def _renderTransactionCoupon(coupon: Coupon, rate: Currency, locale: Locale) = {
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Coupon]() ++ JodaTimeSerializers.all
+    implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[Coupon]()
     val jsonCoupon = parse(write(coupon))
 
     val price = rateService.calculateAmount(coupon.price, rate)
@@ -1103,18 +1110,26 @@ class CartHandler {
     import org.json4s.native.JsonMethods._
     //import org.json4s.native.Serialization
     import org.json4s.native.Serialization.write
-    implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItem]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar) ++ JodaTimeSerializers.all
+    implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[CartItem]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar)
     val jsonItem = parse(write(item))
 
     val additionalsData = parse(write(Map(
       "formatedPrice" -> rateService.formatPrice(item.price, currency, locale),
       "formatedSalePrice" -> rateService.formatPrice(item.salePrice, currency, locale),
-      "formatedEndPrice" -> item.endPrice.map {rateService.formatPrice(_, currency, locale)},
-      "formatedSaleEndPrice" -> item.saleEndPrice.map {rateService.formatPrice(_, currency, locale)},
+      "formatedEndPrice" -> item.endPrice.map {
+        rateService.formatPrice(_, currency, locale)
+      },
+      "formatedSaleEndPrice" -> item.saleEndPrice.map {
+        rateService.formatPrice(_, currency, locale)
+      },
       "formatedTotalPrice" -> rateService.formatPrice(item.totalPrice, currency, locale),
       "formatedSaleTotalPrice" -> rateService.formatPrice(item.saleTotalPrice, currency, locale),
-      "formatedTotalEndPrice" -> item.totalEndPrice.map {rateService.formatPrice(_, currency, locale)},
-      "formatedSaleTotalEndPrice" -> item.saleTotalEndPrice.map {rateService.formatPrice(_, currency, locale)}
+      "formatedTotalEndPrice" -> item.totalEndPrice.map {
+        rateService.formatPrice(_, currency, locale)
+      },
+      "formatedSaleTotalEndPrice" -> item.saleTotalEndPrice.map {
+        rateService.formatPrice(_, currency, locale)
+      }
     )))
 
     //TODO Traduction aussi du nom en traduisant le produit et le sku
@@ -1216,7 +1231,7 @@ class CartHandler {
     // Conversion des BOCartItem
     val cartItems = BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
       // Conversion des BOProducts
-      val boProducts : List[ES.BOProduct] = BOCartItemDao.getBOProducts(boCartItem).map { boProduct =>
+      val boProducts: List[ES.BOProduct] = BOCartItemDao.getBOProducts(boCartItem).flatMap { boProduct =>
         // Convertion des BOTicketType
         val boRegisteredCartItems = BOTicketTypeDao.findByBOProduct(boProduct.id).map { boTicketType =>
           // Instanciation du BORegisteredCartItem pour ES
@@ -1236,12 +1251,15 @@ class CartHandler {
         }
 
         // Instanciation du BOProduct pour ES
-        BOProductES(acquittement = boProduct.acquittement,
-          principal = boProduct.principal,
-          price = boProduct.price,
-          product = ProductDao.get(storeCode, boProduct.productFk).get,
+        ProductDao.get(storeCode, boProduct.productFk) map {  product =>
+          BOProductES(acquittement = boProduct.acquittement,
+            principal = boProduct.principal,
+            price = boProduct.price,
+            product = product,
           registeredCartItem = boRegisteredCartItems,
           uuid = boProduct.uuid)
+
+        }
       }
 
       // Convertion du BODelivery pour ES
@@ -1328,7 +1346,7 @@ object StoreCartDao {
   }
 
   def getExpired(index: String, querySize: Int): List[StoreCart] = {
-    val req = search in index -> "StoreCart" postFilter (rangeFilter("expireDate") lt "now") size(querySize)
+    val req = search in index -> "StoreCart" postFilter (rangeFilter("expireDate") lt "now") size (querySize)
     EsClient.searchAll[StoreCart](req).toList
   }
 }
