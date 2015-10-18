@@ -6,6 +6,7 @@ package com.mogobiz.run
 
 import com.mogobiz.es._
 import com.mogobiz.es.EsClient
+import com.mogobiz.pay.config.Settings
 import com.mogobiz.run.model.Currency
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
 import com.sksamuel.elastic4s.source.DocumentSource
@@ -35,7 +36,7 @@ package object es {
       case Some(s) =>
         EsClient.search[Currency](
           filterRequest(
-            esearch4s in store -> "rate",
+            esearch4s in Settings.Mogopay.EsIndex -> "Rate",
             List(
               createTermFilter("code", Some(s))
             ).flatten

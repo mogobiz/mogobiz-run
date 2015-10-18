@@ -5,6 +5,7 @@
 package com.mogobiz.run.handlers
 
 import com.mogobiz.es.EsClient
+import com.mogobiz.pay.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions.NotFoundException
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
@@ -25,7 +26,7 @@ class CountryHandler {
 
   def queryCountries(storeCode: String, lang: String): JValue = {
     EsClient.searchAllRaw(
-      esearch4s in storeCode -> "country" sourceExclude(createExcludeLang(storeCode, lang) :+ "imported" :_*)
+      esearch4s in Settings.Mogopay.EsIndex -> "Country"
     ).getHits
   }
 }
