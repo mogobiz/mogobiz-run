@@ -10,6 +10,7 @@ import java.util.Date
 import com.mogobiz.es.EsClient
 
 import com.mogobiz.run.es._
+import com.mogobiz.run.exceptions.NotFoundException
 import com.mogobiz.run.model.RequestParameters.PromotionRequest
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
@@ -70,6 +71,14 @@ class PromotionHandler {
   def getPromotions(storeCode: String, req: PromotionRequest): JValue = {
     val response = this.queryPromotion(storeCode,req)
     Paging.wrap(response.getTotalHits.toInt, response.getHits, req)
+  }
+
+  def getPromotionById(storeCode: String, promotionId: String): JValue = {
+    var filters:List[FilterDefinition] = List(termFilter("id", promotionId))
+    val req = esearch4s in storeCode -> "coupon"
+    EsClient.searchRaw(filterRequest(req, filters) sourceExclude("imported")).map { hit =>
+      hit2JValue(hit)
+    }.getOrElse(throw new NotFoundException(""))
   }
 
   def getPromotionIds(storeCode: String): Array[String] = {

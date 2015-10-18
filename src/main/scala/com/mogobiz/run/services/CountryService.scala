@@ -24,6 +24,12 @@ class CountryService extends Directives with DefaultComplete {
               handleCall(countryHandler.queryCountries(storeCode, lang), (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
+      } ~
+        pathPrefix(Segment) { countryCode =>
+          get {
+            handleCall(countryHandler.queryCountryByCode(storeCode, countryCode),
+              (json: JValue) => complete(StatusCodes.OK, json))
+          }
       }
     }
   }

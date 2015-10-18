@@ -30,6 +30,12 @@ class PromotionService extends Directives with DefaultComplete {
             handleCall(promotionHandler.getPromotions(storeCode, params), (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
+      } ~
+        pathPrefix(Segment) { promotionId =>
+          get {
+            handleCall(promotionHandler.getPromotionById(storeCode, promotionId),
+              (json: JValue) => complete(StatusCodes.OK, json))
+          }
       }
     }
   }

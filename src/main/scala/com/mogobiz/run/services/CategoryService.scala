@@ -4,6 +4,8 @@
 
 package com.mogobiz.run.services
 
+import java.net.URLDecoder
+
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers._
 import com.mogobiz.run.implicits.Json4sProtocol
@@ -24,6 +26,12 @@ class CategoryService extends Directives with DefaultComplete {
               handleCall(categoryHandler.queryCategories(storeCode, hidden, parentId, brandId, categoryPath, lang, promotionId, size),
                 (json: JValue) => complete(StatusCodes.OK, json))
           }
+        }
+      } ~
+      pathPrefix(Segment) { categoryId =>
+        get {
+          handleCall(categoryHandler.queryCategory(storeCode, categoryId),
+            (json: JValue) => complete(StatusCodes.OK, json))
         }
       }
     }

@@ -207,13 +207,14 @@ class ProductService extends Directives with DefaultComplete {
   def comments(storeCode:String, productId: Long) = pathPrefix("comments") {
     pathEnd {
       createComment(storeCode, productId) ~
-        getComment(storeCode, productId)
+        listComments(storeCode, productId)
     } ~
     path(Segment) {
       commentId => {
         updateComment(storeCode, productId, commentId) ~
         noteComment(storeCode, productId, commentId) ~
-        deleteComment(storeCode, productId, commentId)
+        deleteComment(storeCode, productId, commentId) ~
+        getCommentByExternalCode(storeCode, productId, commentId)
       }
     }
   }
@@ -245,7 +246,16 @@ class ProductService extends Directives with DefaultComplete {
     }
   }
 
-  def getComment(storeCode:String, productId: Long) = get {
+  def getCommentByExternalCode(storeCode:String, productId: Long, externalCode: String) = get {
+    optionalSession { optSession =>
+      val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+      val account = accountId.map{id => accountHandler.load(id)}.getOrElse(None)
+      handleCall(productHandler.getCommentByExternalCode(storeCode, productId, account, externalCode),
+        (res: Comment) => complete(StatusCodes.OK, res))
+    }
+  }
+
+  def listComments(storeCode:String, productId: Long) = get {
     parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest) { req =>
       handleCall(productHandler.getComment(storeCode, productId, req),
         (json: JValue) => complete(StatusCodes.OK, json))
@@ -270,6 +280,12 @@ class ProductService extends Directives with DefaultComplete {
           handleCall(productHandler.querySuggestions(storeCode, productId, lang),
             (list: JValue) => complete(StatusCodes.OK, list))
         }
+      }
+    } ~
+    path(Segment) { suggestionId =>
+      get {
+        handleCall(productHandler.querySuggestionById(storeCode, productId, suggestionId.toLong),
+          (list: JValue) => complete(StatusCodes.OK, list))
       }
     }
   }

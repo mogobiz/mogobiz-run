@@ -285,9 +285,12 @@ package object es {
     }
   }
 
-  def createRegexFilter(field:String, value:Option[String]) : Option[FilterDefinition] = {
+  def createRegexFilter(field:String, value:Option[String], addStars: Boolean = true) : Option[FilterDefinition] = {
     value match{
-      case Some(s) => Some(regexFilter(field, s".*${s.toLowerCase}.*"))
+      case Some(s) => {
+        val star = if (addStars) ".*" else ""
+        Some(regexFilter(field, s"${star}${s.toLowerCase}${star}"))
+      }
       case None => None
     }
   }

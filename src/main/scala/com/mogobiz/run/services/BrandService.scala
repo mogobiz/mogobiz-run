@@ -4,6 +4,8 @@
 
 package com.mogobiz.run.services
 
+import java.net.URLDecoder
+
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
@@ -31,6 +33,18 @@ class BrandService extends Directives with DefaultComplete {
                 (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
+      } ~
+        pathPrefix("id" / Segment) { brandId =>
+          get {
+            handleCall(brandHandler.queryBrandId(storeCode, brandId),
+              (json: JValue) => complete(StatusCodes.OK, json))
+          }
+        } ~
+        pathPrefix("name" / Segment) { brandName =>
+          get {
+            handleCall(brandHandler.queryBrandName(storeCode, URLDecoder.decode(brandName, "UTF-8")),
+              (json: JValue) => complete(StatusCodes.OK, json))
+          }
       }
     }
   }

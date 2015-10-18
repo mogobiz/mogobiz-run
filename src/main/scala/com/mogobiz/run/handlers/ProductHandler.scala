@@ -14,7 +14,7 @@ import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
-import com.mogobiz.run.exceptions.{CommentAlreadyExistsException, NotAuthorizedException}
+import com.mogobiz.run.exceptions.{NotFoundException, CommentAlreadyExistsException, NotAuthorizedException}
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz.Suggestion
@@ -491,6 +491,19 @@ class ProductHandler extends JsonUtil {
     Comment(hit.getId, c.userId, c.surname, c.notation, c.subject, c.comment, c.externalCode, c.created, c.productId, c.useful, c.notuseful)
   }
 
+  def getCommentByExternalCode(storeCode: String, productId: Long, account: Option[Account], externalCode: String): Comment = {
+    val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
+    val filters: List[FilterDefinition] = List(
+      createTermFilter("productId", Some(s"$productId")),
+      createTermFilter("userId", Some(userId)),
+      createTermFilter("externalCode", Some(externalCode))
+    ).flatten
+    val req = esearch4s in commentIndex(storeCode) -> "comment"
+    EsClient.searchRaw(filterRequest(req, filters)).map { hit =>
+      deserializeComment(hit)
+    }.getOrElse(throw new NotFoundException(""))
+  }
+
   def getComment(storeCode: String, productId: Long, req: CommentGetRequest): JValue = {
 
     val size = req.maxItemPerPage.getOrElse(100)
@@ -549,6 +562,16 @@ class ProductHandler extends JsonUtil {
     println(req._builder.toString)
     val response: SearchHits = EsClient.searchAllRaw(req)
     response.getHits
+  }
+
+  def querySuggestionById(storeCode: String, productId: Long, suggestionId: Long): JValue = {
+    val filters: List[FilterDefinition] = List(
+      createTermFilter("suggestion._parent", Some(productId)),
+      createTermFilter("suggestion.id", Some(suggestionId))
+    ).flatten
+    EsClient.searchRaw(
+      filterRequest(esearch4s in storeCode -> "suggestion", filters)
+    )
   }
 
   /**
