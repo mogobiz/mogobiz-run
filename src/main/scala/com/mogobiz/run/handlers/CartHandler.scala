@@ -517,7 +517,7 @@ class CartHandler {
       val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
 
       val newStoreCartItems = cart.cartItemVOs.map { cartItem =>
-        val storeCartItem = storeCart.cartItems.find(i => (i.productId == cartItem.productId) && (i.skuId == cartItem.skuId)).get
+        val storeCartItem = storeCart.cartItems.find(i => i.id == cartItem.id).get
 
         val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
         val product = productAndSku.get._1
