@@ -611,7 +611,7 @@ class ProductHandler extends JsonUtil {
     //add to the end because productIds is an ArrayList (performance issue if we use ArrayList.add(0,_) => so last is newer
     val script = "if(ctx._source.productIds.contains(pid)){ ctx._source.productIds.remove(ctx._source.productIds.indexOf(pid))}; " +
       "ctx._source.productIds += pid;" +
-      "if (ctx._source.productIds.size() > " + Settings.visitedProduct.max + ") {ctx._source.productIds.remove(0)}"
+      "if (ctx._source.productIds.size() > " + Settings.VisitedProduct.Max + ") {ctx._source.productIds.remove(0)}"
     EsClient.updateRaw(
       esupdate4s id sessionId in s"${historyIndex(store)}/history" script
         script

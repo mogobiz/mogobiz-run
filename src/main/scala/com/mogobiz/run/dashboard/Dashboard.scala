@@ -10,8 +10,8 @@ import java.util.{Calendar, Date}
 import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.es.EsClient
-import com.mogobiz.pay.config.MogopayHandlers._
-import com.mogobiz.pay.config.Settings
+import com.mogobiz.pay.config.MogopayHandlers
+import com.mogobiz.run.config.Settings
 import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.json.{JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer}
 import com.mogobiz.run.model.ES.{BOCart, BOCartItem, BOProduct}
@@ -345,7 +345,7 @@ object Dashboard {
 
 
   private def linearize(cart: BOCart, buyerUUID: String): Seq[LinearCart] = cart.cartItems.map { item =>
-    val buyer: Account = accountHandler.find(buyerUUID).get
+    val buyer: Account = MogopayHandlers.accountHandler.find(buyerUUID).get
 
     LinearCart(
       itemCode = item.code,
@@ -481,7 +481,7 @@ object Dashboard {
     c2.foreach(cart => EsClient.index("mogodashboard", cart, refresh = true))
   }
 
-  val esIndexRotate = Settings.Dashboard.rotate
+  val esIndexRotate = Settings.Dashboard.Rotate
 
   private def indexName(esIndex: String): String = {
     def dateFormat(date: Calendar, dateFormat: String) = {

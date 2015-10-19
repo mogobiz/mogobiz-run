@@ -16,8 +16,8 @@ object CleanCartJob{
 
     import system.dispatcher
     system.scheduler.schedule(
-      initialDelay = Settings.cart.cleanJob.delay seconds,
-      interval     = Settings.cart.cleanJob.interval seconds,
+      initialDelay = Settings.Cart.CleanJob.Delay seconds,
+      interval     = Settings.Cart.CleanJob.Interval seconds,
       receiver     = system.actorOf(Props[CleanCartJob]),
       message      = ""
     )
@@ -26,7 +26,7 @@ object CleanCartJob{
 
 class CleanCartJob extends Actor {
 
-  val querySize = Settings.cart.cleanJob.querySize
+  val querySize = Settings.Cart.CleanJob.QuerySize
 
   def receive = {
     case _ => EsClient.getIndexByAlias("mogobiz_carts").map {index: String =>  Try(cartHandler.cleanup(index, querySize)) }

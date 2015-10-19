@@ -19,19 +19,19 @@ import org.joda.time.DateTime
 
 case class StoreCart(storeCode: String,
                      dataUuid: String, // Valeur du cookie de tracking
-                     userUuid: Option[Mogopay.Document],  // Uuid du l'utilisateur connecté
+                     userUuid: Option[Mogopay.Document], // Uuid du l'utilisateur connecté
                      boCartUuid : Option[String] = None, // uuid du boCart correspondant (quand le BOCart a été créé)
                      transactionUuid : Option[String] = None, // Identifiant de la BOTransaction (quand la transaction est validée)
                      cartItems: List[StoreCartItem] = List(), // liste des items du panier
                      coupons: List[StoreCoupon] = List(), // liste des coupons du panier
                      validate: Boolean = false, // Indique si le panier a été validé, c'est à dire si les stocks ont été décrémenté
                      validateUuid: Option[String] = None, // Identifiant qui change à chaque validation. Permet au client de déterminer
-                                                  // s'il doit mettre à jour ces stocks (utilisé par Jahia par exemple pour flusher les caches)
+                     // s'il doit mettre à jour ces stocks (utilisé par Jahia par exemple pour flusher les caches)
                      @JsonSerialize(using = classOf[JodaDateTimeSerializer])
                      @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
-                     expireDate: DateTime = DateTime.now.plusSeconds(60 * Settings.cart.lifetime), // Date d'expiration du panier
-                     var dateCreated: Date = Calendar.getInstance().getTime,  // Date de création du panier
-                     var lastUpdated: Date = Calendar.getInstance().getTime,  // Date de dernière modification du panier
+                     expireDate: DateTime = DateTime.now.plusSeconds(60 * Settings.Cart.Lifetime), // Date d'expiration du panier
+                     var dateCreated: Date = Calendar.getInstance().getTime, // Date de création du panier
+                     var lastUpdated: Date = Calendar.getInstance().getTime, // Date de dernière modification du panier
                      countryCode: Option[String] = None,
                      stateCode: Option[String] = None,
                      rate: Option[Currency] = None)  {

@@ -36,21 +36,21 @@ object Settings {
   //  val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
 
 
+  val AccessUrl = config getString "mogobiz.accessUrl"
 
-  val accessUrl = config getString "mogobiz.accessUrl"
+  object Cart {
+    val Lifetime = config.getInt("mogobiz.cart.lifetime")
 
-  object cart {
-    val lifetime = config.getInt("mogobiz.cart.lifetime")
-
-    object cleanJob {
-      val delay = config.getInt("mogobiz.cart.cleanJob.delay")
-      val interval = config.getInt("mogobiz.cart.cleanJob.interval")
-      val querySize = config.getInt("mogobiz.cart.cleanJob.querySize")
+    object CleanJob {
+      val Delay = config.getInt("mogobiz.cart.cleanJob.delay")
+      val Interval = config.getInt("mogobiz.cart.cleanJob.interval")
+      val QuerySize = config.getInt("mogobiz.cart.cleanJob.querySize")
     }
+
   }
 
-  object visitedProduct {
-    val max = config getLong "mogobiz.visited-product.max"
+  object VisitedProduct {
+    val Max = config getLong "mogobiz.visited-product.max"
   }
 
   object clickatell {
@@ -61,9 +61,14 @@ object Settings {
   }
 
 
-  object learning {
-    val rotate = config.getString("learning.index.rotate")
+  object Learning {
+    val Rotate = config.getString("learning.index.rotate")
   }
+
+  object Dashboard {
+    val Rotate = config.getString("dashboard.index.rotate")
+  }
+
 
   object Mail {
 
@@ -77,7 +82,8 @@ object Settings {
       val IsSSLCheckServerIdentity = config.getBoolean("mail.smtp.checkserveridentity")
       val IsStartTLSEnabled = config.getBoolean("mail.smtp.starttls")
     }
-    val defaultFrom = config getString "mail.from"
+
+    val DefaultFrom = config getString "mail.from"
     val MaxAge = (config getInt "mail.confirmation.maxage") * 3600
   }
 

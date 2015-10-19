@@ -568,7 +568,7 @@ class CartHandler {
           case ProductType.DOWNLOADABLE => {
             val params = s"boCartItemUuid:$boCartItemUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
             val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES", true)
-            Some(s"${Settings.accessUrl}/$storeCode/download/$encryptedParams")
+            Some(s"${Settings.AccessUrl}/$storeCode/download/$encryptedParams")
           }
           case _ => None
         }
@@ -994,7 +994,7 @@ class CartHandler {
     val (subject, body) = templateHandler.mustache(template, write(renderCart))
     EmailHandler.Send.to(
       Mail(
-        from = (Settings.Mail.defaultFrom -> storeCode),
+        from = (Settings.Mail.DefaultFrom -> storeCode),
         to = Seq(email),
         subject = subject,
         message = body,
@@ -1338,7 +1338,7 @@ object StoreCartDao {
   }
 
   def save(entity: StoreCart): Boolean = {
-    EsClient.update[StoreCart](buildIndex(entity.storeCode), entity.copy(expireDate = DateTime.now.plusSeconds(60 * Settings.cart.lifetime)), true, false)
+    EsClient.update[StoreCart](buildIndex(entity.storeCode), entity.copy(expireDate = DateTime.now.plusSeconds(60 * Settings.Cart.Lifetime)), true, false)
   }
 
   def delete(cart: StoreCart): Unit = {

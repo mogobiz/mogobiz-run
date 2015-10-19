@@ -14,7 +14,7 @@ import com.mogobiz.run.model.Learning.UserItemAction
 
 object UserActionRegistration {
 
-  val esIndexRotate = Settings.learning.rotate
+  val esIndexRotate = Settings.Learning.Rotate
 
   private def indexName(esIndex:String): String = {
     def dateFormat(date: Calendar, dateFormat: String) = {
