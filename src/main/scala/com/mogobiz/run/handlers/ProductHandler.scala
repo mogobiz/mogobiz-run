@@ -80,7 +80,7 @@ class ProductHandler extends JsonUtil {
 
     val filters: List[FilterDefinition] = List(
       defaultStockFilter,
-      createTermFilter("taxRate.localTaxRates.countryCode", productRequest.countryCode),
+      productRequest.countryCode.map {countryCode => termFilter(s"${countryCode}.enabled", true)},
       createOrFilterBySplitValues(productRequest.id, v => createTermFilter("id", Some(v))),
       createOrFilterBySplitValues(productRequest.code, v => createTermFilter("code", Some(v))),
       createOrFilterBySplitValues(productRequest.xtype, v => createTermFilter("xtype", Some(v))),
@@ -159,7 +159,7 @@ class ProductHandler extends JsonUtil {
       }
 
       val filtersToApply:List[FilterDefinition] = if(_type == "product"){
-        filters++createTermFilter("taxRate.localTaxRates.countryCode", params.country)
+        filters++params.country.map {countryCode => termFilter(s"${countryCode}.enabled", true)}
       } else filters
 
       if (filtersToApply.nonEmpty) {

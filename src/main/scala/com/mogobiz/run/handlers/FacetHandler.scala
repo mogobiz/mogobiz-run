@@ -53,7 +53,7 @@ class FacetHandler {
 
     val fixeFilters: List[Option[FilterDefinition]] = List(
       defaultStockFilter,
-      createTermFilter("sku.product.taxRate.localTaxRates.countryCode", req.country),
+      req.country.map {countryCode => termFilter(s"sku.${countryCode}.enabled", true)},
       createTermFilter("sku.product.id",req.productId),
       createOrFilterBySplitValues(req.code, v => createTermFilter("sku.product.code", Some(v))),
       createOrFilterBySplitValues(req.xtype, v => createTermFilter("sku.product.xtype", Some(v))),
@@ -180,7 +180,7 @@ class FacetHandler {
 
     val fixeFilters: List[Option[FilterDefinition]] = List(
       defaultStockFilter,
-      createTermFilter("product.taxRate.localTaxRates.countryCode", req.country),
+      req.country.map {countryCode => termFilter(s"product.${countryCode}.enabled", true)},
       createOrFilterBySplitValues(req.code, v => createTermFilter("product.code", Some(v))),
       createOrFilterBySplitValues(req.xtype, v => createTermFilter("product.xtype", Some(v))),
       createOrFilterBySplitValues(req.creationDateMin, v => createRangeFilter("product.dateCreated", Some(v), None)),
