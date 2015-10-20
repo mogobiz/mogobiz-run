@@ -75,11 +75,11 @@ object Mogobiz {
                       free: Boolean)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  case class DatePeriod(@JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+  case class DatePeriod(@JsonSerialize(using = classOf[JodaDateTimeSerializer])
+                        @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
                         startDate: DateTime,
-                        @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                        @JsonSerialize(using = classOf[JodaDateTimeSerializer])
+                        @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
                         endDate: DateTime)
 
   @JsonIgnoreProperties(ignoreUnknown = true)

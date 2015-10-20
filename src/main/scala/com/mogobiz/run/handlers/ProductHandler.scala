@@ -887,7 +887,7 @@ object ProductDao extends JsonUtil {
 
   def getSkusIdByCoupon(storeCode: String, couponId: Long): List[Long] = {
     // Création de la requête
-    val req = esearch4s in storeCode -> "product" postFilter termFilter("product.skus.coupons.id", couponId)
+    val req = esearch4s in storeCode -> "product" postFilter termFilter("product.skus.coupons.id", couponId) from 0 size EsClient.MAX_SIZE
 
     // Lancement de la requête
     val productsList = EsClient.searchAll[Mogobiz.Product](req)
@@ -901,7 +901,7 @@ object ProductDao extends JsonUtil {
 object SuggestionDao extends JsonUtil {
   def getSuggestionsbyId(storeCode: String, productId: Long) : scala.List[Suggestion] = {
     // Création de la requête
-    val req = esearch4s in storeCode -> "suggestion" fields("_source", "_parent") postFilter termFilter("productId", productId)
+    val req = esearch4s in storeCode -> "suggestion" fields("_source", "_parent") postFilter termFilter("productId", productId) from 0 size EsClient.MAX_SIZE
 
     // Lancement de la requête
     EsClient.searchAll[Mogobiz.Suggestion](req, (hit, fields) => {
