@@ -201,7 +201,7 @@ object CouponDao {
         and(missingFilter("coupon.start_date"), missingFilter("coupon.end_date")),
         and(rangeFilter("coupon.start_date").lte("now"), rangeFilter("coupon.end_date").gte("now"))
       )
-    )
+    ) from 0 size EsClient.MAX_SIZE
 
     // Lancement de la requête
     EsClient.searchAll[Mogobiz.Coupon](req).toList;

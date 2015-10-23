@@ -1346,7 +1346,7 @@ object StoreCartDao {
   }
 
   def getExpired(index: String, querySize: Int): List[StoreCart] = {
-    val req = search in index -> "StoreCart" postFilter (rangeFilter("expireDate") lt "now") size (querySize)
+    val req = search in index -> "StoreCart" postFilter (rangeFilter("expireDate") lt "now") from 0 size (querySize)
     EsClient.searchAll[StoreCart](req).toList
   }
 }

@@ -26,7 +26,7 @@ object ShippingRuleDao {
 
   def findByCompany(storeCode:String) : List[ShippingRule] = {
     // Création de la requête
-    val req = search in storeCode -> "shipping_rule"
+    val req = search in storeCode -> "shipping_rule" from 0 size EsClient.MAX_SIZE
 
     // Lancement de la requête
     EsClient.searchAll[ShippingRule](req).toList;
