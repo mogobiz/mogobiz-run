@@ -208,8 +208,8 @@ class SkuHandler  extends JsonUtil {
    */
   def getSku(storeCode: String, skuId: String,update:Boolean, stockValue: Boolean, date: Option[String]) = {
 //    println(s"--------------------------------- getSku update=$update, stock=$stockValue, date="+date)
-    val res = EsClient.searchRaw(esearch4s in storeCode -> ES_TYPE_SKU postFilter termFilter("id", skuId)).get
-    val sku = hit2JValue(res)
+    val res = EsClient.loadRaw(get(skuId) from storeCode+"/"+ES_TYPE_SKU).get
+    val sku = response2JValue(res)
 
     /* for debug purpose only
     if(update) {
