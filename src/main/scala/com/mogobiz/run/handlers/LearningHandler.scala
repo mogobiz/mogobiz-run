@@ -4,28 +4,19 @@
 
 package com.mogobiz.run.handlers
 
-import java.text.SimpleDateFormat
-import java.util
 import java.util.Date
 
 import akka.actor.ActorSystem
 import akka.event.Logging
-import com.sksamuel.elastic4s.DefinitionAttributes.{DefinitionAttributeCacheKey, DefinitionAttributeCache}
-import com.sksamuel.elastic4s._
-import org.elasticsearch.search.aggregations.{AggregationBuilder, Aggregation}
-import org.elasticsearch.search.aggregations.bucket.filters.FiltersAggregationBuilder
-import org.elasticsearch.search.aggregations.bucket.terms.{TermsBuilder, Terms}
-
-import scala.collection.mutable
+import org.elasticsearch.search.aggregations.bucket.terms.Terms
 
 //import akka.stream.ActorFlowMaterializer
 //import akka.stream.scaladsl._
 
-import akka.stream.stage.{TerminationDirective, Directive, Context, PushStage}
+import akka.stream.stage.{Context, Directive, PushStage, TerminationDirective}
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
 import com.mogobiz.run.model.Learning.UserAction.UserAction
-
 import com.mogobiz.run.model.Learning._
 import com.mogobiz.system.BootedMogobizSystem
 

@@ -1222,14 +1222,14 @@ class CartHandler {
     )
   }
 
-  def exportBOCartIntoES(storeCode: String, boCart: BOCart, refresh: Boolean = false)(implicit session: DBSession = AutoSession) = {
+  def exportBOCartIntoES(storeCode: String, boCart: BOCart, refresh: Boolean = false)(implicit session: DBSession = AutoSession): Boolean = {
     val boCartES = boCartToESBOCart(storeCode, boCart)
     BOCartESDao.save(storeCode, boCartES, refresh)
   }
 
   def boCartToESBOCart(storeCode: String, boCart: BOCart)(implicit session: DBSession = AutoSession): ES.BOCart = {
     // Conversion des BOCartItem
-    val cartItems = BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
+    val cartItems = BOCartItemDao.findByBOCart(boCart).flatMap { boCartItem =>
       // Conversion des BOProducts
       val boProducts: List[ES.BOProduct] = BOCartItemDao.getBOProducts(boCartItem).flatMap { boProduct =>
         // Convertion des BOTicketType
@@ -1293,23 +1293,26 @@ class CartHandler {
       }
 
       val (principal, secondary) = boProducts.partition(_.principal)
-      BOCartItemES(code = boCartItem.code,
-        price = boCartItem.price,
-        tax = boCartItem.tax,
-        endPrice = boCartItem.endPrice,
-        totalPrice = boCartItem.totalPrice,
-        totalEndPrice = boCartItem.totalEndPrice,
-        hidden = boCartItem.hidden,
-        quantity = boCartItem.quantity,
-        startDate = boCartItem.startDate,
-        endDate = boCartItem.endDate,
-        sku = ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).get._2,
-        principal = principal.head,
-        secondary = secondary,
-        bODelivery = boDelivery,
-        bOReturnedItems = boReturnedItems,
-        uuid = boCartItem.uuid,
-        url = boCartItem.url)
+
+      ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).map { productAndSku =>
+        BOCartItemES(code = boCartItem.code,
+          price = boCartItem.price,
+          tax = boCartItem.tax,
+          endPrice = boCartItem.endPrice,
+          totalPrice = boCartItem.totalPrice,
+          totalEndPrice = boCartItem.totalEndPrice,
+          hidden = boCartItem.hidden,
+          quantity = boCartItem.quantity,
+          startDate = boCartItem.startDate,
+          endDate = boCartItem.endDate,
+          sku = productAndSku._2,
+          principal = principal.head,
+          secondary = secondary,
+          bODelivery = boDelivery,
+          bOReturnedItems = boReturnedItems,
+          uuid = boCartItem.uuid,
+          url = boCartItem.url)
+      }
     }
 
     new BOCartES(transactionUuid = boCart.transactionUuid,
