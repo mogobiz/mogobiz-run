@@ -57,7 +57,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
     val computeCart = _computeStoreCart(cart, params.country, params.state)
     _renderCart(computeCart, currency, locale)
@@ -75,7 +75,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
     val updatedCart = _clearCart(cart)
     val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
@@ -100,12 +100,12 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
     val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cmd.skuId)
     if (productAndSku.isEmpty) throw new NotFoundException("unknown sku")
 
-    if (!_checkProductAndSkuSalabality(productAndSku.get))
+    if (!_checkProductAndSkuSalabality(productAndSku.get, params.country, params.state))
       throw new UnsaleableProductException()
 
     val product = productAndSku.get._1
@@ -155,32 +155,14 @@ class CartHandler {
     _renderCart(computeCart, currency, locale)
   }
 
-  private def _checkProductAndSkuSalabality(productAndSku: (Mogobiz.Product, Mogobiz.Sku)): Boolean = {
+  private def _checkProductAndSkuSalabality(productAndSku: (Mogobiz.Product, Mogobiz.Sku), country: Option[String], state: Option[String]): Boolean = {
     val now = DateTime.now().toLocalDate
     val sku = productAndSku._2
     val skuStartDate = sku.startDate.getOrElse(DateTime.now()).toLocalDate
     val skuEndDate = sku.stopDate.getOrElse(DateTime.now()).toLocalDate
 
-    !skuStartDate.isAfter(now) && !skuEndDate.isBefore(now)
-  }
 
-  /**
-   * Valide le panier (et décrémente les stocks)
-   * @param storeCode
-   * @param uuid
-   * @param params
-   * @param accountId
-   * @return
-   */
-  def queryCartValidate(storeCode: String, uuid: String, params: CartParameters, accountId: Option[Mogopay.Document]): Map[String, Any] = {
-    val locale = _buildLocal(params.lang, params.country)
-    val currency = queryCurrency(storeCode, params.currency)
-
-    val cart = _initCart(storeCode, uuid, accountId)
-
-    val updatedCart = _validateCart(cart)
-    val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
-    _renderCart(computeCart, currency, locale)
+    !skuStartDate.isAfter(now) && !skuEndDate.isBefore(now) && (country.isEmpty || taxRateHandler.findTaxRateByProduct(productAndSku._1, country, state).isDefined)
   }
 
   /**
@@ -199,7 +181,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
     val optCartItem = cart.cartItems.find { item => item.id == cartItemId }
     if (optCartItem.isDefined) {
@@ -241,7 +223,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
     val optCartItem = cart.cartItems.find { item => item.id == cartItemId }
     val updatedCart = if (optCartItem.isDefined) {
@@ -273,7 +255,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
     val optCoupon = CouponDao.findByCode(cart.storeCode, couponCode)
     if (optCoupon.isDefined) {
@@ -318,7 +300,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
     val optCoupon = CouponDao.findByCode(cart.storeCode, couponCode)
     if (optCoupon.isDefined) {
@@ -352,7 +334,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
     val company = CompanyDao.findByCode(cart.storeCode)
 
@@ -383,7 +365,7 @@ class CartHandler {
   }
 
   def getCartForPay(storeCode: String, uuid: String, accountId: Option[String]): CartPay = {
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, false, None, None)
 
     // Calcul des données du panier
     val cartTTC = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
@@ -433,7 +415,7 @@ class CartHandler {
                              params: CommitTransactionParameters, accountId: Option[Mogopay.Document]): Unit = {
     val locale = _buildLocal(params.lang, params.country)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, false, None, None)
 
     val productIds = cart.cartItems.map { item =>
       UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase)
@@ -479,7 +461,7 @@ class CartHandler {
     val locale = _buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = _initCart(storeCode, uuid, accountId)
+    val cart = _initCart(storeCode, uuid, accountId, false, None, None)
 
     val updatedCart = _cancelCart(_unvalidateCart(cart))
     val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
@@ -492,7 +474,7 @@ class CartHandler {
   def cleanup(index: String, querySize: Int): Unit = {
     StoreCartDao.getExpired(index, querySize).map { cart =>
       try {
-        StoreCartDao.delete(_clearCart(_removeAllUnsalabledItem(cart)))
+        StoreCartDao.delete(_clearCart(_removeAllUnsalabledItem(cart, None, None)))
       }
       catch {
         case t: Throwable => t.printStackTrace()
@@ -637,10 +619,10 @@ class CartHandler {
    * @param currentAccountId
    * @return
    */
-  private def _initCart(storeCode: String, uuid: String, currentAccountId: Option[String]): StoreCart = {
+  private def _initCart(storeCode: String, uuid: String, currentAccountId: Option[String], removeUnsalableItem: Boolean, country: Option[String], state: Option[String]): StoreCart = {
     def getOrCreateStoreCart(cart: Option[StoreCart]): StoreCart = {
       cart match {
-        case Some(c) => _removeAllUnsalabledItem(c)
+        case Some(c) => if (removeUnsalableItem) _removeAllUnsalabledItem(c, country, state) else c
         case None =>
           val c = new StoreCart(storeCode = storeCode, dataUuid = uuid, userUuid = currentAccountId)
           StoreCartDao.save(c)
@@ -649,7 +631,7 @@ class CartHandler {
     }
 
     if (currentAccountId.isDefined) {
-      val cartAnonyme = StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None);
+      val cartAnonyme = StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None).map {c =>  if (removeUnsalableItem) _removeAllUnsalabledItem(c, country, state) else c };
       val cartAuthentifie = getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, currentAccountId));
 
       // S'il y a un panier anonyme, il est fusionné avec le panier authentifié et supprimé de la base
@@ -667,14 +649,14 @@ class CartHandler {
     }
   }
 
-  private def _removeAllUnsalabledItem(cart: StoreCart): StoreCart = {
+  private def _removeAllUnsalabledItem(cart: StoreCart, country: Option[String], state: Option[String]): StoreCart = {
     val currentIndex = EsClient.getUniqueIndexByAlias(cart.storeCode).getOrElse(cart.storeCode)
     val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
     val newCartItems = DB localTx { implicit session =>
       cart.cartItems.flatMap { cartItem =>
         val cartItemWithIndex = cartItem.copy(indexEs = Option(cartItem.indexEs).getOrElse(cart.storeCode))
         val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
-        if (productAndSku.isEmpty || !_checkProductAndSkuSalabality(productAndSku.get)) {
+        if (productAndSku.isEmpty || !_checkProductAndSkuSalabality(productAndSku.get, country, state)) {
           if (cart.validate) {
             ProductDao.getProductAndSku(cartItemWithIndex.indexEs, cartItem.skuId).map { realProductAndSku =>
               indexEsAndProductsToUpdate += _unvalidateCartItem(cartItemWithIndex, realProductAndSku)
@@ -689,8 +671,11 @@ class CartHandler {
     _updateProductStockAvailability(indexEsAndProductsToUpdate.toSet)
 
     val updatedCart = cart.copy(cartItems = newCartItems)
-    StoreCartDao.save(updatedCart)
-    updatedCart
+    if (indexEsAndProductsToUpdate.size == 0) {
+      StoreCartDao.save(updatedCart)
+      updatedCart
+    }
+    else _unvalidateCart(updatedCart)
   }
 
   /**
