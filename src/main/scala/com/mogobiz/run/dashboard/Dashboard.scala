@@ -18,218 +18,84 @@ import com.mogobiz.run.model.ES.{BOCart, BOCartItem, BOProduct}
 import com.mogobiz.run.model.Mogobiz
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz._
+import com.sksamuel.elastic4s.CreateIndexDefinition
+import com.sksamuel.elastic4s.mappings.FieldType._
 import org.joda.time.DateTime
+import com.sksamuel.elastic4s.ElasticDsl._
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 object Dashboard {
 
-  /*
-  {
-    "mappings": {
-      "LinearCart": {
-        "properties": {
-          "boProductAcquittement": {
-            "type": "boolean"
-          },
-          "boProductPrice": {
-            "type": "long"
-          },
-          "boUUID": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "buyerBirthdate": {
-            "type": "long"
-          },
-          "buyerCivility": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "buyerCountry": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "buyerEmail": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "buyerRoad": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "buyerUUID": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "buyerZipCode": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "calendarType": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "cartBuyer": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "cartDateCreated": {
-            "type": "long"
-          },
-          "cartLastUpdated": {
-            "type": "long"
-          },
-          "cartStatus": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "cartTotalPrice": {
-            "type": "long"
-          },
-          "cartTransactionUUID": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "cartUUID": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "cartXDate": {
-            "format": "dateOptionalTime",
-            "type": "date"
-          },
-          "currencyCode": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "currencyRate": {
-            "type": "double"
-          },
-          "dateCreated": {
-            "type": "long"
-          },
-          "endPrice": {
-            "type": "long"
-          },
-          "isItemHidden": {
-            "type": "boolean"
-          },
-          "itemCode": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "lastUpdated": {
-            "type": "long"
-          },
-          "price": {
-            "type": "long"
-          },
-          "productDateCreated": {
-            "type": "long"
-          },
-          "productDownloadMaxDelay": {
-            "type": "long"
-          },
-          "productDownloadMaxTimes": {
-            "type": "long"
-          },
-          "productLastUpdated": {
-            "type": "long"
-          },
-          "productName": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "productCategoryPath": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "productCategoryName": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "productCategoryUUID": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "productCategoryId": {
-            "type": "long",
-          },
-          "productCategoryParentId": {
-            "type": "long",
-            "index": "not_analyzed"
-          },
-          "productNbSales": {
-            "type": "long"
-          },
-          "productStockDisplay": {
-            "type": "boolean"
-          },
-          "productType": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "productUUID": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "quantity": {
-            "type": "long"
-          },
-          "skuId": {
-            "type": "long"
-          },
-          "skuMaxOrder": {
-            "type": "long"
-          },
-          "skuMinOrder": {
-            "type": "long"
-          },
-          "skuName": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "skuNbSales": {
-            "type": "long"
-          },
-          "skuPrice": {
-            "type": "long"
-          },
-          "skuSalePrice": {
-            "type": "long"
-          },
-          "skuSku": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "skuUUID": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "tax": {
-            "type": "double"
-          },
-          "totalEndPrice": {
-            "type": "long"
-          },
-          "totalPice": {
-            "type": "long"
-          },
-          "url": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "uuid": {
-            "type": "string",
-            "index": "not_analyzed"
-          },
-          "buyerGeoCoordinates": {
-            "type": "geo_point"
-          }
-        }
-      }
-    }
+  def indexExists(indexName: String): Boolean = {
+    EsClient.exists(indexName)
   }
-   */
+
+  def createIndexWithMapping(indexName: String) = {
+    val request: CreateIndexDefinition = create index s"$indexName" mappings (
+      "LinearCart" as(
+        "boProductAcquittement" typed BooleanType,
+        "boProductPrice" typed LongType,
+        "boUUID" typed StringType index "not_analyzed",
+        "buyerBirthdate" typed LongType,
+        "buyerCivility" typed StringType index "not_analyzed",
+        "buyerCountry" typed StringType index "not_analyzed",
+        "buyerEmail" typed StringType index "not_analyzed",
+        "buyerRoad" typed StringType index "not_analyzed",
+        "buyerUUID" typed StringType index "not_analyzed",
+        "buyerZipCode" typed StringType index "not_analyzed",
+        "calendarType" typed StringType index "not_analyzed",
+        "cartBuyer" typed StringType index "not_analyzed",
+        "cartDateCreated" typed DateType,
+        "cartLastUpdated" typed DateType,
+        "cartStatus" typed StringType index "not_analyzed",
+        "cartTotalPrice" typed LongType,
+        "cartTransactionUUID" typed StringType index "not_analyzed",
+        "cartUUID" typed StringType index "not_analyzed",
+        "cartXDate" typed DateType,
+        "currencyCode" typed StringType index "not_analyzed",
+        "currencyRate" typed DoubleType,
+        "dateCreated" typed DateType,
+        "endPrice" typed LongType,
+        "isItemHidden" typed BooleanType,
+        "itemCode" typed StringType index "not_analyzed",
+        "lastUpdated" typed DateType,
+        "price" typed LongType,
+        "productDateCreated" typed DateType,
+        "productDownloadMaxDelay" typed LongType,
+        "productDownloadMaxTimes" typed LongType,
+        "productLastUpdated" typed LongType,
+        "productName" typed StringType index "not_analyzed",
+        "productCategoryPath" typed StringType index "not_analyzed",
+        "productCategoryName" typed StringType index "not_analyzed",
+        "productCategoryUUID" typed StringType index "not_analyzed",
+        "productCategoryId" typed LongType,
+        "productCategoryParentId" typed LongType,
+        "productNbSales" typed LongType,
+        "productStockDisplay" typed BooleanType,
+        "productType" typed StringType index "not_analyzed",
+        "productUUID" typed StringType index "not_analyzed",
+        "quantity" typed LongType,
+        "skuId" typed LongType,
+        "skuMaxOrder" typed LongType,
+        "skuMinOrder" typed LongType,
+        "skuName" typed StringType index "not_analyzed",
+        "skuNbSales" typed LongType,
+        "skuPrice" typed LongType,
+        "skuSalePrice" typed LongType,
+        "skuSku" typed StringType index "not_analyzed",
+        "skuUUID" typed StringType index "not_analyzed",
+        "tax" typed DoubleType,
+        "totalEndPrice" typed LongType,
+        "totalPice" typed LongType,
+        "url" typed StringType index "not_analyzed",
+        "uuid" typed StringType index "not_analyzed",
+        "buyerGeoCoordinates" typed GeoPointType
+        )
+      )
+    Await.result(EsClient().execute(request), Duration.Inf).isAcknowledged
+  }
 
   case class LinearCart(itemCode: String,
                         price: Long,
@@ -337,10 +203,13 @@ object Dashboard {
                         var lastUpdated: Date = new Date,
                         var dateCreated: Date = new Date)
 
-  def index(storeCode: String, cart: BOCart, buyerUUID: String) = {
+  def indexCart(storeCode: String, cart: BOCart, buyerUUID: String) = {
     def esDashboard(store: String): String = s"${store}_dashboard"
     val linearizedCart = linearize(cart, buyerUUID)
-    linearizedCart.foreach(cart => EsClient.index(indexName(esDashboard(storeCode)), cart, refresh = true))
+    val targetIndex = indexName(esDashboard(storeCode))
+    if (!EsClient.exists(targetIndex))
+      createIndexWithMapping(targetIndex)
+    linearizedCart.foreach(cart => EsClient.index(targetIndex, cart, refresh = false))
   }
 
 
@@ -495,9 +364,7 @@ object Dashboard {
       case "YEARLY" => Some("yyyy")
       case _ => None
     }
-    val suffix = format map (dateFormat(Calendar.getInstance(), _)) map ("_" + _) getOrElse ("")
+    val suffix = format map ("_" + dateFormat(Calendar.getInstance(), _)) getOrElse ("")
     esIndex + suffix
   }
-
-
 }
