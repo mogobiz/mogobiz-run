@@ -1,0 +1,2834 @@
+swagger: "2.0"
+info:
+  title: Mogobiz API
+  description: Make store managment easiest with the Mogobiz API
+  version: "1.0.0"
+# the domain of the service
+host: api.mogobiz.com
+# array of all schemes that your API supports
+schemes:
+  - https
+# will be prefixed to all paths
+basePath: /v1
+produces:
+  - application/json
+paths:
+# Backoffice Services
+  /listOrders:
+    get:
+      summary: get list of all orders
+      parameters:
+        - name: maxItemPerPage
+          in: query
+          description: Number of item per page.
+          required: false
+          type: number
+          format: int32
+        - name: pageOffset
+          in: query
+          description: Page number.
+          required: false
+          type: number
+          format: int32
+        - name: lastName
+          in: query
+          description: Customer name.
+          required: false
+          type: string
+        - name: email
+          in: query
+          description: Customer email.
+          required: false
+          type: string
+          format: email
+        - name: startDate
+          in: query
+          description: Order start date.
+          required: false
+          type: string
+          format: date
+        - name: endDate
+          in: query
+          description: Order end date.
+          required: false
+          type: string
+          format: date
+        - name: price
+          in: query
+          description: Order price.
+          required: false
+          type: string
+        - name: transactionStatus
+          in: query
+          description: Order status.
+          required: false
+          type: string
+        - name: deliveryStatus
+          in: query
+          description: Order delivery status.
+          required: false
+      tags:
+        - Backoffice
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: object
+            properties:
+              hasNext:
+                type: boolean
+              hasPrevious:
+                type: boolean
+              maxItemsPerPage:
+                type: integer
+                format: int32
+              pageCount:
+                type: integer
+                format: int32
+              pageOffset:
+                type: integer
+                format: int32
+              pageSize:
+                type: integer
+                format: int32
+              totalCount:
+                type: integer
+                format: int32
+              list:
+                type: array
+                items:
+                  $ref: "#/definitions/transaction"
+        401:
+          description: Unauthorized if user not connected or session expired.
+          schema:
+            $ref: "#/definitions/error"
+  /listCustomers:
+    get:
+      summary: get list of all orders
+      parameters:
+        - name: maxItemPerPage
+          in: query
+          description: Number of item per page.
+          required: false
+          type: number
+          format: int32
+        - name: pageOffset
+          in: query
+          description: Page number.
+          required: false
+          type: number
+          format: int32
+        - name: lastName
+          in: query
+          description: Customer name.
+          required: false
+          type: string
+        - name: email
+          in: query
+          description: Customer email.
+          required: false
+          type: string
+          format: email
+      tags:
+        - Backoffice
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: object
+            properties:
+              hasNext:
+                type: boolean
+              hasPrevious:
+                type: boolean
+              maxItemsPerPage:
+                type: integer
+                format: int32
+              pageCount:
+                type: integer
+                format: int32
+              pageOffset:
+                type: integer
+                format: int32
+              pageSize:
+                type: integer
+                format: int32
+              totalCount:
+                type: integer
+                format: int32
+              list:
+                type: array
+                items:
+                  $ref: "#/definitions/account"
+        401:
+          description: Unauthorized if user not connected or session expired.
+          schema:
+            $ref: "#/definitions/error"
+  /cartDetails/{transactionUuid}:
+    get:
+      summary: get list of all orders
+      parameters:
+        - name: transactionUuid
+          in: path
+          description: Transaction uuid.
+          required: true
+          type: string
+          format: uuid
+      tags:
+        - Backoffice
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: object
+            properties:
+              hasNext:
+                type: boolean
+              hasPrevious:
+                type: boolean
+              maxItemsPerPage:
+                type: integer
+                format: int32
+              pageCount:
+                type: integer
+                format: int32
+              pageOffset:
+                type: integer
+                format: int32
+              pageSize:
+                type: integer
+                format: int32
+              totalCount:
+                type: integer
+                format: int32
+              list:
+                type: array
+                items:
+                  $ref: "#/definitions/cart"
+        401:
+          description: Unauthorized if user not connected or session expired.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cartDetails/{transactionUuid}/{boCartItemUuid}:
+    post:
+      summary: Convert an html file to pdf.
+      parameters:
+        - name: transactionUuid
+          in: path
+          description: Transaction uuid.
+          required: true
+          type: string
+          format: uuid
+        - name: boCartItemUuid
+          in: path
+          description: Cart item uuid.
+          required: true
+          type: string
+          format: uuid
+        - name: params
+          in: body
+          description: Parameters needed to create carte item.
+          required: true
+          schema:
+            $ref: '#/definitions/createReturnItemParams'
+      tags:
+        - Backoffice
+      responses:
+        200:
+          description: OK.
+        404:
+          description: Not found if transaction or cart item not found.
+          schema:
+            $ref: "#/definitions/error"
+        401:
+          description: Unauthorized if user not connected or session expired.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cartDetails/{transactionUuid}/{boCartItemUuid}/{boReturnedUuid}:
+    put:
+      summary: Update returned cart item.
+      parameters:
+        - name: transactionUuid
+          in: path
+          description: Transaction uuid.
+          required: true
+          type: string
+          format: uuid
+        - name: boCartItemUuid
+          in: path
+          description: Cart item uuid.
+          required: true
+          type: string
+          format: uuid
+        - name: boReturnedUuid
+          in: path
+          description: Returnd item uuid.
+          required: true
+          type: string
+          format: uuid
+        - name: params
+          in: body
+          description: Parameters needed to register.
+          required: true
+          schema:
+            $ref: '#/definitions/updateReturnItemParams'
+      tags:
+        - Backoffice
+      responses:
+        200:
+          description: OK.
+        404:
+          description: Not found if transaction or cart item not found.
+          schema:
+            $ref: "#/definitions/error"
+        401:
+          description: Unauthorized if user not connected or session expired.
+          schema:
+            $ref: "#/definitions/error"
+
+# Brand Services
+  /brands:
+    get:
+      summary: get list of all store brands
+      parameters:
+        - name: hidden
+          in: query
+          description: Get hidden brands.
+          required: false
+          type: boolean
+        - name: categoryPath
+          in: query
+          description: to get brands of a specific category.
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: language.
+          required: false
+          type: string
+        - name: promotionId
+          in: query
+          description: Filter brands that have a promotion.
+          required: false
+          type: string
+          format: email
+        - name: size
+          in: query
+          description: Page size.
+          required: false
+          type: integer
+          format: int32
+      tags:
+        - Brand
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/brand"
+
+  /brands/id/{brandId}:
+    get:
+      summary: get brand by id
+      parameters:
+        - name: brandId
+          in: path
+          description: Brand id.
+          required: true
+          type: integer
+          format: int32
+      tags:
+        - Brand
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/brand"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+  /brands/id/{brandName}:
+    get:
+      summary: get brand by name
+      parameters:
+        - name: brandName
+          in: path
+          description: Brand name.
+          required: true
+          type: string
+      tags:
+        - Brand
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/brand"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+# Cart Services
+  /cart:
+    get:
+      summary: Get shopping cart details
+      parameters:
+        - name: currency
+          in: query
+          description: Currency code.
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Country code.
+          required: false
+          type: string
+        - name: state
+          in: query
+          description: State code.
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/shoppingCart"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart:
+    delete:
+      summary: Clear shopping cart
+      parameters:
+        - name: currency
+          in: query
+          description: Currency code.
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Country code.
+          required: false
+          type: string
+        - name: state
+          in: query
+          description: State code.
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/shoppingCart"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart/items:
+    post:
+      summary: Add items to shopping cart
+      parameters:
+        - name: params
+          in: body
+          description: Parameters needed to add a shopping cart item.
+          required: true
+          schema:
+            $ref: '#/definitions/addShoppingCartItemParams'
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/shoppingCart"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+        400:
+          description: Bad request.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart/item/{cartItemId}:
+    put:
+      summary: Update shopping cart item
+      parameters:
+        - name: cartItemId
+          in: path
+          description: Id of item to be updated.
+          required: true
+          type: string
+          format: uuid
+        - name: params
+          in: body
+          description: Parameters needed to update a shopping cart item.
+          required: true
+          schema:
+            $ref: '#/definitions/updateShoppingCartItemParams'
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/shoppingCart"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+        400:
+          description: Bad request.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart/item/{cartItemId}:
+    delete:
+      summary: Delete item from shopping cart
+      parameters:
+        - name: cartItemId
+          in: path
+          description: Id of item to be updated.
+          required: true
+          type: string
+          format: uuid
+        - name: currency
+          in: query
+          description: Currency code.
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Country code.
+          required: false
+          type: string
+        - name: state
+          in: query
+          description: State code.
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/shoppingCart"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+        400:
+          description: Bad request.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart/validate:
+    post:
+      summary: Validate shopping cart
+      parameters:
+        - name: currency
+          in: query
+          description: Currency code.
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Country code.
+          required: false
+          type: string
+        - name: state
+          in: query
+          description: State code.
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/shoppingCart"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart/coupons/{couponCode}:
+    post:
+      summary: Add a coupon to shopping cart
+      parameters:
+        - name: couponCode
+          in: path
+          description: Coupon code.
+          required: false
+          type: string
+        - name: currency
+          in: query
+          description: Currency code.
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Country code.
+          required: false
+          type: string
+        - name: state
+          in: query
+          description: State code.
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/shoppingCart"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart/coupons/{couponCode}:
+    delete:
+      summary: Delete a coupon from shopping cart
+      parameters:
+        - name: couponCode
+          in: path
+          description: Coupon code.
+          required: false
+          type: string
+        - name: currency
+          in: query
+          description: Currency code.
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Country code.
+          required: false
+          type: string
+        - name: state
+          in: query
+          description: State code.
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/shoppingCart"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart/payment/prepare:
+    post:
+      summary: Prepare payment
+      parameters:
+        - name: params
+          in: body
+          description: Parameters needed to prepare payment.
+          required: true
+          schema:
+            $ref: '#/definitions/preparePaymentParams'
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/payment"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+        400:
+          description: Bad Request.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart/payment/comit:
+    post:
+      summary: Comit payment
+      parameters:
+        - name: params
+          in: body
+          description: Parameters needed to comit payment.
+          required: true
+          schema:
+            $ref: '#/definitions/comitPaymentParams'
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+        400:
+          description: Bad Request.
+          schema:
+            $ref: "#/definitions/error"
+
+  /cart/payment/cancel:
+    post:
+      summary: Cancel payment
+      parameters:
+        - name: params
+          in: body
+          description: Parameters needed to cancel payment.
+          required: true
+          schema:
+            $ref: '#/definitions/cancelPaymentParams'
+      tags:
+        - Cart
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/shoppingCart"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+        400:
+          description: Bad Request.
+          schema:
+            $ref: "#/definitions/error"
+
+# Categories Services
+  /categories:
+    get:
+      summary: Get all categories details.
+      parameters:
+        - name: hidden
+          in: query
+          description: Search in hidden categories.
+          required: false
+          type: string
+        - name: parentId
+          in: query
+          description: Get sub categories of a category parent.
+          required: false
+          type: string
+          fomat: uuid
+        - name: categoryPath
+          in: query
+          description: Get categories by path.
+          required: false
+          type: string
+        - name: brandId
+          in: query
+          description: Get categories for brand.
+          required: false
+          type: string
+          fomat: uuid
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+        - name: promotionId
+          in: query
+          description: Get categories by promotion.
+          required: false
+          type: string
+          fomat: uuid
+        - name: size
+          in: query
+          description: Returned list size.
+          required: false
+          type: integer
+          fomat: int32
+      tags:
+        - Categories
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/detailedCategory"
+
+  /categories/{categoryId}:
+    get:
+      summary: Get details of a category.
+      parameters:
+        - name: categoryId
+          in: path
+          description: Categroy id.
+          required: false
+          type: string
+        - name: hidden
+          in: query
+          description: Search in hidden categories.
+          required: false
+          type: string
+        - name: parentId
+          in: query
+          description: Get sub categories of a category parent.
+          required: false
+          type: string
+          fomat: uuid
+        - name: categoryPath
+          in: query
+          description: Get categories by path.
+          required: false
+          type: string
+        - name: brandId
+          in: query
+          description: Get categories for brand.
+          required: false
+          type: string
+          fomat: uuid
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+        - name: promotionId
+          in: query
+          description: Get categories by promotion.
+          required: false
+          type: string
+          fomat: uuid
+        - name: size
+          in: query
+          description: Returned list size.
+          required: false
+          type: integer
+          fomat: int32
+      tags:
+        - Categories
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/detailedCategory"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+# Countries Services
+  /countries:
+    get:
+      summary: Get a list of all countries.
+      tags:
+        - Countries
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/country"
+
+  /countries/{countryCode}:
+    get:
+      summary: Get country details.
+      parameters:
+        - name: countryCode
+          in: path
+          description: Country code.
+          required: true
+          type: string
+      tags:
+        - Countries
+      responses:
+        200:
+          description: Ok.
+          schema:
+              $ref: "#/definitions/country"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+# Currencies Services
+  /currencies:
+    get:
+      summary: Get a list of all currencies.
+      tags:
+        - Currencies
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/currency"
+
+  /currencies/{currencyCode}:
+    get:
+      summary: Get country details.
+      parameters:
+        - name: currencyCode
+          in: path
+          description: Currency code.
+          required: true
+          type: string
+      tags:
+        - Currencies
+      responses:
+        200:
+          description: Ok.
+          schema:
+              $ref: "#/definitions/currency"
+        404:
+          description: Not found.
+          schema:
+            $ref: "#/definitions/error"
+
+# Language Services
+  /langs:
+    get:
+      summary: Get languages list.
+      tags:
+        - Lang
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              type: string
+
+# Logo Services
+  /logos/{brandId}:
+    get:
+      summary: Get brand logo.
+      parameters:
+        - name: brandId
+          in: path
+          description: Brand id.
+          required: true
+          type: string
+          type: uuid
+      tags:
+        - Logos
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: file
+
+
+
+
+
+
+
+
+
+
+
+
+definitions:
+# General Definitions
+  currency:
+    type: object
+    required:
+      - uuid
+      - currencyCode
+      - currencyRate
+      - currencyFractionDigits
+      - activationDate
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      currencyCode:
+        type: string
+      currencyRate:
+        type: number
+        format: float
+      currencyFractionDigits:
+        type: integer
+        format: int32
+      activationDate:
+        type: integer
+        format: int64
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+
+  country:
+    type: object
+    required:
+      - uuid
+      - code
+      - name
+      - shipping
+      - billing
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      code:
+        type: string
+      name:
+        type: string
+      shipping:
+        type: boolean
+      billing:
+        type: boolean
+      zipCodeRegex:
+        type: string
+      currencyCode:
+        type: string
+      currencyNumericCode:
+        type: string
+        format: int32
+      currencyName:
+        type: string
+      phoneCode:
+        type: string
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+
+  sku:
+    type: object
+    required:
+      - id
+      - uuid
+      - sku
+      - name
+      - price
+      - salePrice
+      - minOrder
+      - maxOrder
+      - coupons
+      - nbSales
+    properties:
+      id:
+        type: integer
+        format: int64
+      uuid:
+        type: string
+        format: uuid
+      sku:
+        type: string
+      name:
+        type: string
+      price:
+        type: integer
+        format: int64
+      salePrice:
+        type: integer
+        format: int64
+      minOrder:
+        type: integer
+        format: int64
+      maxOrder:
+        type: integer
+        format: int64
+      availabilityDate:
+        type: string
+        format: date
+      startDate:
+        type: string
+        format: date
+      stopDate:
+        type: string
+        format: date
+      coupons:
+        type: array
+        items:
+          $ref: "#/definitions/couponId"
+      nbSales:
+        type: integer
+        format: int64
+
+  couponId:
+    type: object
+    required:
+      - id
+    properties:
+      id:
+        type: integer
+        format: int64
+
+  brand:
+    type: object
+    required:
+      - id
+      - picture
+      - twitter
+      - hide
+      - website
+      - smallPicture
+      - description
+      - name
+      - increments
+    properties:
+      id:
+        type: integer
+        format: int32
+      picture:
+        type: string
+        format: url
+      twitter:
+        type: string
+      path:
+        type: string
+      hide:
+        type: boolean
+      smallPicture:
+        type: string
+        format: url
+      description:
+        type: string
+      name:
+        type: string
+      increments:
+        type: integer
+        format: int32
+
+  shipping:
+    type: object
+    required:
+      - id
+      - weight
+      - weightUnit
+      - width
+      - height
+      - depth
+      - linearUnit
+      - amount
+      - free
+    properties:
+      id:
+        type: integer
+        format: int64
+      weight:
+        type: integer
+        format: int64
+      weightUnit:
+        $ref: "#/definitions/weightUnit"
+      width:
+        type: integer
+        format: int64
+      height:
+        type: integer
+        format: int64
+      depth:
+        type: integer
+        format: int64
+      linearUnit:
+        $ref: "#/definitions/linearUnit"
+      amount:
+        type: integer
+        format: int64
+      free:
+        type: boolean
+
+  detailedCategory:
+    type: object
+    required:
+      - uuid
+      - id
+      - parentId
+      - path
+      - name
+      - keywords
+      - description
+      - increments
+      - hide
+      - position
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      id:
+        type: integer
+        format: int64
+      path:
+        type: string
+      name:
+        type: string
+      keywords:
+        type: string
+      description:
+        type: string
+      increments:
+        type: integer
+        format: int32
+      hide:
+        type: boolean
+      position:
+        type: integer
+        format: int32
+      coupons:
+        type: array
+        items:
+          $ref: "#/definitions/couponId"
+
+  error:
+    type: object
+    required:
+      - code
+      - message
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+
+# Account Definitions
+  account:
+    type: object
+    required:
+      - uuid
+      - email
+      - password
+      - status
+      - loginFailedCount
+      - waitingPhoneSince
+      - waitingEmailSince
+      - roles
+      - shippingAddresses
+      - secret
+      - creditCards
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      firstName:
+        type: string
+      lastName:
+        type: string
+      civility:
+        $ref: "#/definitions/civility"
+      birthDate:
+        type: string
+        format: date
+      email:
+        type: string
+        format: email
+      password:
+        type: string
+        format: password
+      company:
+        type: string
+      website:
+        type: string
+        format: url
+      owner:
+        type: string
+        format: uuid
+      secret:
+        type: string
+        format: uuid
+      loginFailedCount:
+        type: integer
+        format: int32
+      waitingPhoneSince:
+        type: integer
+        format: int64
+      waitingEmailSince:
+        type: integer
+        format: int64
+      extra:
+        type: string
+        format: date
+      lastLogin:
+        type: string
+      emailingToken:
+        type: string
+      walletId:
+        type: string
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+      address:
+        $ref: "#/definitions/accountAddress"
+      status:
+        $ref: "#/definitions/accountStatus"
+      paymentConfig:
+        $ref: "#/definitions/paymentConfig"
+      country:
+        $ref: "#/definitions/country"
+      roles:
+        type: array
+        items:
+          $ref: "#/definitions/roles"
+      shippingAddresses:
+        type: array
+        items:
+          $ref: "#/definitions/shippingAddress"
+      creditCards:
+        type: array
+        items:
+          $ref: "#/definitions/creditCard"
+      isCustomer:
+        type: boolean
+      isMerchant:
+        type: boolean
+
+  shippingAddress:
+    type: object
+    required:
+      - uuid
+      - active
+      - address
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      active:
+        type: boolean
+      address:
+        $ref: "#/definitions/accountAddress"
+
+  accountAddress:
+    type: object
+    required:
+      - road
+      - city
+    properties:
+      road:
+        type: string
+      road2:
+        type: string
+      city:
+        type: string
+      zipCode:
+        type: string
+        format: int32
+      extra:
+        type: string
+      civility:
+        $ref: "#/definitions/civility"
+      firstName:
+        type: string
+      lastName:
+        type: string
+      company:
+        type: string
+      telephone:
+        $ref: "#/definitions/telephone"
+      country:
+        type: string
+      admin1:
+        type: string
+      admin2:
+        type: string
+      geoCoordinates:
+        type: string
+
+  telephone:
+    type: object
+    required:
+      - phone
+      - lphone
+      - isoCode
+      - status
+    properties:
+      phone:
+        type: string
+        format: phone
+      lphone:
+        type: string
+        format: int32
+      isoCode:
+        type: string
+        format: int32
+      pinCode3:
+        type: string
+        format: int32
+      status:
+        $ref: "#/definitions/telephoneStatus"
+
+  creditCard:
+    type: object
+    required:
+      - uuid
+      - number
+      - holder
+      - expiryDate
+      - cardType
+      - hiddenNumber
+      - account
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      number:
+        type: string
+      holder:
+        type: string
+      expiryDate:
+        type: string
+        format: date
+      cardType:
+        $ref: "#/definitions/creditCardType"
+      hiddenNumber:
+        type: string
+      account:
+        type: string
+        format: uuid
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+
+# Payment Definitions
+  paymentConfig:
+    type: object
+    required:
+      - cbProvider
+      - paymentMethod
+      - emailField
+      - passwordField
+      - dateCreated
+      - lastUpdated
+    properties:
+      kwixoParam:
+        type: string
+      paypalParam:
+        type: string
+      applePayParam:
+        type: string
+      cbParam:
+        type: string
+      cbProvider:
+        $ref: "#/definitions/cbProvider"
+      paymentMethod:
+        $ref: "#/definitions/paymentMethod"
+      emailField:
+        type: string
+      passwordField:
+        type: string
+      senderName:
+        type: string
+      senderEmail:
+        type: string
+      callbackPrefix:
+        type: string
+      passwordPattern:
+        type: string
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+      pwdEmailContent:
+        type: string
+      pwdEmailSubject:
+        type: string
+      groupPaymentInfo:
+        $ref: "#/definitions/groupPaymentInfo"
+
+  groupPaymentInfo:
+    type: object
+    required:
+      - returnURLforNextPayers
+      - successURL
+      - failureURL
+    properties:
+      returnURLforNextPayers:
+        type: string
+      successURL:
+        type: string
+        format: url
+      failureURL:
+        type: string
+        format: url
+
+# Transaction Definitions
+  transaction:
+    type: object
+    required:
+      - uuid
+      - transactionUUID
+      - groupPaymentRefundPercentage
+      - authorizationId
+      - amount
+      - currency
+      - status
+      - paymentData
+      - merchantConfirmation
+      - modifications
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      transactionUUID:
+        type: string
+        format: uuid
+      groupTransactionUUID:
+        type: string
+        format: uuid
+      groupPaymentExpirationDate:
+        type: integer
+        format: int64
+      groupPaymentRefundPercentage:
+        type: integer
+        format: int32
+      authorizationId:
+        type: strnig
+      transactionDate:
+        type: strnig
+        format: date
+      amount:
+        type: integer
+        format: int64
+      currency:
+        $ref: "#/definitions/cartRate"
+      status:
+        $ref: "#/definitions/transactionStatus"
+      endDate:
+        type: strnig
+        format: date
+      paymentData:
+        $ref: "#/definitions/paymentData"
+      merchantConfirmation:
+        type: boolean
+      email:
+        type: strnig
+        format: email
+      errorCodeOrigin:
+        type: strnig
+      errorMessageOrigin:
+        type: strnig
+      extra:
+        type: strnig
+      description:
+        type: strnig
+      gatewayData:
+        type: strnig
+      creditCard:
+        $ref: "#/definitions/creditCard"
+      shipping:
+        type: strnig
+      shippingTrackingNumber:
+        type: strnig
+      vendor:
+        $ref: "#/definitions/account"
+      customer:
+        $ref: "#/definitions/account"
+      modifications:
+        type: array
+        items:
+          $ref: "#/definitions/modificationStatus"
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+      creationDate:
+        type: string
+        format: date
+      deliveryStatus:
+        type: array
+        items:
+          $ref: "#/definitions/deliveryStatus"
+
+  paymentData:
+    type: object
+    required:
+      - paymentType
+      - cbProvider
+    properties:
+      paymentType:
+        $ref: "#/definitions/paymentType"
+      cbProvider:
+        $ref: "#/definitions/cbProvider"
+      transactionSequence:
+        type: string
+      orderDate:
+        type: string
+        format: date
+      status3DS:
+        $ref: "#/definitions/status3DS"
+      transactionId:
+        type: string
+      authorizationId:
+        type: string
+
+  modificationStatus:
+    type: object
+    required:
+      - uuid
+      - xdate
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      xdate:
+        type: string
+        format: date
+      ipAddr:
+        type: string
+      oldStatus:
+        $ref: "#/definitions/transactionStatus"
+      newStatus:
+        $ref: "#/definitions/transactionStatus"
+      comment:
+        type: string
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+		
+  transactionLog:
+    type: object
+    required:
+      - uuid
+      - direction
+      - provider
+      - transaction
+      - step
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      direction:
+        type: string
+        format: IN|OUT
+      provider:
+        type: string
+        format: NONE|AUTHORIZENET|PAYLINE|PAYBOX|SIPS|SYSTEMPAY
+      transaction:
+        type: string
+        format: uuid
+      step:
+          $ref: "#/definitions/transactionStep"
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+
+  cartRate:
+    type: object
+    required:
+      - code
+      - numericCode
+      - rate
+      - fractionDigits
+    properties:
+      code:
+        type: string
+      numericCode:
+        type: integer
+        format: int32
+      rate:
+        type: number
+        format: double
+      fractionDigits:
+        type: integer
+        format: int32
+
+# Cart Definitions
+  cart:
+    type: object
+    required:
+      - uuid
+      - buyer
+      - xdate
+      - price
+      - status
+      - currencyCode
+      - currencyRate
+      - cartItems
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      transactionUuid:
+        type: string
+        format: uuid
+      buyer:
+        type: string
+        format: email
+      xdate:
+        type: string
+        format: date
+      price:
+        type: integer
+        format: int64
+      status:
+        $ref: "#/definitions/cartTransactionStatus"
+      currencyCode:
+        type: string
+      currencyRate:
+        type: number
+        format: double
+      cartItems:
+        type: array
+        items:
+          $ref: "#/definitions/cartItem"
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+
+  cartItem:
+    type: object
+    required:
+      - uuid
+      - code
+      - price
+      - tax
+      - endPrice
+      - totalPrice
+      - totalEndPrice
+      - hidden
+      - quantity
+      - sku
+      - principal
+      - secondary
+      - bODelivery
+      - bOReturnedItems
+      - url
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      code:
+        type: string
+      price:
+        type: integer
+        format: int64
+      tax:
+        type: number
+        format: double
+      endPrice:
+        type: integer
+        format: int64
+      totalPrice:
+        type: integer
+        format: int64
+      totalEndPrice:
+        type: integer
+        format: int64
+      hidden:
+        type: boolean
+      quantity:
+        type: integer
+        format: int32
+      startDate:
+        type: string
+        format: date
+      endDate:
+        type: string
+        format: date
+      sku:
+        $ref: "#/definitions/sku"
+      principal:
+        $ref: "#/definitions/boProduct"
+      secondary:
+        type: array
+        items:
+          $ref: "#/definitions/boProduct"
+      bODelivery:
+        $ref: "#/definitions/delivery"
+      bOReturnedItems:
+        type: array
+        items:
+          $ref: "#/definitions/returnedItem"
+      url:
+        type: string
+        format: url
+
+  delivery:
+    type: object
+    required:
+      - uuid
+      - status
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      tracking:
+        type: string
+      extra:
+        type: string
+      status:
+          $ref: "#/definitions/deliveryStatus"
+
+  returnedItem:
+    type: object
+    required:
+      - uuid
+      - quantity
+      - refunded
+      - totalRefunded
+      - status
+      - returns
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      quantity:
+        type: integer
+        format: int32
+      refunded:
+        type: integer
+        format: int64
+      totalRefunded:
+        type: integer
+        format: int64
+      status:
+          $ref: "#/definitions/returnedItemStatus"
+      returns:
+        type: array
+        items:
+          $ref: "#/definitions/return"
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+
+  return:
+    type: object
+    required:
+      - uuid
+      - status
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      motivation:
+        type: string
+      status:
+          $ref: "#/definitions/returnStatus"
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+
+  boProduct:
+    type: object
+    required:
+      - uuid
+      - acquittement
+      - principal
+      - price
+      - product
+      - registeredCartItem
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      acquittement:
+        type: boolean
+      principal:
+        type: boolean
+      price:
+        type: integer
+        format: int64
+      product:
+        $ref: "#/definitions/product"
+      registeredCartItem:
+        type: array
+        items:
+          $ref: "#/definitions/registeredCartItem"
+
+  registeredCartItem:
+    type: object
+    required:
+      - uuid
+      - age
+      - quantity
+      - price
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      age:
+        type: integer
+        format: int32
+      quantity:
+        type: integer
+        format: int32
+      price:
+        type: integer
+        format: int64
+      ticketType:
+        type: string
+      firstname:
+        type: string
+      lastname:
+        type: string
+      email:
+        type: string
+        format: email
+      phone:
+        type: string
+      birthdate:
+        type: string
+        format: date
+      shortCode:
+        type: string
+      startDate:
+        type: string
+        format: date
+      endDate:
+        type: string
+        format: date
+
+# Shopping Cart Definitions
+  shoppingCart:
+    type: object
+    required:
+      - cartItemVOs
+      - coupons
+      - count
+      - price
+      - endPrice
+      - finalPrice
+      - formatedPrice
+      - formatedEndPrice
+      - formatedFinalPrice
+      - reduction
+      - formatedReduction
+    properties:
+      cartItemVOs:
+        type: array
+        items:
+          $ref: "#/definitions/shoppingCartItem"
+      coupons:
+        type: array
+        items:
+          $ref: "#/definitions/shoppingCartCoupons"
+      count:
+        type: integer
+        format: int32
+      price:
+        type: integer
+        format: int64
+      endPrice:
+        type: integer
+        format: int64
+      finalPrice:
+        type: integer
+        format: int64
+      formatedPrice:
+        type: string
+      formatedEndPrice:
+        type: string
+      formatedFinalPrice:
+        type: string
+      reduction:
+        type: integer
+        format: int64
+      formatedReduction:
+        type: string
+      validateUuid:
+        type: string
+        format: uuid
+
+  shoppingCartCoupons:
+    type: object
+    required:
+      - id
+      - name
+      - code
+      - rules
+      - active
+      - anonymous
+      - catalogWise
+      - description
+      - pastille
+      - price
+      - formatedPrice
+      - promotion
+      - consumed
+      - imported
+    properties:
+      id:
+        type: integer
+        format: int32
+      name:
+        type: string
+      code:
+        type: string
+      rules:
+        type: array
+        items:
+          $ref: "#/definitions/shoppingCartCouponsRules"
+      active:
+        type: boolean
+      anonymous:
+        type: boolean
+      catalogWise:
+        type: boolean
+      description:
+        type: string
+      pastille:
+        type: string
+      startDate:
+        type: string
+        format: date
+      endDate:
+        type: string
+        format: date
+      numberOfUses:
+        type: integer
+        format: int64
+      sold:
+        type: integer
+        format: int64
+      price:
+        type: integer
+        format: int64
+      formatedPrice:
+        type: string
+      consumed:
+        type: integer
+        format: int32
+      imported:
+        type: string
+        format: date
+
+  shoppingCartCouponsRules:
+    type: object
+    required:
+      - id
+      - xtype
+    properties:
+      id:
+        type: integer
+        format: int32
+      xtype:
+        $ref: "#/definitions/ReductionRuleType"
+      discount:
+        type: string
+      quantityMin:
+        type: integer
+        format: int64
+      quantityMax:
+        type: integer
+        format: int64
+      xPurchased:
+        type: integer
+        format: int64
+      yOffered:
+        type: integer
+        format: int64
+
+  shoppingCartItem:
+    type: object
+    required:
+      - id
+      - productId
+      - productName
+      - xtype
+      - calendarType
+      - skuId
+      - skuName
+      - quantity
+      - price
+      - totalPrice
+      - formatedPrice
+      - formatedTotalPrice
+      - salePrice
+      - saleTotalPrice
+      - formatedSalePrice
+      - formatedSaleTotalPrice
+      - registeredCartItemVOs
+      - downloadableLink
+    properties:
+      id:
+        type: string
+        format: uuid
+      productId:
+        type: integer
+        format: int64
+      productName:
+        type: string
+      xtype:
+        $ref: "#/definitions/productType"
+      calendarType:
+        $ref: "#/definitions/productCalendar"
+      skuId:
+        type: integer
+        format: int64
+      skuName:
+        type: string
+      quantity:
+        type: integer
+        format: int32
+      price:
+        type: integer
+        format: int64
+      totalPrice:
+        type: integer
+        format: int64
+      salePrice:
+        type: integer
+        format: int64
+      saleTotalPrice:
+        type: integer
+        format: int64
+      endPrice:
+        type: integer
+        format: int64
+      totalEndPrice:
+        type: integer
+        format: int64
+      saleEndPrice:
+        type: integer
+        format: int64
+      saleTotalEndPrice:
+        type: integer
+        format: int64
+      formatedPrice:
+        type: string
+      formatedTotalPrice:
+        type: string
+      formatedSalePrice:
+        type: string
+      formatedSaleTotalPrice:
+        type: string
+      formatedEndPrice:
+        type: string
+      formatedTotalEndPrice:
+        type: string
+      formatedSaleEndPrice:
+        type: string
+      formatedSaleTotalEndPrice:
+        type: string
+      registeredCartItemVOs:
+        type: array
+        items:
+          $ref: "#/definitions/shoppingRegisteredCartItem"
+      downloadableLink:
+        type: string
+      startDate:
+        type: string
+        format: date
+      startDate:
+        type: string
+        format: endDate
+      shipping:
+        $ref: "#/definitions/shipping"
+
+  shoppingRegisteredCartItem:
+    type: object
+    required:
+      - cartItemId
+      - id
+      - email
+    properties:
+      cartItemId:
+        type: string
+        format: uuid
+      id:
+        type: string
+        format: uuid
+      email:
+        type: string
+        format: email
+      firstname:
+        type: string
+      lastname:
+        type: string
+      phone:
+        type: string
+      birthdate:
+        type: string
+        format: date
+      qrCodeContent:
+        type: string
+
+# Product Definitions
+  product:
+    type: object
+    required:
+      - id
+      - uuid
+      - name
+      - xtype
+      - calendarType
+      - stockDisplay
+      - skus
+      - nbSales
+      - downloadMaxTimes
+      - downloadMaxDelay
+      - category
+      - dateCreated
+      - lastUpdated
+    properties:
+      id:
+        type: integer
+        format: int64
+      uuid:
+        type: string
+        format: uuid
+      name:
+        type: string
+      xtype:
+        $ref: "#/definitions/productType"
+      calendarType:
+        $ref: "#/definitions/productCalendar"
+      taxRate:
+        $ref: "#/definitions/taxRate"
+      shipping:
+        $ref: "#/definitions/shipping"
+      stockDisplay:
+        type: boolean
+      startDate:
+        type: string
+        format: date
+      stopDate:
+        type: string
+        format: date
+      availabilityDate:
+        type: string
+        format: date
+      skus:
+        type: array
+        items:
+          $ref: "#/definitions/sku"
+      intraDayPeriods:
+        type: array
+        items:
+          $ref: "#/definitions/intraDayPeriod"
+      datePeriods:
+        type: array
+        items:
+          $ref: "#/definitions/datePeriod"
+      poi:
+        $ref: "#/definitions/poi"
+      nbSales:
+        type: integer
+        format: int64
+      downloadMaxTimes:
+        type: integer
+        format: int64
+      downloadMaxDelay:
+        type: integer
+        format: int64
+      category:
+        $ref: "#/definitions/category"
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date
+
+  taxRate:
+    type: object
+    required:
+      - id
+      - name
+      - localTaxRates
+    properties:
+      id:
+        type: integer
+        format: int64
+      name:
+        type: string
+      localTaxRates:
+        type: array
+        items:
+          $ref: "#/definitions/localTaxRate"
+
+  localTaxRate:
+    type: object
+    required:
+      - id
+      - rate
+      - countryCode
+      - stateCode
+    properties:
+      id:
+        type: integer
+        format: int64
+      rate:
+        type: number
+        format: float
+      countryCode:
+        type: string
+      stateCode:
+        type: string
+
+  intraDayPeriod:
+    type: object
+    required:
+      - id
+      - startDate
+      - endDate
+      - weekday1
+      - weekday2
+      - weekday3
+      - weekday4
+      - weekday5
+      - weekday6
+      - weekday7
+    properties:
+      id:
+        type: integer
+        format: int64
+      startDate:
+        type: string
+        format: date
+      endDate:
+        type: string
+        format: date
+      weekday1:
+        type: boolean
+      weekday2:
+        type: boolean
+      weekday3:
+        type: boolean
+      weekday4:
+        type: boolean
+      weekday5:
+        type: boolean
+      weekday6:
+        type: boolean
+      weekday7:
+        type: boolean
+
+  datePeriod:
+    type: object
+    required:
+      - startDate
+      - endDate
+    properties:
+      startDate:
+        type: string
+        format: date
+      endDate:
+        type: string
+        format: date
+
+  poi:
+    type: object
+    required:
+      - description
+      - name
+      - xtype
+      - location
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      xtype:
+        type: string
+      location:
+        $ref: "#/definitions/location"
+
+  location:
+    type: object
+    required:
+      - latitude
+      - longitude
+    properties:
+      latitude:
+        type: number
+        format: double
+      longitude:
+        type: number
+        format: double
+      postalCode:
+        type: string
+      road1:
+        type: string
+      road2:
+        type: string
+      road3:
+        type: string
+      roadNum:
+        type: string
+      city:
+        type: string
+      state:
+        type: string
+      country:
+        $ref: "#/definitions/locationCountry"
+
+  locationCountry:
+    type: object
+    required:
+      - code
+      - name
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+
+  category:
+    type: object
+    required:
+      - uuid
+      - id
+      - path
+      - name
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      id:
+        type: integer
+        format: int32
+      parentId:
+        type: integer
+        format: int32
+      path:
+        type: string
+      name:
+        type: string
+
+# Payment Definitions
+  payment:
+    type: object
+    required:
+      - amount
+      - currencyCode
+      - currencyRate
+      - transactionExtra
+      - cartProvider
+      - cartKeys
+    properties:
+      amount:
+        type: integer
+        format: int64
+      currencyCode:
+        type: string
+      currencyRate:
+        type: number
+        format: float
+      transactionExtra:
+        $ref: "#/definitions/paymentShoppingCart"
+      cartProvider:
+        type: string
+      cartKeys:
+        type: string
+
+  paymentShoppingCart:
+    type: object
+    required:
+      - cartItemVOs
+      - coupons
+      - count
+      - price
+      - endPrice
+      - finalPrice
+      - formatedPrice
+      - formatedEndPrice
+      - formatedFinalPrice
+      - reduction
+      - formatedReduction
+      - boCartUuid
+      - transactionUuid
+    properties:
+      cartItemVOs:
+        type: array
+        items:
+          $ref: "#/definitions/shoppingCartItem"
+      coupons:
+        type: array
+        items:
+          $ref: "#/definitions/shoppingCartCoupons"
+      count:
+        type: integer
+        format: int32
+      price:
+        type: integer
+        format: int64
+      endPrice:
+        type: integer
+        format: int64
+      finalPrice:
+        type: integer
+        format: int64
+      formatedPrice:
+        type: string
+      formatedEndPrice:
+        type: string
+      formatedFinalPrice:
+        type: string
+      reduction:
+        type: integer
+        format: int64
+      formatedReduction:
+        type: string
+      validateUuid:
+        type: string
+        format: uuid
+      boCartUuid:
+        type: string
+        format: uuid
+      transactionUuid:
+        type: string
+        format: uuid
+
+# Defined Value Objects
+  cbProvider:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: NONE|AUTHORIZENET|PAYLINE|PAYBOX|SIPS|SYSTEMPAY
+
+  paymentMethod:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: EXTERNAL|THREEDS_NO|THREEDS_IF_AVAILABLE|THREEDS_REQUIRED
+
+  civility:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: MR|MRS
+
+  accountStatus:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: ACTIVE|INACTIVE|WAITING_ENROLLMENT
+
+  telephoneStatus:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: ACTIVE|INACTIVE|WAITING_ENROLLMENT
+
+  creditCardType:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: CB|VISA|MASTER_CARD|DISCOVER|AMEX|SWITCH|SOLO|OTHER
+
+  roles:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: ANONYMOUS|ADMINISTRATOR|CUSTOMER|MERCHANT
+
+  paymentType:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: NONE|CREDIT_CARD|PAYPAL
+
+  status3DS:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: APPROVED|REFUSED|INVALID|ERROR
+
+  transactionStatus:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        format: INITIATED|VERIFICATION_THREEDS|THREEDS_TESTED|PAYMENT_REQUESTED|PAYMENT_CONFIRMED|PAYMENT_REFUSED|CANCEL_REQUESTED|CANCEL_FAILED|CANCEL_CONFIRMED|CUSTOMER_REFUNDED
+
+  cartTransactionStatus:
+    type: string
+    format: PENDING|PAYMENT_NOT_INITIATED|FAILED|COMPLETE
+
+  deliveryStatus:
+    type: string
+    format: NOT_STARTED|IN_PROGRESS|DELIVERED|RETURNED|CANCELED
+
+  returnedItemStatus:
+    type: string
+    format: UNDEFINED|NOT_AVAILABLE|BACK_TO_STOCK|DISCARDED
+
+  returnStatus:
+    type: string
+    format: RETURN_SUBMITTED|RETURN_TO_BE_RECEIVED|RETURN_RECEIVED|RETURN_REFUSED|RETURN_ACCEPTED
+
+  productType:
+    type: string
+    format: SERVICE|PRODUCT|DOWNLOADABLE|PACKAGE|OTHER
+
+  productCalendar:
+    type: string
+    format: NO_DATE|DATE_ONLY|DATE_TIME
+
+  weightUnit:
+    type: string
+    format: KG|LB|G
+
+  linearUnit:
+    type: string
+    format: CM|IN
+
+  ReductionRuleType:
+    type: string
+    format: DISCOUNT|X_PURCHASED_Y_OFFERED
+
+# Post Parameters Definitions
+  createReturnItemParams:
+    type: object
+    required:
+      - quantity
+      - motivation
+    properties:
+      quantity:
+        type: integer
+        format: int32
+      motivation:
+        type: string
+
+  updateReturnItemParams:
+    type: object
+    required:
+      - status
+      - refunded
+      - totalRefunded
+      - returnStatus
+      - motivation
+    properties:
+      status:
+        type: string
+      refunded:
+        type: integer
+        format: int32
+      totalRefunded:
+        type: integer
+        format: int32
+      motivation:
+        type: string
+      returnStatus:
+        type: string
+
+  addShoppingCartItemParams:
+    type: object
+    required:
+      - skuId
+      - productUrl
+      - quantity
+    properties:
+      currency:
+        type: string
+      country:
+        type: string
+      state:
+        type: string
+      lang:
+        type: string
+      uuid:
+        type: string
+        format: uuid
+      skuId:
+        type: integer
+        format: int64
+      productUrl:
+        type: string
+        format: url
+      quantity:
+        type: integer
+        format: int32
+      dateTime:
+        type: string
+        format: date
+      registeredCartItems:
+        type: array
+        items:
+          $ref: "#/definitions/addShoppingRegisteredCartItemParams"
+
+  addShoppingRegisteredCartItemParams:
+    type: object
+    required:
+      - email
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      email:
+        type: string
+        format: email
+      firstname:
+        type: string
+      lastname:
+        type: string
+      phone:
+        type: string
+      birthdate:
+        type: string
+        format: date
+
+  updateShoppingCartItemParams:
+    type: object
+    required:
+      - quantity
+    properties:
+      currency:
+        type: string
+      country:
+        type: string
+      state:
+        type: string
+      lang:
+        type: string
+      quantity:
+        type: integer
+        format: int32
+
+  preparePaymentParams:
+    type: object
+    required:
+      - buyer
+      - shippingAddress
+    properties:
+      currency:
+        type: string
+      country:
+        type: string
+      state:
+        type: string
+      buyer:
+        type: string
+      shippingAddress:
+        type: string
+      lang:
+        type: string
+
+  cancelPaymentParams:
+    type: object
+    properties:
+      currency:
+        type: string
+      country:
+        type: string
+      state:
+        type: string
+      lang:
+        type: string
+
+  comitPaymentParams:
+    type: object
+    required:
+      - transactionUuid
+    properties:
+      transactionUuid:
+        type: string
+        format: uuid
+      country:
+        type: string
+      lang:
+        type: string
