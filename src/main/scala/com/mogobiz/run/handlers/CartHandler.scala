@@ -458,7 +458,7 @@ class CartHandler {
           val updatedCart = StoreCart(storeCode = transactionCart.storeCode, dataUuid = transactionCart.dataUuid, userUuid = transactionCart.userUuid)
           StoreCartDao.save(updatedCart)
 
-          accountId.map(Dashboard.index(storeCode, boCartToESBOCart(storeCode, transactionBoCart), _))
+          accountId.map(Dashboard.indexCart(storeCode, boCartToESBOCart(storeCode, transactionBoCart), _))
 
           _notifyCartCommit(transactionCart.storeCode, boCart.buyer, transactionCart, locale)
         }
