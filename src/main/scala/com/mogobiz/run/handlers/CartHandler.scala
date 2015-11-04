@@ -5,7 +5,7 @@
 package com.mogobiz.run.handlers
 
 import java.io.ByteArrayOutputStream
-import java.util.{UUID, Locale}
+import java.util.{Calendar, UUID, Locale}
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
@@ -32,6 +32,7 @@ import com.mogobiz.run.utils.Utils
 import com.mogobiz.utils.{QRCodeUtils, SymmetricCrypt}
 import com.sksamuel.elastic4s.ElasticDsl.{get, tuple2indexestypes}
 import com.sun.org.apache.xml.internal.security.utils.Base64
+import org.apache.commons.lang.time.DateUtils
 import org.elasticsearch.common.bytes.ChannelBufferBytesReference
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -143,7 +144,7 @@ class CartHandler {
       )
     }
 
-    val salePrice = if (sku.salePrice > 0) sku.salePrice else sku.price
+    val salePrice = Math.max(sku.salePrice, 0)
     val indexEs = EsClient.getUniqueIndexByAlias(storeCode).getOrElse(storeCode)
     val cartItem = StoreCartItem(indexEs, newCartItemId, product.id, product.name, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
       sku.price, salePrice, startDate, endDate, registeredItems, product.shipping, None, None)
@@ -845,7 +846,17 @@ class CartHandler {
    */
   private def _findCartItem(cart: StoreCart, cartItem: StoreCartItem): Option[StoreCartItem] = {
     if (cartItem.xtype == ProductType.SERVICE) None
-    else cart.cartItems.find { ci: StoreCartItem => ci.productId == cartItem.productId && ci.skuId == cartItem.skuId }
+    else cart.cartItems.find { ci: StoreCartItem =>
+      ci.productId == cartItem.productId &&
+      ci.skuId == cartItem.skuId &&
+      isSameDateTime(ci, cartItem)
+    }
+  }
+
+  private def isSameDateTime(cartItem1: StoreCartItem, cartItem2: StoreCartItem): Boolean = {
+    val now = DateTime.now()
+    cartItem1.startDate.getOrElse(now).withMillisOfSecond(0).withSecondOfMinute(0).isEqual(cartItem2.startDate.getOrElse(now).withMillisOfSecond(0).withSecondOfMinute(0)) &&
+      cartItem1.endDate.getOrElse(now).withMillisOfSecond(0).withSecondOfMinute(0).isEqual(cartItem2.endDate.getOrElse(now).withMillisOfSecond(0).withSecondOfMinute(0))
   }
 
   /**

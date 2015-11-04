@@ -54,10 +54,10 @@ object Utils {
    */
   def verifyAndExtractStartEndDate(product: Product, sku: Sku, optDate: Option[DateTime]): Option[(DateTime, DateTime)] = {
     if (optDate.isDefined) {
-      val date = optDate.get
+      val date = optDate.get.toDateTime(DateTimeZone.UTC)
       val localDate = date.toLocalDate
-      val start = sku.startDate.getOrElse(DateTime.now()).toLocalDate
-      val stop = sku.stopDate.map {date => date.toLocalDate}
+      val start = sku.startDate.getOrElse(DateTime.now()).toDateTime(DateTimeZone.UTC).toLocalDate
+      val stop = sku.stopDate.map {date => date.toDateTime(DateTimeZone.UTC).toLocalDate}
 
       // On controle maintenant la date avec le calendrier du produit
       product.calendarType match {
@@ -74,7 +74,7 @@ object Utils {
             }
             }
             if (intraDatePeriod.isDefined) {
-              val d = date.toDateTime(DateTimeZone.UTC).withTimeAtStartOfDay()
+              val d = date.withTimeAtStartOfDay()
               Some(d, d)
             }
             else None
@@ -84,14 +84,13 @@ object Utils {
           // On charche d'abord que la date n'est pas dans une période d'exlusion
           if (isExcludeDate(product, date)) None
           else {
-            // On cherche si la date et l'heure sont autorisée
-            val localDate = date.toLocalDate
+            // On cherche si la date et l'heure (et les minutes) sont autorisée
             val localTime = date.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
             val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period => {
-              val startDate = period.startDate.toLocalDate
-              val startTime = period.startDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
-              val endDate = period.endDate.toLocalDate
-              val endTime = period.endDate.toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+              val startDate = period.startDate.toDateTime(DateTimeZone.UTC).toLocalDate
+              val startTime = period.startDate.toDateTime(DateTimeZone.UTC).toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+              val endDate = period.endDate.toDateTime(DateTimeZone.UTC).toLocalDate
+              val endTime = period.endDate.toDateTime(DateTimeZone.UTC).toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
               checkWeekDay(period, date) &&
                 (startDate.isBefore(localDate) || startDate.isEqual(localDate)) &&
                 (endDate.isAfter(localDate) || endDate.isEqual(localDate)) &&
@@ -101,8 +100,8 @@ object Utils {
             if (intraDatePeriod.isDefined) {
               val startTime = intraDatePeriod.get.startDate.toDateTime(DateTimeZone.UTC).toLocalTime
               val endTime = intraDatePeriod.get.endDate.toDateTime(DateTimeZone.UTC).toLocalTime
-              val start = date.toDateTime(DateTimeZone.UTC).withHourOfDay(startTime.getHourOfDay).withMinuteOfHour(startTime.getMinuteOfHour).toDateTime(date.getZone)
-              val end = date.toDateTime(DateTimeZone.UTC).withHourOfDay(endTime.getHourOfDay).withMinuteOfHour(endTime.getMinuteOfHour).toDateTime(date.getZone)
+              val start = date.withHourOfDay(startTime.getHourOfDay).withMinuteOfHour(startTime.getMinuteOfHour)
+              val end = date.withHourOfDay(endTime.getHourOfDay).withMinuteOfHour(endTime.getMinuteOfHour)
               Some((start, end))
             }
             else None
