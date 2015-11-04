@@ -42,8 +42,7 @@ class CartService extends Directives with DefaultComplete {
     cartInit(storeCode, uuid) ~
       cartClear(storeCode, uuid) ~
       cartAdd(storeCode, uuid) ~
-      cartUpdateRemove(storeCode, uuid) ~
-      cartValidate(storeCode, uuid)
+      cartUpdateRemove(storeCode, uuid)
   }
 
   def cartInit(storeCode:String, uuid:String) = pathEnd {
@@ -117,19 +116,6 @@ class CartService extends Directives with DefaultComplete {
         optionalSession { optSession =>
           val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
           handleCall(cartHandler.queryCartItemRemove(storeCode, uuid, cartItemId, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
-        }
-      }
-    }
-  }
-
-  def cartValidate(storeCode:String, uuid:String) = path("validate") {
-    post {
-      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
-        params => {
-          optionalSession { optSession =>
-            val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-            handleCall(cartHandler.queryCartValidate(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
-          }
         }
       }
     }
