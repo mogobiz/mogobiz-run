@@ -45,6 +45,7 @@ class TemplateHandler {
   }
 
   def mustache(template: String, jsonString: String): (String, String) = {
+    println(jsonString)
     val mailContent = Mustache(template, jsonString)
     val eol = mailContent.indexOf('\n')
     require(eol > 0, "No new line found in mustache file to distinguish subject from body")

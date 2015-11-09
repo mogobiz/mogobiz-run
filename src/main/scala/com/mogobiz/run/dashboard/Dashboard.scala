@@ -88,7 +88,7 @@ object Dashboard {
         "skuUUID" typed StringType index "not_analyzed",
         "tax" typed DoubleType,
         "totalEndPrice" typed LongType,
-        "totalPice" typed LongType,
+        "totalPrice" typed LongType,
         "url" typed StringType index "not_analyzed",
         "uuid" typed StringType index "not_analyzed",
         "buyerGeoCoordinates" typed GeoPointType

@@ -443,7 +443,7 @@ class CartHandler {
 
           accountId.map(Dashboard.indexCart(storeCode, boCartToESBOCart(storeCode, transactionBoCart), _))
 
-          _notifyCartCommit(transactionCart.storeCode, boCart.buyer, transactionCart, locale)
+          notifyCartCommit(transactionCart.storeCode, boCart.buyer, transactionCart, locale)
         }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
     }
@@ -978,11 +978,11 @@ class CartHandler {
    * @param cart
    * @param locale
    */
-  private def _notifyCartCommit(storeCode: String, email: String, cart: StoreCart, locale: Locale): Unit = {
+  private def notifyCartCommit(storeCode: String, email: String, cart: StoreCart, locale: Locale): Unit = {
     import org.json4s.native.Serialization.write
     import com.mogobiz.run.implicits.Json4sProtocol._
 
-    val cartTTC = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
+    val cartTTC: Cart = _computeStoreCart(cart)
     val renderCart = _renderTransactionCart(cart, cartTTC, cart.rate.get, locale)
 
     val template = templateHandler.getTemplate(storeCode, "mail-cart", Some(locale.toString))
