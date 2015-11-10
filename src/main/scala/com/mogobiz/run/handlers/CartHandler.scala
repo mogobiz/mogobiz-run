@@ -385,7 +385,8 @@ class CartHandler {
         if (!shipFromAddress.state.isEmpty) Some(shipFromAddress.state) else None,
         compagny.map {
           _.phone
-        }.flatten
+        }.flatten,
+      compagny.map{ c => c.shippingInternational}.getOrElse(false)
       )
     }
 
