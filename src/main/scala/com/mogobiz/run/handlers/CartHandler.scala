@@ -982,7 +982,7 @@ class CartHandler {
     import org.json4s.native.Serialization.write
     import com.mogobiz.run.implicits.Json4sProtocol._
 
-    val cartTTC: Cart = _computeStoreCart(cart, cart.countryCode, cart.stateCode))
+    val cartTTC: Cart = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
     val renderCart = _renderTransactionCart(cart, cartTTC, cart.rate.get, locale)
 
     val template = templateHandler.getTemplate(storeCode, "mail-cart", Some(locale.toString))
