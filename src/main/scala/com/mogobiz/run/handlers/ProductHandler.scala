@@ -30,7 +30,7 @@ import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.search.{SearchHitField, SearchHit, SearchHits}
 import org.elasticsearch.search.aggregations.bucket.terms.Terms
 import org.elasticsearch.search.sort.SortOrder
-import org.json4s.JsonAST.{JObject, JArray, JNothing}
+import org.json4s.JsonAST.{JNothing, JObject, JArray}
 import org.json4s.JsonDSL._
 import org.json4s._
 
@@ -239,10 +239,17 @@ class ProductHandler extends JsonUtil {
       getIncludedFieldWithPrefixAsList(storeCode, "features.", "name", params.lang) :::
       getIncludedFieldWithPrefixAsList(storeCode, "features.", "value", params.lang)
 
-    val docs: Array[MultiGetItemResponse] = EsClient.loadRaw(multiget(idList.map(id => get id id from storeCode -> "product" fields (includedFields: _*)): _*))
+//    val multigetDefinition = multiget(idList.map(id => get id id from storeCode -> "product" fields includedFields fetchSourceContext true))
+    val multigetDefinition = multiget(idList.map(id => get id id from storeCode -> "product"))
 
+    val docs: Array[MultiGetItemResponse] = EsClient.loadRaw(multigetDefinition)
     val allLanguages: List[String] = getStoreLanguagesAsList(storeCode)
-
+//    docs.foreach { doc =>
+//      import scala.collection.JavaConverters._
+//      doc.getResponse.getFields().asScala.foreach { case (k, v) =>
+//        println(k+"="+ v.getValues.asScala.mkString("::"))
+//      }
+//    }
     // Permet de traduire la value ou le name d'une feature
     def translateFeature(feature: JValue, esProperty: String, targetPropery: String): List[JField] = {
       val value = extractJSonProperty(feature, esProperty)
