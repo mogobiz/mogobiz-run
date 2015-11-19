@@ -22,13 +22,13 @@ paths:
           in: query
           description: Number of item per page.
           required: false
-          type: number
+          type: integer
           format: int32
         - name: pageOffset
           in: query
           description: Page number.
           required: false
-          type: number
+          type: integer
           format: int32
         - name: lastName
           in: query
@@ -102,6 +102,7 @@ paths:
           description: Unauthorized if user not connected or session expired.
           schema:
             $ref: "#/definitions/error"
+
   /listCustomers:
     get:
       summary: get list of all orders
@@ -110,13 +111,13 @@ paths:
           in: query
           description: Number of item per page.
           required: false
-          type: number
+          type: integer
           format: int32
         - name: pageOffset
           in: query
           description: Page number.
           required: false
-          type: number
+          type: integer
           format: int32
         - name: lastName
           in: query
@@ -164,6 +165,7 @@ paths:
           description: Unauthorized if user not connected or session expired.
           schema:
             $ref: "#/definitions/error"
+
   /cartDetails/{transactionUuid}:
     get:
       summary: get list of all orders
@@ -744,7 +746,7 @@ paths:
           schema:
             $ref: "#/definitions/error"
 
-# Categories Services
+# Category Services
   /categories:
     get:
       summary: Get all categories details.
@@ -789,7 +791,7 @@ paths:
           type: integer
           fomat: int32
       tags:
-        - Categories
+        - Category
       responses:
         200:
           description: Ok.
@@ -847,7 +849,7 @@ paths:
           type: integer
           fomat: int32
       tags:
-        - Categories
+        - Category
       responses:
         200:
           description: Ok.
@@ -858,12 +860,12 @@ paths:
           schema:
             $ref: "#/definitions/error"
 
-# Countries Services
+# Country Services
   /countries:
     get:
       summary: Get a list of all countries.
       tags:
-        - Countries
+        - Country
       responses:
         200:
           description: Ok.
@@ -882,7 +884,7 @@ paths:
           required: true
           type: string
       tags:
-        - Countries
+        - Country
       responses:
         200:
           description: Ok.
@@ -893,12 +895,12 @@ paths:
           schema:
             $ref: "#/definitions/error"
 
-# Currencies Services
+# Currency Services
   /currencies:
     get:
       summary: Get a list of all currencies.
       tags:
-        - Currencies
+        - Currency
       responses:
         200:
           description: Ok.
@@ -917,7 +919,7 @@ paths:
           required: true
           type: string
       tags:
-        - Currencies
+        - Currency
       responses:
         200:
           description: Ok.
@@ -961,15 +963,1663 @@ paths:
           schema:
             type: file
 
+# Preference Services
+  /prefs:
+    get:
+      summary: Get Store preferences.
+      tags:
+        - Preference
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: object
+            required:
+              - productsNumber
+            properties:
+              productsNumber:
+                type: integer
+                format: int32
+
+  /prefs:
+    post:
+      summary: Set Store preferences.
+      parameters:
+        - name: params
+          in: body
+          description: Parameters needed to set preferences
+          required: true
+          schema:
+            $ref: '#/definitions/preferencesParams'
+      tags:
+        - Preference
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: object
+            required:
+              - productsNumber
+            properties:
+              productsNumber:
+                type: integer
+                format: int32
+
+# Product Services
+  /products:
+    get:
+      summary: Get products list.
+      parameters:
+        - name: maxItemPerPage
+          in: query
+          description: Maximum item per page
+          required: false
+          type: integer
+          format: int64
+        - name: pageOffset
+          in: query
+          description: Page number
+          required: false
+          type: integer
+          format: int64
+        - name: id
+          in: query
+          description: Search products by id
+          required: false
+          type: string
+          format: uuid
+        - name: xtype
+          in: query
+          description: Search products by type
+          required: false
+          type: string
+        - name: name
+          in: query
+          description: Search products by name
+          required: false
+          type: string
+        - name: fullText
+          in: query
+          description: Search products by description
+          required: false
+          type: string
+        - name: code
+          in: query
+          description: Search product by code
+          required: false
+          type: string
+        - name: categoryPath
+          in: query
+          description: Search products by category
+          required: false
+          type: string
+        - name: brandId
+          in: query
+          description: Search products by brand
+          required: false
+          type: string
+          format: uuid
+        - name: tagName
+          in: query
+          description: Search products by tag name
+          required: false
+          type: string
+        - name: notations
+          in: query
+          description: Notations
+          required: false
+          type: string
+        - name: priceRange
+          in: query
+          description: Search products by price range
+          required: false
+          type: String
+        - name: creationDateMin
+          in: query
+          description: Search products before date
+          required: false
+          type: string
+        - name: featured
+          in: query
+          description: Search featured products
+          required: false
+          type: boolean
+        - name: orderBy
+          in: query
+          description: List order
+          required: false
+          type: string
+        - name: orderDirection
+          in: query
+          description: List order direction
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language
+          required: false
+          type: string
+        - name: currency
+          in: query
+          description: Search products by currency
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Search products by country
+          required: false
+          type: string
+        - name: promotionId
+          in: query
+          description: Search products by promotion
+          required: false
+          type: string
+          format: uuid
+        - name: hasPromotion
+          in: query
+          description: Search products that have promotions
+          required: false
+          type: boolean
+        - name: inStockOnly
+          in: query
+          description: Search in stock products
+          required: false
+          type: boolean
+        - name: property
+          in: query
+          description: Search products by property
+          required: false
+          type: string
+        - name: feature
+          in: query
+          description: Search products by feature
+          required: false
+          type: string
+        - name: variations
+          in: query
+          description: Search products by variations
+          required: false
+          type: string
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: object
+            items:
+            properties:
+              hasNext:
+                type: boolean
+              hasPrevious:
+                type: boolean
+              maxItemsPerPage:
+                type: integer
+                format: int32
+              pageCount:
+                type: integer
+                format: int32
+              pageOffset:
+                type: integer
+                format: int32
+              pageSize:
+                type: integer
+                format: int32
+              totalCount:
+                type: integer
+                format: int32
+              list:
+                type: array
+                items:
+                  $ref: "#/links/product"
+
+  /products/find:
+    get:
+      summary: Find products.
+      parameters:
+        - name: lang
+          in: query
+          description: Language
+          required: false
+          type: string
+        - name: currency
+          in: query
+          description: Search products by currency
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Search products by country
+          required: false
+          type: string
+        - name: query
+          in: query
+          description: Query search
+          required: true
+          type: string
+        - name: highlight
+          in: query
+          description: Search highlighted products
+          required: false
+          type: boolean
+        - name: size
+          in: query
+          description: Size of returned list
+          required: false
+          type: integer
+          format: int32
+        - name: categoryPath
+          in: query
+          description: Search products in category
+          required: false
+          type: string
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/definitions/findResponse"
+
+  /products/compare:
+    get:
+      summary: Compare products.
+      parameters:
+        - name: lang
+          in: query
+          description: Language
+          required: false
+          type: string
+        - name: currency
+          in: query
+          description: Search products by currency
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Search products by country
+          required: false
+          type: string
+        - name: ids
+          in: query
+          description: Products ids to compare
+          required: true
+          type: string
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/productsComparison"
+
+  /products/notation:
+    get:
+      summary: Get products by notation.
+      parameters:
+        - name: lang
+          in: query
+          description: Language
+          required: false
+          type: string
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              $ref: "#/links/product"
+
+  /products/{productId}:
+    get:
+      summary: Get products by notation.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: historize
+          in: query
+          description: Add to visited products
+          required: false
+          type: boolean
+        - name: visitorId
+          in: query
+          description: Visitor id
+          required: false
+          type: integer
+          format: int64
+        - name: currency
+          in: query
+          description: Currency code
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Country code
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language
+          required: false
+          type: string
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/links/product"
+
+  /products/{productId}/dates:
+    get:
+      summary: Get product dates.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: date
+          in: query
+          description: Date
+          required: false
+          type: string
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/links/product"
+
+  /products/{productId}/times:
+    get:
+      summary: Get product times.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: date
+          in: query
+          description: Date
+          required: false
+          type: string
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/links/product"
+
+  /products/{productId}/comments:
+    get:
+      summary: Get product times.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: maxItemPerPage
+          in: query
+          description: Number of comments per page
+          required: false
+          type: integer
+          format: int32
+        - name: pageOffset
+          in: query
+          description: Page number
+          required: false
+          type: integer
+          format: int32
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            properties:
+              hasNext:
+                type: boolean
+              hasPrevious:
+                type: boolean
+              maxItemsPerPage:
+                type: integer
+                format: int32
+              pageCount:
+                type: integer
+                format: int32
+              pageOffset:
+                type: integer
+                format: int32
+              pageSize:
+                type: integer
+                format: int32
+              totalCount:
+                type: integer
+                format: int32
+              list:
+                type: array
+                items:
+                  $ref: "#/definitions/productComment"
+
+  /products/{productId}/comments:
+    post:
+      summary: Add comment.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: params
+          in: body
+          description: Parameters needed to add comment.
+          required: true
+          schema:
+            $ref: '#/definitions/createProductCommentParams'
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+        401:
+          description: Unauthorized if user not connected or session expired.
+
+  /products/{productId}/comments/{commentId}:
+    get:
+      summary: Get comment by id.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: commentId
+          in: path
+          description: Comment id
+          required: true
+          type: integer
+          format: int64
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "definitions/productComment"
+        404:
+          description: Comment Not Found.
+          schema:
+            $ref: "definitions/error"
+
+  /products/{productId}/comments/{commentId}:
+    put:
+      summary: Update comment.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: commentId
+          in: path
+          description: Comment id
+          required: true
+          type: integer
+          format: int64
+        - name: params
+          in: body
+          description: Parameters needed to update comment.
+          required: true
+          schema:
+            $ref: '#/definitions/updateProductCommentParams'
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if user not connected or session expired.
+          schema:
+            $ref: "definitions/error"
+
+  /products/{productId}/comments/{commentId}:
+    post:
+      summary: Mark comment as useful or unuseful.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: commentId
+          in: path
+          description: Comment id
+          required: true
+          type: integer
+          format: int64
+        - name: params
+          in: body
+          description: Parameters needed to note comment.
+          required: true
+          schema:
+            $ref: '#/definitions/noteProductCommentParams'
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if user not connected or session expired.
+          schema:
+            $ref: "definitions/error"
+
+  /products/{productId}/comments/{commentId}:
+    delete:
+      summary: Delete comment.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: commentId
+          in: path
+          description: Comment id
+          required: true
+          type: integer
+          format: int64
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if user not connected or session expired.
+          schema:
+            $ref: "definitions/error"
+
+  /products/{productId}/suggestions:
+    get:
+      summary: Get all product suggestions.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: lang
+          in: query
+          description: Language
+          required: false
+          type: string
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              $ref: "#/links/suggestion"
+
+  /products/{productId}/suggestions/{suggestionId}:
+    get:
+      summary: Get all product suggestions.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: integer
+          format: int64
+        - name: suggestionId
+          in: path
+          description: Suggestion id
+          required: true
+          type: integer
+          format: int64
+      tags:
+        - Product
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/links/suggestion"
+
+# Promotion Services
+  /promotions:
+    get:
+      summary: Get all promotions.
+      parameters:
+        - name: maxItemPerPage
+          in: query
+          description: Number of item per page.
+          required: false
+          type: integer
+          format: int32
+        - name: pageOffset
+          in: query
+          description: Page number.
+          required: false
+          type: integer
+          format: int32
+        - name: orderBy
+          in: query
+          description: Order filed.
+          required: false
+          type: string
+        - name: orderDirection
+          in: query
+          description: Order direction.
+          required: false
+          type: string
+        - name: categoryPath
+          in: query
+          description: Get category promotions.
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+      tags:
+        - Promotion
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: object
+            items:
+            properties:
+              hasNext:
+                type: boolean
+              hasPrevious:
+                type: boolean
+              maxItemsPerPage:
+                type: integer
+                format: int32
+              pageCount:
+                type: integer
+                format: int32
+              pageOffset:
+                type: integer
+                format: int32
+              pageSize:
+                type: integer
+                format: int32
+              totalCount:
+                type: integer
+                format: int32
+              list:
+                type: array
+                items:
+                  $ref: "#/links/coupon"
+
+  /promotions/{promotionId}:
+    get:
+      summary: Get promotion by id.
+      parameters:
+        - name: promotionId
+          in: path
+          description: Number of item per page.
+          required: true
+          type: integer
+          format: int64
+      tags:
+        - Promotion
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/links/coupon"
+        404:
+          description: Resource not found.
+          schema:
+            $ref: "definitions/error"
+
+# Resource Services
+  /resources/{resourceId}:
+    get:
+      summary: Get ressource.
+      parameters:
+        - name: resourceId
+          in: path
+          description: Resource id.
+          required: true
+          type: integer
+          format: int64
+      tags:
+        - Resource
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: file
+        404:
+          description: Resource not found.
+          schema:
+            $ref: "definitions/error"
 
 
+  /resources/{resourceId}/{size}:
+    get:
+      summary: Get resized ressource.
+      parameters:
+        - name: resourceId
+          in: query
+          description: Resource id.
+          required: true
+          type: integer
+          format: int64
+        - name: size
+          in: query
+          description: size.
+          required: true
+          type: string
+          format: SMALL|ICON
+      tags:
+        - Resource
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: file
+        404:
+          description: Resource not found.
+          schema:
+            $ref: "definitions/error"
 
+# Sku Services
+  /skus:
+    get:
+      summary: Get all skus.
+      parameters:
+        - name: maxItemPerPage
+          in: query
+          description: Maximum items per page.
+          required: false
+          type: integer
+          format: int32
+        - name: pageOffset
+          in: query
+          description: Page number.
+          required: false
+          type: integer
+          format: int32
+        - name: id
+          in: query
+          description: Get skus by id.
+          required: false
+          type: string
+          format: uuid
+        - name: productId
+          in: query
+          description: Get product skus.
+          required: false
+          type: string
+          format: uuid
+        - name: xtype
+          in: query
+          description: Get skus by type.
+          required: false
+          type: string
+        - name: name
+          in: query
+          description: Get skus by name.
+          required: false
+          type: string
+        - name: code
+          in: query
+          description: Get skus by code.
+          required: false
+          type: string
+        - name: categoryPath
+          in: query
+          description: Sku category path.
+          required: false
+          type: string
+        - name: brandId
+          in: query
+          description: Get brand skus.
+          required: false
+          type: string
+          format: uuid
+        - name: tagName
+          in: query
+          description: Get skus by tag name.
+          required: false
+          type: string
+        - name: notations
+          in: query
+          description: Get skus by notations.
+          required: false
+          type: string
+        - name: priceRange
+          in: query
+          description: Get skus by price range.
+          required: false
+          type: string
+        - name: creationDateMin
+          in: query
+          description: Get skus after date.
+          required: false
+          type: string
+          format: date
+        - name: featured
+          in: query
+          description: Get featured skus.
+          required: false
+          type: boolean
+        - name: orderBy
+          in: query
+          description: Order field.
+          required: false
+          type: string
+        - name: orderDirection
+          in: query
+          description: Order direction.
+          required: false
+          type: string
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: string
+        - name: currency
+          in: query
+          description: Get skus by currency.
+          required: false
+          type: string
+        - name: country
+          in: query
+          description: Get skus by country.
+          required: false
+          type: string
+        - name: promotionId
+          in: query
+          description: Get promotions skus.
+          required: false
+          type: string
+          format: uuid
+        - name: hasPromotion
+          in: query
+          description: Get promotioned skus.
+          required: false
+          type: boolean
+        - name: inStockOnly
+          in: query
+          description: Get in stock skus.
+          required: false
+          type: boolean
+        - name: property
+          in: query
+          description: Get skus by property.
+          required: false
+          type: string
+        - name: feature
+          in: query
+          description: Get skus by feature.
+          required: false
+          type: string
+        - name: variations
+          in: query
+          description: Get skus by variations.
+          required: false
+          type: string
+      tags:
+        - Sku
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: object
+            items:
+            properties:
+              hasNext:
+                type: boolean
+              hasPrevious:
+                type: boolean
+              maxItemsPerPage:
+                type: integer
+                format: int32
+              pageCount:
+                type: integer
+                format: int32
+              pageOffset:
+                type: integer
+                format: int32
+              pageSize:
+                type: integer
+                format: int32
+              totalCount:
+                type: integer
+                format: int32
+              list:
+                type: array
+                items:
+                  $ref: "#/links/sku"
 
+  /skus/{skuId}:
+    get:
+      summary: Get sku by id.
+      parameters:
+        - name: skuId
+          in: query
+          description: Sku id.
+          required: true
+          type: integer
+          format: int32
+      tags:
+        - Sku
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/links/sku"
+        404:
+          description: Sku not found.
+          schema:
+            $ref: "definitions/error"
 
+# Tag Services
+  /tags:
+    get:
+      summary: Get all tags.
+      parameters:
+        - name: hidden
+          in: query
+          description: Get hidden tags.
+          required: false
+          type: boolean
+        - name: Get inactive tags
+          in: query
+          description: Get Get inactive tags tags.
+          required: false
+          type: boolean
+        - name: lang
+          in: query
+          description: Language.
+          required: false
+          type: boolean
+        - name: size
+          in: query
+          description: Response size.
+          required: false
+          type: integer
+          format: int32
+      tags:
+        - Tag
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              $ref: "#/links/tag"
 
+  /tags/{tagId}:
+    get:
+      summary: Get tag by id.
+      parameters:
+        - name: tagId
+          in: path
+          description: Tag id.
+          required: true
+          type: integer
+          format: int32
+      tags:
+        - Tag
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/links/tag"
+        404:
+          description: Tag not found.
+          schema:
+            $ref: "definitions/error"
 
+  /tags/{tagName}:
+    get:
+      summary: Get tag by name.
+      parameters:
+        - name: tagName
+          in: path
+          description: Tag name.
+          required: true
+          type: string
+      tags:
+        - Tag
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "#/links/tag"
+        404:
+          description: Tag not found.
+          schema:
+            $ref: "definitions/error"
 
+# Validator Service
+  /validator/{key}:
+    get:
+      summary: Download Validator file.
+      parameters:
+        - name: key
+          in: path
+          description: Key to download file.
+          required: true
+          type: string
+      tags:
+        - Validator
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: file
+        404:
+          description: Invalid key.
+          schema:
+            $ref: "definitions/error"
 
+# Wishlists Service
+  /wishlists:
+    get:
+      summary: Get wishlist details.
+      parameters:
+        - name: owner_email
+          in: query
+          description: Wishlist owner email.
+          required: true
+          type: string
+          fromat: email
+        - name: wishlist_uuid
+          in: query
+          description: wishlist id.
+          required: false
+          type: string
+          fromat: uuid
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "definitions/wishlist"
+        404:
+          description: Wishlist not found.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/owner:
+    post:
+      summary: Add idea to wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: owner_email
+          in: query
+          description: Wishlist owner email.
+          required: true
+          type: string
+          format: email
+        - name: owner_name
+          in: query
+          description: Wishlist owner name.
+          required: false
+          type: string
+        - name: owner_day_of_birth
+          in: query
+          description: Wishlist owner day of birth.
+          required: false
+          type: integer
+          format: int32
+        - name: owner_month_of_birth
+          in: query
+          description: Wishlist owner nomth of birth.
+          required: false
+          type: integer
+          format: int32
+        - name: description
+          in: query
+          description: Wishlist owner description.
+          required: false
+          type: string
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist not found.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/wishlist/{token}:
+    get:
+      summary: Get wishlist by token.
+      parameters:
+        - name: token
+          in: path
+          description: toke,.
+          required: true
+          type: string
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+          schema:
+            $ref: "definitions/wishlistSubList"
+        404:
+          description: Invalid token.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist:
+    post:
+      summary: Add sub list to wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: params
+          in: body
+          description: Parameters needed to add sub list.
+          required: true
+          schema:
+            $ref: '#/definitions/addWishlistSublistParams'
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: string
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        409:
+          description: Conflicted if sub list name already exist.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}:
+    delete:
+      summary: Delete sub list from wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist not found.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/token:
+    get:
+      summary: Get wishlist token.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: owner_email
+          in: query
+          description: Wishlist owner email.
+          required: true
+          type: string
+          fromat: email
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: string
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist not found.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/default:
+    post:
+      summary: Set default sub list.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: owner_email
+          in: query
+          description: Wishlist owner email.
+          required: true
+          type: string
+          fromat: email
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist not found.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/item:
+    post:
+      summary: Add item to wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: params
+          in: body
+          description: Parameters needed to add item.
+          required: true
+          schema:
+            $ref: '#/definitions/addWishlistItemParams'
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: string
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist not found.
+          schema:
+            $ref: "definitions/error"
+        409:
+          description: Conflicted if product already exist.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/item/{itemId}:
+    delete:
+      summary: Delete an item from wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: itemId
+          in: path
+          description: Item Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: owner_email
+          in: query
+          description: Wishlist owner email.
+          required: true
+          type: string
+          fromat: email
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist or item not found.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/idea:
+    post:
+      summary: Add idea to wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: idea
+          in: query
+          description: Idea to be added.
+          required: true
+          type: string
+        - name: owner_email
+          in: query
+          description: Wishlist owner email.
+          required: true
+          type: string
+          format: email
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: string
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist not found.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/idea/{ideaId}:
+    delete:
+      summary: Delete an idea from wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: ideaId
+          in: path
+          description: Idea Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: owner_email
+          in: query
+          description: Wishlist owner email.
+          required: true
+          type: string
+          fromat: email
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist or idea not found.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/brand:
+    post:
+      summary: Add brand to wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: params
+          in: body
+          description: Parameters needed to add brand.
+          required: true
+          schema:
+            $ref: '#/definitions/addWishlistBrandParams'
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: string
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist not found.
+          schema:
+            $ref: "definitions/error"
+        409:
+          description: Conflicted if brand already exist.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/brand/{brandId}:
+    delete:
+      summary: Delete a brand from wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: brandId
+          in: path
+          description: Brand Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: owner_email
+          in: query
+          description: Wishlist owner email.
+          required: true
+          type: string
+          fromat: email
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist or brand not found.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/category:
+    post:
+      summary: Add category to wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: params
+          in: body
+          description: Parameters needed to add category.
+          required: true
+          schema:
+            $ref: '#/definitions/addWishlistCategoryParams'
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: string
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist not found.
+          schema:
+            $ref: "definitions/error"
+        409:
+          description: Conflicted if category already exist.
+          schema:
+            $ref: "definitions/error"
+
+  /wishlists/{wishlistId}/wishlist/{listId}/category/{categoryId}:
+    delete:
+      summary: Delete a brand from wishlist.
+      parameters:
+        - name: wishlistId
+          in: path
+          description: Wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: listId
+          in: path
+          description: Sub wishlist Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: categoryId
+          in: path
+          description: Category Id.
+          required: true
+          type: string
+          fromat: uuid
+        - name: owner_email
+          in: query
+          description: Wishlist owner email.
+          required: true
+          type: string
+          fromat: email
+      tags:
+        - Wishlists
+      responses:
+        200:
+          description: Ok.
+        401:
+          description: Unauthorized if invalid owner email.
+          schema:
+            $ref: "definitions/error"
+        404:
+          description: Wishlist or category not found.
+          schema:
+            $ref: "definitions/error"
 
 
 definitions:
@@ -1642,38 +3292,6 @@ definitions:
         $ref: "#/definitions/transactionStatus"
       comment:
         type: string
-      dateCreated:
-        type: string
-        format: date
-      lastUpdated:
-        type: string
-        format: date
-		
-  transactionLog:
-    type: object
-    required:
-      - uuid
-      - direction
-      - provider
-      - transaction
-      - step
-      - dateCreated
-      - lastUpdated
-    properties:
-      uuid:
-        type: string
-        format: uuid
-      direction:
-        type: string
-        format: IN|OUT
-      provider:
-        type: string
-        format: NONE|AUTHORIZENET|PAYLINE|PAYBOX|SIPS|SYSTEMPAY
-      transaction:
-        type: string
-        format: uuid
-      step:
-          $ref: "#/definitions/transactionStep"
       dateCreated:
         type: string
         format: date
@@ -2470,6 +4088,171 @@ definitions:
       name:
         type: string
 
+# Products Services Definitions
+  findResponse:
+    type: object
+    properties:
+      product:
+        type: array
+        items:
+        $ref: "#/definitions/findProduct"
+      brand:
+        type: array
+        items:
+        $ref: "#/definitions/findBrand"
+      category:
+        type: array
+        items:
+        $ref: "#/definitions/findCategory"
+      tag:
+        type: array
+        items:
+        $ref: "#/definitions/findTag"
+
+  findProduct:
+    type: object
+    required:
+      - id
+      - name
+    properties:
+      id:
+        type: integer
+        format: int32
+      name:
+        type: string
+      description:
+        type: string
+      descriptionAsText:
+        type: string
+      keywords:
+        type: string
+      category:
+        type: object
+        items:
+        required:
+          - path
+        properties:
+          path:
+            type: string
+
+  findBrand:
+    type: object
+    required:
+      - id
+      - name
+    properties:
+      id:
+        type: integer
+        format: int32
+      name:
+        type: string
+      description:
+        type: string
+
+  findCategory:
+    type: object
+    required:
+      - id
+      - name
+    properties:
+      id:
+        type: integer
+        format: int32
+      name:
+        type: string
+      description:
+        type: string
+      keywords:
+        type: string
+      path:
+        type: string
+
+  findTag:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+
+  productsComparison:
+    type: object
+    required:
+      - ids
+      - result
+    properties:
+      ids:
+        type: array
+        items:
+          type: integer
+          format: int32
+      result:
+        type: array
+        items:
+          type: object
+          required:
+            - label
+            - indicator
+            - values
+          properties:
+            label:
+              type: string
+            indicator:
+              type: string
+            values:
+              type: array
+              items:
+                type: object
+                required:
+                  - value
+                properties:
+                  value:
+                    type: string
+
+  productComment:
+    type: object
+    required:
+      - id
+      - userId
+      - productId
+      - surname
+      - notation
+      - subject
+      - comment
+      - externalCode
+      - created
+      - useful
+      - notuseful
+    properties:
+      id:
+        type: string
+      userId:
+        type: string
+        format: uuid
+      productId:
+        type: integer
+        format: int64
+      surname:
+        type: string
+      notation:
+        type: integer
+        format: int32
+      subject:
+        type: string
+      comment:
+        type: string
+      externalCode:
+        type: string
+      created:
+        type: string
+        format: date
+      useful:
+        type: integer
+        format: int32
+      notuseful:
+        type: integer
+        format: int32
+
 # Payment Definitions
   payment:
     type: object
@@ -2553,6 +4336,161 @@ definitions:
       transactionUuid:
         type: string
         format: uuid
+
+# Wishlist Definitions
+  wishlist:
+    type: object
+    required:
+      - uuid
+      - wishlists
+      - owner
+      - dateCreated
+      - lastUpdated
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      wishlists:
+        type: array
+        items:
+          $ref: "#/definitions/wishlistSubList"
+      owner:
+        $ref: "#/definitions/wishlistOwner"
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date"
+
+  wishlistOwner:
+    type: object
+    required:
+      - email
+    properties:
+      email:
+        type: string
+        format: email
+      name:
+        type: string
+      dayOfBirth:
+        type: integer
+        type: int32
+      monthOfBirth:
+        type: integer
+        type: int32
+      default:
+        description: string
+
+  wishlistSubList:
+    type: object
+    required:
+      - name
+      - visibility
+      - default
+      - token
+      - ideas
+      - items
+      - brands
+      - categories
+      - alert
+      - dateCreated
+      - lastUpdated
+    properties:
+      name:
+        type: string
+      visibility:
+        type: string
+      default:
+        type: boolean
+      token:
+        type: string
+        format: uuid
+      externalCode:
+        type: string
+      items:
+        type: array
+        items:
+          $ref: "#/definitions/wishlistItem"
+      ideas:
+        type: array
+        items:
+          $ref: "#/definitions/wishlistIdea"
+      brands:
+        type: array
+        items:
+          $ref: "#/definitions/wishlistBrand"
+      categories:
+        type: array
+        items:
+          $ref: "#/definitions/wishlistCategory
+      alert:
+        type: boolean
+      dateCreated:
+        type: string
+        format: date
+      lastUpdated:
+        type: string
+        format: date"
+
+  wishlistItem:
+    type: object
+    required:
+      - uuid
+      - name
+      - product
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      name:
+        type: string
+      product:
+        type: boolean
+      sku:
+        type: string
+
+  wishlistIdea:
+    type: object
+    required:
+      - uuid
+      - name
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      name:
+        type: string
+
+  wishlistBrand:
+    type: object
+    required:
+      - uuid
+      - name
+      - brand
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      name:
+        type: string
+      brand:
+        type: string
+
+  wishlistCategory:
+    type: object
+    required:
+      - uuid
+      - name
+      - category
+    properties:
+      uuid:
+        type: string
+        format: uuid
+      name:
+        type: string
+      category:
+        type: string
 
 # Defined Value Objects
   cbProvider:
@@ -2832,3 +4770,141 @@ definitions:
         type: string
       lang:
         type: string
+
+  preferencesParams:
+    type: object
+    required:
+      - productsNumber
+    properties:
+      productsNumber:
+        type: integer
+        format: int32
+
+  createProductCommentParams:
+    type: object
+    required:
+      - notation
+      - subject
+      - comment
+      - created
+    properties:
+      notation:
+        type: integer
+        format: int32
+      subject:
+        type: string
+      comment:
+        type: string
+      externalCode:
+        type: string
+      created:
+        type: string
+        format: date
+
+  updateProductCommentParams:
+    type: object
+    required:
+      - subject
+      - comment
+    properties:
+      notation:
+        type: integer
+        format: int32
+      subject:
+        type: string
+      comment:
+        type: string
+
+  noteProductCommentParams:
+    type: object
+    required:
+      - note
+    properties:
+      note:
+        type: integer
+        format: int32
+
+  addWishlistItemParams:
+    type: object
+    required:
+      - name
+      - product
+      - owner_email
+    properties:
+      name:
+        type: string
+      product:
+        type: string
+      owner_email:
+        type: string
+        fomat: email
+      product_sku:
+        type: string
+
+  addWishlistBrandParams:
+    type: object
+    required:
+      - name
+      - brand
+      - owner_email
+    properties:
+      name:
+        type: string
+      brand:
+        type: string
+      owner_email:
+        type: string
+        fomat: email
+
+  addWishlistCategoryParams:
+    type: object
+    required:
+      - name
+      - category
+      - owner_email
+    properties:
+      name:
+        type: string
+      category:
+        type: string
+      owner_email:
+        type: string
+        fomat: email
+
+  addWishlistSublistParams:
+    type: object
+    required:
+      - name
+      - visibility
+      - defaultIndicator
+      - owner_email
+    properties:
+      name:
+        type: string
+      visibility:
+        type: string
+        fomat: PUBLIC|PRIVATE|SHARED
+      defaultIndicator:
+        type: boolean
+      owner_email:
+        type: string
+        fomat: email
+      externalCode:
+        type: string
+
+links:
+# Links To Json Files
+  product:
+    /Json/Product.json
+
+  suggestion:
+    /Json/Suggestion.json
+
+  coupon:
+    /Json/Coupon.json
+
+  sku:
+    /Json/Sku.json
+
+  tag:
+    /Json/Tag.json
