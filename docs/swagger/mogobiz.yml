@@ -233,7 +233,7 @@ paths:
           description: Parameters needed to create carte item.
           required: true
           schema:
-            $ref: '#/definitions/createReturnItemParams'
+            $ref: '#/parameters/createReturnItemParams'
       tags:
         - Backoffice
       responses:
@@ -275,7 +275,7 @@ paths:
           description: Parameters needed to register.
           required: true
           schema:
-            $ref: '#/definitions/updateReturnItemParams'
+            $ref: '#/parameters/updateReturnItemParams'
       tags:
         - Backoffice
       responses:
@@ -457,7 +457,7 @@ paths:
           description: Parameters needed to add a shopping cart item.
           required: true
           schema:
-            $ref: '#/definitions/addShoppingCartItemParams'
+            $ref: '#/parameters/addShoppingCartItemParams'
       tags:
         - Cart
       responses:
@@ -489,7 +489,7 @@ paths:
           description: Parameters needed to update a shopping cart item.
           required: true
           schema:
-            $ref: '#/definitions/updateShoppingCartItemParams'
+            $ref: '#/parameters/updateShoppingCartItemParams'
       tags:
         - Cart
       responses:
@@ -679,7 +679,7 @@ paths:
           description: Parameters needed to prepare payment.
           required: true
           schema:
-            $ref: '#/definitions/preparePaymentParams'
+            $ref: '#/parameters/preparePaymentParams'
       tags:
         - Cart
       responses:
@@ -705,7 +705,7 @@ paths:
           description: Parameters needed to comit payment.
           required: true
           schema:
-            $ref: '#/definitions/comitPaymentParams'
+            $ref: '#/parameters/comitPaymentParams'
       tags:
         - Cart
       responses:
@@ -729,7 +729,7 @@ paths:
           description: Parameters needed to cancel payment.
           required: true
           schema:
-            $ref: '#/definitions/cancelPaymentParams'
+            $ref: '#/parameters/cancelPaymentParams'
       tags:
         - Cart
       responses:
@@ -944,6 +944,192 @@ paths:
             items:
               type: string
 
+# learning Services
+  /learning/{mogobiz_uuid}/history:
+    get:
+      summary: Recommendation based on browsing history.
+      parameters:
+        - name: mogobiz_uuid
+          in: path
+          description: Mogobiz session uuid
+          required: true
+          type: string
+          format: uuid
+        - name: action
+          in: query
+          description: Recommandation type
+          required: true
+          type: string
+          format: view|purchase
+        - name: history_count
+          in: query
+          description: Number of elements to be considered in user history
+          required: true
+          type: integer
+          format: int32
+        - name: count
+          in: query
+          description: Product reference number
+          required: true
+          type: integer
+          format: int32
+        - name: match_count
+          in: query
+          description: Occurence number in common with user history
+          required: true
+          type: integer
+          format: int32
+        - name: customer
+          in: query
+          description: Client type
+          required: false
+          type: string
+      tags:
+        - Learning
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              type: string
+
+  /learning/{mogobiz_uuid}/last:
+    get:
+      summary: Get recently viewed items.
+      parameters:
+        - name: mogobiz_uuid
+          in: path
+          description: Mogobiz session uuid
+          required: true
+          type: string
+          format: uuid
+        - name: count
+          in: query
+          description: Product reference number
+          required: true
+          type: integer
+          format: int32
+      tags:
+        - Learning
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              type: string
+
+  /learning/{productId}/cooccurrence:
+    get:
+      summary: Displays types of recommendation.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: string
+          format: uuid
+        - name: action
+          in: query
+          description: Recommandation type
+          required: true
+          type: string
+          format: view|purchase
+        - name: customer
+          in: query
+          description: Client type
+          required: false
+          type: string
+      tags:
+        - Learning
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              type: string
+
+  /learning/{productId}/fis:
+    get:
+      summary: Frequently Bought Together.
+      parameters:
+        - name: productId
+          in: path
+          description: Product id
+          required: true
+          type: string
+          format: uuid
+        - name: frequency
+          in: query
+          description: Frequency of occurrence in the baskets containing this product
+          required: true
+          type: number
+          format: double
+        - name: customer
+          in: query
+          description: Client type
+          required: false
+          type: string
+      tags:
+        - Learning
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: object
+              required:
+                - _1
+                - _2
+              properties:
+                _1:
+                  type: array
+                  items:
+                    type: string
+                _2:
+                  type: array
+                  items:
+                    type: string
+
+  /learning/popular:
+    get:
+      summary: Get popular Items.
+      parameters:
+        - name: action
+          in: query
+          description: Recommandation type
+          required: true
+          type: string
+          format: view|purchase
+        - name: count
+          in: query
+          description: Response size
+          required: true
+          type: string
+          format: date
+        - name: since
+          in: query
+          description: Get popular items after date
+          required: true
+          type: integer
+          format: int32
+        - name: customer
+          in: query
+          description: Client type
+          required: false
+          type: string
+      tags:
+        - Learning
+      responses:
+        200:
+          description: Ok.
+          schema:
+            type: array
+            items:
+              type: string
+
+
 # Logo Services
   /logos/{brandId}:
     get:
@@ -990,7 +1176,7 @@ paths:
           description: Parameters needed to set preferences
           required: true
           schema:
-            $ref: '#/definitions/preferencesParams'
+            $ref: '#/parameters/preferencesParams'
       tags:
         - Preference
       responses:
@@ -1171,7 +1357,7 @@ paths:
               list:
                 type: array
                 items:
-                  $ref: "#/links/product"
+                  $ref: "#/externalDocs/product"
 
   /products/find:
     get:
@@ -1272,7 +1458,7 @@ paths:
           schema:
             type: array
             items:
-              $ref: "#/links/product"
+              $ref: "#/externalDocs/product"
 
   /products/{productId}:
     get:
@@ -1316,7 +1502,7 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/links/product"
+            $ref: "#/externalDocs/product"
 
   /products/{productId}/dates:
     get:
@@ -1339,7 +1525,7 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/links/product"
+            $ref: "#/externalDocs/product"
 
   /products/{productId}/times:
     get:
@@ -1362,7 +1548,7 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/links/product"
+            $ref: "#/externalDocs/product"
 
   /products/{productId}/comments:
     get:
@@ -1432,7 +1618,7 @@ paths:
           description: Parameters needed to add comment.
           required: true
           schema:
-            $ref: '#/definitions/createProductCommentParams'
+            $ref: '#/parameters/createProductCommentParams'
       tags:
         - Product
       responses:
@@ -1491,7 +1677,7 @@ paths:
           description: Parameters needed to update comment.
           required: true
           schema:
-            $ref: '#/definitions/updateProductCommentParams'
+            $ref: '#/parameters/updateProductCommentParams'
       tags:
         - Product
       responses:
@@ -1523,7 +1709,7 @@ paths:
           description: Parameters needed to note comment.
           required: true
           schema:
-            $ref: '#/definitions/noteProductCommentParams'
+            $ref: '#/parameters/noteProductCommentParams'
       tags:
         - Product
       responses:
@@ -1583,7 +1769,7 @@ paths:
           schema:
             type: array
             items:
-              $ref: "#/links/suggestion"
+              $ref: "#/externalDocs/suggestion"
 
   /products/{productId}/suggestions/{suggestionId}:
     get:
@@ -1607,7 +1793,7 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/links/suggestion"
+            $ref: "#/externalDocs/suggestion"
 
 # Promotion Services
   /promotions:
@@ -1677,7 +1863,7 @@ paths:
               list:
                 type: array
                 items:
-                  $ref: "#/links/coupon"
+                  $ref: "#/externalDocs/coupon"
 
   /promotions/{promotionId}:
     get:
@@ -1695,7 +1881,7 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/links/coupon"
+            $ref: "#/externalDocs/coupon"
         404:
           description: Resource not found.
           schema:
@@ -1921,7 +2107,7 @@ paths:
               list:
                 type: array
                 items:
-                  $ref: "#/links/sku"
+                  $ref: "#/externalDocs/sku"
 
   /skus/{skuId}:
     get:
@@ -1939,7 +2125,7 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/links/sku"
+            $ref: "#/externalDocs/sku"
         404:
           description: Sku not found.
           schema:
@@ -1979,7 +2165,7 @@ paths:
           schema:
             type: array
             items:
-              $ref: "#/links/tag"
+              $ref: "#/externalDocs/tag"
 
   /tags/{tagId}:
     get:
@@ -1997,7 +2183,7 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/links/tag"
+            $ref: "#/externalDocs/tag"
         404:
           description: Tag not found.
           schema:
@@ -2018,7 +2204,7 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/links/tag"
+            $ref: "#/externalDocs/tag"
         404:
           description: Tag not found.
           schema:
@@ -2163,7 +2349,7 @@ paths:
           description: Parameters needed to add sub list.
           required: true
           schema:
-            $ref: '#/definitions/addWishlistSublistParams'
+            $ref: '#/parameters/addWishlistSublistParams'
       tags:
         - Wishlists
       responses:
@@ -2305,7 +2491,7 @@ paths:
           description: Parameters needed to add item.
           required: true
           schema:
-            $ref: '#/definitions/addWishlistItemParams'
+            $ref: '#/parameters/addWishlistItemParams'
       tags:
         - Wishlists
       responses:
@@ -2474,7 +2660,7 @@ paths:
           description: Parameters needed to add brand.
           required: true
           schema:
-            $ref: '#/definitions/addWishlistBrandParams'
+            $ref: '#/parameters/addWishlistBrandParams'
       tags:
         - Wishlists
       responses:
@@ -2558,7 +2744,7 @@ paths:
           description: Parameters needed to add category.
           required: true
           schema:
-            $ref: '#/definitions/addWishlistCategoryParams'
+            $ref: '#/parameters/addWishlistCategoryParams'
       tags:
         - Wishlists
       responses:
@@ -4619,7 +4805,9 @@ definitions:
     type: string
     format: DISCOUNT|X_PURCHASED_Y_OFFERED
 
-# Post Parameters Definitions
+
+# Post Parameters
+parameters:
   createReturnItemParams:
     type: object
     required:
@@ -4892,19 +5080,24 @@ definitions:
       externalCode:
         type: string
 
-links:
+externalDocs:
 # Links To Json Files
   product:
-    /Json/Product.json
+    description: Product JSON file
+    url: /Json/Product.json
 
   suggestion:
-    /Json/Suggestion.json
+    description: Product JSON file
+    url: /Json/Suggestion.json
 
   coupon:
-    /Json/Coupon.json
+    description: Product JSON file
+    url: /Json/Coupon.json
 
   sku:
-    /Json/Sku.json
+    description: Product JSON file
+    url: /Json/Sku.json
 
   tag:
-    /Json/Tag.json
+    description: Product JSON file
+    url: /Json/Tag.json
