@@ -1,0 +1,1705 @@
+"sku" : {
+	"dynamic_templates" : [ {
+		"template_de" : {
+			"mapping" : {
+				"type" : "multi_field",
+				"fields" : {
+					"{name}" : {
+						"copy_to" : "raw",
+						"search_analyzer" : "de_search_analyzer",
+						"index_analyzer" : "de_index_analyzer",
+						"index" : "analyzed",
+						"type" : "string"
+					},
+					"raw" : {
+						"index" : "not_analyzed",
+						"type" : "string"
+					}
+				}
+			},
+			"match_mapping_type" : "string",
+			"path_match" : "de.*"
+		}
+	}, {
+		"template_nested_de" : {
+			"mapping" : {
+				"type" : "multi_field",
+				"fields" : {
+					"{name}" : {
+						"copy_to" : "raw",
+						"search_analyzer" : "de_search_analyzer",
+						"index_analyzer" : "de_index_analyzer",
+						"index" : "analyzed",
+						"type" : "string"
+					},
+					"raw" : {
+						"index" : "not_analyzed",
+						"type" : "string"
+					}
+				}
+			},
+			"match_mapping_type" : "string",
+			"path_match" : "*.de.*"
+		}
+	}, {
+		"template_en" : {
+			"mapping" : {
+				"type" : "multi_field",
+				"fields" : {
+					"{name}" : {
+						"copy_to" : "raw",
+						"search_analyzer" : "en_search_analyzer",
+						"index_analyzer" : "en_index_analyzer",
+						"index" : "analyzed",
+						"type" : "string"
+					},
+					"raw" : {
+						"index" : "not_analyzed",
+						"type" : "string"
+					}
+				}
+			},
+			"match_mapping_type" : "string",
+			"path_match" : "en.*"
+		}
+	}, {
+		"template_nested_en" : {
+			"mapping" : {
+				"type" : "multi_field",
+				"fields" : {
+					"{name}" : {
+						"copy_to" : "raw",
+						"search_analyzer" : "en_search_analyzer",
+						"index_analyzer" : "en_index_analyzer",
+						"index" : "analyzed",
+						"type" : "string"
+					},
+					"raw" : {
+						"index" : "not_analyzed",
+						"type" : "string"
+					}
+				}
+			},
+			"match_mapping_type" : "string",
+			"path_match" : "*.en.*"
+		}
+	}, {
+		"template_fr" : {
+			"mapping" : {
+				"type" : "multi_field",
+				"fields" : {
+					"{name}" : {
+						"copy_to" : "raw",
+						"search_analyzer" : "fr_search_analyzer",
+						"index_analyzer" : "fr_index_analyzer",
+						"index" : "analyzed",
+						"type" : "string"
+					},
+					"raw" : {
+						"index" : "not_analyzed",
+						"type" : "string"
+					}
+				}
+			},
+			"match_mapping_type" : "string",
+			"path_match" : "fr.*"
+		}
+	}, {
+		"template_nested_fr" : {
+			"mapping" : {
+				"type" : "multi_field",
+				"fields" : {
+					"{name}" : {
+						"copy_to" : "raw",
+						"search_analyzer" : "fr_search_analyzer",
+						"index_analyzer" : "fr_index_analyzer",
+						"index" : "analyzed",
+						"type" : "string"
+					},
+					"raw" : {
+						"index" : "not_analyzed",
+						"type" : "string"
+					}
+				}
+			},
+			"match_mapping_type" : "string",
+			"path_match" : "*.fr.*"
+		}
+	} ],
+	"_all" : {
+		"index_analyzer" : "fr_index_analyzer",
+		"search_analyzer" : "fr_search_analyzer"
+	},
+	"_timestamp" : {
+		"enabled" : true
+	},
+	"properties" : {
+		"FR" : {
+			"properties" : {
+				"enabled" : {
+					"type" : "boolean"
+				},
+				"endPrice" : {
+					"type" : "long"
+				},
+				"saleEndPrice" : {
+					"type" : "long"
+				}
+			}
+		},
+		"GB" : {
+			"properties" : {
+				"enabled" : {
+					"type" : "boolean"
+				},
+				"endPrice" : {
+					"type" : "long"
+				},
+				"saleEndPrice" : {
+					"type" : "long"
+				}
+			}
+		},
+		"SN" : {
+			"properties" : {
+				"enabled" : {
+					"type" : "boolean"
+				},
+				"endPrice" : {
+					"type" : "long"
+				},
+				"saleEndPrice" : {
+					"type" : "long"
+				}
+			}
+		},
+		"available" : {
+			"type" : "boolean"
+		},
+		"byDateTime" : {
+			"properties" : {
+				"available" : {
+					"type" : "boolean"
+				},
+				"dateCreated" : {
+					"type" : "date",
+					"format" : "dateOptionalTime"
+				},
+				"id" : {
+					"type" : "long"
+				},
+				"lastUpdated" : {
+					"type" : "date",
+					"format" : "dateOptionalTime"
+				},
+				"startDate" : {
+					"type" : "date",
+					"format" : "dateOptionalTime"
+				},
+				"stock" : {
+					"type" : "long"
+				},
+				"uuid" : {
+					"type" : "string"
+				}
+			}
+		},
+		"byDateTimes" : {
+			"type" : "nested",
+			"properties" : {
+				"available" : {
+					"type" : "boolean"
+				},
+				"dateCreated" : {
+					"type" : "date",
+					"format" : "date_optional_time"
+				},
+				"id" : {
+					"type" : "long"
+				},
+				"lastUpdated" : {
+					"type" : "date",
+					"format" : "date_optional_time"
+				},
+				"startDate" : {
+					"type" : "date",
+					"format" : "date_optional_time"
+				},
+				"stock" : {
+					"type" : "long"
+				},
+				"uuid" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				}
+			}
+		},
+		"calendarType" : {
+			"type" : "string",
+			"index" : "not_analyzed"
+		},
+		"coupons" : {
+			"properties" : {
+				"id" : {
+					"type" : "long"
+				}
+			}
+		},
+		"de" : {
+			"properties" : {
+				"description" : {
+					"type" : "string",
+					"index_analyzer" : "de_index_analyzer",
+					"search_analyzer" : "de_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"name" : {
+					"type" : "string",
+					"index_analyzer" : "de_index_analyzer",
+					"search_analyzer" : "de_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				}
+			}
+		},
+		"description" : {
+			"type" : "string",
+			"index_analyzer" : "fr_index_analyzer",
+			"search_analyzer" : "fr_search_analyzer",
+			"fields" : {
+				"raw" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				}
+			},
+			"copy_to" : [ "raw" ]
+		},
+		"en" : {
+			"properties" : {
+				"description" : {
+					"type" : "string",
+					"index_analyzer" : "en_index_analyzer",
+					"search_analyzer" : "en_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"name" : {
+					"type" : "string",
+					"index_analyzer" : "en_index_analyzer",
+					"search_analyzer" : "en_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				}
+			}
+		},
+		"fr" : {
+			"properties" : {
+				"description" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"name" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				}
+			}
+		},
+		"id" : {
+			"type" : "long"
+		},
+		"imported" : {
+			"type" : "date",
+			"format" : "dateOptionalTime"
+		},
+		"initialStock" : {
+			"type" : "long"
+		},
+		"maxOrder" : {
+			"type" : "integer"
+		},
+		"minOrder" : {
+			"type" : "integer"
+		},
+		"name" : {
+			"type" : "string",
+			"index_analyzer" : "fr_index_analyzer",
+			"search_analyzer" : "fr_search_analyzer",
+			"fields" : {
+				"raw" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				}
+			},
+			"copy_to" : [ "raw" ]
+		},
+		"nbSales" : {
+			"type" : "long"
+		},
+		"picture" : {
+			"type" : "string",
+			"index" : "no"
+		},
+		"position" : {
+			"type" : "integer"
+		},
+		"price" : {
+			"type" : "long"
+		},
+		"product" : {
+			"properties" : {
+				"brand" : {
+					"properties" : {
+						"de" : {
+							"properties" : {
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "de_index_analyzer",
+									"search_analyzer" : "de_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"website" : {
+									"type" : "string",
+									"index_analyzer" : "de_index_analyzer",
+									"search_analyzer" : "de_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"description" : {
+							"type" : "string"
+						},
+						"en" : {
+							"properties" : {
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "en_index_analyzer",
+									"search_analyzer" : "en_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"website" : {
+									"type" : "string",
+									"index_analyzer" : "en_index_analyzer",
+									"search_analyzer" : "en_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"fr" : {
+							"properties" : {
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "fr_index_analyzer",
+									"search_analyzer" : "fr_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"website" : {
+									"type" : "string",
+									"index_analyzer" : "fr_index_analyzer",
+									"search_analyzer" : "fr_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"hide" : {
+							"type" : "boolean"
+						},
+						"id" : {
+							"type" : "long"
+						},
+						"imported" : {
+							"type" : "date",
+							"format" : "dateOptionalTime"
+						},
+						"increments" : {
+							"type" : "long"
+						},
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"picture" : {
+							"type" : "string"
+						},
+						"smallPicture" : {
+							"type" : "string"
+						},
+						"twitter" : {
+							"type" : "string"
+						},
+						"website" : {
+							"type" : "string",
+							"index" : "no"
+						}
+					}
+				},
+				"category" : {
+					"properties" : {
+						"coupons" : {
+							"type" : "long"
+						},
+						"de" : {
+							"properties" : {
+								"description" : {
+									"type" : "string",
+									"index_analyzer" : "de_index_analyzer",
+									"search_analyzer" : "de_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"keywords" : {
+									"type" : "string",
+									"index_analyzer" : "de_index_analyzer",
+									"search_analyzer" : "de_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "de_index_analyzer",
+									"search_analyzer" : "de_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"description" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"en" : {
+							"properties" : {
+								"description" : {
+									"type" : "string",
+									"index_analyzer" : "en_index_analyzer",
+									"search_analyzer" : "en_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"keywords" : {
+									"type" : "string",
+									"index_analyzer" : "en_index_analyzer",
+									"search_analyzer" : "en_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "en_index_analyzer",
+									"search_analyzer" : "en_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"fr" : {
+							"properties" : {
+								"description" : {
+									"type" : "string",
+									"index_analyzer" : "fr_index_analyzer",
+									"search_analyzer" : "fr_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"keywords" : {
+									"type" : "string",
+									"index_analyzer" : "fr_index_analyzer",
+									"search_analyzer" : "fr_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "fr_index_analyzer",
+									"search_analyzer" : "fr_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"hide" : {
+							"type" : "boolean"
+						},
+						"id" : {
+							"type" : "long"
+						},
+						"imported" : {
+							"type" : "date",
+							"format" : "dateOptionalTime"
+						},
+						"increments" : {
+							"type" : "long"
+						},
+						"keywords" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"parentId" : {
+							"type" : "long"
+						},
+						"path" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						},
+						"position" : {
+							"type" : "long"
+						},
+						"uuid" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					}
+				},
+				"code" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"dateCreated" : {
+					"type" : "date",
+					"format" : "date_optional_time"
+				},
+				"de" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"en" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"features" : {
+					"type" : "nested",
+					"properties" : {
+						"de" : {
+							"properties" : {
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "de_index_analyzer",
+									"search_analyzer" : "de_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"value" : {
+									"type" : "string",
+									"index_analyzer" : "de_index_analyzer",
+									"search_analyzer" : "de_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"domain" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"en" : {
+							"properties" : {
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "en_index_analyzer",
+									"search_analyzer" : "en_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"value" : {
+									"type" : "string",
+									"index_analyzer" : "en_index_analyzer",
+									"search_analyzer" : "en_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"fr" : {
+							"properties" : {
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "fr_index_analyzer",
+									"search_analyzer" : "fr_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								},
+								"value" : {
+									"type" : "string",
+									"index_analyzer" : "fr_index_analyzer",
+									"search_analyzer" : "fr_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"hide" : {
+							"type" : "boolean"
+						},
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"position" : {
+							"type" : "integer"
+						},
+						"uuid" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"fr" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"id" : {
+					"type" : "long"
+				},
+				"name" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"startFeatureDate" : {
+					"type" : "date",
+					"format" : "date_optional_time"
+				},
+				"stopFeatureDate" : {
+					"type" : "date",
+					"format" : "date_optional_time"
+				},
+				"tags" : {
+					"type" : "nested",
+					"properties" : {
+						"de" : {
+							"properties" : {
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "de_index_analyzer",
+									"search_analyzer" : "de_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"en" : {
+							"properties" : {
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "en_index_analyzer",
+									"search_analyzer" : "en_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"fr" : {
+							"properties" : {
+								"name" : {
+									"type" : "string",
+									"index_analyzer" : "fr_index_analyzer",
+									"search_analyzer" : "fr_search_analyzer",
+									"fields" : {
+										"raw" : {
+											"type" : "string",
+											"index" : "not_analyzed"
+										}
+									},
+									"copy_to" : [ "raw" ]
+								}
+							}
+						},
+						"id" : {
+							"type" : "long"
+						},
+						"imported" : {
+							"type" : "date",
+							"format" : "dateOptionalTime"
+						},
+						"increments" : {
+							"type" : "long"
+						},
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"taxRate" : {
+					"properties" : {
+						"id" : {
+							"type" : "long"
+						},
+						"localTaxRates" : {
+							"properties" : {
+								"countryCode" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								},
+								"id" : {
+									"type" : "long"
+								},
+								"rate" : {
+									"type" : "float",
+									"index" : "no"
+								},
+								"stateCode" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							}
+						},
+						"name" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					}
+				},
+				"xtype" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				}
+			}
+		},
+		"promotion" : {
+			"properties" : {
+				"description" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"name" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"pastille" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				},
+				"reduction" : {
+					"type" : "long"
+				}
+			}
+		},
+		"promotions" : {
+			"properties" : {
+				"de" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"pastille" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"en" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"pastille" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"fr" : {
+					"type" : "object"
+				},
+				"reduction" : {
+					"type" : "long"
+				}
+			}
+		},
+		"raw" : {
+			"type" : "string"
+		},
+		"resources" : {
+			"properties" : {
+				"active" : {
+					"type" : "boolean",
+					"index" : "no"
+				},
+				"content" : {
+					"type" : "binary"
+				},
+				"contentType" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				},
+				"de" : {
+					"properties" : {
+						"description" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"deleted" : {
+					"type" : "boolean",
+					"index" : "no"
+				},
+				"description" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"en" : {
+					"properties" : {
+						"description" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"fr" : {
+					"properties" : {
+						"description" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"id" : {
+					"type" : "long"
+				},
+				"imported" : {
+					"type" : "date",
+					"format" : "dateOptionalTime"
+				},
+				"name" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"sanitizedName" : {
+					"type" : "string",
+					"index" : "no"
+				},
+				"smallPicture" : {
+					"type" : "string",
+					"index" : "no"
+				},
+				"uploaded" : {
+					"type" : "boolean",
+					"index" : "no"
+				},
+				"url" : {
+					"type" : "string",
+					"index" : "no"
+				},
+				"uuid" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				},
+				"variationValues" : {
+					"type" : "string"
+				},
+				"xtype" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				}
+			}
+		},
+		"salePrice" : {
+			"type" : "long"
+		},
+		"sku" : {
+			"type" : "string",
+			"index" : "not_analyzed"
+		},
+		"startDate" : {
+			"type" : "date",
+			"format" : "date_optional_time"
+		},
+		"stock" : {
+			"type" : "long"
+		},
+		"stockDisplay" : {
+			"type" : "boolean"
+		},
+		"stockOutSelling" : {
+			"type" : "boolean"
+		},
+		"stockUnlimited" : {
+			"type" : "boolean"
+		},
+		"stopDate" : {
+			"type" : "date",
+			"format" : "date_optional_time"
+		},
+		"uuid" : {
+			"type" : "string",
+			"index" : "not_analyzed"
+		},
+		"variation1" : {
+			"properties" : {
+				"de" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"en" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"fr" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"hide" : {
+					"type" : "boolean"
+				},
+				"name" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"position" : {
+					"type" : "integer"
+				},
+				"uuid" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				},
+				"value" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				}
+			}
+		},
+		"variation2" : {
+			"properties" : {
+				"de" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"en" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"fr" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"hide" : {
+					"type" : "boolean"
+				},
+				"name" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"position" : {
+					"type" : "integer"
+				},
+				"uuid" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				},
+				"value" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				}
+			}
+		},
+		"variation3" : {
+			"properties" : {
+				"de" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "de_index_analyzer",
+							"search_analyzer" : "de_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"en" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "en_index_analyzer",
+							"search_analyzer" : "en_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"fr" : {
+					"properties" : {
+						"name" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						},
+						"value" : {
+							"type" : "string",
+							"index_analyzer" : "fr_index_analyzer",
+							"search_analyzer" : "fr_search_analyzer",
+							"fields" : {
+								"raw" : {
+									"type" : "string",
+									"index" : "not_analyzed"
+								}
+							},
+							"copy_to" : [ "raw" ]
+						}
+					}
+				},
+				"hide" : {
+					"type" : "boolean"
+				},
+				"name" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				},
+				"position" : {
+					"type" : "integer"
+				},
+				"uuid" : {
+					"type" : "string",
+					"index" : "not_analyzed"
+				},
+				"value" : {
+					"type" : "string",
+					"index_analyzer" : "fr_index_analyzer",
+					"search_analyzer" : "fr_search_analyzer",
+					"fields" : {
+						"raw" : {
+							"type" : "string",
+							"index" : "not_analyzed"
+						}
+					},
+					"copy_to" : [ "raw" ]
+				}
+			}
+		},
+		"xprivate" : {
+			"type" : "boolean"
+		}
+	}
+}
