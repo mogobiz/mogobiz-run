@@ -67,6 +67,7 @@ paths:
           in: query
           description: Order delivery status.
           required: false
+          type: string
       tags:
         - Backoffice
       responses:
@@ -1333,31 +1334,10 @@ paths:
           description: Ok.
           schema:
             type: object
-            items:
-            properties:
-              hasNext:
-                type: boolean
-              hasPrevious:
-                type: boolean
-              maxItemsPerPage:
-                type: integer
-                format: int32
-              pageCount:
-                type: integer
-                format: int32
-              pageOffset:
-                type: integer
-                format: int32
-              pageSize:
-                type: integer
-                format: int32
-              totalCount:
-                type: integer
-                format: int32
-              list:
-                type: array
-                items:
-                  $ref: "#/externalDocs/product"
+            description: List of products
+            externalDocs:
+              description: List of products
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/ListProducts.json
 
   /products/find:
     get:
@@ -1456,9 +1436,11 @@ paths:
         200:
           description: Ok.
           schema:
-            type: array
-            items:
-              $ref: "#/externalDocs/product"
+            type: object
+            description: List of products
+            externalDocs:
+              description: List of products
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/ListProducts.json
 
   /products/{productId}:
     get:
@@ -1502,7 +1484,11 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/externalDocs/product"
+            type: object
+            description: Product object
+            externalDocs:
+              description: Product object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/Product.json
 
   /products/{productId}/dates:
     get:
@@ -1525,7 +1511,11 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/externalDocs/product"
+            type: object
+            description: Product object
+            externalDocs:
+              description: Product object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/Product.json
 
   /products/{productId}/times:
     get:
@@ -1548,7 +1538,11 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/externalDocs/product"
+            type: object
+            description: Product object
+            externalDocs:
+              description: Product object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/Product.json
 
   /products/{productId}/comments:
     get:
@@ -1650,11 +1644,11 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "definitions/productComment"
+            $ref: "#/definitions/productComment"
         404:
           description: Comment Not Found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /products/{productId}/comments/{commentId}:
     put:
@@ -1686,7 +1680,7 @@ paths:
         401:
           description: Unauthorized if user not connected or session expired.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /products/{productId}/comments/{commentId}:
     post:
@@ -1718,7 +1712,7 @@ paths:
         401:
           description: Unauthorized if user not connected or session expired.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /products/{productId}/comments/{commentId}:
     delete:
@@ -1744,7 +1738,7 @@ paths:
         401:
           description: Unauthorized if user not connected or session expired.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /products/{productId}/suggestions:
     get:
@@ -1767,9 +1761,11 @@ paths:
         200:
           description: Ok.
           schema:
-            type: array
-            items:
-              $ref: "#/externalDocs/suggestion"
+            type: object
+            description: List of suggestion
+            externalDocs:
+              description: Product object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/ListSuggestions.json
 
   /products/{productId}/suggestions/{suggestionId}:
     get:
@@ -1793,7 +1789,11 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/externalDocs/suggestion"
+            type: object
+            description: Suggestion Object
+            externalDocs:
+              description: Suggestion Object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/Suggestion.json
 
 # Promotion Services
   /promotions:
@@ -1839,31 +1839,10 @@ paths:
           description: Ok.
           schema:
             type: object
-            items:
-            properties:
-              hasNext:
-                type: boolean
-              hasPrevious:
-                type: boolean
-              maxItemsPerPage:
-                type: integer
-                format: int32
-              pageCount:
-                type: integer
-                format: int32
-              pageOffset:
-                type: integer
-                format: int32
-              pageSize:
-                type: integer
-                format: int32
-              totalCount:
-                type: integer
-                format: int32
-              list:
-                type: array
-                items:
-                  $ref: "#/externalDocs/coupon"
+            description: List of promotions
+            externalDocs:
+              description: List of promotions
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/ListCoupons.json
 
   /promotions/{promotionId}:
     get:
@@ -1881,11 +1860,15 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/externalDocs/coupon"
+            type: object
+            description: Coupon Object
+            externalDocs:
+              description: Coupon Object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/Coupon.json
         404:
           description: Resource not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
 # Resource Services
   /resources/{resourceId}:
@@ -1908,7 +1891,7 @@ paths:
         404:
           description: Resource not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
 
   /resources/{resourceId}/{size}:
@@ -1937,7 +1920,7 @@ paths:
         404:
           description: Resource not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
 # Sku Services
   /skus:
@@ -2083,31 +2066,14 @@ paths:
           description: Ok.
           schema:
             type: object
-            items:
-            properties:
-              hasNext:
-                type: boolean
-              hasPrevious:
-                type: boolean
-              maxItemsPerPage:
-                type: integer
-                format: int32
-              pageCount:
-                type: integer
-                format: int32
-              pageOffset:
-                type: integer
-                format: int32
-              pageSize:
-                type: integer
-                format: int32
-              totalCount:
-                type: integer
-                format: int32
-              list:
-                type: array
-                items:
-                  $ref: "#/externalDocs/sku"
+            description: List of skus
+            externalDocs:
+              description: List of skus
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/ListSkus.json
+            description: Sku Object
+            externalDocs:
+              description: Sku Object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/Sku.json
 
   /skus/{skuId}:
     get:
@@ -2125,11 +2091,15 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/externalDocs/sku"
+            type: object
+            description: Sku Object
+            externalDocs:
+              description: Sku Object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/Sku.json
         404:
           description: Sku not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
 # Tag Services
   /tags:
@@ -2163,9 +2133,11 @@ paths:
         200:
           description: Ok.
           schema:
-            type: array
-            items:
-              $ref: "#/externalDocs/tag"
+            type: object
+            description: List of tags
+            externalDocs:
+              description: List of tags
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/ListTags.json
 
   /tags/{tagId}:
     get:
@@ -2183,11 +2155,15 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/externalDocs/tag"
+            type: object
+            description: Tag Object
+            externalDocs:
+              description: Tag Object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/Tag.json
         404:
           description: Tag not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /tags/{tagName}:
     get:
@@ -2204,11 +2180,15 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "#/externalDocs/tag"
+            type: object
+            description: Tag Object
+            externalDocs:
+              description: Tag Object
+              url: http://www.ebiznext.com/mogobiz/doc/biz/Json/Tag.json
         404:
           description: Tag not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
 # Validator Service
   /validator/{key}:
@@ -2230,7 +2210,7 @@ paths:
         404:
           description: Invalid key.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
 # Wishlists Service
   /wishlists:
@@ -2255,11 +2235,11 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "definitions/wishlist"
+            $ref: "#/definitions/wishlist"
         404:
           description: Wishlist not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/owner:
     post:
@@ -2307,11 +2287,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/wishlist/{token}:
     get:
@@ -2328,11 +2308,11 @@ paths:
         200:
           description: Ok.
           schema:
-            $ref: "definitions/wishlistSubList"
+            $ref: "#/definitions/wishlistSubList"
         404:
           description: Invalid token.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist:
     post:
@@ -2360,11 +2340,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         409:
           description: Conflicted if sub list name already exist.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}:
     delete:
@@ -2390,11 +2370,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/token:
     get:
@@ -2428,11 +2408,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/default:
     post:
@@ -2464,11 +2444,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/item:
     post:
@@ -2502,15 +2482,15 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         409:
           description: Conflicted if product already exist.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/item/{itemId}:
     delete:
@@ -2548,11 +2528,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist or item not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/idea:
     post:
@@ -2591,11 +2571,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/idea/{ideaId}:
     delete:
@@ -2633,11 +2613,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist or idea not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/brand:
     post:
@@ -2671,15 +2651,15 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         409:
           description: Conflicted if brand already exist.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/brand/{brandId}:
     delete:
@@ -2717,11 +2697,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist or brand not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/category:
     post:
@@ -2755,15 +2735,15 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         409:
           description: Conflicted if category already exist.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
   /wishlists/{wishlistId}/wishlist/{listId}/category/{categoryId}:
     delete:
@@ -2801,11 +2781,11 @@ paths:
         401:
           description: Unauthorized if invalid owner email.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
         404:
           description: Wishlist or category not found.
           schema:
-            $ref: "definitions/error"
+            $ref: "#/definitions/error"
 
 
 definitions:
@@ -4566,7 +4546,7 @@ definitions:
         type: integer
         type: int32
       default:
-        description: string
+        type: string
 
   wishlistSubList:
     type: object
@@ -5079,25 +5059,3 @@ parameters:
         fomat: email
       externalCode:
         type: string
-
-externalDocs:
-# Links To Json Files
-  product:
-    description: Product JSON file
-    url: /Json/Product.json
-
-  suggestion:
-    description: Product JSON file
-    url: /Json/Suggestion.json
-
-  coupon:
-    description: Product JSON file
-    url: /Json/Coupon.json
-
-  sku:
-    description: Product JSON file
-    url: /Json/Sku.json
-
-  tag:
-    description: Product JSON file
-    url: /Json/Tag.json
