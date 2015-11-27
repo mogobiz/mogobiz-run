@@ -889,7 +889,7 @@ paths:
         200:
           description: Ok.
           schema:
-              $ref: "#/definitions/country"
+            $ref: "#/definitions/country"
         404:
           description: Not found.
           schema:
@@ -924,7 +924,7 @@ paths:
         200:
           description: Ok.
           schema:
-              $ref: "#/definitions/currency"
+            $ref: "#/definitions/currency"
         404:
           description: Not found.
           schema:
@@ -1079,18 +1079,18 @@ paths:
           description: Ok.
           schema:
             type: object
-              required:
-                - _1
-                - _2
-              properties:
-                _1:
-                  type: array
-                  items:
-                    type: string
-                _2:
-                  type: array
-                  items:
-                    type: string
+            required:
+              - _1
+              - _2
+            properties:
+              _1:
+                type: array
+                items:
+                  type: string
+              _2:
+                type: array
+                items:
+                  type: string
 
   /learning/popular:
     get:
