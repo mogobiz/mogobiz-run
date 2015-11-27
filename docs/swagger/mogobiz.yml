@@ -762,7 +762,7 @@ paths:
           description: Get sub categories of a category parent.
           required: false
           type: string
-          fomat: uuid
+          format: uuid
         - name: categoryPath
           in: query
           description: Get categories by path.
@@ -773,7 +773,7 @@ paths:
           description: Get categories for brand.
           required: false
           type: string
-          fomat: uuid
+          format: uuid
         - name: lang
           in: query
           description: Language.
@@ -784,13 +784,13 @@ paths:
           description: Get categories by promotion.
           required: false
           type: string
-          fomat: uuid
+          format: uuid
         - name: size
           in: query
           description: Returned list size.
           required: false
           type: integer
-          fomat: int32
+          format: int32
       tags:
         - Category
       responses:
@@ -820,7 +820,7 @@ paths:
           description: Get sub categories of a category parent.
           required: false
           type: string
-          fomat: uuid
+          format: uuid
         - name: categoryPath
           in: query
           description: Get categories by path.
@@ -831,7 +831,7 @@ paths:
           description: Get categories for brand.
           required: false
           type: string
-          fomat: uuid
+          format: uuid
         - name: lang
           in: query
           description: Language.
@@ -842,13 +842,13 @@ paths:
           description: Get categories by promotion.
           required: false
           type: string
-          fomat: uuid
+          format: uuid
         - name: size
           in: query
           description: Returned list size.
           required: false
           type: integer
-          fomat: int32
+          format: int32
       tags:
         - Category
       responses:
@@ -2222,13 +2222,13 @@ paths:
           description: Wishlist owner email.
           required: true
           type: string
-          fromat: email
+          format: email
         - name: wishlist_uuid
           in: query
           description: wishlist id.
           required: false
           type: string
-          fromat: uuid
+          format: uuid
       tags:
         - Wishlists
       responses:
@@ -2250,7 +2250,7 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: owner_email
           in: query
           description: Wishlist owner email.
@@ -2323,7 +2323,7 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: params
           in: body
           description: Parameters needed to add sub list.
@@ -2355,13 +2355,13 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
       tags:
         - Wishlists
       responses:
@@ -2385,19 +2385,19 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: owner_email
           in: query
           description: Wishlist owner email.
           required: true
           type: string
-          fromat: email
+          format: email
       tags:
         - Wishlists
       responses:
@@ -2423,19 +2423,19 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: owner_email
           in: query
           description: Wishlist owner email.
           required: true
           type: string
-          fromat: email
+          format: email
       tags:
         - Wishlists
       responses:
@@ -2459,13 +2459,13 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: params
           in: body
           description: Parameters needed to add item.
@@ -2501,25 +2501,25 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: itemId
           in: path
           description: Item Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: owner_email
           in: query
           description: Wishlist owner email.
           required: true
           type: string
-          fromat: email
+          format: email
       tags:
         - Wishlists
       responses:
@@ -2543,13 +2543,13 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: idea
           in: query
           description: Idea to be added.
@@ -2586,25 +2586,25 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: ideaId
           in: path
           description: Idea Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: owner_email
           in: query
           description: Wishlist owner email.
           required: true
           type: string
-          fromat: email
+          format: email
       tags:
         - Wishlists
       responses:
@@ -2628,13 +2628,13 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: params
           in: body
           description: Parameters needed to add brand.
@@ -2670,25 +2670,25 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: brandId
           in: path
           description: Brand Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: owner_email
           in: query
           description: Wishlist owner email.
           required: true
           type: string
-          fromat: email
+          format: email
       tags:
         - Wishlists
       responses:
@@ -2712,13 +2712,13 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: params
           in: body
           description: Parameters needed to add category.
@@ -2754,25 +2754,25 @@ paths:
           description: Wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: listId
           in: path
           description: Sub wishlist Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: categoryId
           in: path
           description: Category Id.
           required: true
           type: string
-          fromat: uuid
+          format: uuid
         - name: owner_email
           in: query
           description: Wishlist owner email.
           required: true
           type: string
-          fromat: email
+          format: email
       tags:
         - Wishlists
       responses:
@@ -4541,10 +4541,10 @@ definitions:
         type: string
       dayOfBirth:
         type: integer
-        type: int32
+        format: int32
       monthOfBirth:
         type: integer
-        type: int32
+        format: int32
       default:
         type: string
 
@@ -5005,7 +5005,7 @@ parameters:
         type: string
       owner_email:
         type: string
-        fomat: email
+        format: email
       product_sku:
         type: string
 
@@ -5022,7 +5022,7 @@ parameters:
         type: string
       owner_email:
         type: string
-        fomat: email
+        format: email
 
   addWishlistCategoryParams:
     type: object
@@ -5037,7 +5037,7 @@ parameters:
         type: string
       owner_email:
         type: string
-        fomat: email
+        format: email
 
   addWishlistSublistParams:
     type: object
@@ -5051,11 +5051,11 @@ parameters:
         type: string
       visibility:
         type: string
-        fomat: PUBLIC|PRIVATE|SHARED
+        format: PUBLIC|PRIVATE|SHARED
       defaultIndicator:
         type: boolean
       owner_email:
         type: string
-        fomat: email
+        format: email
       externalCode:
         type: string
