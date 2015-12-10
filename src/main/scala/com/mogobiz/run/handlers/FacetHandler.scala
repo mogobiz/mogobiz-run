@@ -37,8 +37,8 @@ class FacetHandler {
     val _lang = if(req.lang=="_all") "_" else s"_${req.lang}"
 
     val priceWithVatField = req.country match{
-      case Some(countryCode) => s"${countryCode}.endPrice"
-      case _ => "price"
+      case Some(countryCode) => s"${countryCode}.saleEndPrice"
+      case _ => "salePrice"
     }
 
     val defaultStockFilter = if(req.inStockOnly.getOrElse(true)){
@@ -164,8 +164,8 @@ class FacetHandler {
     val _lang = if(req.lang=="_all") "_" else s"_${req.lang}"
 
     val priceWithVatField = req.country match{
-      case Some(countryCode) => s"${countryCode}.endPrice"
-      case _ => "price"
+      case Some(countryCode) => s"${countryCode}.saleEndPrice"
+      case _ => "salePrice"
     }
 
     val defaultStockFilter = if(req.inStockOnly.getOrElse(true)){
@@ -283,8 +283,8 @@ class FacetHandler {
 
     //println("filterBuilder=",builder)
     val priceWithVatField = req.country match{
-      case Some(countryCode) => s"${countryCode}.endPrice"
-      case _ => "price"
+      case Some(countryCode) => s"${countryCode}.saleEndPrice"
+      case _ => "salePrice"
     }
 
     val filters = esType match {

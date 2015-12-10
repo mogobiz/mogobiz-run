@@ -63,8 +63,8 @@ class SkuHandler  extends JsonUtil {
 
     val lang = if (skuRequest.lang == "_all") "" else s"${skuRequest.lang}."
     val priceWithVatField = skuRequest.countryCode match{
-      case Some(countryCode) => s"${countryCode}.endPrice"
-      case _ => "price"
+      case Some(countryCode) => s"${countryCode}.saleEndPrice"
+      case _ => "salePrice"
     }
 
     val defaultStockFilter = if(skuRequest.inStockOnly.getOrElse(true)){
@@ -100,8 +100,15 @@ class SkuHandler  extends JsonUtil {
     val fieldsToExclude = getAllExcludedLanguagesExceptAsList(storeCode, skuRequest.lang) ::: fieldsToRemoveForProductSearchRendering
     val _size: Int = skuRequest.maxItemPerPage.getOrElse(100)
     val _from: Int = skuRequest.pageOffset.getOrElse(0) * _size
-    val _sort = skuRequest.orderBy.getOrElse("name.raw")
     val _sortOrder = skuRequest.orderDirection.getOrElse("asc")
+    val _sort = skuRequest.orderBy.getOrElse("name.raw") match {
+      case a if a startsWith "name" => s"${lang}name.raw"
+      case b if b startsWith "price" => skuRequest.countryCode match {
+          case Some(countryCode) => s"$countryCode.saleEndPrice"
+          case _ => "salePrice"
+        }
+      case s => s
+    }
     lazy val currency = queryCurrency(storeCode, skuRequest.currencyCode)
     val response: SearchHits = EsClient.searchAllRaw(
       filterRequest(_query, filters)

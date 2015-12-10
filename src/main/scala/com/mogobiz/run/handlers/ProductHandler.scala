@@ -64,8 +64,8 @@ class ProductHandler extends JsonUtil {
     val lang = if (productRequest.lang == "_all") "" else s"${productRequest.lang}."
 
     val priceWithVatField = productRequest.countryCode match{
-      case Some(countryCode) => s"$countryCode.endPrice"
-      case _ => "price"
+      case Some(countryCode) => s"$countryCode.saleEndPrice"
+      case _ => "salePrice"
     }
 
     val defaultStockFilter = if(productRequest.inStockOnly.getOrElse(true)){
@@ -105,13 +105,13 @@ class ProductHandler extends JsonUtil {
       case a if a startsWith "name" => s"${lang}name.raw"
       case b if b startsWith "price" => if(_sortOrder == "desc"){
         productRequest.countryCode match{
-          case Some(countryCode) => s"$countryCode.maxEndPrice"
-          case _ => "maxPrice"
+          case Some(countryCode) => s"$countryCode.maxSaleEndPrice"
+          case _ => "maxSalePrice"
         }
       } else {
         productRequest.countryCode match{
-          case Some(countryCode) => s"$countryCode.minEndPrice"
-          case _ => "minPrice"
+          case Some(countryCode) => s"$countryCode.minSaleEndPrice"
+          case _ => "minSalePrice"
         }
       }
       case s => s
