@@ -10,7 +10,6 @@ import spray.routing.{Directives, Route}
 import scala.util.Try
 
 /**
- * Created by Christophe on 16/06/2015.
  */
 trait DefaultCompleteMocked extends DefaultComplete {
   this : Directives =>

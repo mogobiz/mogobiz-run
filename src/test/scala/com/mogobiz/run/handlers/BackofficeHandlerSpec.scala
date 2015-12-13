@@ -13,7 +13,6 @@ import com.mogobiz.run.model.RequestParameters.{UpdateBOReturnedItemRequest, Cre
 import org.json4s.JsonAST._
 
 /**
- * Created by yoannbaudy on 19/02/2015.
  */
 class BackofficeHandlerSpec extends MogobizRouteTest {
 

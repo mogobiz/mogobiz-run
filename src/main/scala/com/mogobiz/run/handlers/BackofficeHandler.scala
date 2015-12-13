@@ -29,7 +29,6 @@ import com.mogobiz.run.config.MogobizHandlers.cartHandler
 import scalikejdbc.DB
 
 /**
- * Created by yoannbaudy on 19/02/2015.
  */
 class BackofficeHandler extends JsonUtil with BoService {
 

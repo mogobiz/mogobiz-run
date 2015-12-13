@@ -7,7 +7,6 @@ package com.mogobiz.run.handlers
 import com.mogobiz.MogobizRouteTest
 
 /**
- * Created by yoannbaudy on 24/11/2014.
  */
 class TaxRateHandlerSpec extends MogobizRouteTest {
 

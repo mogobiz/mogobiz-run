@@ -8,7 +8,6 @@ import org.json4s.JsonDSL._
 
 /**
  *
- * Created by Christophe on 17/03/14.
  */
 class JsonParsingSpec /*extends Specification*/ {
 

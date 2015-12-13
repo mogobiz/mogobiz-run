@@ -12,7 +12,6 @@ import spray.routing._
 import spray.testkit.Specs2RouteTest
 
 /**
- * Created by Christophe on 15/06/2015.
  */
 abstract class MogobizRouteMocked extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizSystem {
 

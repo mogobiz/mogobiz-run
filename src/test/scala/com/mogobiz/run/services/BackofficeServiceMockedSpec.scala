@@ -11,7 +11,6 @@ import com.mogobiz.run.model.RequestParameters.{UpdateBOReturnedItemRequest, Cre
 import spray.http.HttpEntity
 
 /**
- * Created by Christophe on 29/06/2015.
  */
 class BackofficeServiceMockedSpec extends MogobizRouteMocked  {
 

@@ -11,7 +11,6 @@ import com.mogobiz.run.model.RequestParameters.{CommentPutRequest, CommentReques
 import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
 
 /**
- * Created by Christophe on 30/06/2015.
  */
 class ProductServiceMockedSpec extends MogobizRouteMocked  {
 

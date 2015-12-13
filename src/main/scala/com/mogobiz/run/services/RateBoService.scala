@@ -11,7 +11,6 @@ import com.mogobiz.run.model.Currency
 
 /**
  *
- * Created by Christophe on 12/05/2014.
  */
 object RateBoService {
 

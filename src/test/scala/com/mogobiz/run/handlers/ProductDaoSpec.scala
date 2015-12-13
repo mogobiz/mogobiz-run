@@ -9,7 +9,6 @@ import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
 
 /**
- * Created by yoannbaudy on 21/11/2014.
  */
 class ProductDaoSpec extends MogobizRouteTest {
 

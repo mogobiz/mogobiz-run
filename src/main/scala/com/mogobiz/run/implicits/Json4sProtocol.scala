@@ -17,7 +17,6 @@ import spray.httpx.Json4sSupport
 
 /**
  *
- * Created by smanciot on 06/09/14.
  */
 object Json4sProtocol extends Json4sSupport {
 

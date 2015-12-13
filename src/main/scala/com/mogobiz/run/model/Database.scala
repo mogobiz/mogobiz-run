@@ -23,7 +23,6 @@ import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnitType
 import org.joda.time.DateTime
 
 /**
- * Created by yoannbaudy on 19/11/2014.
  */
 object Mogobiz {
 

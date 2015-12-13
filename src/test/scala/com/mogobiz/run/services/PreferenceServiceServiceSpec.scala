@@ -7,7 +7,6 @@ package com.mogobiz.run.services
 import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
 
 /**
- * Created by Christophe on 30/06/2015.
  */
 class PreferenceServiceServiceSpec extends MogobizRouteMocked  {
 

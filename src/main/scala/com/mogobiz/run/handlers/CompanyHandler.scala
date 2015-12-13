@@ -9,7 +9,6 @@ import com.mogobiz.run.model.Mogobiz.{Company,ShippingRule}
 import com.sksamuel.elastic4s.ElasticDsl._
 
 /**
- * Created by yoannbaudy on 27/11/2014.
  */
 class CompanyHandler {
 

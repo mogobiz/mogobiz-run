@@ -9,7 +9,6 @@ import org.json4s.JsonAST.{JValue, JArray}
 import org.json4s.native.JsonMethods._
 
 /**
- * Created by yoannbaudy on 18/11/2014.
  */
 object Es4Json {
 

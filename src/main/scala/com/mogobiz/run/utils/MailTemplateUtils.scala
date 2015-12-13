@@ -5,7 +5,6 @@
 package com.mogobiz.run.utils
 
 /**
- * Created by Christophe on 26/08/2014.
  */
 object MailTemplateUtils {
 

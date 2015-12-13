@@ -13,7 +13,6 @@ import scalikejdbc._
 import com.mogobiz.es._
 
 /**
- * Created by yoannbaudy on 24/11/2014.
  */
 class CouponHandler {
 

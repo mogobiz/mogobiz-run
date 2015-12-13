@@ -17,7 +17,6 @@ import scalikejdbc._
 import sqls.count
 
 /**
- * Created by yoannbaudy on 16/03/2015.
  */
 class ValidatorHandler {
 

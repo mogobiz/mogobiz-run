@@ -14,7 +14,6 @@ import org.json4s.JsonAST.JBool
 
 /**
  *
- * Created by yoannbaudy on 11/09/14.
  */
 class CategorySpec extends MogobizRouteTest {
 

@@ -10,7 +10,6 @@ import scalikejdbc._
 
 /**
  *
- * Created by Christophe on 24/04/2014.
  */
 object Utils {
 

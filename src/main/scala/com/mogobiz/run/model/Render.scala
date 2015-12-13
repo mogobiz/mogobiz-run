@@ -20,7 +20,6 @@ import org.json4s.JsonAST.{JDouble, JBool, JObject, JValue}
 import scala.collection.immutable.HashMap
 
 /**
- * Created by yoannbaudy on 26/11/2014.
  */
 object Render {
 

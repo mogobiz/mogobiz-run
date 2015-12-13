@@ -7,7 +7,6 @@ package com.mogobiz.run.services
 import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
 
 /**
- * Created by Christophe on 29/06/2015.
  */
 class FacetServiceMockedSpec extends MogobizRouteMocked  {
 

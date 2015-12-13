@@ -5,7 +5,6 @@
 package com.mogobiz.run.es
 
 /**
- * Created by hayssams on 27/10/14.
  */
 object Bootstrap {
 

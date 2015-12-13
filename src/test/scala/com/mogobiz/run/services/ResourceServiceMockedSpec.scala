@@ -9,7 +9,6 @@ import java.util.UUID
 import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
 
 /**
- * Created by Christophe on 29/06/2015.
  */
 class ResourceServiceMockedSpec extends MogobizRouteMocked  {
 

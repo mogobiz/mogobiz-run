@@ -12,7 +12,6 @@ import com.mogobiz.es._
 
 /**
  *
- * Created by Christophe on 24/04/2014.
  */
 
 object Paging {

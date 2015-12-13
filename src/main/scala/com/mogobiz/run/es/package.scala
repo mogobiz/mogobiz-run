@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory
 
 /**
  *
- * Created by smanciot on 25/09/14.
  */
 package object es {
 

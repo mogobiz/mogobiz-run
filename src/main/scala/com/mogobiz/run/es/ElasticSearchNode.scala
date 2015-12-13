@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory
 
 /**
  *
- * Created by smanciot on 08/09/14.
  */
 trait ElasticSearchNode {
 

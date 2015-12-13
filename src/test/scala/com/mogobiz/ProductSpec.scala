@@ -10,7 +10,6 @@ import org.json4s.JsonAST._
 
 /**
  *
- * Created by smanciot on 19/09/14.
  */
 class ProductSpec extends MogobizRouteTest{
 

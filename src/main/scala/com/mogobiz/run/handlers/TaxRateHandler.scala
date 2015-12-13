@@ -8,7 +8,6 @@ import com.mogobiz.run.model.Mogobiz
 import com.mogobiz.run.model.Mogobiz.LocalTaxRate
 
 /**
- * Created by yoannbaudy on 24/11/2014.
  */
 class TaxRateHandler {
 

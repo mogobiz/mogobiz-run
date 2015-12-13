@@ -16,7 +16,6 @@ import org.joda.time.DateTime
 
 /**
  *
- * Created by smanciot on 24/09/14.
  */
 
 /**

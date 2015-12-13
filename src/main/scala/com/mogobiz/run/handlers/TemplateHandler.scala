@@ -11,7 +11,6 @@ import com.mogobiz.template.Mustache
 import org.apache.commons.lang.LocaleUtils
 
 /**
- * Created by yoannbaudy on 28/11/2014.
  */
 class TemplateHandler {
 
