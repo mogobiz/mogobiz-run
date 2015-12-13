@@ -206,6 +206,7 @@ class CartService extends Directives with DefaultComplete {
                   StatusCodes.Forbidden -> Map('error -> "Not logged in")
                 }
                 case Some(id) => {
+                  val keys = params.cartKeys.split("\\|\\|\\|")
                   handleCall({
                     cartHandler.getCartForPay(keys(0), keys(1), if (!keys(2).isEmpty) Some(keys(2)) else None)
                   }, (cart: Cart) => {
