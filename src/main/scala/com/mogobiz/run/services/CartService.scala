@@ -195,8 +195,8 @@ class CartService extends Directives with DefaultComplete {
   }
 
   def shippingPrices(storeCode: String, uuid: String) = path("list-shipping-prices") {
-    post {
-      formFields('cartProvider, 'cartKeys).as(ListShippingPriceParam) {
+    get {
+      parameters(('cartProvider, 'cartKeys).as(ListShippingPriceParam) {
         params =>
           session {
             session =>
