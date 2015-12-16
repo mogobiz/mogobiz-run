@@ -25,7 +25,7 @@ import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
 import org.json4s.JsonAST._
 import com.mogobiz.json.JsonUtil
-import com.mogobiz.run.config.MogobizHandlers.cartHandler
+import com.mogobiz.run.config.MogobizHandlers.{cartHandler, stockHandler}
 import scalikejdbc.DB
 
 /**
@@ -258,6 +258,11 @@ class BackofficeHandler extends JsonUtil with BoService {
           lastUpdated = DateTime.now,
           uuid = UUID.randomUUID().toString))
 
+        if (newReturnStatus == ReturnStatus.RETURN_ACCEPTED && boReturnedItem.status == ReturnedItemStatus.BACK_TO_STOCK) {
+          ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).map { productAndSku =>
+            stockHandler.incrementStock(storeCode, productAndSku._1, productAndSku._2, boReturnedItem.quantity, boCartItem.startDate)
+          }
+        }
         cartHandler.exportBOCartIntoES(storeCode, boCart, true)
     }
   }
