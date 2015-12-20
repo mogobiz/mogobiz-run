@@ -5,16 +5,16 @@
 package com.mogobiz.run.dashboard
 
 import java.text.SimpleDateFormat
-import java.util.{Calendar, Date}
+import java.util.{ Calendar, Date }
 
-import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
+import com.fasterxml.jackson.databind.annotation.{ JsonDeserialize, JsonSerialize }
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers
 import com.mogobiz.run.config.Settings
 import com.mogobiz.pay.model.Mogopay.Account
-import com.mogobiz.run.json.{JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer}
-import com.mogobiz.run.model.ES.{BOCart, BOCartItem, BOProduct}
+import com.mogobiz.run.json.{ JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer }
+import com.mogobiz.run.model.ES.{ BOCart, BOCartItem, BOProduct }
 import com.mogobiz.run.model.Mogobiz
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz._
@@ -34,7 +34,7 @@ object Dashboard {
 
   def createIndexWithMapping(indexName: String) = {
     val request: CreateIndexDefinition = create index s"$indexName" mappings (
-      "LinearCart" as(
+      "LinearCart" as (
         "boProductAcquittement" typed BooleanType,
         "boProductPrice" typed LongType,
         "boUUID" typed StringType index "not_analyzed",
@@ -95,116 +95,99 @@ object Dashboard {
         "url" typed StringType index "not_analyzed",
         "uuid" typed StringType index "not_analyzed",
         "buyerGeoCoordinates" typed GeoPointType
-        )
       )
+    )
     Await.result(EsClient().execute(request), Duration.Inf).isAcknowledged
   }
 
   case class LinearCart(itemCode: String,
-                        price: Long,
-                        tax: Double,
-                        endPrice: Long,
-                        totalPrice: Long,
-                        totalEndPrice: Long,
-                        isItemHidden: Boolean,
-                        quantity: Int,
-                        @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                        itemStartDate: Option[DateTime],
-                        @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                        itemEndDate: Option[DateTime],
-                        /* SKU */
-                        skuId: Long,
-                        skuUUID: String,
-                        skuSku: String,
-                        skuName: String,
-                        skuPrice: Long,
-                        skuSalePrice: Long,
-                        skuMinOrder: Long = 0,
-                        skuMaxOrder: Long = 0,
-                        @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                        skuAvailabilityDate: Option[DateTime] = None,
-                        @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                        skuStartDate: Option[DateTime] = None,
-                        @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                        skuStopDate: Option[DateTime] = None,
-                        skuCoupons: List[InnerCoupon],
-                        skuNbSales: Long,
-                        /* End */
-                        // secondary: List[BOProduct],
-                        /* BOProduct */
-                        boProductAcquittement: Boolean,
-                        boProductPrice: Long,
-                        boUUID: String,
-                        // registeredCartItem: List[BORegisteredCartItem],
-                        /* End */
-                        /* BOProduct.Product */
-                        productUUID: String,
-                        productName: String,
-                        productType: String,
-                        calendarType: String,
-                        // productTaxRate: Option[TaxRate],
-                        // product: Option[Shipping],
-                        productStockDisplay: Boolean,
-                        @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                        productStartDate: Option[DateTime],
-                        @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                        productStopDate: Option[DateTime],
-                        // productSKUs: List[Sk],
-                        // productIntraDayPeriods: Option[List[IntraDayPeriod]],
-                        // productPOI: Option[Poi],
-                        productNbSales: Long,
-                        productDownloadMaxTimes: Long,
-                        productDownloadMaxDelay: Long,
-                        productDateCreated: Date,
-                        productLastUpdated: Date,
-                        productCategoryPath: String,
-                        productCategoryName: String,
-                        productCategoryUUID: String,
-                        productCategoryId: Option[Long],
-                        productCategoryParentId: Option[Long],
-                        /* End */
-                        /* Delivery */
-                        deliveryStatus: Option[String],
-                        deliveryTracking: Option[String],
-                        deliveryExtra: Option[String],
-                        deliveryUUID: Option[String],
-                        /* End */
-                        // bOReturnedItems: List[BOReturnedItem],
-                        uuid: String,
-                        url: String,
-                        /* Cart */
-                        cartTransactionUUID: Option[String],
-                        cartBuyer: String,
-                        @JsonSerialize(using = classOf[JodaDateTimeSerializer])
-                        @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
-                        cartXDate: DateTime,
-                        cartTotalPrice: Long, // previous name: price
-                        @JsonScalaEnumeration(classOf[TransactionStatusRef])
-                        cartStatus: TransactionStatus,
-                        currencyCode: String,
-                        currencyRate: Double,
-                        cartDateCreated: Date,
-                        cartLastUpdated: Date,
-                        cartUUID: String,
-                        /* Buyer */
-                        buyerUUID: String,
-                        buyerEmail: String,
-                        buyerCivility: String,
-                        buyerBirthdate: Option[Date],
-                        buyerRoad: Option[String],
-                        buyerZipCode: Option[String],
-                        buyerCountry: Option[String],
-                        buyerGeoCoordinates: Option[String],
-                        /* End */
-                        var lastUpdated: Date = new Date,
-                        var dateCreated: Date = new Date)
+    price: Long,
+    tax: Double,
+    endPrice: Long,
+    totalPrice: Long,
+    totalEndPrice: Long,
+    isItemHidden: Boolean,
+    quantity: Int,
+    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) itemStartDate: Option[DateTime],
+    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) itemEndDate: Option[DateTime],
+    /* SKU */
+    skuId: Long,
+    skuUUID: String,
+    skuSku: String,
+    skuName: String,
+    skuPrice: Long,
+    skuSalePrice: Long,
+    skuMinOrder: Long = 0,
+    skuMaxOrder: Long = 0,
+    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) skuAvailabilityDate: Option[DateTime] = None,
+    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) skuStartDate: Option[DateTime] = None,
+    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) skuStopDate: Option[DateTime] = None,
+    skuCoupons: List[InnerCoupon],
+    skuNbSales: Long,
+    /* End */
+    // secondary: List[BOProduct],
+    /* BOProduct */
+    boProductAcquittement: Boolean,
+    boProductPrice: Long,
+    boUUID: String,
+    // registeredCartItem: List[BORegisteredCartItem],
+    /* End */
+    /* BOProduct.Product */
+    productUUID: String,
+    productName: String,
+    productType: String,
+    calendarType: String,
+    // productTaxRate: Option[TaxRate],
+    // product: Option[Shipping],
+    productStockDisplay: Boolean,
+    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) productStartDate: Option[DateTime],
+    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) productStopDate: Option[DateTime],
+    // productSKUs: List[Sk],
+    // productIntraDayPeriods: Option[List[IntraDayPeriod]],
+    // productPOI: Option[Poi],
+    productNbSales: Long,
+    productDownloadMaxTimes: Long,
+    productDownloadMaxDelay: Long,
+    productDateCreated: Date,
+    productLastUpdated: Date,
+    productCategoryPath: String,
+    productCategoryName: String,
+    productCategoryUUID: String,
+    productCategoryId: Option[Long],
+    productCategoryParentId: Option[Long],
+    /* End */
+    /* Delivery */
+    deliveryStatus: Option[String],
+    deliveryTracking: Option[String],
+    deliveryExtra: Option[String],
+    deliveryUUID: Option[String],
+    /* End */
+    // bOReturnedItems: List[BOReturnedItem],
+    uuid: String,
+    url: String,
+    /* Cart */
+    cartTransactionUUID: Option[String],
+    cartBuyer: String,
+    @JsonSerialize(using = classOf[JodaDateTimeSerializer])@JsonDeserialize(using = classOf[JodaDateTimeDeserializer]) cartXDate: DateTime,
+    cartTotalPrice: Long, // previous name: price
+    @JsonScalaEnumeration(classOf[TransactionStatusRef]) cartStatus: TransactionStatus,
+    currencyCode: String,
+    currencyRate: Double,
+    cartDateCreated: Date,
+    cartLastUpdated: Date,
+    cartUUID: String,
+    /* Buyer */
+    buyerUUID: String,
+    buyerEmail: String,
+    buyerCivility: String,
+    buyerBirthdate: Option[Date],
+    buyerRoad: Option[String],
+    buyerZipCode: Option[String],
+    buyerCountry: Option[String],
+    buyerGeoCoordinates: Option[String],
+    /* End */
+    var lastUpdated: Date = new Date,
+    var dateCreated: Date = new Date)
 
   def indexCart(storeCode: String, cart: BOCart, buyerUUID: String) = {
     def esDashboard(store: String): String = s"${store}_dashboard"
@@ -214,7 +197,6 @@ object Dashboard {
       createIndexWithMapping(targetIndex)
     linearizedCart.foreach(cart => EsClient.index(targetIndex, cart, refresh = false))
   }
-
 
   private def linearize(cart: BOCart, buyerUUID: String): Seq[LinearCart] = cart.cartItems.map { item =>
     val buyer: Account = MogopayHandlers.accountHandler.find(buyerUUID).get
@@ -312,19 +294,19 @@ object Dashboard {
         None, None, None, Nil, None, None, None, 0, 0, 0, null, new Date, new Date)
     )
 
-    val item00 = BOCartItem(// 1 A
+    val item00 = BOCartItem( // 1 A
       code = "00", price = 500, tax = 0.0, endPrice = 500, totalPrice = 1000, totalEndPrice = 1000, hidden = false,
       quantity = 2, startDate = None, endDate = None, sku = sku00, secondary = Nil, principal = productA,
       bOReturnedItems = Nil, bODelivery = None, uuid = "00000000-0000-0000-0000-000000000000", url = "http://url00/")
-    val item01 = BOCartItem(// 2 B
+    val item01 = BOCartItem( // 2 B
       code = "01", price = 4000, tax = 0.0, endPrice = 4000, totalPrice = 4000, totalEndPrice = 4000, hidden = false,
       quantity = 2, startDate = None, endDate = None, sku = sku01, secondary = Nil, principal = productB,
       bOReturnedItems = Nil, bODelivery = None, uuid = "11111111-1111-1111-1111-111111111111", url = "http://url01/")
-    val item10 = BOCartItem(// 1 A
+    val item10 = BOCartItem( // 1 A
       code = "10", price = 500, tax = 0.0, endPrice = 500, totalPrice = 500, totalEndPrice = 500, hidden = false,
       quantity = 1, startDate = None, endDate = None, sku = sku00, secondary = Nil, principal = productA,
       bOReturnedItems = Nil, bODelivery = None, uuid = "22222222-2222-2222-2222-222222222222", url = "http://url10/")
-    val item20 = BOCartItem(// 2 B
+    val item20 = BOCartItem( // 2 B
       code = "01", price = 4000, tax = 0.0, endPrice = 4000, totalPrice = 4000, totalEndPrice = 4000, hidden = false,
       quantity = 2, startDate = None, endDate = None, sku = sku01, secondary = Nil, principal = productB,
       bOReturnedItems = Nil, bODelivery = None, uuid = "33333333-3333-3333-3333-333333333333", url = "http://url20/")

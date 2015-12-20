@@ -16,10 +16,9 @@ import com.mogobiz.session.Session
 import com.mogobiz.session.SessionESDirectives._
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import spray.http.{HttpCookie, StatusCodes}
+import spray.http.{ HttpCookie, StatusCodes }
 import spray.routing.Directives
 import com.mogobiz.pay.config.MogopayHandlers.accountHandler
-
 
 import com.mogobiz.run.config.Settings._
 class ProductService extends Directives with DefaultComplete {
@@ -39,11 +38,11 @@ class ProductService extends Directives with DefaultComplete {
     } ~ historyRoute
   }
 
-  def productRoutes(uuid:String)(implicit storeCode: String) = products ~
+  def productRoutes(uuid: String)(implicit storeCode: String) = products ~
     find ~
-      compare ~
-      notation ~
-      product(uuid)
+    compare ~
+    notation ~
+    product(uuid)
 
   def historyRoute = path(Segment / "history") { implicit storeCode =>
     optionalCookie(CookieTracking) {
@@ -57,15 +56,15 @@ class ProductService extends Directives with DefaultComplete {
     }
   }
 
-  def history(uuid:String)(implicit storeCode:String) = get {
+  def history(uuid: String)(implicit storeCode: String) = get {
     parameters('currency.?, 'country.?, 'lang ? "_all") {
-      (currency: Option[String], country: Option[String], lang: String) => {
-        handleCall(productHandler.getProductHistory(storeCode, uuid, currency, country, lang),
-          (products: List[JValue]) => complete(StatusCodes.OK, products))
-      }
+      (currency: Option[String], country: Option[String], lang: String) =>
+        {
+          handleCall(productHandler.getProductHistory(storeCode, uuid, currency, country, lang),
+            (products: List[JValue]) => complete(StatusCodes.OK, products))
+        }
     }
   }
-
 
   import shapeless._
 
@@ -129,29 +128,20 @@ class ProductService extends Directives with DefaultComplete {
   def find(implicit storeCode: String) = path("find") {
     get {
       parameters(
-        'lang ? "_all"
-        , 'currency.?
-        , 'country.?
-        , 'query
-        , 'highlight ? false
-        , 'size ? 10
-        , 'categoryPath.?).as(FullTextSearchProductParameters) { params =>
-        handleCall(productHandler.queryProductsByFulltextCriteria(storeCode, params),
-          (json: JValue) => complete(StatusCodes.OK, json))
-      }
+        'lang ? "_all", 'currency.?, 'country.?, 'query, 'highlight ? false, 'size ? 10, 'categoryPath.?).as(FullTextSearchProductParameters) { params =>
+          handleCall(productHandler.queryProductsByFulltextCriteria(storeCode, params),
+            (json: JValue) => complete(StatusCodes.OK, json))
+        }
     }
   }
 
   def compare(implicit storeCode: String) = path("compare") {
     get {
       parameters(
-        'lang ? "_all"
-        , 'currency.?
-        , 'country.?
-        , 'ids).as(CompareProductParameters) { params =>
-        handleCall(productHandler.getProductsFeatures(storeCode, params),
-          (json: JValue) => complete(StatusCodes.OK, json))
-      }
+        'lang ? "_all", 'currency.?, 'country.?, 'ids).as(CompareProductParameters) { params =>
+          handleCall(productHandler.getProductsFeatures(storeCode, params),
+            (json: JValue) => complete(StatusCodes.OK, json))
+        }
     }
   }
 
@@ -164,29 +154,26 @@ class ProductService extends Directives with DefaultComplete {
     }
   }
 
-  def product(uuid:String)(implicit storeCode: String) = pathPrefix(Segment) {
+  def product(uuid: String)(implicit storeCode: String) = pathPrefix(Segment) {
     productId =>
       comments(storeCode, productId.toLong) ~
         suggestions(storeCode, productId.toLong) ~
-        details(storeCode,uuid, productId.toLong) ~
-        dates(storeCode,uuid, productId.toLong) ~
-        times(storeCode,uuid, productId.toLong)
+        details(storeCode, uuid, productId.toLong) ~
+        dates(storeCode, uuid, productId.toLong) ~
+        times(storeCode, uuid, productId.toLong)
   }
 
-  def details(storeCode:String, uuid:String, productId: Long) =
+  def details(storeCode: String, uuid: String, productId: Long) =
     get {
       parameters(
         'historize ? false // historize is set to true when accessed by end user. Else this may be a technical call to display the product
-        , 'visitorId.?
-        , 'currency.?
-        , 'country.?
-        , 'lang ? "_all").as(ProductDetailsRequest) { params =>
-        handleCall(productHandler.getProductDetails(storeCode, params, productId.toLong, uuid),
-          (json: JValue) => complete(StatusCodes.OK, json))
-      }
+        , 'visitorId.?, 'currency.?, 'country.?, 'lang ? "_all").as(ProductDetailsRequest) { params =>
+          handleCall(productHandler.getProductDetails(storeCode, params, productId.toLong, uuid),
+            (json: JValue) => complete(StatusCodes.OK, json))
+        }
     }
 
-  def dates(storeCode:String, uuid:String, productId: Long) = path("dates") {
+  def dates(storeCode: String, uuid: String, productId: Long) = path("dates") {
     get {
       parameters('date.?) { date =>
         handleCall(productHandler.getProductDates(storeCode, date, productId.toLong, uuid),
@@ -195,7 +182,7 @@ class ProductService extends Directives with DefaultComplete {
     }
   }
 
-  def times(storeCode:String, uuid:String, productId: Long) = path("times") {
+  def times(storeCode: String, uuid: String, productId: Long) = path("times") {
     get {
       parameters('date.?) { date =>
         handleCall(productHandler.getProductTimes(storeCode, date, productId.toLong, uuid),
@@ -204,68 +191,69 @@ class ProductService extends Directives with DefaultComplete {
     }
   }
 
-  def comments(storeCode:String, productId: Long) = pathPrefix("comments") {
+  def comments(storeCode: String, productId: Long) = pathPrefix("comments") {
     pathEnd {
       createComment(storeCode, productId) ~
         listComments(storeCode, productId)
     } ~
-    path(Segment) {
-      commentId => {
-        updateComment(storeCode, productId, commentId) ~
-        noteComment(storeCode, productId, commentId) ~
-        deleteComment(storeCode, productId, commentId) ~
-        getCommentByExternalCode(storeCode, productId, commentId)
+      path(Segment) {
+        commentId =>
+          {
+            updateComment(storeCode, productId, commentId) ~
+              noteComment(storeCode, productId, commentId) ~
+              deleteComment(storeCode, productId, commentId) ~
+              getCommentByExternalCode(storeCode, productId, commentId)
+          }
       }
-    }
   }
 
-  def updateComment(storeCode:String, productId: Long, commentId: String) = put {
+  def updateComment(storeCode: String, productId: Long, commentId: String) = put {
     optionalSession { optSession =>
       entity(as[CommentPutRequest]) { req =>
-        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-        val account = accountId.map{id => accountHandler.load(id)}.getOrElse(None)
+        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+        val account = accountId.map { id => accountHandler.load(id) }.getOrElse(None)
         handleCall(productHandler.updateComment(storeCode, productId, account, commentId, req),
           (res: Unit) => complete(StatusCodes.OK))
       }
     }
   }
 
-  def noteComment(storeCode:String, productId: Long, commentId: String) = post {
+  def noteComment(storeCode: String, productId: Long, commentId: String) = post {
     entity(as[NoteCommentRequest]) { req =>
       handleCall(productHandler.noteComment(storeCode, productId, commentId, req),
         (res: Unit) => complete(StatusCodes.OK))
     }
   }
 
-  def deleteComment(storeCode:String, productId: Long, commentId: String) = delete {
+  def deleteComment(storeCode: String, productId: Long, commentId: String) = delete {
     optionalSession { optSession =>
-      val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-      val account = accountId.map{id => accountHandler.load(id)}.getOrElse(None)
+      val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+      val account = accountId.map { id => accountHandler.load(id) }.getOrElse(None)
       handleCall(productHandler.deleteComment(storeCode, productId, account, commentId),
         (res: Unit) => complete(StatusCodes.OK))
     }
   }
 
-  def getCommentByExternalCode(storeCode:String, productId: Long, externalCode: String) = get {
+  def getCommentByExternalCode(storeCode: String, productId: Long, externalCode: String) = get {
     optionalSession { optSession =>
-      val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
-      val account = accountId.map{id => accountHandler.load(id)}.getOrElse(None)
+      val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+      val account = accountId.map { id => accountHandler.load(id) }.getOrElse(None)
       handleCall(productHandler.getCommentByExternalCode(storeCode, productId, account, externalCode),
         (res: Comment) => complete(StatusCodes.OK, res))
     }
   }
 
-  def listComments(storeCode:String, productId: Long) = get {
+  def listComments(storeCode: String, productId: Long) = get {
     parameters('maxItemPerPage.?, 'pageOffset.?).as(CommentGetRequest) { req =>
       handleCall(productHandler.getComment(storeCode, productId, req),
         (json: JValue) => complete(StatusCodes.OK, json))
     }
   }
 
-  def createComment(storeCode:String, productId: Long) = post {
+  def createComment(storeCode: String, productId: Long) = post {
     entity(as[CommentRequest]) { req =>
       optionalSession { optSession =>
-        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId}
+        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
         val account = if (accountId.isDefined) accountHandler.load(accountId.get) else None
         handleCall(productHandler.createComment(storeCode, productId, req, account),
           (comment: Comment) => complete(StatusCodes.OK, comment))
@@ -273,7 +261,7 @@ class ProductService extends Directives with DefaultComplete {
     }
   }
 
-  def suggestions(storeCode:String, productId: Long) = pathPrefix("suggestions") {
+  def suggestions(storeCode: String, productId: Long) = pathPrefix("suggestions") {
     pathEnd {
       get {
         parameters('lang ? "_all") { lang =>
@@ -282,11 +270,11 @@ class ProductService extends Directives with DefaultComplete {
         }
       }
     } ~
-    path(Segment) { suggestionId =>
-      get {
-        handleCall(productHandler.querySuggestionById(storeCode, productId, suggestionId.toLong),
-          (list: JValue) => complete(StatusCodes.OK, list))
+      path(Segment) { suggestionId =>
+        get {
+          handleCall(productHandler.querySuggestionById(storeCode, productId, suggestionId.toLong),
+            (list: JValue) => complete(StatusCodes.OK, list))
+        }
       }
-    }
   }
 }

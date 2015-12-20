@@ -4,8 +4,8 @@
 
 package com.mogobiz.run.handlers
 
-import java.io.{FileOutputStream, File}
-import java.nio.file.{Files, Paths}
+import java.io.{ FileOutputStream, File }
+import java.nio.file.{ Files, Paths }
 import java.util.UUID
 
 import com.mogobiz.run.config.Settings
@@ -21,19 +21,21 @@ import sqls.count
 class ValidatorHandler {
 
   @throws[NotFoundException]
-  def download(storeCode: String, key: String) : (String, File) = {
+  def download(storeCode: String, key: String): (String, File) = {
     val company = CompanyDao.findByCode(storeCode).getOrElse(throw new NotFoundException(""))
 
     val params = SymmetricCrypt.decrypt(key, company.aesPassword, "AES", true)
-    val paramsMap = params.split(";").map{ s => {
-      val kv = s.split(":")
-      (kv(0), kv(1))
-    }}
-    val paramBOCartItemUuid=paramsMap.find{kv => kv._1 == "boCartItemUuid"}.getOrElse(throw new NotFoundException(""))._2
-    val paramSkuId=paramsMap.find{kv => kv._1 == "skuId"}.getOrElse(throw new NotFoundException(""))._2
-    val paramStoreCode=paramsMap.find{kv => kv._1 == "storeCode"}.getOrElse(throw new NotFoundException(""))._2
-    val paramMaxDelay=paramsMap.find{kv => kv._1 == "maxDelay"}.getOrElse(throw new NotFoundException(""))._2.toInt
-    val paramMaxTimes=paramsMap.find{kv => kv._1 == "maxTimes"}.getOrElse(throw new NotFoundException(""))._2.toInt
+    val paramsMap = params.split(";").map { s =>
+      {
+        val kv = s.split(":")
+        (kv(0), kv(1))
+      }
+    }
+    val paramBOCartItemUuid = paramsMap.find { kv => kv._1 == "boCartItemUuid" }.getOrElse(throw new NotFoundException(""))._2
+    val paramSkuId = paramsMap.find { kv => kv._1 == "skuId" }.getOrElse(throw new NotFoundException(""))._2
+    val paramStoreCode = paramsMap.find { kv => kv._1 == "storeCode" }.getOrElse(throw new NotFoundException(""))._2
+    val paramMaxDelay = paramsMap.find { kv => kv._1 == "maxDelay" }.getOrElse(throw new NotFoundException(""))._2.toInt
+    val paramMaxTimes = paramsMap.find { kv => kv._1 == "maxTimes" }.getOrElse(throw new NotFoundException(""))._2.toInt
 
     DB localTx { implicit session =>
       val boCartItem = BOCartItemDao.load(paramBOCartItemUuid).getOrElse(throw new NotFoundException(""))
@@ -42,8 +44,8 @@ class ValidatorHandler {
       val expiredDate = boCartItem.dateCreated.plusDays(paramMaxDelay).toLocalDate
 
       if (storeCode == paramStoreCode &&
-          (paramMaxDelay == 0 || !expiredDate.isBefore(DateTime.now().toLocalDate)) &&
-          (paramMaxTimes == 0 || ConsumptionDao.countByBOProducts(boProducts) < paramMaxTimes)) {
+        (paramMaxDelay == 0 || !expiredDate.isBefore(DateTime.now().toLocalDate)) &&
+        (paramMaxTimes == 0 || ConsumptionDao.countByBOProducts(boProducts) < paramMaxTimes)) {
 
         if (ConsumptionDao.createConsumption(boProducts)) {
           val file = new File(s"${Settings.ResourcesRootPath}/download/$paramSkuId")
@@ -58,26 +60,23 @@ class ValidatorHandler {
           }
 
           if (file.exists()) {
-            val productName = ProductDao.get(storeCode, boProducts.find{p => p.principal}.get.productFk).map {p => p.name }.getOrElse(file.getName)
+            val productName = ProductDao.get(storeCode, boProducts.find { p => p.principal }.get.productFk).map { p => p.name }.getOrElse(file.getName)
             (productName, file)
-          }
-          else throw new NotFoundException("")
-        }
-        else throw new NotFoundException("")
-      }
-      else throw new NotFoundException("")
+          } else throw new NotFoundException("")
+        } else throw new NotFoundException("")
+      } else throw new NotFoundException("")
     }
   }
 }
 
 object ConsumptionDao extends BoService {
 
-  def countByBOProducts(boProducts: List[BOProduct])(implicit session: DBSession = AutoSession) : Int = {
+  def countByBOProducts(boProducts: List[BOProduct])(implicit session: DBSession = AutoSession): Int = {
     if (boProducts.isEmpty) 0
     else math.max(BOProductConsumptionSQL.countByBOProduct(boProducts.head), countByBOProducts(boProducts.tail))
   }
 
-  def createConsumption(boProducts: List[BOProduct])(implicit session: DBSession) : Boolean = {
+  def createConsumption(boProducts: List[BOProduct])(implicit session: DBSession): Boolean = {
     if (boProducts.isEmpty) true
     else {
       val consumption = new Consumption(id = newId(),
@@ -88,8 +87,8 @@ object ConsumptionDao extends BoService {
         uuid = UUID.randomUUID().toString)
 
       ConsumptionSQL.create(consumption) &&
-      BOProductConsumptionSQL.add(consumption, boProducts.head) &&
-      createConsumption(boProducts.tail)
+        BOProductConsumptionSQL.add(consumption, boProducts.head) &&
+        createConsumption(boProducts.tail)
     }
   }
 
@@ -97,14 +96,14 @@ object ConsumptionDao extends BoService {
 
     override val tableName = "b_o_product_consumption"
 
-    def countByBOProduct(boProduct: BOProduct)(implicit session: DBSession = AutoSession) : Int = {
+    def countByBOProduct(boProduct: BOProduct)(implicit session: DBSession = AutoSession): Int = {
       val o = BOProductConsumptionSQL.syntax("o")
       withSQL {
         select(count(o.consumptionId)).from(BOProductConsumptionSQL as o).where.eq(o.consumptionsFk, boProduct.id)
       }.map(_.int(1)).single.apply().get
     }
 
-    def add(consumption: Consumption, boProduct: BOProduct)(implicit session: DBSession) : Boolean = {
+    def add(consumption: Consumption, boProduct: BOProduct)(implicit session: DBSession): Boolean = {
       applyUpdate {
         insert.into(BOProductConsumptionSQL).namedValues(
           BOProductConsumptionSQL.column.consumptionsFk -> boProduct.id,
@@ -118,7 +117,7 @@ object ConsumptionDao extends BoService {
 
     override val tableName = "consumption"
 
-    def create(consumption: Consumption)(implicit session: DBSession) : Boolean = {
+    def create(consumption: Consumption)(implicit session: DBSession): Boolean = {
       applyUpdate {
         insert.into(ConsumptionSQL).namedValues(
           ConsumptionSQL.column.id -> consumption.id,
@@ -131,7 +130,7 @@ object ConsumptionDao extends BoService {
       } == 1
     }
 
-/*
+    /*
   def apply(rn: ResultName[BOCart])(rs: WrappedResultSet): BOCart = BOCart(
     rs.get(rn.id),
     rs.get(rn.buyer),

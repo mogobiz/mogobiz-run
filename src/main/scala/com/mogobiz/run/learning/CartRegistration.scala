@@ -4,7 +4,7 @@
 
 package com.mogobiz.run.learning
 
-import java.util.{Calendar, Date}
+import java.util.{ Calendar, Date }
 
 import akka.stream.ActorFlowMaterializer
 import com.mogobiz.es.EsClient
@@ -16,7 +16,7 @@ import org.elasticsearch.action.bulk.BulkResponse
 
 import akka.stream.scaladsl._
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{ Await, Future }
 
 object CartRegistration extends BootedMogobizSystem with LazyLogging {
   def computeFIS(store: String, itemids: Seq[String], segment: Option[String]): Unit = {

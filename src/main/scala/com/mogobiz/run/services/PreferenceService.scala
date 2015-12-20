@@ -12,11 +12,10 @@ import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.implicits.JsonSupport
 import JsonSupport._
 import com.mogobiz.run.model.Prefs
-import spray.http.{HttpCookie, StatusCodes}
+import spray.http.{ HttpCookie, StatusCodes }
 import spray.routing.Directives
 
-import scala.util.{Try, Failure, Success}
-
+import scala.util.{ Try, Failure, Success }
 
 class PreferenceService extends Directives with DefaultComplete {
 
@@ -34,14 +33,13 @@ class PreferenceService extends Directives with DefaultComplete {
     }
   }
 
-  def preferencesRoutes(uuid:String)(implicit storeCode: String) = getPrefs(uuid) ~ savePrefs(uuid)
+  def preferencesRoutes(uuid: String)(implicit storeCode: String) = getPrefs(uuid) ~ savePrefs(uuid)
 
-
-  def getPrefs(uuid:String) (implicit storeCode:String) = get {
+  def getPrefs(uuid: String)(implicit storeCode: String) = get {
     handleCall(preferenceHandler.getPreferences(storeCode, uuid), (prefs: Prefs) => complete(StatusCodes.OK, prefs))
   }
 
-  def savePrefs(uuid:String) (implicit storeCode:String) = post {
+  def savePrefs(uuid: String)(implicit storeCode: String) = post {
     parameters('productsNumber ? 10).as(Prefs) {
       params =>
         Try(preferenceHandler.savePreference(storeCode, uuid, params)) match {

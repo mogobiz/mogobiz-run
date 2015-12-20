@@ -33,15 +33,16 @@ class TaxRateHandler {
    */
   private def findTaxRate(localTaxRates: List[LocalTaxRate], country: Option[String], state: Option[String]): Option[Float] = {
     if (country.isDefined) {
-      val taxRate = localTaxRates.find{ taxRate => {
-        val isSameState : Boolean = if (state.isDefined) taxRate.stateCode == state.get else taxRate.stateCode == ""
-        isSameState && taxRate.countryCode == country.get
-      }}
+      val taxRate = localTaxRates.find { taxRate =>
+        {
+          val isSameState: Boolean = if (state.isDefined) taxRate.stateCode == state.get else taxRate.stateCode == ""
+          isSameState && taxRate.countryCode == country.get
+        }
+      }
       if (taxRate.isDefined) Some(taxRate.get.rate)
       else if (state.isDefined) findTaxRate(localTaxRates, country, None) // On recherche le taxRate sans State
       else None
-    }
-    else None
+    } else None
   }
 
   /**
@@ -50,8 +51,8 @@ class TaxRateHandler {
    * @param taxRate : TaxRate to apply on price
    * @return : End price or None if no Tax is defined
    */
-  def calculateEndPrice(price:Long, taxRate:Option[Float]):Option[Long] = taxRate match {
-    case Some(s)=>
+  def calculateEndPrice(price: Long, taxRate: Option[Float]): Option[Long] = taxRate match {
+    case Some(s) =>
       Some(price + (price * s / 100f).toLong)
     case None => None
   }

@@ -31,69 +31,81 @@ object Json4sProtocol extends Json4sSupport {
 
   class ProductTypeSerializer extends CustomSerializer[ProductType](format => (
     // deserialisation
-    { case x: JString =>
-      ProductType.valueOf(x.values)
+    {
+      case x: JString =>
+        ProductType.valueOf(x.values)
     },
     // serialisation
-    { case x: ProductType =>
-      JString(x.toString)
+    {
+      case x: ProductType =>
+        JString(x.toString)
     }
-    ))
+  ))
 
   class ProductCalendarSerializer extends CustomSerializer[ProductCalendar](format => (
     // deserialisation
-    { case x: JString =>
-      ProductCalendar.valueOf(x.values)
+    {
+      case x: JString =>
+        ProductCalendar.valueOf(x.values)
     },
     // serialisation
-    { case x: ProductCalendar =>
-      JString(x.toString)
+    {
+      case x: ProductCalendar =>
+        JString(x.toString)
     }
-    ))
+  ))
 
   class WeightUnitSerializer extends CustomSerializer[WeightUnit](format => (
     // deserialisation
-    { case x: JString =>
-      WeightUnit(x.values)
+    {
+      case x: JString =>
+        WeightUnit(x.values)
     },
     // serialisation
-    { case x: WeightUnit =>
-      JString(x.toString)
+    {
+      case x: WeightUnit =>
+        JString(x.toString)
     }
-    ))
+  ))
 
   class LinearUnitSerializer extends CustomSerializer[LinearUnit](format => (
     // deserialisation
-    { case x: JString =>
-      LinearUnit(x.values)
+    {
+      case x: JString =>
+        LinearUnit(x.values)
     },
     // serialisation
-    { case x: LinearUnit =>
-      JString(x.toString)
+    {
+      case x: LinearUnit =>
+        JString(x.toString)
     }
-    ))
+  ))
 
   class ReductionRuleTypeSerializer extends CustomSerializer[ReductionRuleType](format => (
     // deserialisation
-    { case x: JString =>
-      ReductionRuleType(x.values)
+    {
+      case x: JString =>
+        ReductionRuleType(x.values)
     },
     // serialisation
-    { case x: LinearUnit =>
-      JString(x.toString)
+    {
+      case x: LinearUnit =>
+        JString(x.toString)
     }
-    ))
+  ))
 
   class TransactionStatusSerializer extends CustomSerializer[TransactionStatus](format => (
     // deserialisation
-    { case x: JString =>
-      TransactionStatus.valueOf(x.values)
+    {
+      case x: JString =>
+        TransactionStatus.valueOf(x.values)
     },
     // serialisation
-    { case x: LinearUnit =>
-      JString(x.toString)
+    {
+      case x: LinearUnit =>
+        JString(x.toString)
     }
-    ))
+  ))
 
   implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all +
     new ProductTypeSerializer() +

@@ -4,18 +4,18 @@
 
 package com.mogobiz.run.handlers
 
-import java.util.{UUID, Date}
+import java.util.{ UUID, Date }
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.MogobizHandlers._
 import com.mogobiz.run.actors.EsUpdateActor.StockUpdateRequest
-import com.mogobiz.run.actors.EsUpdateActor.{SkuStockAvailabilityUpdateRequest, StockUpdateRequest}
-import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
+import com.mogobiz.run.actors.EsUpdateActor.{ SkuStockAvailabilityUpdateRequest, StockUpdateRequest }
+import com.mogobiz.run.actors.{ EsUpdateActor, ActorSystemLocator }
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.{Stock => EsStock, StockByDateTime, StockCalendar}
+import com.mogobiz.run.model.{ Stock => EsStock, StockByDateTime, StockCalendar }
 import com.mogobiz.utils.GlobalUtil._
-import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate, insert => esinsert, _}
+import com.sksamuel.elastic4s.ElasticDsl.{ update => esupdate, insert => esinsert, _ }
 import com.sksamuel.elastic4s.IndexesTypesDsl
 import org.joda.time.DateTime
 import scalikejdbc._
@@ -116,7 +116,7 @@ class StockHandler extends IndexesTypesDsl {
   }
 
   private def fireUpdateStockAvailability(indexEs: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar) = {
-    if(!stock.stockOutSelling && !stock.stockUnlimited){
+    if (!stock.stockOutSelling && !stock.stockUnlimited) {
       val system = ActorSystemLocator.get
       val stockActor = system.actorOf(Props[EsUpdateActor])
       stockActor ! SkuStockAvailabilityUpdateRequest(indexEs, product, sku, stock, stockCalendar)
@@ -129,8 +129,7 @@ class StockHandler extends IndexesTypesDsl {
       val script = s"ctx._source.stock = ctx._source.initialStock - ${stockCalendar.sold}"
       val req = esupdate id stock.uuid in s"$indexEs/stock" script script retryOnConflict 4
       EsClient().execute(req).await.getGetResult
-    }
-    else {
+    } else {
       val esStockCalendarOpt = stock.stockByDateTime.getOrElse(Seq()).find(_.uuid == stockCalendar.uuid)
       esStockCalendarOpt match {
         case Some(esStockCalendar) =>
@@ -155,7 +154,6 @@ class StockHandler extends IndexesTypesDsl {
           StockDao.update(indexEs, stock.copy(stockByDateTime = Some(newStockByDateTime)))
       }
     }
-
 
     fireUpdateStockAvailability(indexEs, product, sku, stock, stockCalendar)
 

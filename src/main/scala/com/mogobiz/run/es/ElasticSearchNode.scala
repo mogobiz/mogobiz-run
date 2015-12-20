@@ -4,23 +4,23 @@
 
 package com.mogobiz.run.es
 
-import java.io.{File, IOException}
+import java.io.{ File, IOException }
 import java.nio.file.FileVisitResult._
 import java.nio.file.Files._
 import java.nio.file.Paths.get
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{FileVisitResult, Files, Path, SimpleFileVisitor}
+import java.nio.file.{ FileVisitResult, Files, Path, SimpleFileVisitor }
 
 import com.mogobiz.run.config.Settings._
 import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.common.collect.Tuple
 import org.elasticsearch.common.io.FileSystemUtils
 import org.elasticsearch.common.settings.ImmutableSettings.Builder.EMPTY_SETTINGS
-import org.elasticsearch.common.settings.{ImmutableSettings, Settings}
+import org.elasticsearch.common.settings.{ ImmutableSettings, Settings }
 import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.env.Environment
 import org.elasticsearch.node.internal.InternalSettingsPreparer
-import org.elasticsearch.node.{Node, NodeBuilder}
+import org.elasticsearch.node.{ Node, NodeBuilder }
 import org.elasticsearch.plugins.PluginManager
 import org.slf4j.LoggerFactory
 
@@ -34,9 +34,9 @@ trait ElasticSearchNode {
     node.client().admin().indices().prepareRefresh().execute().actionGet()
   }
 
-  def startES(esPath: String) : Node
+  def startES(esPath: String): Node
 
-  def stopES(node: Node) : Unit
+  def stopES(node: Node): Unit
 }
 
 trait EmbeddedElasticSearchNode extends ElasticSearchNode {
@@ -47,44 +47,43 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
   val icuPlugin = "elasticsearch/elasticsearch-analysis-icu/2.2.0"
   val plugins = Seq(esHeadPlugin)
 
-  def startES(esPath: String = EsEmbedded) : Node = {
+  def startES(esPath: String = EsEmbedded): Node = {
     logger.info(s"ES is starting using source path '${esPath}'...")
     // Prépare les plugins
-    val initialSettings : Tuple[Settings, Environment]= InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true)
+    val initialSettings: Tuple[Settings, Environment] = InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true)
     if (!initialSettings.v2().pluginsFile().exists()) {
       FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile())
-      val pluginManager : PluginManager = new PluginManager(initialSettings.v2(), null, PluginManager.OutputMode.VERBOSE, TimeValue.timeValueMillis(0))
+      val pluginManager: PluginManager = new PluginManager(initialSettings.v2(), null, PluginManager.OutputMode.VERBOSE, TimeValue.timeValueMillis(0))
       plugins.foreach(plugin => {
         pluginManager.removePlugin(plugin)
         try {
           pluginManager.downloadAndExtract(plugin)
-        }
-        catch {
-          case e: IOException  =>
+        } catch {
+          case e: IOException =>
             logger.error(e.getMessage)
         }
       })
     }
 
     // Copie le jeu de données dans un répertoire temporaire
-    val tmpdir:String = s"${System.getProperty("java.io.tmpdir")}${System.currentTimeMillis()}/data"
+    val tmpdir: String = s"${System.getProperty("java.io.tmpdir")}${System.currentTimeMillis()}/data"
     new File(tmpdir).mkdirs()
 
-    implicit def toPath (filename: String) = {
+    implicit def toPath(filename: String) = {
       val c = filename.charAt(0)
-      if ((c== '/' || c=='\\') && c.toString!=File.separator) get(filename.substring(1))
+      if ((c == '/' || c == '\\') && c.toString != File.separator) get(filename.substring(1))
       else get(filename)
     }
 
     Files.walkFileTree(esPath, new SimpleFileVisitor[Path]() {
       @Override
-      override def preVisitDirectory(dir:Path, attrs:BasicFileAttributes):FileVisitResult = {
+      override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult = {
         Files.createDirectories(tmpdir.resolve(esPath.relativize(dir)))
         CONTINUE
       }
 
       @Override
-      override def visitFile(file:Path, attrs:BasicFileAttributes):FileVisitResult = {
+      override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
         copy(file, tmpdir.resolve(esPath.relativize(file)))
         CONTINUE
       }
@@ -101,7 +100,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
     esNode
   }
 
-  def stopES(node: Node) : Unit = {
+  def stopES(node: Node): Unit = {
     logger.info("ES is stopping...")
     if (!node.isClosed) {
       node.close()

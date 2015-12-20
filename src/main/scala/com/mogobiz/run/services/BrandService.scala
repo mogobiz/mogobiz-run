@@ -45,7 +45,7 @@ class BrandService extends Directives with DefaultComplete {
             handleCall(brandHandler.queryBrandName(storeCode, URLDecoder.decode(brandName, "UTF-8")),
               (json: JValue) => complete(StatusCodes.OK, json))
           }
-      }
+        }
     }
   }
   /*

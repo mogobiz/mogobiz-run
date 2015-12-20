@@ -6,14 +6,13 @@ package com.mogobiz.run.handlers
 
 import java.util.Calendar
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.exceptions.{NotFoundException, NotAuthorizedException, DuplicateException}
+import com.mogobiz.run.exceptions.{ NotFoundException, NotAuthorizedException, DuplicateException }
 import com.mogobiz.run.model._
 import com.mogobiz.utils.GlobalUtil._
 import com.mogobiz.run.exceptions.NotFoundException
 import com.sksamuel.elastic4s.ElasticDsl._
 
 import scala.util.Success
-
 
 object WishlistHandler {
   def esStore(store: String) = s"${store}_wishlist"
@@ -136,8 +135,7 @@ class WishlistHandler {
     val wishlists =
       if (default) {
         wishlistList.wishlists.map(_.copy(default = false))
-      }
-      else {
+      } else {
         wishlistList.wishlists
       }
     EsClient.update[WishlistList](esStore(store), wishlistList.copy(wishlists = wishlists :+ wishlist.copy(token = newUUID, default = default, dateCreated = now, lastUpdated = now)), "wishlistlist", true, false)
@@ -156,11 +154,9 @@ class WishlistHandler {
           val head = res.wishlists.head
           head.copy(default = true)
           res.wishlists.drop(1) :+ head.copy(default = true)
-        }
-        else
+        } else
           List()
-      }
-      else
+      } else
         res.wishlists
     EsClient.update[WishlistList](esStore(store), res.copy(wishlists = newWishlists), "wishlistlist", true, false)
   }
@@ -227,7 +223,6 @@ class WishlistHandler {
     }
   }
 }
-
 
 object RunApp extends App {
   val service = new WishlistHandler()

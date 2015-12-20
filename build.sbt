@@ -24,6 +24,4 @@ libraryDependencies in ThisBuild ++= Seq(
 name:= "mogobiz-run"
 
 
-
-
-
+scalariformSettings

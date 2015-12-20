@@ -5,32 +5,32 @@
 package com.mogobiz.run.handlers
 
 import java.io.ByteArrayOutputStream
-import java.util.{Calendar, UUID, Locale}
+import java.util.{ Calendar, UUID, Locale }
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.config.MogobizHandlers._
-import com.mogobiz.run.actors.EsUpdateActor.{ProductStockAvailabilityUpdateRequest, StockUpdateRequest}
-import com.mogobiz.run.actors.{EsUpdateActor, ActorSystemLocator}
+import com.mogobiz.run.actors.EsUpdateActor.{ ProductStockAvailabilityUpdateRequest, StockUpdateRequest }
+import com.mogobiz.run.actors.{ EsUpdateActor, ActorSystemLocator }
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.dashboard.Dashboard
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions._
 import com.mogobiz.run.handlers.EmailHandler.Mail
 import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.run.learning.{CartRegistration, UserActionRegistration}
+import com.mogobiz.run.learning.{ CartRegistration, UserActionRegistration }
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.ES.{BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOCartItemEx, BOCartEx}
-import com.mogobiz.run.model.Render.{Coupon, RegisteredCartItem, CartItem, Cart}
-import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, Shipping => ShippingPay, RegisteredCartItem => RegisteredCartItemPay, CompanyAddress, CartRate}
+import com.mogobiz.run.model.ES.{ BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOCartItemEx, BOCartEx }
+import com.mogobiz.run.model.Render.{ Coupon, RegisteredCartItem, CartItem, Cart }
+import com.mogobiz.pay.common.{ Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, Shipping => ShippingPay, RegisteredCartItem => RegisteredCartItemPay, CompanyAddress, CartRate }
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Utils
-import com.mogobiz.utils.{QRCodeUtils, SymmetricCrypt}
-import com.sksamuel.elastic4s.ElasticDsl.{get, tuple2indexestypes}
+import com.mogobiz.utils.{ QRCodeUtils, SymmetricCrypt }
+import com.sksamuel.elastic4s.ElasticDsl.{ get, tuple2indexestypes }
 import com.sun.org.apache.xml.internal.security.utils.Base64
 import org.apache.commons.lang.time.DateUtils
 import org.elasticsearch.common.bytes.ChannelBufferBytesReference
@@ -39,7 +39,7 @@ import org.joda.time.format.DateTimeFormat
 import org.json4s.ext.JodaTimeSerializers
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization._
-import org.json4s.{FieldSerializer, DefaultFormats, Formats}
+import org.json4s.{ FieldSerializer, DefaultFormats, Formats }
 import scalikejdbc._
 
 class CartHandler {
@@ -162,7 +162,6 @@ class CartHandler {
     val skuStartDate = sku.startDate.getOrElse(DateTime.now()).toLocalDate
     val skuEndDate = sku.stopDate.getOrElse(DateTime.now()).toLocalDate
 
-
     !skuStartDate.isAfter(now) && !skuEndDate.isBefore(now) && (country.isEmpty || taxRateHandler.findTaxRateByProduct(productAndSku._1, country, state).isDefined)
   }
 
@@ -235,8 +234,7 @@ class CartHandler {
 
       StoreCartDao.save(updatedCart)
       updatedCart
-    }
-    else cart
+    } else cart
     val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
     _renderCart(computeCart, currency, locale)
   }
@@ -266,8 +264,7 @@ class CartHandler {
           throw new DuplicateException("")
         } else if (!couponHandler.consumeCoupon(cart.storeCode, coupon)) {
           throw new InsufficientStockCouponException()
-        }
-        else {
+        } else {
           val newCoupon = StoreCoupon(coupon.id, coupon.code)
 
           val coupons = newCoupon :: cart.coupons
@@ -277,12 +274,10 @@ class CartHandler {
           val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
           _renderCart(computeCart, currency, locale)
         }
-      }
-      else {
+      } else {
         throw new NotFoundException("")
       }
-    }
-    else {
+    } else {
       throw new NotFoundException("")
     }
   }
@@ -318,8 +313,7 @@ class CartHandler {
         val computeCart = _computeStoreCart(updatedCart, params.country, params.state)
         _renderCart(computeCart, currency, locale)
       }
-    }
-    else throw new NotFoundException("")
+    } else throw new NotFoundException("")
   }
 
   /**
@@ -386,7 +380,7 @@ class CartHandler {
         compagny.map {
           _.phone
         }.flatten,
-      compagny.map{ c => c.shippingInternational}.getOrElse(false)
+        compagny.map { c => c.shippingInternational }.getOrElse(false)
       )
     }
 
@@ -414,7 +408,7 @@ class CartHandler {
    * @param accountId
    */
   def queryCartPaymentCommit(storeCode: String, uuid: String,
-                             params: CommitTransactionParameters, accountId: Option[Mogopay.Document]): Unit = {
+    params: CommitTransactionParameters, accountId: Option[Mogopay.Document]): Unit = {
     val locale = _buildLocal(params.lang, params.country)
 
     val cart = _initCart(storeCode, uuid, accountId, false, None, None)
@@ -477,8 +471,7 @@ class CartHandler {
     StoreCartDao.getExpired(index, querySize).map { cart =>
       try {
         StoreCartDao.delete(_clearCart(_removeAllUnsalabledItem(cart, None, None)))
-      }
-      catch {
+      } catch {
         case t: Throwable => t.printStackTrace()
       }
     }
@@ -496,70 +489,71 @@ class CartHandler {
    * @return
    */
   private def _createBOCart(storeCart: StoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String): StoreCart = {
-    val boCartAndStoreCart = DB localTx { implicit session => {
-      val storeCode = storeCart.storeCode
-      val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
+    val boCartAndStoreCart = DB localTx { implicit session =>
+      {
+        val storeCode = storeCart.storeCode
+        val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
 
-      val newStoreCartItems = cart.cartItemVOs.map { cartItem =>
-        val storeCartItem = storeCart.cartItems.find(i => i.id == cartItem.id).get
+        val newStoreCartItems = cart.cartItemVOs.map { cartItem =>
+          val storeCartItem = storeCart.cartItems.find(i => i.id == cartItem.id).get
 
-        val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
-        val product = productAndSku.get._1
-        val sku = productAndSku.get._2
+          val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
+          val product = productAndSku.get._1
+          val sku = productAndSku.get._2
 
-        // Création du BOProduct correspondant au produit principal
-        val boProduct = BOProductDao.create(cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), true, cartItem.productId)
+          // Création du BOProduct correspondant au produit principal
+          val boProduct = BOProductDao.create(cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), true, cartItem.productId)
 
-        val newStoreRegistedCartItems = cartItem.registeredCartItemVOs.map { registeredCartItem =>
-          val storeRegistedCartItem = storeCartItem.registeredCartItems.find(r => r.email == registeredCartItem.email).get
-          val boTicketId = BOTicketTypeDao.newId()
+          val newStoreRegistedCartItems = cartItem.registeredCartItemVOs.map { registeredCartItem =>
+            val storeRegistedCartItem = storeCartItem.registeredCartItems.find(r => r.email == registeredCartItem.email).get
+            val boTicketId = BOTicketTypeDao.newId()
 
-          val shortCodeAndQrCode = product.xtype match {
-            case ProductType.SERVICE => {
-              val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
-              val shortCode = "P" + boProduct.id + "T" + boTicketId
-              val qrCodeContent = "EventId:" + product.id + ";BoProductId:" + boProduct.id + ";BoTicketId:" + boTicketId +
-                ";EventName:" + product.name + ";EventDate:" + startDateStr + ";FirstName:" +
-                registeredCartItem.firstname.getOrElse("") + ";LastName:" + registeredCartItem.lastname.getOrElse("") +
-                ";Phone:" + registeredCartItem.phone.getOrElse("") + ";TicketType:" + sku.name + ";shortCode:" + shortCode
+            val shortCodeAndQrCode = product.xtype match {
+              case ProductType.SERVICE => {
+                val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
+                val shortCode = "P" + boProduct.id + "T" + boTicketId
+                val qrCodeContent = "EventId:" + product.id + ";BoProductId:" + boProduct.id + ";BoTicketId:" + boTicketId +
+                  ";EventName:" + product.name + ";EventDate:" + startDateStr + ";FirstName:" +
+                  registeredCartItem.firstname.getOrElse("") + ";LastName:" + registeredCartItem.lastname.getOrElse("") +
+                  ";Phone:" + registeredCartItem.phone.getOrElse("") + ";TicketType:" + sku.name + ";shortCode:" + shortCode
 
-              val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, company.aesPassword, "AES", true)
-              val output = new ByteArrayOutputStream()
-              QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
-              val qrCodeBase64 = Base64.encode(output.toByteArray)
+                val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, company.aesPassword, "AES", true)
+                val output = new ByteArrayOutputStream()
+                QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
+                val qrCodeBase64 = Base64.encode(output.toByteArray)
 
-              /* for debug purpose only
+                /* for debug purpose only
               val qrCodeBase64 = "test"
               val encryptedQrCodeContent = "test"
               */
-              (Some(shortCode), Some(qrCodeBase64), Some(encryptedQrCodeContent))
+                (Some(shortCode), Some(qrCodeBase64), Some(encryptedQrCodeContent))
+              }
+              case _ => (None, None, None)
             }
-            case _ => (None, None, None)
+
+            BOTicketTypeDao.create(boTicketId, sku, cartItem, registeredCartItem, shortCodeAndQrCode._1, shortCodeAndQrCode._2, shortCodeAndQrCode._3, boProduct.id)
+            if (shortCodeAndQrCode._3.isDefined)
+              storeRegistedCartItem.copy(qrCodeContent = Some(product.name + ":" + registeredCartItem.email + "||" + shortCodeAndQrCode._3.get))
+            else storeRegistedCartItem
           }
 
-          BOTicketTypeDao.create(boTicketId, sku, cartItem, registeredCartItem, shortCodeAndQrCode._1, shortCodeAndQrCode._2, shortCodeAndQrCode._3, boProduct.id)
-          if (shortCodeAndQrCode._3.isDefined)
-            storeRegistedCartItem.copy(qrCodeContent = Some(product.name + ":" + registeredCartItem.email + "||" + shortCodeAndQrCode._3.get))
-          else storeRegistedCartItem
-        }
+          //create Sale
+          val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
 
-        //create Sale
-        val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
-
-        // Downloadable Link
-        val boCartItemUuid = BOCartItemDao.create(sku, cartItem, storeCartItem, boCart, Some(boDelivery), boProduct.id).uuid
-        val downloadableLink = product.xtype match {
-          case ProductType.DOWNLOADABLE => {
-            val params = s"boCartItemUuid:$boCartItemUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
-            val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES", true)
-            Some(s"${Settings.AccessUrl}/$storeCode/download/$encryptedParams")
+          // Downloadable Link
+          val boCartItemUuid = BOCartItemDao.create(sku, cartItem, storeCartItem, boCart, Some(boDelivery), boProduct.id).uuid
+          val downloadableLink = product.xtype match {
+            case ProductType.DOWNLOADABLE => {
+              val params = s"boCartItemUuid:$boCartItemUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
+              val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES", true)
+              Some(s"${Settings.AccessUrl}/$storeCode/download/$encryptedParams")
+            }
+            case _ => None
           }
-          case _ => None
+          storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
         }
-        storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
+        (boCart, storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList))
       }
-      (boCart, storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList))
-    }
     }
 
     exportBOCartIntoES(storeCart.storeCode, boCartAndStoreCart._1)
@@ -592,11 +586,9 @@ class CartHandler {
           BOCartESDao.delete(cart.storeCode, boCart.get.uuid)
 
           cart.copy(boCartUuid = None)
-        }
-        else cart
+        } else cart
       }
-    }
-    else cart
+    } else cart
   }
 
   /**
@@ -633,7 +625,7 @@ class CartHandler {
     }
 
     if (currentAccountId.isDefined) {
-      val cartAnonyme = StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None).map {c =>  if (removeUnsalableItem) _removeAllUnsalabledItem(c, country, state) else c };
+      val cartAnonyme = StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None).map { c => if (removeUnsalableItem) _removeAllUnsalabledItem(c, country, state) else c };
       val cartAuthentifie = getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, currentAccountId));
 
       // S'il y a un panier anonyme, il est fusionné avec le panier authentifié et supprimé de la base
@@ -642,10 +634,8 @@ class CartHandler {
         val fusionCart = _fusion(cartAnonyme.get, cartAuthentifie)
         StoreCartDao.save(fusionCart)
         fusionCart
-      }
-      else cartAuthentifie
-    }
-    else {
+      } else cartAuthentifie
+    } else {
       // Utilisateur anonyme
       getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None));
     }
@@ -665,8 +655,7 @@ class CartHandler {
             }
           }
           None
-        }
-        else Some(cartItemWithIndex)
+        } else Some(cartItemWithIndex)
       }
     }
 
@@ -676,8 +665,7 @@ class CartHandler {
     if (indexEsAndProductsToUpdate.size == 0) {
       StoreCartDao.save(updatedCart)
       updatedCart
-    }
-    else _unvalidateCart(updatedCart)
+    } else _unvalidateCart(updatedCart)
   }
 
   /**
@@ -744,8 +732,7 @@ class CartHandler {
       val updatedCart = cart.copy(validate = true, validateUuid = Some(UUID.randomUUID().toString()))
       StoreCartDao.save(updatedCart)
       updatedCart
-    }
-    else cart
+    } else cart
   }
 
   /**
@@ -767,8 +754,7 @@ class CartHandler {
       val updatedCart = cart.copy(validate = false, validateUuid = None)
       StoreCartDao.save(updatedCart)
       updatedCart
-    }
-    else cart
+    } else cart
   }
 
   private def _unvalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): (String, Long) = {
@@ -831,8 +817,7 @@ class CartHandler {
     if (existCartItem.isDefined) {
       val newCartItems = existCartItem.get.copy(id = cartItem.id, quantity = existCartItem.get.quantity + cartItem.quantity) :: Utils.remove(cart.cartItems, existCartItem.get)
       cart.copy(cartItems = newCartItems)
-    }
-    else {
+    } else {
       val newCartItems = (cartItem :: cart.cartItems)
       cart.copy(cartItems = newCartItems)
     }
@@ -849,8 +834,8 @@ class CartHandler {
     if (cartItem.xtype == ProductType.SERVICE) None
     else cart.cartItems.find { ci: StoreCartItem =>
       ci.productId == cartItem.productId &&
-      ci.skuId == cartItem.skuId &&
-      isSameDateTime(ci, cartItem)
+        ci.skuId == cartItem.skuId &&
+        isSameDateTime(ci, cartItem)
     }
   }
 
@@ -870,8 +855,7 @@ class CartHandler {
     val existCoupon = cart.coupons.find { c: StoreCoupon => c.code == coupon.code }
     if (existCoupon.isDefined) {
       cart
-    }
-    else {
+    } else {
       val newCoupons = (coupon :: cart.coupons)
       cart.copy(coupons = newCoupons)
     }
@@ -1248,13 +1232,13 @@ class CartHandler {
         }
 
         // Instanciation du BOProduct pour ES
-        ProductDao.get(storeCode, boProduct.productFk) map {  product =>
+        ProductDao.get(storeCode, boProduct.productFk) map { product =>
           BOProductES(acquittement = boProduct.acquittement,
             principal = boProduct.principal,
             price = boProduct.price,
             product = product,
-          registeredCartItem = boRegisteredCartItems,
-          uuid = boProduct.uuid)
+            registeredCartItem = boRegisteredCartItems,
+            uuid = boProduct.uuid)
 
         }
       }
@@ -1358,8 +1342,7 @@ object DownloadableDao {
       case Some(response) =>
         if (response.getFields.containsKey("file.content")) {
           Some(response.getField("file.content").getValue.asInstanceOf[ChannelBufferBytesReference])
-        }
-        else None
+        } else None
       case _ => None
     }
   }
@@ -1574,7 +1557,6 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
     rs.get(rn.dateCreated),
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))
-
 
   def load(boReturnedItemUuid: String)(implicit session: DBSession = AutoSession): Option[BOReturnedItem] = {
     val t = BOReturnedItemDao.syntax("t")

@@ -16,20 +16,20 @@ import com.mogobiz.es._
 
 object Paging {
 
-  def build[T](size : Int, from: Int, response: SearchHits, transformFct: (JValue => T)) : Paging[T] = {
+  def build[T](size: Int, from: Int, response: SearchHits, transformFct: (JValue => T)): Paging[T] = {
     val total = response.getTotalHits.toInt
     val pageCount = total / size + (if (total % size > 0) 1 else 0)
     val hasPrevious = from > size
     val hasNext = (from + size) < total
 
-    val l = response.getHits.map( hit => {
-      val json : JValue = hit
+    val l = response.getHits.map(hit => {
+      val json: JValue = hit
       transformFct(json)
     }).toList
-    new Paging[T](l,l.size,total,size,from,pageCount,hasPrevious,hasNext)
+    new Paging[T](l, l.size, total, size, from, pageCount, hasPrevious, hasNext)
   }
 
-  def add[T](total:Int, results:List[T],pagingParams:PagingParams):Paging[T] = {
+  def add[T](total: Int, results: List[T], pagingParams: PagingParams): Paging[T] = {
     val paging = get(total, pagingParams)
     val pagedResults = new Paging(results, results.size, paging.totalCount, paging.maxItemsPerPage, paging.pageOffset, paging.pageCount, paging.hasPrevious, paging.hasNext)
     pagedResults
@@ -41,7 +41,7 @@ object Paging {
    * @param paging
    * @return
    */
-  def get(total:Int,paging:PagingParams) : Paging[Any] = {
+  def get(total: Int, paging: PagingParams): Paging[Any] = {
 
     val size = paging.maxItemPerPage.getOrElse(100)
     val from = paging.pageOffset.getOrElse(0) * size
@@ -51,10 +51,9 @@ object Paging {
     val hasPrevious = from > size
     val hasNext = (from + size) < total
 
-    val p = new Paging[Any](List[Any](),0,total,size,from,pageCount.toInt,hasPrevious,hasNext)
+    val p = new Paging[Any](List[Any](), 0, total, size, from, pageCount.toInt, hasPrevious, hasNext)
     p
   }
-
 
   /**
    * Get the paging Structure as JSON
@@ -62,7 +61,7 @@ object Paging {
    * @param pagingParams
    * @return
    */
-  def getWrapper(total:Int, pagingParams:PagingParams) : JValue = {
+  def getWrapper(total: Int, pagingParams: PagingParams): JValue = {
     import org.json4s.native.JsonMethods._
     import org.json4s.native.Serialization.write
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Paging[Any]]()
@@ -70,7 +69,7 @@ object Paging {
     val paging = get(total, pagingParams)
 
     val pagingObj = parse(write(paging))
-//    println(pretty(render(pagingObj )))
+    //    println(pretty(render(pagingObj )))
     pagingObj
   }
 
@@ -81,14 +80,14 @@ object Paging {
    * @param pagingParams
    * @return
    */
-  def wrap(total:Int,results:JValue,pagingParams:PagingParams):JValue = {
+  def wrap(total: Int, results: JValue, pagingParams: PagingParams): JValue = {
     import org.json4s.JsonDSL._
     import org.json4s._
     implicit def json4sFormats: Formats = DefaultFormats
 
     val pagingWrapper = getWrapper(total, pagingParams)
-    val resultWrapper = JObject(List(JField("list",results))) //parse("""{"list":$results"") //(("list"->results))
-    val pageSizeWrapper = JObject(List(JField("pageSize",results.children.size)))
+    val resultWrapper = JObject(List(JField("list", results))) //parse("""{"list":$results"") //(("list"->results))
+    val pageSizeWrapper = JObject(List(JField("pageSize", results.children.size)))
 
     val merged = resultWrapper merge pagingWrapper merge pageSizeWrapper
     merged
@@ -108,10 +107,9 @@ object Paging {
  * @param hasNext : does a next page exist
  * @tparam T type of results
  */
-class Paging[T](val list:List[T],val pageSize:Int,val totalCount:Int,val maxItemsPerPage:Int,val pageOffset:Int = 0,val pageCount:Int,val hasPrevious:Boolean=false,val hasNext:Boolean=false)
-
+class Paging[T](val list: List[T], val pageSize: Int, val totalCount: Int, val maxItemsPerPage: Int, val pageOffset: Int = 0, val pageCount: Int, val hasPrevious: Boolean = false, val hasNext: Boolean = false)
 
 trait PagingParams {
-  val maxItemPerPage:Option[Int]
-  val pageOffset:Option[Int]
+  val maxItemPerPage: Option[Int]
+  val pageOffset: Option[Int]
 }

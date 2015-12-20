@@ -5,7 +5,7 @@
 package com.mogobiz.run.handlers
 
 import java.text.SimpleDateFormat
-import java.util.{UUID, Date, Calendar, Locale}
+import java.util.{ UUID, Date, Calendar, Locale }
 
 import com.mogobiz.es._
 import com.mogobiz.es.EsClient
@@ -13,31 +13,30 @@ import com.mogobiz.es.EsClient._
 import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
-import com.mogobiz.json.{JacksonConverter, JsonUtil}
-import com.mogobiz.run.exceptions.{CommentAlreadyExistsException, NotAuthorizedException}
+import com.mogobiz.json.{ JacksonConverter, JsonUtil }
+import com.mogobiz.run.exceptions.{ CommentAlreadyExistsException, NotAuthorizedException }
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.Learning.UserAction
-import com.mogobiz.run.model.Mogobiz.{ProductCalendar, Sku, Product}
+import com.mogobiz.run.model.Mogobiz.{ ProductCalendar, Sku, Product }
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Paging
-import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s, search => esearch4s, delete => esdelete4s, _}
-import com.sksamuel.elastic4s.{SearchType, FilterDefinition}
+import com.sksamuel.elastic4s.ElasticDsl.{ update => esupdate4s, search => esearch4s, delete => esdelete4s, _ }
+import com.sksamuel.elastic4s.{ SearchType, FilterDefinition }
 import com.sksamuel.elastic4s.source.DocumentSource
 import org.elasticsearch.action.get.MultiGetItemResponse
 import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.search.{SearchHit, SearchHits}
+import org.elasticsearch.search.{ SearchHit, SearchHits }
 import org.elasticsearch.search.aggregations.bucket.terms.Terms
 import org.elasticsearch.search.sort.SortOrder
-import org.json4s.JsonAST.{JObject, JArray, JNothing}
+import org.json4s.JsonAST.{ JObject, JArray, JNothing }
 import org.json4s.JsonDSL._
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization._
 
-
-class SkuHandler  extends JsonUtil {
+class SkuHandler extends JsonUtil {
 
   private val MIN_NOTATION = 1
   private val MAX_NOTATION = 5
@@ -62,24 +61,24 @@ class SkuHandler  extends JsonUtil {
     }
 
     val lang = if (skuRequest.lang == "_all") "" else s"${skuRequest.lang}."
-    val priceWithVatField = skuRequest.countryCode match{
+    val priceWithVatField = skuRequest.countryCode match {
       case Some(countryCode) => s"${countryCode}.saleEndPrice"
       case _ => "salePrice"
     }
 
-    val defaultStockFilter = if(skuRequest.inStockOnly.getOrElse(true)){
+    val defaultStockFilter = if (skuRequest.inStockOnly.getOrElse(true)) {
       val orFilters = List(
         not(existsFilter("stock")),
         createTermFilter("stock.available", Some(true)).get
       )
-      Some(or(orFilters: _*) )
-    }else{
+      Some(or(orFilters: _*))
+    } else {
       None
     }
 
     val filters: List[FilterDefinition] = List(
       defaultStockFilter,
-      skuRequest.countryCode.map {countryCode => termFilter(s"${countryCode}.enabled", true)},
+      skuRequest.countryCode.map { countryCode => termFilter(s"${countryCode}.enabled", true) },
       createOrFilterBySplitValues(skuRequest.id, v => createTermFilter("id", Some(v))),
       createOrFilterBySplitValues(skuRequest.productId, v => createTermFilter("product.id", Some(v))),
       createOrFilterBySplitValues(skuRequest.code, v => createTermFilter("product.code", Some(v))),
@@ -87,7 +86,7 @@ class SkuHandler  extends JsonUtil {
       createOrFilterBySplitValues(skuRequest.categoryPath, v => createRegexFilter("path", Some(v))),
       createOrFilterBySplitValues(skuRequest.brandId, v => createTermFilter("product.brand.id", Some(v))),
       createOrFilterBySplitValues(skuRequest.tagName.map(_.toLowerCase), v => createNestedTermFilter("product.tags", "product.tags.name", Some(v))),
-//TODO      createOrFilterBySplitValues(skuRequest.notations, v => createNestedTermFilter("notations", "notations.notation", Some(v))),
+      //TODO      createOrFilterBySplitValues(skuRequest.notations, v => createNestedTermFilter("notations", "notations.notation", Some(v))),
       createOrFilterBySplitKeyValues(skuRequest.priceRange, (min, max) => createNumericRangeFilter(s"${priceWithVatField}", min, max)),
       createOrFilterBySplitValues(skuRequest.creationDateMin, v => createRangeFilter("product.dateCreated", Some(v), None)),
       createOrFilterBySplitValues(skuRequest.promotionId, v => createTermFilter("coupons.id", Some(v))),
@@ -104,9 +103,9 @@ class SkuHandler  extends JsonUtil {
     val _sort = skuRequest.orderBy.getOrElse("name.raw") match {
       case a if a startsWith "name" => s"${lang}name.raw"
       case b if b startsWith "price" => skuRequest.countryCode match {
-          case Some(countryCode) => s"$countryCode.saleEndPrice"
-          case _ => "salePrice"
-        }
+        case Some(countryCode) => s"$countryCode.saleEndPrice"
+        case _ => "salePrice"
+      }
       case s => s
     }
     lazy val currency = queryCurrency(storeCode, skuRequest.currencyCode)
@@ -116,8 +115,8 @@ class SkuHandler  extends JsonUtil {
         from _from
         size _size
         sort {
-        by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
-      }
+          by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
+        }
     )
     val hits: JArray = response.getHits
 
@@ -130,25 +129,24 @@ class SkuHandler  extends JsonUtil {
     Paging.wrap(response.getTotalHits.toInt, skus, skuRequest)
   }
 
-  private val sdf = new SimpleDateFormat ("yyyy-MM-dd")
+  private val sdf = new SimpleDateFormat("yyyy-MM-dd")
   //THH:mm:ssZ
-  private val hours = new SimpleDateFormat ("HH:mm")
+  private val hours = new SimpleDateFormat("HH:mm")
   /**
    * Renvoie le filtres permettant de filtrer les skus via pour les produits mis en avant
    * si la requête le demande
    * @param req - product request
    * @return FilterDefinition
    */
-  private def createFeaturedRangeFilters (req: SkuRequest): Option[FilterDefinition] = {
-    if (req.featured.getOrElse (false) ) {
-      val today = sdf.format (Calendar.getInstance ().getTime)
-      val list = List (
-        createRangeFilter ("product.startFeatureDate", None, Some (s"$today") ),
-        createRangeFilter ("product.stopFeatureDate", Some (s"$today"), None)
+  private def createFeaturedRangeFilters(req: SkuRequest): Option[FilterDefinition] = {
+    if (req.featured.getOrElse(false)) {
+      val today = sdf.format(Calendar.getInstance().getTime)
+      val list = List(
+        createRangeFilter("product.startFeatureDate", None, Some(s"$today")),
+        createRangeFilter("product.stopFeatureDate", Some(s"$today"), None)
       ).flatten
-      Some (and (list: _*) )
-    }
-    else None
+      Some(and(list: _*))
+    } else None
   }
 
   /**
@@ -156,13 +154,13 @@ class SkuHandler  extends JsonUtil {
    * @param req - product request
    * @return FilterDefinition
    */
-  private def createFeaturesFilters (req: SkuRequest): Option[FilterDefinition] = {
-    createAndOrFilterBySplitKeyValues (req.feature, (k, v) => {
-      Some (
-        must (
-          List (
-            createNestedTermFilter ("product.features", s"product.features.name.raw", Some (k) ),
-            createNestedTermFilter ("product.features", s"product.features.value.raw", Some (v) )
+  private def createFeaturesFilters(req: SkuRequest): Option[FilterDefinition] = {
+    createAndOrFilterBySplitKeyValues(req.feature, (k, v) => {
+      Some(
+        must(
+          List(
+            createNestedTermFilter("product.features", s"product.features.name.raw", Some(k)),
+            createNestedTermFilter("product.features", s"product.features.value.raw", Some(v))
           ).flatten: _*
         )
       )
@@ -174,26 +172,24 @@ class SkuHandler  extends JsonUtil {
    * @param req - product request
    * @return FilterDefinition
    */
-  private def createVariationsFilters (req: SkuRequest): Option[FilterDefinition] = {
-    createAndOrFilterBySplitKeyValues (req.variations, (k, v) => {
-      Some (
-        or (
-          must (
-            List (
-              createTermFilter (s"variation1.name.raw", Some (k) ),
-              createTermFilter (s"variation1.value.raw", Some (v) )
+  private def createVariationsFilters(req: SkuRequest): Option[FilterDefinition] = {
+    createAndOrFilterBySplitKeyValues(req.variations, (k, v) => {
+      Some(
+        or(
+          must(
+            List(
+              createTermFilter(s"variation1.name.raw", Some(k)),
+              createTermFilter(s"variation1.value.raw", Some(v))
             ).flatten: _*
-          )
-          , must (
-            List (
-              createTermFilter (s"variation2.name.raw", Some (k) ),
-              createTermFilter (s"variation2.value.raw", Some (v) )
+          ), must(
+            List(
+              createTermFilter(s"variation2.name.raw", Some(k)),
+              createTermFilter(s"variation2.value.raw", Some(v))
             ).flatten: _*
-          )
-          , must (
-            List (
-              createTermFilter (s"variation3.name.raw", Some (k) ),
-              createTermFilter (s"variation3.value.raw", Some (v) )
+          ), must(
+            List(
+              createTermFilter(s"variation3.name.raw", Some(k)),
+              createTermFilter(s"variation3.value.raw", Some(v))
             ).flatten: _*
           )
         )
@@ -201,8 +197,8 @@ class SkuHandler  extends JsonUtil {
     })
   }
 
-  case class AvailableStockByDateTime(startDate:String, available:Boolean)
-  case class AvailableStock(available:Boolean, byDateTime: List[AvailableStockByDateTime])
+  case class AvailableStockByDateTime(startDate: String, available: Boolean)
+  case class AvailableStock(available: Boolean, byDateTime: List[AvailableStockByDateTime])
 
   /**
    * Helper method to debug sku resource
@@ -213,9 +209,9 @@ class SkuHandler  extends JsonUtil {
    * @param date
    * @return
    */
-  def getSku(storeCode: String, skuId: String,update:Boolean, stockValue: Boolean, date: Option[String]) = {
-//    println(s"--------------------------------- getSku update=$update, stock=$stockValue, date="+date)
-    val res = EsClient.loadRaw(get(skuId) from storeCode+"/"+ES_TYPE_SKU).get
+  def getSku(storeCode: String, skuId: String, update: Boolean, stockValue: Boolean, date: Option[String]) = {
+    //    println(s"--------------------------------- getSku update=$update, stock=$stockValue, date="+date)
+    val res = EsClient.loadRaw(get(skuId) from storeCode + "/" + ES_TYPE_SKU).get
     val sku = response2JValue(res)
 
     /* for debug purpose only
@@ -255,7 +251,7 @@ class SkuHandler  extends JsonUtil {
       EsClient.updateRaw(esupdate4s id skuId in storeCode -> ES_TYPE_SKU doc updatedSku retryOnConflict 4)
       updatedSku
     }else{*/
-      sku
+    sku
     //}
 
   }
@@ -265,25 +261,25 @@ class SkuHandler  extends JsonUtil {
    * @param indexEs
    * @param productId
    */
-  def existsAvailableSkus(indexEs: String, productId: Long):Boolean = {
+  def existsAvailableSkus(indexEs: String, productId: Long): Boolean = {
 
     val _query = esearch4s in indexEs -> ES_TYPE_SKU query {
       matchall
     }
 
-    val filters: List[FilterDefinition] = List(createTermFilter("product.id", Some(productId)).get, createTermFilter("available", Some(true)).get )
+    val filters: List[FilterDefinition] = List(createTermFilter("product.id", Some(productId)).get, createTermFilter("available", Some(true)).get)
 
     val response: SearchHits = EsClient.searchAllRaw(
       filterRequest(_query, filters)
     )
-//    println(s"----- existsAvailableSkus for productId=$productId => nb skus that have stock : "+response.getTotalHits)
+    //    println(s"----- existsAvailableSkus for productId=$productId => nb skus that have stock : "+response.getTotalHits)
     response.getTotalHits > 0
   }
 
   /**
    * Update sku stock availability only for NO_DATE product
    */
-  def updateStockAvailability(indexEs: String, pSku: Sku, stock: Stock, stockCalendar:StockCalendar) = {
+  def updateStockAvailability(indexEs: String, pSku: Sku, stock: Stock, stockCalendar: StockCalendar) = {
 
     stock.calendarType match {
       case ProductCalendar.NO_DATE =>

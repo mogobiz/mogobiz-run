@@ -8,21 +8,21 @@ import akka.actor.Actor
 import com.mogobiz.run.actors.EsUpdateActor._
 import com.mogobiz.run.config.MogobizHandlers
 import MogobizHandlers._
-import com.mogobiz.run.model.Mogobiz.{Product, Sku}
-import com.mogobiz.run.model.{Stock, StockCalendar}
+import com.mogobiz.run.model.Mogobiz.{ Product, Sku }
+import com.mogobiz.run.model.{ Stock, StockCalendar }
 
 /**
  * Actor in charge of every updates operations on ES data
  */
 object EsUpdateActor {
 
-  case class StockUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar:StockCalendar)
+  case class StockUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar: StockCalendar)
 
-  case class SalesUpdateRequest(indexEs: String, product: Product, sku: Sku, newNbProductSales : Long, newNbSkuSales: Long)
+  case class SalesUpdateRequest(indexEs: String, product: Product, sku: Sku, newNbProductSales: Long, newNbSkuSales: Long)
 
   case class ProductNotationsUpdateRequest(indexEs: String, productId: Long)
 
-  case class SkuStockAvailabilityUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar:StockCalendar)
+  case class SkuStockAvailabilityUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar: StockCalendar)
 
   case class ProductStockAvailabilityUpdateRequest(indexEs: String, productId: Long)
 }
@@ -31,7 +31,7 @@ class EsUpdateActor extends Actor {
 
   def receive = {
     case q: StockUpdateRequest =>
-      stockHandler.updateEsStock(q.indexEs,  q.product, q.sku, q.stock, q.stockCalendar)
+      stockHandler.updateEsStock(q.indexEs, q.product, q.sku, q.stock, q.stockCalendar)
       context.stop(self)
 
     case q: SalesUpdateRequest =>
@@ -52,7 +52,7 @@ class EsUpdateActor extends Actor {
       val skusAvailable = skuHandler.existsAvailableSkus(q.indexEs, q.productId)
 
       productHandler.updateStockAvailability(q.indexEs, q.productId, skusAvailable)
-    /*
+      /*
     if(!skusAvailable){
       //if no skus returned, then updateStockProductAvailability
       productHandler.updateStockAvailability(q.storeCode, q.product.id,false)

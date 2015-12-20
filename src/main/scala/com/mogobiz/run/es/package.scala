@@ -8,14 +8,14 @@ import com.mogobiz.es._
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.run.model.Currency
-import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
+import com.sksamuel.elastic4s.ElasticDsl.{ search => esearch4s, _ }
 import com.sksamuel.elastic4s.source.DocumentSource
-import com.sksamuel.elastic4s.{SearchDefinition, FilterDefinition, QueryDefinition}
+import com.sksamuel.elastic4s.{ SearchDefinition, FilterDefinition, QueryDefinition }
 import com.typesafe.scalalogging.slf4j.Logger
-import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
-import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
-import org.elasticsearch.search.{SearchHit, SearchHits}
-import org.json4s.JsonAST.{JArray, JValue, JNothing}
+import org.elasticsearch.action.get.{ MultiGetItemResponse, GetResponse }
+import org.elasticsearch.common.xcontent.{ ToXContent, XContentFactory }
+import org.elasticsearch.search.{ SearchHit, SearchHits }
+import org.json4s.JsonAST.{ JArray, JValue, JNothing }
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.slf4j.LoggerFactory
@@ -27,9 +27,9 @@ package object es {
 
   private val log = Logger(LoggerFactory.getLogger("es"))
 
-  private val defaultCurrency = Currency(currencyFractionDigits = 2, rate = 0.01d, name="Euro", code = "EUR") //FIXME
+  private val defaultCurrency = Currency(currencyFractionDigits = 2, rate = 0.01d, name = "Euro", code = "EUR") //FIXME
 
-  def queryCurrency(store: String, currencyCode:Option[String]) : Currency = {
+  def queryCurrency(store: String, currencyCode: Option[String]): Currency = {
     assert(!store.isEmpty)
     currencyCode match {
       case Some(s) =>
@@ -53,11 +53,11 @@ package object es {
    * @return store languages
    */
   def queryStoreLanguages(store: String): JValue = {
-    val languages:JValue = EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages" ) match {
+    val languages: JValue = EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages") match {
       case Some(s) => s
       case None => JNothing
     }
-    languages  \ "languages"
+    languages \ "languages"
   }
 
   def getStoreLanguagesAsList(store: String): List[String] = {
@@ -74,8 +74,9 @@ package object es {
    */
   def createExcludeLang(store: String, lang: String): List[String] = {
     if (lang == "_all") List()
-    else getStoreLanguagesAsList(store).filter{case l: String => l != lang}.collect { case l:String =>
-      List(l, l+".*", "*." + l, "*." + l + ".*")
+    else getStoreLanguagesAsList(store).filter { case l: String => l != lang }.collect {
+      case l: String =>
+        List(l, l + ".*", "*." + l, "*." + l + ".*")
     }.flatten
   }
 
@@ -100,18 +101,17 @@ package object es {
    * @param fct
    * @return
    */
-  def createAndOrFilterBySplitKeyValues(optQuery: Option[String], fct: (String, String) => Option[FilterDefinition]) : Option[FilterDefinition] = {
+  def createAndOrFilterBySplitKeyValues(optQuery: Option[String], fct: (String, String) => Option[FilterDefinition]): Option[FilterDefinition] = {
     optQuery match {
       case Some(query) => {
         val andFilters = (for (keyValues <- query.split("""\|\|\|""")) yield {
-          val kv = keyValues.split( """\:\:\:""")
+          val kv = keyValues.split("""\:\:\:""")
           if (kv.size == 2) {
             val orFilters = (for (v <- kv(1).split("""\|""")) yield {
               fct(kv(0), v)
             }).toList.flatten
             if (orFilters.length > 1) Some(or(orFilters: _*)) else if (orFilters.length == 1) Some(orFilters(0)) else None
-          }
-          else None
+          } else None
         }).toList.flatten
         if (andFilters.length > 1) Some(and(andFilters: _*)) else if (andFilters.length == 1) Some(andFilters(0)) else None
       }
@@ -132,15 +132,14 @@ package object es {
    * @param fct
    * @return
    */
-  def createOrFilterBySplitKeyValues(optQuery: Option[String], fct: (String, String) => Option[FilterDefinition]) : Option[FilterDefinition] = {
+  def createOrFilterBySplitKeyValues(optQuery: Option[String], fct: (String, String) => Option[FilterDefinition]): Option[FilterDefinition] = {
     optQuery match {
       case Some(query) => {
         val orFilters = (for (keyValues <- query.split("""\|\|\|""")) yield {
-          val kv = keyValues.split( """\:\:\:""")
+          val kv = keyValues.split("""\:\:\:""")
           if (kv.size == 2) {
             fct(kv(0), kv(1))
-          }
-          else None
+          } else None
         }).toList.flatten
         if (orFilters.length > 1) Some(or(orFilters: _*)) else if (orFilters.length == 1) Some(orFilters(0)) else None
       }
@@ -148,13 +147,12 @@ package object es {
     }
   }
 
-  def convertAsLongOption(value: String) : Option[Long] = {
+  def convertAsLongOption(value: String): Option[Long] = {
     if (value == null || value.trim.length == 0) None
     else try {
       Some(value.toInt)
-    }
-    catch {
-      case e:Exception => None
+    } catch {
+      case e: Exception => None
     }
   }
 
@@ -171,7 +169,7 @@ package object es {
    * @param fct
    * @return
    */
-  def createOrFilterBySplitValues(optQuery: Option[String], fct: (String) => Option[FilterDefinition]) : Option[FilterDefinition] = {
+  def createOrFilterBySplitValues(optQuery: Option[String], fct: (String) => Option[FilterDefinition]): Option[FilterDefinition] = {
     optQuery match {
       case Some(query) => {
         val orFilters = (for (v <- query.split("""\|""")) yield {
@@ -186,14 +184,14 @@ package object es {
   def getAllExcludedLanguagesExcept(store: String, langRequested: String): List[String] = {
     val storeLanguagesList: List[String] = getStoreLanguagesAsList(store)
     if (langRequested == "_all") List()
-    else if(langRequested.isEmpty) storeLanguagesList
+    else if (langRequested.isEmpty) storeLanguagesList
     else storeLanguagesList.filter {
       lang => lang != langRequested
     }
   }
 
   def getAllExcludedLanguagesExceptAsList(store: String, lang: String): List[String] = {
-    getAllExcludedLanguagesExcept(store,lang).flatMap {
+    getAllExcludedLanguagesExcept(store, lang).flatMap {
       l => l :: "*." + l :: Nil
     }
   }
@@ -204,7 +202,7 @@ package object es {
     }
   }
 
-  def getIncludedFieldWithPrefixAsList(store: String, preField:  String, field: String, lang: String) : List[String] = {
+  def getIncludedFieldWithPrefixAsList(store: String, preField: String, field: String, lang: String): List[String] = {
     if ("_all".equals(lang)) {
       getLangFieldsWithPrefixAsList(store, preField, field)
     } else {
@@ -220,45 +218,42 @@ package object es {
     else List(s"$lang.$field")
   }
 
-  def filterRequest(req:SearchDefinition, filters:List[FilterDefinition], _query:QueryDefinition = matchall) : SearchDefinition =
-    if(filters.nonEmpty){
-      if(filters.size > 1)
-        req query {filteredQuery query _query filter {and(filters: _*)}}
+  def filterRequest(req: SearchDefinition, filters: List[FilterDefinition], _query: QueryDefinition = matchall): SearchDefinition =
+    if (filters.nonEmpty) {
+      if (filters.size > 1)
+        req query { filteredQuery query _query filter { and(filters: _*) } }
       else
-        req query {filteredQuery query _query filter filters(0)}
-    }
-    else req query _query
+        req query { filteredQuery query _query filter filters(0) }
+    } else req query _query
 
-  def filterOrRequest(req:SearchDefinition, filters:List[FilterDefinition], _query:QueryDefinition = matchall) : SearchDefinition =
-    if(filters.nonEmpty){
-      if(filters.size > 1)
-        req query {filteredQuery query _query filter {or(filters: _*)}}
+  def filterOrRequest(req: SearchDefinition, filters: List[FilterDefinition], _query: QueryDefinition = matchall): SearchDefinition =
+    if (filters.nonEmpty) {
+      if (filters.size > 1)
+        req query { filteredQuery query _query filter { or(filters: _*) } }
       else
-        req query {filteredQuery query _query filter filters(0)}
-    }
-    else req
+        req query { filteredQuery query _query filter filters(0) }
+    } else req
 
-  def createOrRegexAndTypeFilter(typeFields:List[TypeField], value:Option[String]) : Option[FilterDefinition] = {
-    value match{
+  def createOrRegexAndTypeFilter(typeFields: List[TypeField], value: Option[String]): Option[FilterDefinition] = {
+    value match {
       case Some(s) => Some(
         or(
-          typeFields.map(typeField => and(typeFilter(typeField.`type`), regexFilter(typeField.field, s".*${s.toLowerCase}.*")) ):_*
+          typeFields.map(typeField => and(typeFilter(typeField.`type`), regexFilter(typeField.field, s".*${s.toLowerCase}.*"))): _*
         )
       )
       case None => None
     }
   }
 
-  def createNestedTermFilter(path:String, field:String, value:Option[Any]) : Option[FilterDefinition] = {
-    value match{
+  def createNestedTermFilter(path: String, field: String, value: Option[Any]): Option[FilterDefinition] = {
+    value match {
       case Some(s) =>
         s match {
-          case v:String =>
+          case v: String =>
             val values = v.split("""\|""")
-            if(values.size > 1){
-              Some(nestedFilter(path) filter termsFilter(field, values:_*))
-            }
-            else{
+            if (values.size > 1) {
+              Some(nestedFilter(path) filter termsFilter(field, values: _*))
+            } else {
               Some(nestedFilter(path) filter termFilter(field, v))
             }
           case _ => Some(nestedFilter(path) filter termFilter(field, s))
@@ -267,16 +262,15 @@ package object es {
     }
   }
 
-  def createTermFilter(field:String, value:Option[Any]) : Option[FilterDefinition] = {
-    value match{
+  def createTermFilter(field: String, value: Option[Any]): Option[FilterDefinition] = {
+    value match {
       case Some(s) =>
         s match {
-          case v:String =>
+          case v: String =>
             val values = v.split("""\|""")
-            if(values.size > 1){
-              Some(termsFilter(field, values:_*))
-            }
-            else{
+            if (values.size > 1) {
+              Some(termsFilter(field, values: _*))
+            } else {
               Some(termFilter(field, v))
             }
           case _ => Some(termFilter(field, s))
@@ -285,8 +279,8 @@ package object es {
     }
   }
 
-  def createRegexFilter(field:String, value:Option[String], addStars: Boolean = true) : Option[FilterDefinition] = {
-    value match{
+  def createRegexFilter(field: String, value: Option[String], addStars: Boolean = true): Option[FilterDefinition] = {
+    value match {
       case Some(s) => {
         val star = if (addStars) ".*" else ""
         Some(regexFilter(field, s"${star}${s.toLowerCase}${star}"))
@@ -295,15 +289,15 @@ package object es {
     }
   }
 
-  def createExistsFilter(field:Option[String]) : Option[FilterDefinition] = {
-    field match{
+  def createExistsFilter(field: Option[String]): Option[FilterDefinition] = {
+    field match {
       case Some(s) => Some(existsFilter(s))
       case None => None
     }
   }
 
-  def createRangeFilter(field:String, _gte:Option[String], _lte: Option[String]) : Option[FilterDefinition] = {
-    val req = _gte match{
+  def createRangeFilter(field: String, _gte: Option[String], _lte: Option[String]): Option[FilterDefinition] = {
+    val req = _gte match {
       case Some(g) => _lte match {
         case Some(l) => Some(rangeFilter(field) gte g lte l)
         case _ => Some(rangeFilter(field) gte g)
@@ -316,12 +310,12 @@ package object es {
     req
   }
 
-  def createNumericRangeFilter(field:String, _gte:String, _lte: String) : Option[FilterDefinition] = {
+  def createNumericRangeFilter(field: String, _gte: String, _lte: String): Option[FilterDefinition] = {
     createNumericRangeFilter(field, convertAsLongOption(_gte), convertAsLongOption(_lte))
   }
 
-  def createNumericRangeFilter(field:String, _gte:Option[Long], _lte: Option[Long]) : Option[FilterDefinition] = {
-    (_gte,_lte) match {
+  def createNumericRangeFilter(field: String, _gte: Option[Long], _lte: Option[Long]): Option[FilterDefinition] = {
+    (_gte, _lte) match {
       case (Some(gte_v), Some(lte_v)) => Some(numericRangeFilter(field) gte gte_v lte lte_v)
       case (Some(gte_v), None) => Some(numericRangeFilter(field) gte gte_v)
       case (None, Some(lte_v)) => Some(numericRangeFilter(field) lte lte_v)
@@ -329,6 +323,6 @@ package object es {
     }
   }
 
-  case class TypeField(`type`:String, field:String)
+  case class TypeField(`type`: String, field: String)
 
 }

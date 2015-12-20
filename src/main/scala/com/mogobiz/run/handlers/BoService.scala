@@ -9,10 +9,10 @@ import com.mogobiz.run.config.Settings.NextVal
 import scalikejdbc._
 
 /**
- * 
+ *
  */
 trait BoService {
-  def newId()(implicit session: DBSession):Int={
+  def newId()(implicit session: DBSession): Int = {
     val res = session.connection.createStatement().executeQuery(NextVal)
     res.next()
     res.getInt(1)

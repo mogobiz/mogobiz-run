@@ -4,7 +4,7 @@
 
 package com.mogobiz.run.sql
 
-import java.util.{Date, UUID}
+import java.util.{ Date, UUID }
 
 import com.mogobiz.json.JacksonConverter
 import com.mogobiz.run.sql.Sql.WishlistList

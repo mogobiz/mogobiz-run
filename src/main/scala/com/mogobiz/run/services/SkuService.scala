@@ -16,13 +16,12 @@ import com.mogobiz.session.Session
 import com.mogobiz.session.SessionESDirectives._
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import spray.http.{HttpCookie, StatusCodes}
+import spray.http.{ HttpCookie, StatusCodes }
 import spray.routing.Directives
 //import com.mogobiz.pay.config.MogopayHandlers.accountHandler
 
-
 import com.mogobiz.run.config.Settings._
-class SkuService  extends Directives with DefaultComplete {
+class SkuService extends Directives with DefaultComplete {
   import org.json4s._
 
   val route = {
@@ -99,7 +98,7 @@ class SkuService  extends Directives with DefaultComplete {
           }
 
           val params = new SkuRequest(
-            maxItemPerPage, pageOffset, id,productId,  xtype, name, code, categoryPath,
+            maxItemPerPage, pageOffset, id, productId, xtype, name, code, categoryPath,
             brandId, tagName, notations, priceRange, creationDateMin,
             featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionIds, hasPromotion, inStockOnly, property, feature, variations
           )
@@ -112,7 +111,7 @@ class SkuService  extends Directives with DefaultComplete {
   def skus(implicit storeCode: String) = pathPrefix(Segment) {
     skuId =>
       get {
-        parameters('update ? false, 'stock ? false, 'date ? ) { (update, stock, date) =>
+        parameters('update ? false, 'stock ? false, 'date ?) { (update, stock, date) =>
           handleCall(skuHandler.getSku(storeCode, skuId, update, stock, date), (json: JValue) => complete(StatusCodes.OK, json))
         }
       }

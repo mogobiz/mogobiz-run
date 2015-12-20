@@ -28,7 +28,7 @@ class CurrencyService extends Directives with DefaultComplete {
             handleCall(currencyHandler.queryCurrencyByCode(storeCode, currencyCde),
               (json: JValue) => complete(StatusCodes.OK, json))
           }
-      }
+        }
     }
   }
 

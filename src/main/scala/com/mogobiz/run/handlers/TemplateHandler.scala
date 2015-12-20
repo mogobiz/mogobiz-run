@@ -22,8 +22,7 @@ class TemplateHandler {
         val lines = source.mkString
         source.close()
         Some(lines)
-      }
-      else None
+      } else None
     }
 
     def defaultTemplate() = scala.io.Source.fromInputStream(getClass.getResourceAsStream(s"/template/$templateName.mustache")).mkString

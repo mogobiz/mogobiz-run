@@ -4,7 +4,7 @@
 
 package com.mogobiz.run.config
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{ Config, ConfigFactory }
 import scalikejdbc.config._
 import collection.JavaConversions._
 
@@ -35,7 +35,6 @@ object Settings {
   //  val RememberCookieName = config getString "session.remember.cookie.name"
   //  val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
 
-
   val AccessUrl = config getString "mogobiz.accessUrl"
 
   object Cart {
@@ -60,7 +59,6 @@ object Settings {
     val sender = ""
   }
 
-
   object Learning {
     val Rotate = config.getString("learning.index.rotate")
   }
@@ -68,7 +66,6 @@ object Settings {
   object Dashboard {
     val Rotate = config.getString("dashboard.index.rotate")
   }
-
 
   object Mail {
 

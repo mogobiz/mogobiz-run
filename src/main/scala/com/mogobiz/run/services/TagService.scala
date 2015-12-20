@@ -12,7 +12,6 @@ import org.json4s._
 import spray.http.StatusCodes
 import spray.routing.Directives
 
-
 class TagService extends Directives with DefaultComplete {
 
   val route = {
@@ -36,7 +35,7 @@ class TagService extends Directives with DefaultComplete {
             handleCall(tagHandler.queryTagName(storeCode, tagName),
               (json: JValue) => complete(StatusCodes.OK, json))
           }
-      }
+        }
     }
   }
   /*

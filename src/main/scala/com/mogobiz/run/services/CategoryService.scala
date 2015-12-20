@@ -14,7 +14,6 @@ import org.json4s._
 import spray.http.StatusCodes
 import spray.routing.Directives
 
-
 class CategoryService extends Directives with DefaultComplete {
 
   val route = {
@@ -28,12 +27,12 @@ class CategoryService extends Directives with DefaultComplete {
           }
         }
       } ~
-      pathPrefix(Segment) { categoryId =>
-        get {
-          handleCall(categoryHandler.queryCategory(storeCode, categoryId),
-            (json: JValue) => complete(StatusCodes.OK, json))
+        pathPrefix(Segment) { categoryId =>
+          get {
+            handleCall(categoryHandler.queryCategory(storeCode, categoryId),
+              (json: JValue) => complete(StatusCodes.OK, json))
+          }
         }
-      }
     }
   }
 

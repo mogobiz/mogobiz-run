@@ -21,14 +21,9 @@ class PromotionService extends Directives with DefaultComplete {
       pathEnd {
         get {
           parameters(
-            'maxItemPerPage.?
-            , 'pageOffset.?
-            , 'orderBy.?
-            , 'orderDirection.?
-            , 'categoryPath.?
-            , 'lang ? "_all").as(PromotionRequest) { params =>
-            handleCall(promotionHandler.getPromotions(storeCode, params), (json: JValue) => complete(StatusCodes.OK, json))
-          }
+            'maxItemPerPage.?, 'pageOffset.?, 'orderBy.?, 'orderDirection.?, 'categoryPath.?, 'lang ? "_all").as(PromotionRequest) { params =>
+              handleCall(promotionHandler.getPromotions(storeCode, params), (json: JValue) => complete(StatusCodes.OK, json))
+            }
         }
       } ~
         pathPrefix(Segment) { promotionId =>
@@ -36,7 +31,7 @@ class PromotionService extends Directives with DefaultComplete {
             handleCall(promotionHandler.getPromotionById(storeCode, promotionId),
               (json: JValue) => complete(StatusCodes.OK, json))
           }
-      }
+        }
     }
   }
 

@@ -33,7 +33,7 @@ object RateBoService {
    * @param amount - amount
    * @return calculated amount
    */
-  def calculateAmount(amount: Long, rate:MogopayRate):Long = {
+  def calculateAmount(amount: Long, rate: MogopayRate): Long = {
     (amount * rate.rate.doubleValue() * Math.pow(10, rate.currencyFractionDigits)).toLong
   }
 

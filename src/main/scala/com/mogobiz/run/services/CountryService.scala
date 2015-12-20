@@ -12,7 +12,6 @@ import org.json4s._
 import spray.http.StatusCodes
 import spray.routing.Directives
 
-
 class CountryService extends Directives with DefaultComplete {
 
   val route = {
@@ -30,7 +29,7 @@ class CountryService extends Directives with DefaultComplete {
             handleCall(countryHandler.queryCountryByCode(storeCode, countryCode),
               (json: JValue) => complete(StatusCodes.OK, json))
           }
-      }
+        }
     }
   }
   /*

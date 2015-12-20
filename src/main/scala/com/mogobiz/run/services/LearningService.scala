@@ -15,12 +15,11 @@ import org.json4s._
 import spray.http.StatusCodes
 import spray.routing.Directives
 
-import scala.concurrent.{Future, ExecutionContext}
-import scala.util.{Failure, Success}
+import scala.concurrent.{ Future, ExecutionContext }
+import scala.util.{ Failure, Success }
 import com.mogobiz.run.config.MogobizHandlers._
 
-
-class LearningService (implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
+class LearningService(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
   val route = {
     pathPrefix(Segment / "learning") { implicit storeCode =>
       fis ~
@@ -42,7 +41,7 @@ class LearningService (implicit executionContext: ExecutionContext) extends Dire
     }
   }
 
-  def last(implicit storeCode:String) = path(Segment / "last") { uuid =>
+  def last(implicit storeCode: String) = path(Segment / "last") { uuid =>
     get {
       parameter('count.as[Int]) {
         count =>
@@ -77,16 +76,15 @@ class LearningService (implicit executionContext: ExecutionContext) extends Dire
     }
   }
 
-  def popular(implicit storeCode:String) = path("popular") {
+  def popular(implicit storeCode: String) = path("popular") {
     get {
-        parameters('action, 'since, 'count.as[Int], 'customer.?) {
-          (action, since, count, customer) =>
-            handleCall(learningHandler.popular(storeCode, UserAction.withName(action), new SimpleDateFormat("yyyyMMdd").parse(since), count, customer),
-              (res: List[String]) => complete(StatusCodes.OK, res)
-            )
-        }
+      parameters('action, 'since, 'count.as[Int], 'customer.?) {
+        (action, since, count, customer) =>
+          handleCall(learningHandler.popular(storeCode, UserAction.withName(action), new SimpleDateFormat("yyyyMMdd").parse(since), count, customer),
+            (res: List[String]) => complete(StatusCodes.OK, res)
+          )
       }
     }
-
+  }
 
 }

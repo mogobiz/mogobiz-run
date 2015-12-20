@@ -4,4 +4,4 @@
 
 package com.mogobiz.run.model
 
-case class Notation(uuid:String, productId:Long, json:String)
+case class Notation(uuid: String, productId: Long, json: String)

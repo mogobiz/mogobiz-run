@@ -17,7 +17,7 @@ import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.session.Session
-import spray.http.{HttpCookie, StatusCodes}
+import spray.http.{ HttpCookie, StatusCodes }
 import spray.routing.Directives
 import com.mogobiz.session.SessionESDirectives._
 import com.mogobiz.run.config.MogobizHandlers._
@@ -55,12 +55,13 @@ class CartService extends Directives with DefaultComplete {
   def cartInit(storeCode: String, uuid: String) = pathEnd {
     get {
       parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
-        params => {
-          optionalSession { optSession =>
-            val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-            handleCall(cartHandler.queryCartInit(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+        params =>
+          {
+            optionalSession { optSession =>
+              val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+              handleCall(cartHandler.queryCartInit(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+            }
           }
-        }
       }
     }
   }
@@ -68,12 +69,13 @@ class CartService extends Directives with DefaultComplete {
   def cartClear(storeCode: String, uuid: String) = pathEnd {
     delete {
       parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
-        params => {
-          optionalSession { optSession =>
-            val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-            handleCall(cartHandler.queryCartClear(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+        params =>
+          {
+            optionalSession { optSession =>
+              val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+              handleCall(cartHandler.queryCartClear(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+            }
           }
-        }
       }
     }
   }
@@ -83,79 +85,87 @@ class CartService extends Directives with DefaultComplete {
       parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
         params =>
           entity(as[AddCartItemRequest]) {
-            cmd => {
-              optionalSession {
-                optSession =>
-                  val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-                  handleCall(cartHandler.queryCartItemAdd(storeCode, uuid, params, cmd, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+            cmd =>
+              {
+                optionalSession {
+                  optSession =>
+                    val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+                    handleCall(cartHandler.queryCartItemAdd(storeCode, uuid, params, cmd, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+                }
               }
-            }
           }
       }
     }
   }
 
   def cartUpdateRemove(storeCode: String, uuid: String) = path("item" / Segment) {
-    cartItemId => pathEnd {
-      cartUpdate(storeCode, uuid, cartItemId) ~
-        cartRemove(storeCode, uuid, cartItemId)
-    }
+    cartItemId =>
+      pathEnd {
+        cartUpdate(storeCode, uuid, cartItemId) ~
+          cartRemove(storeCode, uuid, cartItemId)
+      }
   }
 
   def cartUpdate(storeCode: String, uuid: String, cartItemId: String) = put {
     parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
-      params => {
-        entity(as[UpdateCartItemRequest]) {
-          cmd => {
-            optionalSession { optSession =>
-              val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-              handleCall(cartHandler.queryCartItemUpdate(storeCode, uuid, cartItemId, params, cmd, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
-            }
+      params =>
+        {
+          entity(as[UpdateCartItemRequest]) {
+            cmd =>
+              {
+                optionalSession { optSession =>
+                  val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+                  handleCall(cartHandler.queryCartItemUpdate(storeCode, uuid, cartItemId, params, cmd, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+                }
+              }
           }
         }
-      }
     }
   }
 
   def cartRemove(storeCode: String, uuid: String, cartItemId: String) = delete {
     parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) {
-      params => {
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-          handleCall(cartHandler.queryCartItemRemove(storeCode, uuid, cartItemId, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+      params =>
+        {
+          optionalSession { optSession =>
+            val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+            handleCall(cartHandler.queryCartItemRemove(storeCode, uuid, cartItemId, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+          }
         }
-      }
     }
   }
 
   def coupon(storeCode: String, uuid: String) = path("coupons" / Segment) {
-    couponCode => {
-      pathEnd {
-        couponAdd(storeCode, uuid, couponCode) ~
-          couponRemove(storeCode, uuid, couponCode)
+    couponCode =>
+      {
+        pathEnd {
+          couponAdd(storeCode, uuid, couponCode) ~
+            couponRemove(storeCode, uuid, couponCode)
+        }
       }
-    }
   }
 
   def couponAdd(storeCode: String, uuid: String, couponCode: String) = post {
     parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CouponParameters) {
-      params => {
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-          handleCall(cartHandler.queryCartCouponAdd(storeCode, uuid, couponCode, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+      params =>
+        {
+          optionalSession { optSession =>
+            val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+            handleCall(cartHandler.queryCartCouponAdd(storeCode, uuid, couponCode, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+          }
         }
-      }
     }
   }
 
   def couponRemove(storeCode: String, uuid: String, couponCode: String) = delete {
     parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CouponParameters) {
-      params => {
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-          handleCall(cartHandler.queryCartCouponDelete(storeCode, uuid, couponCode, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+      params =>
+        {
+          optionalSession { optSession =>
+            val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+            handleCall(cartHandler.queryCartCouponDelete(storeCode, uuid, couponCode, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+          }
         }
-      }
     }
   }
 
