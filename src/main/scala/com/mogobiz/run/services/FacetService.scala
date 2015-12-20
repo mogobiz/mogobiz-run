@@ -5,7 +5,7 @@
 package com.mogobiz.run.services
 
 import com.mogobiz.run.config.DefaultComplete
-import com.mogobiz.run.config.MogobizHandlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.model.RequestParameters.FacetRequest
 import spray.http.StatusCodes
 import spray.routing.Directives

@@ -13,7 +13,7 @@ import org.json4s._
 import spray.http.StatusCodes
 import spray.routing._
 
-import com.mogobiz.run.config.MogobizHandlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 
 class BrandService extends Directives with DefaultComplete {
 

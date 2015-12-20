@@ -28,6 +28,8 @@ object Settings {
 
   val CookieTracking = config getString "mogobiz.cookie-tracking"
 
+  val CakeClass = config getString "mogobiz.handlers.class"
+
   //  val ApplicationSecret = config getString "session.application.secret"
   //  val SessionFolder = new File(config getString "session.folder")
   //  val SessionCookieName = config getString "session.cookie.name"

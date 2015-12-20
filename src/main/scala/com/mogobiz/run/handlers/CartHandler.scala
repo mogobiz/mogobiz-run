@@ -10,7 +10,7 @@ import java.util.{ Calendar, UUID, Locale }
 import akka.actor.Props
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.model.Mogopay
-import com.mogobiz.run.config.MogobizHandlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.actors.EsUpdateActor.{ ProductStockAvailabilityUpdateRequest, StockUpdateRequest }
 import com.mogobiz.run.actors.{ EsUpdateActor, ActorSystemLocator }
 import com.mogobiz.run.config.Settings

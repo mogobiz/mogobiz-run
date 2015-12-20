@@ -6,7 +6,7 @@ package com.mogobiz.run.services
 
 import akka.actor.ActorRefFactory
 import com.mogobiz.run.config.MogobizHandlers
-import com.mogobiz.run.config.MogobizHandlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 import spray.http.StatusCodes
 import spray.routing.{ Directives, RoutingSettings }
 

@@ -8,7 +8,7 @@ import java.util.{ UUID, Date }
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.config.MogobizHandlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.actors.EsUpdateActor.StockUpdateRequest
 import com.mogobiz.run.actors.EsUpdateActor.{ SkuStockAvailabilityUpdateRequest, StockUpdateRequest }
 import com.mogobiz.run.actors.{ EsUpdateActor, ActorSystemLocator }

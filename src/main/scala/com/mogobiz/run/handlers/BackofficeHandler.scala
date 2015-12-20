@@ -4,28 +4,25 @@
 
 package com.mogobiz.run.handlers
 
-import java.util.{ UUID, Locale }
+import java.util.UUID
 
-import com.mogobiz.es._
-import com.mogobiz.es.EsClient
+import com.mogobiz.es.{ EsClient, _ }
+import com.mogobiz.json.JsonUtil
 import com.mogobiz.pay.config.MogopayHandlers._
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.model.Mogopay.RoleName
-import com.mogobiz.run.exceptions.{ IllegalStatusException, MinMaxQuantityException, NotFoundException, NotAuthorizedException }
-import com.mogobiz.run.model.Mogobiz.ReturnStatus.ReturnStatus
-import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus.ReturnedItemStatus
+import com.mogobiz.run.config.MogobizHandlers.handlers._
+import com.mogobiz.run.es._
+import com.mogobiz.run.exceptions.{ IllegalStatusException, MinMaxQuantityException, NotAuthorizedException, NotFoundException }
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.RequestParameters.{ UpdateBOReturnedItemRequest, CreateBOReturnedItemRequest, BOListCustomersRequest, BOListOrdersRequest }
+import com.mogobiz.run.model.RequestParameters.{ BOListCustomersRequest, BOListOrdersRequest, CreateBOReturnedItemRequest, UpdateBOReturnedItemRequest }
 import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl._
-import com.mogobiz.run.es._
 import org.elasticsearch.common.joda.time.format.ISODateTimeFormat
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
 import org.json4s.JsonAST._
-import com.mogobiz.json.JsonUtil
-import com.mogobiz.run.config.MogobizHandlers.{ cartHandler, stockHandler }
 import scalikejdbc.DB
 
 /**
@@ -36,7 +33,7 @@ class BackofficeHandler extends JsonUtil with BoService {
 
   @throws[NotAuthorizedException]
   def listOrders(storeCode: String, accountUuid: Option[String], req: BOListOrdersRequest): Paging[JValue] = {
-    val account = accountUuid.map { uuid => accountHandler.load(uuid) }.flatten getOrElse (throw new NotAuthorizedException(""))
+    val account = accountUuid.flatMap { uuid => accountHandler.load(uuid) } getOrElse (throw new NotAuthorizedException(""))
     val customer = account.roles.find { role => role == RoleName.CUSTOMER }.map { r => account }
     val merchant = account.roles.find { role => role == RoleName.MERCHANT }.map { r => account }
 
@@ -85,17 +82,17 @@ class BackofficeHandler extends JsonUtil with BoService {
 
   @throws[NotAuthorizedException]
   def listCustomers(storeCode: String, accountUuid: Option[String], req: BOListCustomersRequest): Paging[JValue] = {
-    val merchant = accountUuid.map {
+    val merchant = accountUuid.flatMap {
       uuid =>
-        accountHandler.load(uuid).map {
+        accountHandler.load(uuid).flatMap {
           account =>
             account.roles.find {
               role => role == RoleName.MERCHANT
             }.map {
               r => account
             }
-        }.flatten
-    }.flatten getOrElse (throw new NotAuthorizedException(""))
+        }
+    } getOrElse (throw new NotAuthorizedException(""))
 
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
@@ -123,9 +120,9 @@ class BackofficeHandler extends JsonUtil with BoService {
 
   @throws[NotFoundException]
   def cartDetails(storeCode: String, accountUuid: Option[String], transactionUuid: String): JValue = {
-    val account = accountUuid.map {
+    val account = accountUuid.flatMap {
       uuid => accountHandler.load(uuid)
-    }.flatten getOrElse (throw new NotAuthorizedException(""))
+    } getOrElse (throw new NotAuthorizedException(""))
     val customer = account.roles.find {
       role => role == RoleName.CUSTOMER
     }.map {

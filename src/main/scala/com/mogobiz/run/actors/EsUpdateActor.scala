@@ -6,8 +6,7 @@ package com.mogobiz.run.actors
 
 import akka.actor.Actor
 import com.mogobiz.run.actors.EsUpdateActor._
-import com.mogobiz.run.config.MogobizHandlers
-import MogobizHandlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.model.Mogobiz.{ Product, Sku }
 import com.mogobiz.run.model.{ Stock, StockCalendar }
 

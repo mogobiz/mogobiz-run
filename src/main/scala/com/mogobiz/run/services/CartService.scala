@@ -20,7 +20,7 @@ import com.mogobiz.session.Session
 import spray.http.{ HttpCookie, StatusCodes }
 import spray.routing.Directives
 import com.mogobiz.session.SessionESDirectives._
-import com.mogobiz.run.config.MogobizHandlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 
 class CartService extends Directives with DefaultComplete {
 

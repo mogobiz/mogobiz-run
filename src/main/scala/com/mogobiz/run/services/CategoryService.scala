@@ -7,7 +7,7 @@ package com.mogobiz.run.services
 import java.net.URLDecoder
 
 import com.mogobiz.run.config.DefaultComplete
-import com.mogobiz.run.config.MogobizHandlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import org.json4s._

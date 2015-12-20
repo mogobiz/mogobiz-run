@@ -7,7 +7,7 @@ package com.mogobiz.run.services
 import java.util.UUID
 
 import com.mogobiz.run.config.DefaultComplete
-import com.mogobiz.run.config.MogobizHandlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.run.model.RequestParameters._
