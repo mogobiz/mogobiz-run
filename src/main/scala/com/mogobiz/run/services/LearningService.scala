@@ -4,20 +4,17 @@
 
 package com.mogobiz.run.services
 
-import java.text.SimpleDateFormat
-
 import com.mogobiz.run.config.DefaultComplete
-import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.implicits.Json4sProtocol
-import Json4sProtocol._
-import org.json4s._
+import com.mogobiz.run.model.Learning.UserAction
+import org.joda.time.format.DateTimeFormat
 import spray.http.StatusCodes
 import spray.routing.Directives
+import Json4sProtocol._
+import org.json4s._
 
-import scala.concurrent.{ Future, ExecutionContext }
-import scala.util.{ Failure, Success }
-import com.mogobiz.run.config.MogobizHandlers.handlers._
+import scala.concurrent.ExecutionContext
 
 class LearningService(implicit executionContext: ExecutionContext) extends Directives with DefaultComplete {
   val route = {
@@ -29,6 +26,8 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
         popular
     }
   }
+
+  private val format = DateTimeFormat.forPattern("yyyyMMdd")
 
   def similarity(implicit storeCode: String) = path(Segment / "history") { uuid =>
     get {
@@ -80,7 +79,7 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
     get {
       parameters('action, 'since, 'count.as[Int], 'customer.?) {
         (action, since, count, customer) =>
-          handleCall(learningHandler.popular(storeCode, UserAction.withName(action), new SimpleDateFormat("yyyyMMdd").parse(since), count, customer),
+          handleCall(learningHandler.popular(storeCode, UserAction.withName(action), format.parseDateTime(since).toDate, count, customer),
             (res: List[String]) => complete(StatusCodes.OK, res)
           )
       }

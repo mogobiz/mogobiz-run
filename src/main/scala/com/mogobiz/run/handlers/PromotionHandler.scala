@@ -4,10 +4,7 @@
 
 package com.mogobiz.run.handlers
 
-import java.text.SimpleDateFormat
 import java.util.Date
-
-import com.mogobiz.es.EsClient
 
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions.NotFoundException
@@ -17,7 +14,8 @@ import com.sksamuel.elastic4s.ElasticDsl.{ search => esearch4s, _ }
 import com.sksamuel.elastic4s.FilterDefinition
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
-import org.json4s.JsonAST.{ JArray, JNothing, JValue }
+import org.joda.time.format.DateTimeFormat
+import org.json4s.JsonAST.{ JArray, JValue }
 import org.json4s._
 import com.mogobiz.es._
 
@@ -49,7 +47,7 @@ class PromotionHandler {
       } else {
         matchall
       }
-    val now = new SimpleDateFormat("yyyy-MM-dd").format(new Date())
+    val now = DateTimeFormat.forPattern("yyyy-MM-dd").print(new Date().getTime)
     val filters: List[FilterDefinition] = List(
       termFilter("anonymous", true),
       termFilter("active", true),

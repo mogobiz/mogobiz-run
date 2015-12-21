@@ -22,6 +22,7 @@ import com.sksamuel.elastic4s.CreateIndexDefinition
 import com.sksamuel.elastic4s.mappings.FieldType._
 import org.joda.time.DateTime
 import com.sksamuel.elastic4s.ElasticDsl._
+import org.joda.time.format.DateTimeFormat
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -278,7 +279,6 @@ object Dashboard {
   }
 
   def main(args: Array[String]) = {
-    val dateFormat = new SimpleDateFormat("dd/MM/yy")
 
     val sku00: Sku = Sku(id = 0L, uuid = "00000000-0000-0000-0000-000000000000", sku = "sku00", name = "sku00", price = 500, salePrice = 500, coupons = Nil, nbSales = 0)
     val sku01: Sku = Sku(id = 1L, uuid = "11111111-1111-1111-1111-111111111111", sku = "sku11", name = "sku11", price = 2000, salePrice = 2000, coupons = Nil, nbSales = 0)
@@ -339,8 +339,8 @@ object Dashboard {
 
   private def indexName(esIndex: String): String = {
     def dateFormat(date: Calendar, dateFormat: String) = {
-      val format = new java.text.SimpleDateFormat(dateFormat)
-      val str = format.format(date.getTime())
+      val dtf = DateTimeFormat.forPattern(dateFormat)
+      val str = dtf.print(date.getTimeInMillis)
       str
     }
     val format = esIndexRotate match {
@@ -352,4 +352,14 @@ object Dashboard {
     val suffix = format map ("_" + dateFormat(Calendar.getInstance(), _)) getOrElse ("")
     esIndex + suffix
   }
+}
+
+object X extends App {
+  val dtf = DateTimeFormat.forPattern("yyyy-MM-dd HHmmss")
+  val str = dtf.print(Calendar.getInstance().getTimeInMillis)
+  println(str)
+
+  println(new SimpleDateFormat("yyyy-MM-dd  HHmmss").format(new Date))
+
+  println(DateTimeFormat.forPattern("yyyy-MM-dd  HHmmss").print(new Date().getTime))
 }

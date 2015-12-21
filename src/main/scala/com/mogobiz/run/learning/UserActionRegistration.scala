@@ -4,12 +4,13 @@
 
 package com.mogobiz.run.learning
 
-import java.util.{ UUID, Calendar }
+import java.util.{ Calendar, UUID }
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.model.Learning.UserAction.UserAction
 import com.mogobiz.run.model.Learning.UserItemAction
+import org.joda.time.format.DateTimeFormat
 
 object UserActionRegistration {
 
@@ -17,8 +18,8 @@ object UserActionRegistration {
 
   private def indexName(esIndex: String): String = {
     def dateFormat(date: Calendar, dateFormat: String) = {
-      val format = new java.text.SimpleDateFormat(dateFormat)
-      val str = format.format(date.getTime())
+      val format = DateTimeFormat.forPattern(dateFormat)
+      val str = format.print(date.getTimeInMillis())
       str
     }
     val format = esIndexRotate match {
