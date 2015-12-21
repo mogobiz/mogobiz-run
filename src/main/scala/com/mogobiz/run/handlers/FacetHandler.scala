@@ -4,29 +4,29 @@
 
 package com.mogobiz.run.handlers
 
-import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import com.mogobiz.es.EsClient
+import com.mogobiz.es.aggregations.Aggregations._
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.es._
 import com.mogobiz.run.model.RequestParameters.FacetRequest
-import com.sksamuel.elastic4s.ElasticDsl.{ search => esearch4s }
-import com.sksamuel.elastic4s.{ SearchDefinition, SearchType, FilterDefinition }
-import org.json4s._
+import com.sksamuel.elastic4s.ElasticDsl.{ search => esearch4s, _ }
+import com.sksamuel.elastic4s.{ FilterDefinition, SearchDefinition, SearchType }
+import org.joda.time.format.DateTimeFormat
 import org.json4s.JsonAST.{ JObject, JValue }
-import com.mogobiz.es.aggregations.Aggregations._
-import com.sksamuel.elastic4s.ElasticDsl._
+import org.json4s._
 
 class FacetHandler {
 
-  private val sdf = new SimpleDateFormat("yyyy-MM-dd")
+  private val sdf = DateTimeFormat.forPattern("yyyy-MM-dd")
 
   private val ES_TYPE_SKU = "sku"
   private val ES_TYPE_PRODUCT = "product"
 
   /**
    * Returns facets for skus
+   *
    * @param storeCode
    * @param req
    * @return
@@ -153,6 +153,7 @@ class FacetHandler {
 
   /**
    * Returns products facets
+   *
    * @param storeCode
    * @param req
    * @return
@@ -332,6 +333,7 @@ class FacetHandler {
   /**
    * Renvoie tous les ids des promotions si la requêtes demandes n'importe
    * quelle promotion ou l'id de la promotion fournie dans la requête
+   *
    * @param storeCode
    * @param req
    */
@@ -346,6 +348,7 @@ class FacetHandler {
   /**
    * Renvoie la requête (sans les filtres) à utiliser. Si le nom du produit
    * est spécifié, la requête contient un match sur le nom du produit
+   *
    * @param storeCode
    * @param req
    * @return
@@ -363,13 +366,14 @@ class FacetHandler {
   /**
    * Renvoie le filtres permettant de filtrer les produits mis en avant
    * si la requête le demande
+   *
    * @param req
    * @param propertyPathPrefix prefixe du chemin vers la propriété (ex: product ou sku.product)
    * @return
    */
   private def createFeaturedRangeFilters(req: FacetRequest, propertyPathPrefix: String): Option[FilterDefinition] = {
     if (req.featured.getOrElse(false)) {
-      val today = sdf.format(Calendar.getInstance().getTime)
+      val today = sdf.print(Calendar.getInstance().getTimeInMillis)
       val list = List(
         createRangeFilter(s"$propertyPathPrefix.startFeatureDate", None, Some(s"$today")),
         createRangeFilter(s"$propertyPathPrefix.stopFeatureDate", Some(s"$today"), None)
@@ -380,6 +384,7 @@ class FacetHandler {
 
   /**
    * Renvoie le filtre pour les features
+   *
    * @param req
    * @return
    */
@@ -398,6 +403,7 @@ class FacetHandler {
 
   /**
    * Renvoie la liste des filtres pour les variations
+   *
    * @param req
    * @return
    */

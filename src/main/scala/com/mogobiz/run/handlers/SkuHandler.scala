@@ -4,37 +4,24 @@
 
 package com.mogobiz.run.handlers
 
-import java.text.SimpleDateFormat
-import java.util.{ UUID, Date, Calendar, Locale }
+import java.util.Calendar
 
-import com.mogobiz.es._
-import com.mogobiz.es.EsClient
-import com.mogobiz.es.EsClient._
-import com.mogobiz.pay.model.Mogopay.Account
-import com.mogobiz.run.config.Settings
+import com.mogobiz.es.{ EsClient, _ }
+import com.mogobiz.json.JsonUtil
 import com.mogobiz.run.es._
-import com.mogobiz.json.{ JacksonConverter, JsonUtil }
-import com.mogobiz.run.exceptions.{ CommentAlreadyExistsException, NotAuthorizedException }
-import com.mogobiz.run.learning.UserActionRegistration
-import com.mogobiz.run.model.Learning.UserAction
-import com.mogobiz.run.model.Mogobiz.{ ProductCalendar, Sku, Product }
+import com.mogobiz.run.model.Mogobiz.{ ProductCalendar, Sku }
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Paging
-import com.sksamuel.elastic4s.ElasticDsl.{ update => esupdate4s, search => esearch4s, delete => esdelete4s, _ }
-import com.sksamuel.elastic4s.{ SearchType, FilterDefinition }
-import com.sksamuel.elastic4s.source.DocumentSource
-import org.elasticsearch.action.get.MultiGetItemResponse
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.search.{ SearchHit, SearchHits }
-import org.elasticsearch.search.aggregations.bucket.terms.Terms
+import com.sksamuel.elastic4s.ElasticDsl.{ delete => esdelete4s, search => esearch4s, update => esupdate4s, _ }
+import com.sksamuel.elastic4s.FilterDefinition
+import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
-import org.json4s.JsonAST.{ JObject, JArray, JNothing }
+import org.joda.time.format.DateTimeFormat
+import org.json4s.JsonAST.JArray
 import org.json4s.JsonDSL._
 import org.json4s._
-import org.json4s.native.JsonMethods._
-import org.json4s.native.Serialization._
 
 class SkuHandler extends JsonUtil {
 
@@ -129,18 +116,18 @@ class SkuHandler extends JsonUtil {
     Paging.wrap(response.getTotalHits.toInt, skus, skuRequest)
   }
 
-  private val sdf = new SimpleDateFormat("yyyy-MM-dd")
+  private val sdf = DateTimeFormat.forPattern("yyyy-MM-dd")
   //THH:mm:ssZ
-  private val hours = new SimpleDateFormat("HH:mm")
   /**
    * Renvoie le filtres permettant de filtrer les skus via pour les produits mis en avant
    * si la requête le demande
+   *
    * @param req - product request
    * @return FilterDefinition
    */
   private def createFeaturedRangeFilters(req: SkuRequest): Option[FilterDefinition] = {
     if (req.featured.getOrElse(false)) {
-      val today = sdf.format(Calendar.getInstance().getTime)
+      val today = sdf.print(Calendar.getInstance().getTimeInMillis)
       val list = List(
         createRangeFilter("product.startFeatureDate", None, Some(s"$today")),
         createRangeFilter("product.stopFeatureDate", Some(s"$today"), None)
@@ -151,6 +138,7 @@ class SkuHandler extends JsonUtil {
 
   /**
    * Renvoie le filtre pour les features
+   *
    * @param req - product request
    * @return FilterDefinition
    */
@@ -169,6 +157,7 @@ class SkuHandler extends JsonUtil {
 
   /**
    * Renvoie la liste des filtres pour les variations
+   *
    * @param req - product request
    * @return FilterDefinition
    */
@@ -202,6 +191,7 @@ class SkuHandler extends JsonUtil {
 
   /**
    * Helper method to debug sku resource
+   *
    * @param storeCode
    * @param skuId
    * @param update
@@ -258,6 +248,7 @@ class SkuHandler extends JsonUtil {
 
   /**
    * Return all available sku (in stock) for a specific product
+   *
    * @param indexEs
    * @param productId
    */

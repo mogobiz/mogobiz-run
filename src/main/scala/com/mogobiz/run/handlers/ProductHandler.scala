@@ -4,17 +4,15 @@
 
 package com.mogobiz.run.handlers
 
-import java.text.SimpleDateFormat
-import java.util.{ UUID, Date, Calendar, Locale }
+import java.util.{ Calendar, Date, Locale, UUID }
 
-import com.mogobiz.es._
-import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
+import com.mogobiz.es.{ EsClient, _ }
+import com.mogobiz.json.{ JacksonConverter, JsonUtil }
 import com.mogobiz.pay.model.Mogopay.Account
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
-import com.mogobiz.json.{ JacksonConverter, JsonUtil }
-import com.mogobiz.run.exceptions.{ NotFoundException, CommentAlreadyExistsException, NotAuthorizedException }
+import com.mogobiz.run.exceptions.{ CommentAlreadyExistsException, NotAuthorizedException, NotFoundException }
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz.Suggestion
@@ -22,15 +20,16 @@ import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Paging
-import com.sksamuel.elastic4s.ElasticDsl.{ update => esupdate4s, search => esearch4s, delete => esdelete4s, _ }
-import com.sksamuel.elastic4s.{ QueryDefinition, SearchType, FilterDefinition }
+import com.sksamuel.elastic4s.ElasticDsl.{ delete => esdelete4s, search => esearch4s, update => esupdate4s, _ }
 import com.sksamuel.elastic4s.source.DocumentSource
+import com.sksamuel.elastic4s.{ FilterDefinition, QueryDefinition }
 import org.elasticsearch.action.get.MultiGetItemResponse
 import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.search.{ SearchHitField, SearchHit, SearchHits }
 import org.elasticsearch.search.aggregations.bucket.terms.Terms
 import org.elasticsearch.search.sort.SortOrder
-import org.json4s.JsonAST.{ JNothing, JObject, JArray }
+import org.elasticsearch.search.{ SearchHit, SearchHits }
+import org.joda.time.format.DateTimeFormat
+import org.json4s.JsonAST.{ JArray, JObject }
 import org.json4s.JsonDSL._
 import org.json4s._
 
@@ -342,20 +341,20 @@ class ProductHandler extends JsonUtil {
     val inPeriods: List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
     val outPeriods: List[EndPeriod] = hits.getHits.map(hit => hit.field("datePeriods").getValue[List[EndPeriod]]).flatten.toList
     //date or today
-    val now = Calendar.getInstance().getTime
-    val today = getCalendar(sdf.parse(sdf.format(now)))
-    var startCalendar = getCalendar(sdf.parse(date.getOrElse(sdf.format(now))))
+    val now = Calendar.getInstance().getTimeInMillis
+    val today = sdf.parseDateTime(sdf.print(now)).toCalendar(Locale.getDefault())
+    var startCalendar = sdf.parseDateTime(date.getOrElse(sdf.print(now))).toCalendar(Locale.getDefault)
     if (startCalendar.compareTo(today) < 0) {
       startCalendar = today
     }
-    val endCalendar = getCalendar(startCalendar.getTime)
+    val endCalendar = startCalendar.clone().asInstanceOf[Calendar]
     endCalendar.add(Calendar.MONTH, 1)
     def checkDate(currentDate: Calendar, endCalendar: Calendar, acc: List[String]): List[String] = {
       if (!currentDate.before(endCalendar)) acc
       else {
         currentDate.add(Calendar.DAY_OF_YEAR, 1)
         if (isDateIncluded(inPeriods, currentDate) && !isDateExcluded(outPeriods, currentDate)) {
-          val date = sdf.format(currentDate.getTime)
+          val date = sdf.print(currentDate.getTimeInMillis)
           checkDate(currentDate, endCalendar, date :: acc)
         } else {
           checkDate(currentDate, endCalendar, acc)
@@ -373,7 +372,7 @@ class ProductHandler extends JsonUtil {
     )
     val intraDayPeriods: List[IntraDayPeriod] = hits.getHits.map(hit => hit.field("intraDayPeriods").getValue[List[IntraDayPeriod]]).flatten.toList
     //date or today
-    val day = getCalendar(sdf.parse(date.getOrElse(sdf.format(Calendar.getInstance().getTime))))
+    val day = sdf.parseDateTime(date.getOrElse(sdf.print(Calendar.getInstance().getTimeInMillis))).toCalendar(Locale.getDefault)
     implicit def json4sFormats: Formats = DefaultFormats
     //TODO refacto this part with the one is in isIncluded method
     intraDayPeriods.filter {
@@ -402,7 +401,7 @@ class ProductHandler extends JsonUtil {
         {
           // the parsed date returned by ES is parsed according to the server Timezone and so it returns 16 (parsed value) instead of 15 (ES value)
           // but what it must return is the value from ES
-          hours.format(getFixedDate(period.startDate).getTime)
+          hours.print(getFixedDate(period.startDate).getTimeInMillis)
         }
     }
   }
@@ -604,6 +603,7 @@ class ProductHandler extends JsonUtil {
 
   /**
    * Add the product (id) to the list of the user visited products through its sessionId
+   *
    * @param store - store code
    * @param productId - product id
    * @param sessionId - session id
@@ -629,6 +629,7 @@ class ProductHandler extends JsonUtil {
 
   /**
    * get the product detail
+   *
    * @param store - store code
    * @param id - product id
    * @param req - request details
@@ -658,6 +659,7 @@ class ProductHandler extends JsonUtil {
 
   /**
    * Update product field "stock_available" to qualifie stock state
+   *
    * @param indexEs
    * @param productId
    * @param stockAvailable
@@ -740,19 +742,20 @@ class ProductHandler extends JsonUtil {
     }
   }
 
-  private val sdf = new SimpleDateFormat("yyyy-MM-dd")
+  private val sdf = DateTimeFormat.forPattern("yyyy-MM-dd")
   //THH:mm:ssZ
-  private val hours = new SimpleDateFormat("HH:mm")
+  private val hours = DateTimeFormat.forPattern("HH:mm")
 
   /**
    * Renvoie le filtres permettant de filtrer les produits mis en avant
    * si la requête le demande
+   *
    * @param req - product request
    * @return FilterDefinition
    */
   private def createFeaturedRangeFilters(req: ProductRequest): Option[FilterDefinition] = {
     if (req.featured.getOrElse(false)) {
-      val today = sdf.format(Calendar.getInstance().getTime)
+      val today = sdf.print(Calendar.getInstance().getTimeInMillis)
       val list = List(
         createRangeFilter("startFeatureDate", None, Some(s"$today")),
         createRangeFilter("stopFeatureDate", Some(s"$today"), None)
@@ -763,6 +766,7 @@ class ProductHandler extends JsonUtil {
 
   /**
    * Renvoie le filtre pour les features
+   *
    * @param req - product request
    * @return FilterDefinition
    */
@@ -781,6 +785,7 @@ class ProductHandler extends JsonUtil {
 
   /**
    * Renvoie la liste des filtres pour les variations
+   *
    * @param req - product request
    * @return FilterDefinition
    */
@@ -816,6 +821,7 @@ class ProductHandler extends JsonUtil {
 
   /**
    * Fix the date according to the timezone
+   *
    * @param d - date
    * @return
    */
