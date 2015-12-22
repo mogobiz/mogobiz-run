@@ -18,7 +18,7 @@ import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import spray.http.{ HttpCookie, StatusCodes }
 import spray.routing.Directives
-import com.mogobiz.pay.config.MogopayHandlers.accountHandler
+import com.mogobiz.pay.config.MogopayHandlers.handlers.accountHandler
 
 import com.mogobiz.run.config.Settings._
 class ProductService extends Directives with DefaultComplete {

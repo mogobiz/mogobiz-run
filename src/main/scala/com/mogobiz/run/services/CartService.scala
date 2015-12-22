@@ -221,7 +221,7 @@ class CartService extends Directives with DefaultComplete {
                     cartHandler.getCartForPay(keys(0), keys(1), if (!keys(2).isEmpty) Some(keys(2)) else None)
                   }, (cart: Cart) => {
                     session.sessionData.cart = Some(cart)
-                    import com.mogobiz.pay.config.MogopayHandlers.transactionHandler
+                    import com.mogobiz.pay.config.MogopayHandlers.handlers.transactionHandler
                     handleCall(transactionHandler.shippingPrices(cart, id),
                       (shippinggPrices: Seq[ShippingPrice]) => {
                         session.sessionData.shippingPrices = Option(shippinggPrices.toList)

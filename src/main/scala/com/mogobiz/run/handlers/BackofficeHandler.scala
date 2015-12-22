@@ -8,7 +8,7 @@ import java.util.UUID
 
 import com.mogobiz.es.{ EsClient, _ }
 import com.mogobiz.json.JsonUtil
-import com.mogobiz.pay.config.MogopayHandlers._
+import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.model.Mogopay.RoleName
 import com.mogobiz.run.config.MogobizHandlers.handlers._
