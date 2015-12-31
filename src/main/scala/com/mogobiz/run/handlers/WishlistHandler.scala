@@ -177,7 +177,7 @@ class WishlistHandler {
     } getOrElse {
       val req = search in esStore(store) types "wishlistlist" query {
         filteredQuery query {
-          matchall
+          matchAllQuery
         } filter {
           nestedFilter("owner") filter {
             termFilter("email", owner_email)
@@ -185,7 +185,6 @@ class WishlistHandler {
         }
       }
 
-      println(req._builder.toString)
       EsClient.search[WishlistList](req).getOrElse {
         val wishlistList = WishlistList(newUUID, Nil, WishlistOwner(email = owner_email))
         EsClient.update[WishlistList](esStore(store), wishlistList, "wishlistlist", true, false)
@@ -211,7 +210,7 @@ class WishlistHandler {
     val (store, wishlist) = (tokens(0), tokens(1))
     val req = search in esStore(store) types "wishlistlist" query {
       filteredQuery query {
-        matchall
+        matchAllQuery
       } filter {
         nestedFilter("wishlists") filter {
           termFilter("token", wishlist)
