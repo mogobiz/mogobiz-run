@@ -6,7 +6,7 @@ package com.mogobiz.run.implicits
 
 import org.elasticsearch.search.SearchHit
 import org.json4s.JsonAST.{ JValue, JArray }
-import org.json4s.native.JsonMethods._
+import org.json4s.jackson.JsonMethods._
 
 /**
  */

@@ -270,7 +270,7 @@ class ProductHandler extends JsonUtil {
       }
     }
 
-    import org.json4s.native.JsonMethods._
+    import org.json4s.jackson.JsonMethods._
     implicit def json4sFormats: Formats = DefaultFormats
 
     val featuresByNameAndIds: List[(Long, List[(String, JValue, List[JField])])] = (for {
@@ -431,7 +431,7 @@ class ProductHandler extends JsonUtil {
     val product = response2JValue(res)
 
     val notations = JObject(("notations", JArray(values)))
-    import org.json4s.native.JsonMethods._
+    import org.json4s.jackson.JsonMethods._
     val notation = Notation(UUID.randomUUID().toString, productId, compact(render(notations)))
     val updatedProduct = (product removeField { f => f._1 == "notations" }) merge notations
     val res2 = EsClient.updateRaw(esupdate4s id productId in indexEs -> "product" doc updatedProduct retryOnConflict 4)

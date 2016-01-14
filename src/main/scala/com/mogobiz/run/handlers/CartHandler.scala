@@ -37,8 +37,8 @@ import org.elasticsearch.common.bytes.ChannelBufferBytesReference
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.json4s.ext.JodaTimeSerializers
-import org.json4s.native.JsonMethods._
-import org.json4s.native.Serialization._
+import org.json4s.jackson.JsonMethods._
+import org.json4s.jackson.Serialization._
 import org.json4s.{ DefaultFormats, FieldSerializer, Formats }
 import scalikejdbc._
 
@@ -1139,9 +1139,8 @@ class CartHandler {
    * @return
    */
   private def _renderCartItem(item: CartItem, currency: Currency, locale: Locale) = {
-    import org.json4s.native.JsonMethods._
-    //import org.json4s.native.Serialization
-    import org.json4s.native.Serialization.write
+    import org.json4s.jackson.JsonMethods._
+    import org.json4s.jackson.Serialization.write
     implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[CartItem]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar)
     val jsonItem = parse(write(item))
 
@@ -1174,8 +1173,8 @@ class CartHandler {
   }
 
   private def _renderTransactionCartItem(item: CartItem, rate: Currency, locale: Locale) = {
-    import org.json4s.native.JsonMethods._
-    import org.json4s.native.Serialization.write
+    import org.json4s.jackson.JsonMethods._
+    import org.json4s.jackson.Serialization.write
     //implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
     import Json4sProtocol._
     val jsonItem = parse(write(item))
