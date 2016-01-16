@@ -132,7 +132,7 @@ class ProductHandler extends JsonUtil {
   }
 
   def queryProductsByFulltextCriteria(storeCode: String, params: FullTextSearchProductParameters): JValue = {
-    val fieldNames = List("name", "description", "descriptionAsText", "keywords", "path", "category.path")
+    val fieldNames = List("name", "description", "descriptionAsText", "keywords", "path", "category.path", "brand.name")
     val fields: List[String] = fieldNames.foldLeft(List[String]())((A, B) => A ::: getIncludedFieldWithPrefixAsList(storeCode, "", B, params.lang))
     val includedFields: List[String] = List("id") ::: (if (params.highlight) List.empty
     else {
