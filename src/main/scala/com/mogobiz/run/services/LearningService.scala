@@ -77,9 +77,9 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
 
   def popular(implicit storeCode: String) = path("popular") {
     get {
-      parameters('action, 'since, 'count.as[Int], 'customer.?) {
-        (action, since, count, customer) =>
-          handleCall(learningHandler.popular(storeCode, UserAction.withName(action), format.parseDateTime(since).toDate, count, customer),
+      parameters('action, 'since, 'count.as[Int], 'with_quantity.as[Boolean], 'customer.?) {
+        (action, since, count, with_quantity, customer) =>
+          handleCall(learningHandler.popular(storeCode, UserAction.withName(action), format.parseDateTime(since).toDate, count, with_quantity, customer),
             (res: List[String]) => complete(StatusCodes.OK, res)
           )
       }

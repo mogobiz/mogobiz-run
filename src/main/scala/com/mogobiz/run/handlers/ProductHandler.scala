@@ -327,7 +327,7 @@ class ProductHandler extends JsonUtil {
   def getProductDetails(store: String, params: ProductDetailsRequest, productId: Long, uuid: String): JValue = {
     if (params.historize) {
       // We store in User history only if it is a end user action
-      UserActionRegistration.register(store, uuid, productId.toString, UserAction.View)
+      UserActionRegistration.register(store, uuid, productId.toString, UserAction.View, 1)
       addToHistory(store, productId, uuid)
     }
     queryProductById(store, productId, params)

@@ -32,8 +32,8 @@ object UserActionRegistration {
     esIndex + suffix
   }
 
-  def register(store: String, trackingid: String, itemid: String, action: UserAction): String = {
+  def register(store: String, trackingid: String, itemid: String, action: UserAction, count:Int): String = {
     def esLearning(store: String): String = s"${store}_learning"
-    EsClient.index(indexName(esLearning(store)), UserItemAction(trackingid, itemid, action), false, Some(UUID.randomUUID().toString))
+    EsClient.index(indexName(esLearning(store)), UserItemAction(trackingid, itemid, action, count), false, Some(UUID.randomUUID().toString))
   }
 }
