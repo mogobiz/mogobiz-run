@@ -80,14 +80,14 @@ object Paging {
    * @param pagingParams
    * @return
    */
-  def wrap(total: Int, results: JValue, pagingParams: PagingParams): JValue = {
+  def wrap(total: Int, results: JValue, pageSize:Int, pagingParams: PagingParams): JValue = {
     import org.json4s.JsonDSL._
     import org.json4s._
     implicit def json4sFormats: Formats = DefaultFormats
 
     val pagingWrapper = getWrapper(total, pagingParams)
     val resultWrapper = JObject(List(JField("list", results))) //parse("""{"list":$results"") //(("list"->results))
-    val pageSizeWrapper = JObject(List(JField("pageSize", results.children.size)))
+    val pageSizeWrapper = JObject(List(JField("pageSize", pageSize)))
 
     val merged = resultWrapper merge pagingWrapper merge pageSizeWrapper
     merged

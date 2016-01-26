@@ -128,7 +128,7 @@ class ProductService extends Directives with DefaultComplete {
   def find(implicit storeCode: String) = path("find") {
     get {
       parameters(
-        'lang ? "_all", 'currency.?, 'country.?, 'query, 'highlight ? false, 'size ? 10, 'categoryPath.?).as(FullTextSearchProductParameters) { params =>
+        'maxItemPerPage, 'pageOffset, 'lang ? "_all", 'currency.?, 'country.?, 'query, 'highlight ? false, 'categoryPath.?).as(FullTextSearchProductParameters) { params =>
           handleCall(productHandler.queryProductsByFulltextCriteria(storeCode, params),
             (json: JValue) => complete(StatusCodes.OK, json))
         }
