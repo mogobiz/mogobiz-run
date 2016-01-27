@@ -35,7 +35,7 @@ class SkuHandler extends JsonUtil {
 
   def querySkusByCriteria(storeCode: String, skuRequest: SkuRequest): JValue = {
     if (skuRequest.hasPromotion.getOrElse(false) && skuRequest.promotionId.isEmpty) {
-      return Paging.wrap(0, JArray(List.empty), skuRequest)
+      return Paging.wrap(0, JArray(List.empty), 0, skuRequest)
     }
     val _query = skuRequest.name match {
       case Some(s) =>
@@ -113,7 +113,7 @@ class SkuHandler extends JsonUtil {
     }*/
 
     val skus: JValue = hits.children
-    Paging.wrap(response.getTotalHits.toInt, skus, skuRequest)
+    Paging.wrap(response.getTotalHits.toInt, skus, skus.children.size, skuRequest)
   }
 
   private val sdf = DateTimeFormat.forPattern("yyyy-MM-dd")
