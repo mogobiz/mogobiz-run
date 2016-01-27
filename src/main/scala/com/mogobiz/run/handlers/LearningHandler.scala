@@ -13,7 +13,7 @@ import org.elasticsearch.search.aggregations.bucket.terms.Terms
 //import akka.stream.ActorFlowMaterializer
 //import akka.stream.scaladsl._
 
-import akka.stream.stage.{Context, Directive, PushStage, TerminationDirective}
+import akka.stream.stage.{ Context, Directive, PushStage, TerminationDirective }
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
 import com.mogobiz.run.model.Learning.UserAction.UserAction
@@ -22,7 +22,7 @@ import com.mogobiz.system.BootedMogobizSystem
 
 //import com.sksamuel.elastic4s.ElasticDsl.index
 
-import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
+import com.sksamuel.elastic4s.ElasticDsl.{ search => esearch4s, _ }
 
 //import com.sksamuel.elastic4s.IndexesTypes
 
@@ -133,14 +133,14 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
 
     val indices = Seq("i1", "i2") // EsClient.listIndices(esLearningStorePattern(store))
     val filters = List(Option(action).map(x => termFilter("action", x.toString)),
-        customer.map(x => termFilter("segment", x)),
-        Option(since).map(x => rangeFilter("dateCreated").
-          gte(since.getTime.toString).
-          lte(new Date().getTime.toString)
-          //        gte(new SimpleDateFormat("yyyy-MM-dd").format(since)).
-          //        lte(new SimpleDateFormat("yyyy-MM-dd").format(new Date()))
-        )
-      ).flatten
+      customer.map(x => termFilter("segment", x)),
+      Option(since).map(x => rangeFilter("dateCreated").
+        gte(since.getTime.toString).
+        lte(new Date().getTime.toString)
+      //        gte(new SimpleDateFormat("yyyy-MM-dd").format(since)).
+      //        lte(new SimpleDateFormat("yyyy-MM-dd").format(new Date()))
+      )
+    ).flatten
 
     val filterReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" size 0 query {
       filteredQuery filter {
@@ -182,7 +182,7 @@ class LoggingStage[T](private val name: String)(implicit system: ActorSystem) ex
   }
 
   override def onUpstreamFailure(cause: Throwable,
-                                 ctx: Context[T]): TerminationDirective = {
+    ctx: Context[T]): TerminationDirective = {
     log.error(cause, s"$name -> Upstream failed.")
     super.onUpstreamFailure(cause, ctx)
   }

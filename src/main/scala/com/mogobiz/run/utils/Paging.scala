@@ -80,7 +80,7 @@ object Paging {
    * @param pagingParams
    * @return
    */
-  def wrap(total: Int, results: JValue, pageSize:Int, pagingParams: PagingParams): JValue = {
+  def wrap(total: Int, results: JValue, pageSize: Int, pagingParams: PagingParams): JValue = {
     import org.json4s.JsonDSL._
     import org.json4s._
     implicit def json4sFormats: Formats = DefaultFormats

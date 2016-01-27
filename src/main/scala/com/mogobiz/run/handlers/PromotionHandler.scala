@@ -67,7 +67,7 @@ class PromotionHandler {
 
   def getPromotions(storeCode: String, req: PromotionRequest): JValue = {
     val response = this.queryPromotion(storeCode, req)
-    Paging.wrap(response.getTotalHits.toInt, response.getHits, req)
+    Paging.wrap(response.getTotalHits.toInt, response.getHits, response.getHits.children.size, req)
   }
 
   def getPromotionById(storeCode: String, promotionId: String): JValue = {
