@@ -49,7 +49,7 @@ class CouponHandler {
 
   def getWithData(storeCode: String, storeCoupon: StoreCoupon): CouponWithData = {
     val coupon = CouponDao.findByCode(storeCode, storeCoupon.code).get
-    CouponWithData(coupon, _isCouponActive(coupon), 0, true)
+    CouponWithData(coupon, _isCouponActive(coupon), 0, false)
   }
 
   def getWithData(coupon: Mogobiz.Coupon): CouponWithData = {

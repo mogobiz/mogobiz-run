@@ -879,13 +879,13 @@ class CartHandler {
       val tax = taxRateHandler.findTaxRateByProduct(product, countryCode, stateCode)
       val discounts = _findSuggestionDiscount(cart, cartItem.productId)
       val price = cartItem.price
-      val salePrice = computeDiscounts(cartItem.salePrice - reduction, discounts)
+      val salePrice = computeDiscounts(Math.max(0, cartItem.price - reduction), discounts)
       val endPrice = taxRateHandler.calculateEndPrice(price, tax)
       val saleEndPrice = taxRateHandler.calculateEndPrice(salePrice, tax)
       val totalPrice = price * cartItem.quantity
       val saleTotalPrice = salePrice * cartItem.quantity
-      val totalEndPrice = taxRateHandler.calculateEndPrice(totalPrice, tax)
-      val saleTotalEndPrice = taxRateHandler.calculateEndPrice(saleTotalPrice, tax)
+      val totalEndPrice = endPrice.map { p: Long => p * cartItem.quantity }
+      val saleTotalEndPrice = saleEndPrice.map { p: Long => p * cartItem.quantity }
 
       CartItem(cartItem.id, cartItem.productId, cartItem.productName, cartItem.xtype, cartItem.calendarType,
         cartItem.skuId, cartItem.skuName, cartItem.quantity, price, endPrice, tax, totalPrice, totalEndPrice,
@@ -902,18 +902,19 @@ class CartHandler {
 
         // Si la réduction est associé à un coupon. Le réduction sera appliquée au panier sinon elle est appliquée
         // au produit
-        val renderCartItem = computeCartItemAsRenderCartItem(cart, cartItem, maxReduction._2.map { couponReduction: CouponWithData => 0L }.getOrElse(maxReduction._1))
+        val reductionValue = Math.max(0, Math.min(cartItem.totalEndPrice.getOrElse(cartItem.totalPrice), maxReduction._1))
+        val renderCartItem = computeCartItemAsRenderCartItem(cart, cartItem, maxReduction._2.map { couponReduction: CouponWithData => 0L }.getOrElse(reductionValue))
         val newCoupons = maxReduction._2.map { couponReduction: CouponWithData =>
           cartItemsAndCoupons._5.collect {
             case c: CouponWithData => {
-              if (c.coupon.id == couponReduction.coupon.id) c.copy(reduction = c.reduction + couponReduction.reduction)
+              if (c.coupon.id == couponReduction.coupon.id) c.copy(reduction = c.reduction + reductionValue)
               else c
             }
           }
         }.getOrElse(cartItemsAndCoupons._5)
         val newPrice = cartItemsAndCoupons._1 + renderCartItem.saleTotalPrice
         val newEndPrice = cartItemsAndCoupons._2 + renderCartItem.saleTotalEndPrice.getOrElse(renderCartItem.saleTotalPrice)
-        val newReduction = cartItemsAndCoupons._3 + maxReduction._2.map { couponReduction: CouponWithData => maxReduction._1 }.getOrElse(0L)
+        val newReduction = cartItemsAndCoupons._3 + maxReduction._2.map { couponReduction: CouponWithData => reductionValue }.getOrElse(0L)
         (newPrice, newEndPrice, newReduction, renderCartItem :: cartItemsAndCoupons._4, newCoupons)
       }
     }
@@ -932,7 +933,7 @@ class CartHandler {
 
     val count = _calculateCount(renderCartItems)
     val validateUuid = if (cart.validate) cart.validateUuid else None
-    Cart(validateUuid, price, endPrice, reduction, endPrice - reduction, count, renderCartItems.toArray, renderCoupons.toArray)
+    Cart(validateUuid, price, endPrice, reduction, Math.max(0, endPrice - reduction), count, renderCartItems.toArray, renderCoupons.toArray)
   }
 
   private def _computeCartItemWithPrice(storeCode: String, cartItems: List[StoreCartItem], countryCode: Option[String], stateCode: Option[String]): List[StoreCartItemWithPrice] = {
@@ -943,7 +944,7 @@ class CartHandler {
       val tax = taxRateHandler.findTaxRateByProduct(product, countryCode, stateCode)
       val endPrice = taxRateHandler.calculateEndPrice(cartItem.price, tax)
       val totalPrice = cartItem.price * cartItem.quantity
-      val totalEndPrice = taxRateHandler.calculateEndPrice(totalPrice, tax)
+      val totalEndPrice = endPrice.map { p: Long => p * cartItem.quantity }
 
       StoreCartItemWithPrice(cartItem,
         cartItem.quantity,
