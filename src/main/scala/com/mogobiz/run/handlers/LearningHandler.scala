@@ -131,7 +131,7 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
   def popular(store: String, action: UserAction, since: Date, count: Int, withQuantity: Boolean, customer: Option[String]): List[String] = {
     import scala.collection.JavaConversions._
 
-    val indices = Seq("i1", "i2") // EsClient.listIndices(esLearningStorePattern(store))
+    val indices = EsClient.listIndices(esLearningStorePattern(store))
     val filters = List(Option(action).map(x => termFilter("action", x.toString)),
       customer.map(x => termFilter("segment", x)),
       Option(since).map(x => rangeFilter("dateCreated").
@@ -160,8 +160,6 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
       }
     }
 
-    logger.debug(popularReq._builder.toString)
-    val xxx = EsClient().execute(popularReq).await
     val terms = EsClient().execute(popularReq).await.getAggregations.get("top-itemid").asInstanceOf[Terms]
     terms.getBuckets.map { term =>
       logger.debug(term.getKey + "/" + term.getDocCount)
