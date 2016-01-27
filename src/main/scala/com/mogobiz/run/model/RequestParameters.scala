@@ -31,8 +31,7 @@ object RequestParameters {
   case class ProductDetailsRequest(
     historize: Boolean, visitorId: Option[Long], currency: Option[String], country: Option[String], lang: String)
 
-  case class FullTextSearchProductParameters(
-    lang: String, currency: Option[String], country: Option[String], query: String, highlight: Boolean, size: Int, categoryPath: Option[String])
+  case class FullTextSearchProductParameters(override val maxItemPerPage: Option[Int], override val pageOffset: Option[Int], lang: String, currency: Option[String], country: Option[String], query: String, highlight: Boolean, categoryPath: Option[String]) extends PagingParams
 
   case class CompareProductParameters(
     lang: String, currency: Option[String], country: Option[String], ids: String)

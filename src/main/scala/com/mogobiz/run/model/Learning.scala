@@ -30,19 +30,20 @@ object Learning {
   import UserAction._
 
   case class UserItemAction(uuid: String,
-      itemid: String,
-      @JsonScalaEnumeration(classOf[UserActionRef]) action: UserAction,
-      var dateCreated: Date = Calendar.getInstance().getTime,
-      var lastUpdated: Date = Calendar.getInstance().getTime) {
+                            itemid: String,
+                            @JsonScalaEnumeration(classOf[UserActionRef]) action: UserAction,
+                            count: Int,
+                            var dateCreated: Date = Calendar.getInstance().getTime,
+                            var lastUpdated: Date = Calendar.getInstance().getTime) {
     def toMap: Map[String, String] = {
       Map("uuid" -> uuid, "itemid" -> itemid, "action" -> action.toString, "dateCreated" -> dateCreated.getTime.toString, "lastUpdated" -> lastUpdated.getTime.toString)
     }
   }
 
   case class CartAction(uuid: String,
-      itemids: String,
-      var dateCreated: Date = Calendar.getInstance().getTime,
-      var lastUpdated: Date = Calendar.getInstance().getTime) {
+                        itemids: String,
+                        var dateCreated: Date = Calendar.getInstance().getTime,
+                        var lastUpdated: Date = Calendar.getInstance().getTime) {
     def toMap: Map[String, String] = {
       Map("uuid" -> uuid, "items" -> itemids, "dateCreated" -> dateCreated.getTime.toString, "lastUpdated" -> lastUpdated.getTime.toString)
     }
@@ -51,10 +52,10 @@ object Learning {
   case class Prediction(uid: String, purchase: List[String], view: List[String], timestamp: Long)
 
   case class CartCombination(
-    uuid: String,
-    combinations: List[String],
-    counter: Long,
-    var dateCreated: Date = Calendar.getInstance().getTime,
-    var lastUpdated: Date = Calendar.getInstance().getTime)
+                              uuid: String,
+                              combinations: List[String],
+                              counter: Long,
+                              var dateCreated: Date = Calendar.getInstance().getTime,
+                              var lastUpdated: Date = Calendar.getInstance().getTime)
 
 }

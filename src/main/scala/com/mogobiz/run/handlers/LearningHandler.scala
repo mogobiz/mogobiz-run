@@ -13,7 +13,7 @@ import org.elasticsearch.search.aggregations.bucket.terms.Terms
 //import akka.stream.ActorFlowMaterializer
 //import akka.stream.scaladsl._
 
-import akka.stream.stage.{ Context, Directive, PushStage, TerminationDirective }
+import akka.stream.stage.{Context, Directive, PushStage, TerminationDirective}
 import com.mogobiz.es.EsClient
 import com.mogobiz.es.EsClient._
 import com.mogobiz.run.model.Learning.UserAction.UserAction
@@ -22,7 +22,7 @@ import com.mogobiz.system.BootedMogobizSystem
 
 //import com.sksamuel.elastic4s.ElasticDsl.index
 
-import com.sksamuel.elastic4s.ElasticDsl.{ search => esearch4s, _ }
+import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
 
 //import com.sksamuel.elastic4s.IndexesTypes
 
@@ -128,37 +128,47 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
 
   }
 
-  def popular(store: String, action: UserAction, since: Date, count: Int, customer: Option[String]): List[String] = {
+  def popular(store: String, action: UserAction, since: Date, count: Int, withQuantity: Boolean, customer: Option[String]): List[String] = {
     import scala.collection.JavaConversions._
 
-    val indices = EsClient.listIndices(esLearningStorePattern(store))
+    val indices = Seq("i1", "i2") // EsClient.listIndices(esLearningStorePattern(store))
     val filters = List(Option(action).map(x => termFilter("action", x.toString)),
-      customer.map(x => termFilter("segment", x)),
-      Option(since).map(x => rangeFilter("dateCreated").
-        gte(since.getTime.toString).
-        lte(new Date().getTime.toString)
-      //        gte(new SimpleDateFormat("yyyy-MM-dd").format(since)).
-      //        lte(new SimpleDateFormat("yyyy-MM-dd").format(new Date()))
-      )
-    ).flatten
+        customer.map(x => termFilter("segment", x)),
+        Option(since).map(x => rangeFilter("dateCreated").
+          gte(since.getTime.toString).
+          lte(new Date().getTime.toString)
+          //        gte(new SimpleDateFormat("yyyy-MM-dd").format(since)).
+          //        lte(new SimpleDateFormat("yyyy-MM-dd").format(new Date()))
+        )
+      ).flatten
 
-    val popularReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" limit 0 query {
+    val filterReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" size 0 query {
       filteredQuery filter {
         and {
           filters: _*
         }
       }
-    } aggs {
-      agg terms "top-itemid" field "itemid" size count order Terms.Order.count(false)
     }
+
+    val popularReq = filterReq aggs {
+      if (!withQuantity)
+        agg terms "top-itemid" field "itemid" size count order Terms.Order.count(false)
+      else {
+        agg terms "top-itemid" field "itemid" aggs {
+          agg sum "total-count" field "count"
+        } size count order Terms.Order.aggregation("total-count", false)
+      }
+    }
+
     logger.debug(popularReq._builder.toString)
     val xxx = EsClient().execute(popularReq).await
     val terms = EsClient().execute(popularReq).await.getAggregations.get("top-itemid").asInstanceOf[Terms]
     terms.getBuckets.map { term =>
-      logger.debug(term.getKey + "/" + term.getDocCount);
+      logger.debug(term.getKey + "/" + term.getDocCount)
       term.getKey
     } toList
   }
+
 }
 
 // Logging elements of a stream
@@ -172,7 +182,7 @@ class LoggingStage[T](private val name: String)(implicit system: ActorSystem) ex
   }
 
   override def onUpstreamFailure(cause: Throwable,
-    ctx: Context[T]): TerminationDirective = {
+                                 ctx: Context[T]): TerminationDirective = {
     log.error(cause, s"$name -> Upstream failed.")
     super.onUpstreamFailure(cause, ctx)
   }
@@ -188,6 +198,7 @@ object LearningHandler extends App {
   import UserAction._
 
   val l = new LearningHandler()
+  l.popular("mogobiz", UserAction.Purchase, new Date(), 10, true, None)
   val res = l.cooccurences("mogobiz", "718", Purchase, None)
   l.browserHistory("mogobiz", "119", Purchase, 10, 20, 3, None)
 }

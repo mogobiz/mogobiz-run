@@ -414,7 +414,7 @@ class CartHandler {
     val cart = _initCart(storeCode, uuid, accountId, false, None, None)
 
     val productIds = cart.cartItems.map { item =>
-      UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase)
+      UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase, item.quantity)
       item.productId.toString
     }
     CartRegistration.register(storeCode, uuid, productIds)
