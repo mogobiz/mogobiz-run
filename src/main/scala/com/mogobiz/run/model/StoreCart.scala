@@ -57,5 +57,18 @@ case class StoreCartItem(indexEs: String,
   boCartItemUuid: Option[String],
   downloadableLink: Option[String])
 
+case class StoreCartItemWithPrice(cartItem: StoreCartItem,
+  quantity: Int,
+  price: Long,
+  endPrice: Option[Long],
+  tax: Option[Float],
+  totalPrice: Long,
+  totalEndPrice: Option[Long],
+  salePrice: Long,
+  saleEndPrice: Option[Long],
+  saleTotalPrice: Long,
+  saleTotalEndPrice: Option[Long],
+  reduction: Long)
+
 case class StoreCoupon(id: Long, code: String)
 
