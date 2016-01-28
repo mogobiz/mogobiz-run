@@ -963,7 +963,7 @@ class CartHandler {
 
   private def _findBestReductionForCartItem(storeCode: String, cartItem: StoreCartItemWithPrice,
     coupons: List[CouponWithData]): (Long, Option[CouponWithData]) = {
-    if (coupons.isEmpty) (cartItem.salePrice - cartItem.price, None)
+    if (coupons.isEmpty) (cartItem.cartItem.price - cartItem.cartItem.salePrice, None)
     else {
       val coupon = coupons.head
       val price = couponHandler.computeCouponPriceForCartItem(storeCode, coupon, cartItem)
