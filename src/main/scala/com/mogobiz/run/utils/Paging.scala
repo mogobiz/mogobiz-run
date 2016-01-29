@@ -89,7 +89,7 @@ object Paging {
     val resultWrapper = JObject(List(JField("list", results))) //parse("""{"list":$results"") //(("list"->results))
     val pageSizeWrapper = JObject(List(JField("pageSize", pageSize)))
 
-    val merged = resultWrapper merge pagingWrapper merge pageSizeWrapper
+    val merged = pagingWrapper merge resultWrapper merge pageSizeWrapper
     merged
 
   }

@@ -38,6 +38,7 @@ object Settings {
   //  val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
 
   val AccessUrl = config getString "mogobiz.accessUrl"
+  val jahiaClearCacheUrl = config getString "mogobiz.jahiaClearCacheUrl"
 
   object Cart {
     val Lifetime = config.getInt("mogobiz.cart.lifetime")

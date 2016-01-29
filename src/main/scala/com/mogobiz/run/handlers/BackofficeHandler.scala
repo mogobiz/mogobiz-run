@@ -6,11 +6,13 @@ package com.mogobiz.run.handlers
 
 import java.util.UUID
 
+import akka.actor.ActorSystem
 import com.mogobiz.es.{ EsClient, _ }
 import com.mogobiz.json.JsonUtil
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.model.Mogopay.RoleName
+import com.mogobiz.run.config
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions.{ IllegalStatusException, MinMaxQuantityException, NotAuthorizedException, NotFoundException }
@@ -24,6 +26,10 @@ import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
 import org.json4s.JsonAST._
 import scalikejdbc.DB
+import spray.http._
+import spray.client.pipelining._
+
+import scala.concurrent.Future
 
 /**
  */
@@ -257,6 +263,10 @@ class BackofficeHandler extends JsonUtil with BoService {
         if (newReturnStatus == ReturnStatus.RETURN_ACCEPTED && boReturnedItem.status == ReturnedItemStatus.BACK_TO_STOCK) {
           ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).map { productAndSku =>
             stockHandler.incrementStock(storeCode, productAndSku._1, productAndSku._2, boReturnedItem.quantity, boCartItem.startDate)
+            implicit val system = ActorSystem()
+            import system.dispatcher
+            val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
+            pipeline(Get(config.Settings.jahiaClearCacheUrl + "?productId=" + productAndSku._1.id))
           }
         }
         cartHandler.exportBOCartIntoES(storeCode, boCart, true)
