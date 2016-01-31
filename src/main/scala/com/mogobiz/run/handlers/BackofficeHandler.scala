@@ -265,7 +265,9 @@ class BackofficeHandler extends JsonUtil with BoService {
             stockHandler.incrementStock(storeCode, productAndSku._1, productAndSku._2, boReturnedItem.quantity, boCartItem.startDate)
             implicit val system = ActorSystem()
             import system.dispatcher
-            val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
+            val pipeline: HttpRequest => Future[HttpResponse] = (addHeader("accept", "application/json")
+              ~> sendReceive)
+
             pipeline(Get(config.Settings.jahiaClearCacheUrl + "?productId=" + productAndSku._1.id))
           }
         }
