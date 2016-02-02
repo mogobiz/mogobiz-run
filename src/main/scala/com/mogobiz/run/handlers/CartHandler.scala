@@ -5,14 +5,15 @@
 package com.mogobiz.run.handlers
 
 import java.io.ByteArrayOutputStream
-import java.util.{ Calendar, UUID, Locale }
+import java.util.{ Locale, UUID }
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
+import com.mogobiz.pay.common.{ Cart => CartPay, CartItem => CartItemPay, CartRate, CompanyAddress, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay }
 import com.mogobiz.pay.model.Mogopay
+import com.mogobiz.run.actors.EsUpdateActor
+import com.mogobiz.run.actors.EsUpdateActor.ProductStockAvailabilityUpdateRequest
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import com.mogobiz.run.actors.EsUpdateActor.{ ProductStockAvailabilityUpdateRequest, StockUpdateRequest }
-import com.mogobiz.run.actors.{ EsUpdateActor, ActorSystemLocator }
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.dashboard.Dashboard
 import com.mogobiz.run.es._
@@ -20,26 +21,25 @@ import com.mogobiz.run.exceptions._
 import com.mogobiz.run.handlers.EmailHandler.Mail
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.{ CartRegistration, UserActionRegistration }
+import com.mogobiz.run.model.ES.{ BOCart => BOCartES, BOCartEx, BOCartItem => BOCartItemES, BOCartItemEx, BODelivery => BODeliveryES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOReturn => BOReturnES, BOReturnedItem => BOReturnedItemES }
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.ES.{ BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOReturnedItem => BOReturnedItemES, BOReturn => BOReturnES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOCartItemEx, BOCartEx }
-import com.mogobiz.run.model.Render.{ Coupon, RegisteredCartItem, CartItem, Cart }
-import com.mogobiz.pay.common.{ Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, Shipping => ShippingPay, RegisteredCartItem => RegisteredCartItemPay, CompanyAddress, CartRate }
+import com.mogobiz.run.model.Render.{ Cart, CartItem, Coupon, RegisteredCartItem }
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Utils
+import com.mogobiz.system.ActorSystemLocator
 import com.mogobiz.utils.{ QRCodeUtils, SymmetricCrypt }
 import com.sksamuel.elastic4s.ElasticDsl.{ get, tuple2indexestypes }
 import com.sun.org.apache.xml.internal.security.utils.Base64
-import org.apache.commons.lang.time.DateUtils
 import org.elasticsearch.common.bytes.ChannelBufferBytesReference
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.json4s.ext.JodaTimeSerializers
 import org.json4s.native.JsonMethods._
 import org.json4s.native.Serialization._
-import org.json4s.{ FieldSerializer, DefaultFormats, Formats }
+import org.json4s.{ DefaultFormats, FieldSerializer, Formats }
 import scalikejdbc._
 
 class CartHandler {
@@ -48,6 +48,7 @@ class CartHandler {
   /**
    * Permet de récupérer le contenu du panier<br/>
    * Si le panier n'existe pas, il est créé<br/>
+   *
    * @param storeCode
    * @param uuid
    * @param params
@@ -66,6 +67,7 @@ class CartHandler {
 
   /**
    * Vide le contenu du panier
+   *
    * @param storeCode
    * @param uuid
    * @param params
@@ -85,6 +87,7 @@ class CartHandler {
 
   /**
    * Ajoute un item au panier
+   *
    * @param storeCode
    * @param uuid
    * @param params
@@ -167,6 +170,7 @@ class CartHandler {
 
   /**
    * Met à jour la quantité d'un item du panier
+   *
    * @param storeCode
    * @param uuid
    * @param cartItemId
@@ -212,6 +216,7 @@ class CartHandler {
 
   /**
    * Supprime un item du panier
+   *
    * @param storeCode
    * @param uuid
    * @param cartItemId
@@ -241,6 +246,7 @@ class CartHandler {
 
   /**
    * Ajoute un coupon au panier
+   *
    * @param storeCode
    * @param uuid
    * @param couponCode
@@ -284,6 +290,7 @@ class CartHandler {
 
   /**
    * Supprime un coupon du panier
+   *
    * @param storeCode
    * @param uuid
    * @param couponCode
@@ -318,6 +325,7 @@ class CartHandler {
 
   /**
    * Prépare le panier pour le paiement
+   *
    * @param storeCode
    * @param uuid
    * @param params
@@ -402,6 +410,7 @@ class CartHandler {
   /**
    * Complète le panier après un paiement réalisé avec succès. Le contenu du panier est envoyé par mail comme justificatif
    * et un nouveau panier est créé
+   *
    * @param storeCode
    * @param uuid
    * @param params
@@ -447,6 +456,7 @@ class CartHandler {
 
   /**
    * Met à jour le panier suite à l'abandon ou l'échec du paiement
+   *
    * @param storeCode
    * @param uuid
    * @param params
@@ -480,6 +490,7 @@ class CartHandler {
   /**
    * Crée un BOCart à partir des données fournis en générant si nécessaire les QRCode correspondant. Renvoi
    * un panier en lien avec le BOCart créé
+   *
    * @param storeCart
    * @param cart
    * @param rate
@@ -564,6 +575,7 @@ class CartHandler {
   /**
    * Supprime le BOCart correspondant au panier s'il est en statut Pending
    * et renvoi un panier sans lien avec le boCart supprimé
+   *
    * @param cart
    * @return
    */
@@ -595,6 +607,7 @@ class CartHandler {
    * Construit un Locale à partir de la langue et du pays.<br/>
    * Si la lang == "_all" alors la langue par défaut est utilisée<br/>
    * Si le pays vaut None alors le pays par défaut est utiulisé
+   *
    * @param lang
    * @param country
    * @return
@@ -609,6 +622,7 @@ class CartHandler {
   /**
    * Récupère le panier correspondant au uuid et au compte client.
    * La méthode gère le panier anonyme et le panier authentifié.
+   *
    * @param uuid
    * @param currentAccountId
    * @return
@@ -670,6 +684,7 @@ class CartHandler {
 
   /**
    * Réinitialise le panier (en incrémentant en nombre d'utilisation des coupons)
+   *
    * @param cart
    * @return
    */
@@ -688,6 +703,7 @@ class CartHandler {
 
   /**
    * Annule la transaction courante et génère un nouveau uuid au panier
+   *
    * @param cart
    * @return
    */
@@ -708,6 +724,7 @@ class CartHandler {
 
   /**
    * Valide le panier en décrémentant les stocks
+   *
    * @param cart
    * @return
    */
@@ -737,6 +754,7 @@ class CartHandler {
 
   /**
    * Invalide le panier et libère les stocks si le panier était validé.
+   *
    * @param cart
    * @return
    */
@@ -772,12 +790,13 @@ class CartHandler {
 
   /**
    * Update products stock availability
+   *
    * @param indexEsAndProductId
    */
   private def _updateProductStockAvailability(indexEsAndProductId: Set[(String, Long)]) = {
     import scala.concurrent.duration._
+    val system = ActorSystemLocator()
     import system.dispatcher
-    val system = ActorSystemLocator.get
     val stockActor = system.actorOf(Props[EsUpdateActor])
     indexEsAndProductId.foreach { indexEsAndProduct =>
       system.scheduler.scheduleOnce(2 seconds) {
@@ -789,6 +808,7 @@ class CartHandler {
   /**
    * Fusionne le panier source avec le panier cible et renvoie le résultat
    * de la fusion
+   *
    * @param source
    * @param target
    * @return
@@ -808,6 +828,7 @@ class CartHandler {
   /**
    * Ajoute un item au panier. Si un item existe déjà (sauf pour le SERVICE), la quantité
    * de l'item existant est modifié
+   *
    * @param cart
    * @param cartItem
    * @return
@@ -826,6 +847,7 @@ class CartHandler {
   /**
    * Retrouve un item parmi la liste des items du panier. L'item est recherche si le type
    * n'est pas SERVICE et si l'id du produit et du sku sont identiques
+   *
    * @param cart
    * @param cartItem
    * @return
@@ -847,6 +869,7 @@ class CartHandler {
 
   /**
    * Ajoute un coupon au panier s'il n'existe pas déjà (en comparant les codes des coupons)
+   *
    * @param cart
    * @param coupon
    * @return
@@ -863,6 +886,7 @@ class CartHandler {
 
   /**
    * Transforme le StoreCart en un CartVO en calculant les montants
+   *
    * @param cart
    * @param countryCode
    * @param stateCode
@@ -997,6 +1021,7 @@ class CartHandler {
 
   /**
    * Calcule le nombre d'item du panier en prenant en compte les quantités
+   *
    * @param list
    * @return
    */
@@ -1009,14 +1034,15 @@ class CartHandler {
 
   /**
    * Envoie par mail le contenu du panier
+   *
    * @param storeCode
    * @param email
    * @param cart
    * @param locale
    */
   private def notifyCartCommit(storeCode: String, email: String, cart: StoreCart, locale: Locale): Unit = {
-    import org.json4s.native.Serialization.write
     import com.mogobiz.run.implicits.Json4sProtocol._
+    import org.json4s.native.Serialization.write
 
     val cartTTC: Cart = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
     val renderCart = _renderTransactionCart(cart, cartTTC, cart.rate.get, locale)
@@ -1084,6 +1110,7 @@ class CartHandler {
 
   /**
    * Idem que renderCart à quelques différences près d'où la dupplication de code
+   *
    * @param cart
    * @param rate
    * @return
@@ -1102,6 +1129,7 @@ class CartHandler {
 
   /**
    * Renvoie un coupon JSONiné augmenté par un calcul de prix formaté
+   *
    * @param coupon
    * @param currency
    * @param locale
@@ -1133,6 +1161,7 @@ class CartHandler {
 
   /**
    * Renvoie un cartItem JSONinsé augmenté par le calcul des prix formattés
+   *
    * @param item item du panier
    * @param currency
    * @param locale
@@ -1213,6 +1242,7 @@ class CartHandler {
 
   /**
    * Renvoie tous les champs prix calculé sur le panier
+   *
    * @param cart
    * @param currency
    * @param locale
