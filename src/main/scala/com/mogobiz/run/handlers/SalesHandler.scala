@@ -7,10 +7,11 @@ package com.mogobiz.run.handlers
 import akka.actor.Props
 import com.mogobiz.es.EsClient
 import com.mogobiz.json.JacksonConverter
-import com.sksamuel.elastic4s.ElasticDsl.{ update => esupdate, _ }
+import com.mogobiz.run.actors.EsUpdateActor
 import com.mogobiz.run.actors.EsUpdateActor.SalesUpdateRequest
-import com.mogobiz.run.actors.{ EsUpdateActor, ActorSystemLocator }
-import com.mogobiz.run.model.Mogobiz.{ Sku, Product }
+import com.mogobiz.run.model.Mogobiz.{ Product, Sku }
+import com.mogobiz.system.ActorSystemLocator
+import com.sksamuel.elastic4s.ElasticDsl.{ update => esupdate, _ }
 import com.sksamuel.elastic4s.source.DocumentSource
 import org.joda.time.DateTime
 import scalikejdbc._
@@ -32,7 +33,7 @@ class SalesHandler {
   }
 
   private def fireUpdateEsSales(storeCode: String, product: Product, sku: Sku, newNbProductSales: Long, newNbSkuSales: Long) = {
-    val system = ActorSystemLocator.get
+    val system = ActorSystemLocator()
     val stockActor = system.actorOf(Props[EsUpdateActor])
     stockActor ! SalesUpdateRequest(storeCode, product, sku, newNbProductSales, newNbSkuSales)
   }

@@ -4,18 +4,18 @@
 
 package com.mogobiz.run.handlers
 
-import java.util.{ UUID, Date }
+import java.util.{ Date, UUID }
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.config.MogobizHandlers.handlers._
-import com.mogobiz.run.actors.EsUpdateActor.StockUpdateRequest
+import com.mogobiz.run.actors.EsUpdateActor
 import com.mogobiz.run.actors.EsUpdateActor.{ SkuStockAvailabilityUpdateRequest, StockUpdateRequest }
-import com.mogobiz.run.actors.{ EsUpdateActor, ActorSystemLocator }
+import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.{ Stock => EsStock, StockByDateTime, StockCalendar }
+import com.mogobiz.system.ActorSystemLocator
 import com.mogobiz.utils.GlobalUtil._
-import com.sksamuel.elastic4s.ElasticDsl.{ update => esupdate, insert => esinsert, _ }
+import com.sksamuel.elastic4s.ElasticDsl.{ insert => esinsert, update => esupdate, _ }
 import com.sksamuel.elastic4s.IndexesTypesDsl
 import org.joda.time.DateTime
 import scalikejdbc._
@@ -110,14 +110,14 @@ class StockHandler extends IndexesTypesDsl {
   }
 
   private def fireUpdateEsStock(indexEs: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar) = {
-    val system = ActorSystemLocator.get
+    val system = ActorSystemLocator()
     val stockActor = system.actorOf(Props[EsUpdateActor])
     stockActor ! StockUpdateRequest(indexEs, product, sku, stock, stockCalendar)
   }
 
   private def fireUpdateStockAvailability(indexEs: String, product: Product, sku: Sku, stock: EsStock, stockCalendar: StockCalendar) = {
     if (!stock.stockOutSelling && !stock.stockUnlimited) {
-      val system = ActorSystemLocator.get
+      val system = ActorSystemLocator()
       val stockActor = system.actorOf(Props[EsUpdateActor])
       stockActor ! SkuStockAvailabilityUpdateRequest(indexEs, product, sku, stock, stockCalendar)
     }
