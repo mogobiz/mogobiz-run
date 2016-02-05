@@ -136,7 +136,7 @@ class ProductHandler extends JsonUtil {
     val _size: Int = params.maxItemPerPage.getOrElse(100)
     val _from: Int = params.pageOffset.getOrElse(0) * _size
     val fields: List[String] = fieldNames.foldLeft(List[String]())((A, B) => A ::: getIncludedFieldWithPrefixAsList(storeCode, "", B, params.lang))
-    val includedFields: List[String] = List("id") ::: (if (params.highlight) List.empty
+    val includedFields: List[String] = List("id", "name", "path") ::: (if (params.highlight) List.empty
     else {
       fieldNames ::: fields
     })
