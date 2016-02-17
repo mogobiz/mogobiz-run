@@ -5,7 +5,7 @@
 package com.mogobiz.run.handlers
 
 import java.io.ByteArrayOutputStream
-import java.util.{ Locale, UUID }
+import java.util.{ Date, Locale, UUID }
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
@@ -149,7 +149,7 @@ class CartHandler {
 
     val salePrice = Math.max(sku.salePrice, 0)
     val indexEs = EsClient.getUniqueIndexByAlias(storeCode).getOrElse(storeCode)
-    val cartItem = StoreCartItem(indexEs, newCartItemId, product.id, product.name, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
+    val cartItem = StoreCartItem(indexEs, newCartItemId, product.id, product.name, product.picture, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
       sku.price, salePrice, startDate, endDate, registeredItems, product.shipping, None, None)
 
     val updatedCart = _addCartItemIntoCart(_unvalidateCart(cart), cartItem)
@@ -446,8 +446,6 @@ class CartHandler {
           StoreCartDao.save(updatedCart)
 
           accountId.map(Dashboard.indexCart(storeCode, boCartToESBOCart(storeCode, transactionBoCart), _))
-
-          notifyCartCommit(transactionCart.storeCode, boCart.buyer, transactionCart, locale)
         }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
     }
@@ -911,9 +909,9 @@ class CartHandler {
       val totalEndPrice = endPrice.map { p: Long => p * cartItem.quantity }
       val saleTotalEndPrice = saleEndPrice.map { p: Long => p * cartItem.quantity }
 
-      CartItem(cartItem.id, cartItem.productId, cartItem.productName, cartItem.xtype, cartItem.calendarType,
-        cartItem.skuId, cartItem.skuName, cartItem.quantity, price, endPrice, tax, totalPrice, totalEndPrice,
-        salePrice, saleEndPrice, saleTotalPrice, saleTotalEndPrice,
+      CartItem(cartItem.id, cartItem.productId, cartItem.productName, cartItem.productPicture, cartItem.productUrl, cartItem.xtype,
+        cartItem.calendarType, cartItem.skuId, cartItem.skuName, cartItem.quantity, price, endPrice, tax, totalPrice,
+        totalEndPrice, salePrice, saleEndPrice, saleTotalPrice, saleTotalEndPrice,
         cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping, cartItem.downloadableLink.getOrElse(null))
     }
 
@@ -1032,34 +1030,6 @@ class CartHandler {
     }
   }
 
-  /**
-   * Envoie par mail le contenu du panier
-   *
-   * @param storeCode
-   * @param email
-   * @param cart
-   * @param locale
-   */
-  private def notifyCartCommit(storeCode: String, email: String, cart: StoreCart, locale: Locale): Unit = {
-    import com.mogobiz.run.implicits.Json4sProtocol._
-    import org.json4s.native.Serialization.write
-
-    val cartTTC: Cart = _computeStoreCart(cart, cart.countryCode, cart.stateCode)
-    val renderCart = _renderTransactionCart(cart, cartTTC, cart.rate.get, locale)
-
-    val template = templateHandler.getTemplate(storeCode, "mail-cart", Some(locale.toString))
-
-    val (subject, body) = templateHandler.mustache(template, write(renderCart))
-    EmailHandler.Send.to(
-      Mail(
-        from = (Settings.Mail.DefaultFrom -> storeCode),
-        to = Seq(email),
-        subject = subject,
-        message = body,
-        richMessage = Some(body)
-      ))
-  }
-
   private def _renderCart(cart: Cart, currency: Currency, locale: Locale): Map[String, Any] = {
     var map: Map[String, Any] = Map()
     map += ("validateUuid" -> cart.validateUuid.getOrElse(""))
@@ -1073,7 +1043,7 @@ class CartHandler {
   private def transformCartForCartPay(compagnyAddress: Option[CompanyAddress], cart: Cart, rate: Currency, shippingRulePrice: Option[Long]): CartPay = {
     val cartItemsPay = cart.cartItemVOs.map { cartItem =>
       val registeredCartItemsPay = cartItem.registeredCartItemVOs.map { rci =>
-        new RegisteredCartItemPay(rci.id, rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, Map())
+        new RegisteredCartItemPay(rci.id, rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, rci.qrCodeContent, Map())
       }
       val shippingPay = cartItem.shipping.map { shipping =>
         new ShippingPay(shipping.weight, shipping.weightUnit.toString(), shipping.width, shipping.height, shipping.depth,
@@ -1092,11 +1062,11 @@ class CartHandler {
       val totalEndPrice = cartItem.totalEndPrice.getOrElse(cartItem.totalPrice)
       val saleEndPrice = cartItem.saleEndPrice.getOrElse(cartItem.salePrice)
       val saleTotalEndPrice = cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice)
-      new CartItemPay(cartItem.id, name, cartItem.quantity, cartItem.price, endPrice, cartItem.tax.getOrElse(0), endPrice - cartItem.price,
+      new CartItemPay(cartItem.id, name, cartItem.productPicture, cartItem.productUrl, cartItem.quantity, cartItem.price, endPrice, cartItem.tax.getOrElse(0), endPrice - cartItem.price,
         cartItem.totalPrice, totalEndPrice, totalEndPrice - cartItem.totalPrice,
         cartItem.salePrice, saleEndPrice, saleEndPrice - cartItem.salePrice,
         cartItem.saleTotalPrice, saleTotalEndPrice, saleTotalEndPrice - cartItem.saleTotalPrice,
-        registeredCartItemsPay, shippingPay, customCartItem)
+        registeredCartItemsPay, shippingPay, cartItem.downloadableLink, customCartItem)
     }
     val couponsPay = cart.coupons.map { coupon =>
       val customCoupon = Map("name" -> coupon.name, "active" -> coupon.active)
@@ -1124,6 +1094,7 @@ class CartHandler {
       "coupons" -> cart.coupons.map(c => _renderTransactionCoupon(c, rate, locale))
     )
     map ++= _renderTransactionPriceCart(cart, rate, locale)
+    map ++= Map("date" -> new Date().getTime)
     map
   }
 

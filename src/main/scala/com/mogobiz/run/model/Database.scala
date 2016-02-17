@@ -109,6 +109,7 @@ object Mogobiz {
   case class Product(id: Long,
     uuid: String,
     name: String,
+    picture: String,
     @JsonScalaEnumeration(classOf[ProductTypeRef]) xtype: ProductType,
     @JsonScalaEnumeration(classOf[ProductCalendarRef]) calendarType: ProductCalendar,
     taxRate: Option[TaxRate],

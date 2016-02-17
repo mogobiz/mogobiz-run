@@ -29,6 +29,8 @@ object Render {
   case class CartItem(id: String,
     productId: Long,
     productName: String,
+    productPicture: String,
+    productUrl: String,
     xtype: ProductType,
     calendarType: ProductCalendar,
     skuId: Long,

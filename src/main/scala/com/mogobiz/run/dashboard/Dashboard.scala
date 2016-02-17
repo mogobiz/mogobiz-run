@@ -285,12 +285,12 @@ object Dashboard {
 
     val productA: BOProduct = BOProduct(
       acquittement = true, principal = true, price = 500, registeredCartItem = Nil, uuid = "00000000-0000-0000-0000-000000000000",
-      product = Product(id = 0L, uuid = "00000000-0000-0000-0000-000000000000", name = "A", ProductType.PRODUCT, ProductCalendar.NO_DATE, None, None, true,
+      product = Product(id = 0L, uuid = "00000000-0000-0000-0000-000000000000", name = "A", "", ProductType.PRODUCT, ProductCalendar.NO_DATE, None, None, true,
         None, None, None, Nil, None, None, None, 0, 0, 0, null, new Date, new Date)
     )
     val productB: BOProduct = BOProduct(
       acquittement = true, principal = true, price = 2000, registeredCartItem = Nil, uuid = "00000000-0000-0000-0000-000000000000",
-      product = Product(id = 1L, uuid = "11111111-1111-1111-1111-111111111111", name = "B", ProductType.PRODUCT, ProductCalendar.NO_DATE, None, None, true,
+      product = Product(id = 1L, uuid = "11111111-1111-1111-1111-111111111111", name = "B", "", ProductType.PRODUCT, ProductCalendar.NO_DATE, None, None, true,
         None, None, None, Nil, None, None, None, 0, 0, 0, null, new Date, new Date)
     )
 
