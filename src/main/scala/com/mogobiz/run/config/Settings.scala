@@ -114,5 +114,7 @@ object Settings {
   //  require(Interface.nonEmpty, "interface must be non-empty")
   //  require(0 < Port && Port < 65536, "illegal port")
   require(ResourcesRootPath.nonEmpty, "resources.rootPath must be non-empty")
+
+  val ResourcesTimeout = config.getLong("resources.timeout")
 }
 
