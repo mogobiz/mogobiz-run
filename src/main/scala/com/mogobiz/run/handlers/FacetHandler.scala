@@ -164,7 +164,7 @@ class FacetHandler {
     val _lang = if (req.lang == "_all") "_" else s"_${req.lang}"
 
     val priceWithVatField = req.country match {
-      case Some(countryCode) => s"${countryCode}.saleEndPrice"
+      case Some(countryCode) => s"$countryCode.saleEndPrice"
       case _ => "salePrice"
     }
 
@@ -180,7 +180,7 @@ class FacetHandler {
 
     val fixeFilters: List[Option[FilterDefinition]] = List(
       defaultStockFilter,
-      req.country.map { countryCode => termFilter(s"product.${countryCode}.enabled", true) },
+      req.country.map { countryCode => termFilter(s"product.$countryCode.enabled", true) },
       createOrFilterBySplitValues(req.code, v => createTermFilter("product.code", Some(v))),
       createOrFilterBySplitValues(req.xtype, v => createTermFilter("product.xtype", Some(v))),
       createOrFilterBySplitValues(req.creationDateMin, v => createRangeFilter("product.dateCreated", Some(v), None)),
@@ -260,9 +260,9 @@ class FacetHandler {
     val priceQuery = buildQueryAndFilters(FilterBuilder(withPrice = !req.multiPrices.getOrElse(false)), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs {
       aggregation histogram "prices" field s"product.skus.${priceWithVatField}" interval req.priceInterval minDocCount 0
     } aggs {
-      aggregation min "price_min" field s"product.skus.${priceWithVatField}"
+      aggregation min "price_min" field s"product.skus.$priceWithVatField"
     } aggs {
-      aggregation max "price_max" field s"product.skus.${priceWithVatField}"
+      aggregation max "price_max" field s"product.skus.$priceWithVatField"
     }
 
     val multiQueries = List(
@@ -393,8 +393,8 @@ class FacetHandler {
       Some(
         must(
           List(
-            createNestedTermFilter("features", s"${propertyPathPrefix}.features.name.raw", Some(k)),
-            createNestedTermFilter("features", s"${propertyPathPrefix}.features.value.raw", Some(v))
+            createNestedTermFilter("features", s"$propertyPathPrefix.features.name.raw", Some(k)),
+            createNestedTermFilter("features", s"$propertyPathPrefix.features.value.raw", Some(v))
           ).flatten: _*
         )
       )
@@ -413,18 +413,18 @@ class FacetHandler {
         or(
           must(
             List(
-              createTermFilter(s"${propertyPathPrefix}.variation1.name.raw", Some(k)),
-              createTermFilter(s"${propertyPathPrefix}.variation1.value.raw", Some(v))
+              createTermFilter(s"$propertyPathPrefix.variation1.name.raw", Some(k)),
+              createTermFilter(s"$propertyPathPrefix.variation1.value.raw", Some(v))
             ).flatten: _*
           ), must(
             List(
-              createTermFilter(s"${propertyPathPrefix}.variation2.name.raw", Some(k)),
-              createTermFilter(s"${propertyPathPrefix}.variation2.value.raw", Some(v))
+              createTermFilter(s"$propertyPathPrefix.variation2.name.raw", Some(k)),
+              createTermFilter(s"$propertyPathPrefix.variation2.value.raw", Some(v))
             ).flatten: _*
           ), must(
             List(
-              createTermFilter(s"${propertyPathPrefix}.variation3.name.raw", Some(k)),
-              createTermFilter(s"${propertyPathPrefix}.variation3.value.raw", Some(v))
+              createTermFilter(s"$propertyPathPrefix.variation3.name.raw", Some(k)),
+              createTermFilter(s"$propertyPathPrefix.variation3.value.raw", Some(v))
             ).flatten: _*
           )
         )

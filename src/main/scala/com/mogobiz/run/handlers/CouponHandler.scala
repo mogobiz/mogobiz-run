@@ -33,7 +33,7 @@ class CouponHandler {
     if (coupon.active) {
       val skusIdList = ProductDao.getSkusIdByCoupon(storeCode, coupon.coupon.id)
 
-      if (skusIdList.size > 0 && skusIdList.contains(cartItem.cartItem.skuId)) {
+      if (skusIdList.nonEmpty && skusIdList.contains(cartItem.cartItem.skuId)) {
         val price = cartItem.saleEndPrice.getOrElse(cartItem.salePrice)
         val totalPrice = cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice)
         _applyReductionRules(coupon.coupon.rules, cartItem.quantity, price, totalPrice)
@@ -49,11 +49,11 @@ class CouponHandler {
 
   def getWithData(storeCode: String, storeCoupon: StoreCoupon): CouponWithData = {
     val coupon = CouponDao.findByCode(storeCode, storeCoupon.code).get
-    CouponWithData(coupon, _isCouponActive(coupon), 0, false)
+    CouponWithData(coupon, _isCouponActive(coupon), 0, promotion = false)
   }
 
   def getWithData(coupon: Mogobiz.Coupon): CouponWithData = {
-    CouponWithData(coupon, _isCouponActive(coupon), 0, true)
+    CouponWithData(coupon, _isCouponActive(coupon), 0, promotion = true)
   }
 
   def transformAsRender(storeCode: String, coupon: CouponWithData): Option[Render.Coupon] = {
@@ -118,7 +118,7 @@ class CouponHandler {
 
 }
 
-case class CouponWithData(val coupon: Mogobiz.Coupon, val active: Boolean, val reduction: Long, val promotion: Boolean)
+case class CouponWithData(coupon: Mogobiz.Coupon, active: Boolean, reduction: Long, promotion: Boolean)
 
 object CouponDao {
 

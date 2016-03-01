@@ -16,9 +16,9 @@ import com.mogobiz.es._
 class CurrencyHandler {
 
   def queryCurrencyByCode(storeCode: String, currencyCode: String): JValue = {
-    var filters: List[FilterDefinition] = List(termFilter("currencyCode", currencyCode))
+    val filters: List[FilterDefinition] = List(termFilter("currencyCode", currencyCode))
     val req = esearch4s in Settings.Mogopay.EsIndex -> "Rate"
-    EsClient.searchRaw(filterRequest(req, filters) sourceExclude ("imported")).map { hit =>
+    EsClient.searchRaw(filterRequest(req, filters) sourceExclude "imported").map { hit =>
       hit2JValue(hit)
     }.getOrElse(throw new NotFoundException(""))
   }

@@ -16,7 +16,7 @@ import com.mogobiz.es._
 class CountryHandler {
 
   def queryCountryByCode(storeCode: String, countryCode: String): JValue = {
-    var filters: List[FilterDefinition] = List(termFilter("code", countryCode))
+    val filters: List[FilterDefinition] = List(termFilter("code", countryCode))
     val req = esearch4s in Settings.Mogopay.EsIndex -> "Country"
     EsClient.searchRaw(filterRequest(req, filters) sourceExclude ("imported")).map { hit =>
       hit2JValue(hit)

@@ -45,7 +45,7 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     val boCartTransactionUuidList = req.deliveryStatus.map { deliveryStatus =>
       (EsClient.searchAllRaw(search in BOCartESDao.buildIndex(storeCode) types "BOCart" sourceInclude "transactionUuid" query matchQuery("cartItems.bODelivery.status", deliveryStatus)) hits () map { hit =>
-        (hit2JValue(hit) \ "transactionUuid") match {
+        hit2JValue(hit) \ "transactionUuid" match {
           case JString(uuid) => {
             Some(uuid)
           }
@@ -104,8 +104,8 @@ class BackofficeHandler extends JsonUtil with BoService {
     val _from: Int = req.pageOffset.getOrElse(0) * _size
 
     val accountFilters = List(
-      req.lastName.map {
-        lastName => or(createTermFilter("lastName", Some(lastName)).get, createTermFilter("firstName", Some(lastName)).get)
+      req.lastName.flatMap {
+        lastName => createTermFilter("lastName", Some(lastName))
       },
       createTermFilter("email", req.email),
       createTermFilter("owner", Some(merchant.uuid))
@@ -154,7 +154,7 @@ class BackofficeHandler extends JsonUtil with BoService {
     val transactionRequest = search in mogopayIndex types "BOTransaction" sourceInclude "transactionUUID" postFilter and(transactionFilters: _*)
     val esTransactionUuid = EsClient.searchRaw(transactionRequest).map {
       hit =>
-        (hit2JValue(hit) \ "transactionUUID") match {
+        hit2JValue(hit) \ "transactionUUID" match {
           case JString(uuid) => {
             uuid
           }
@@ -171,17 +171,17 @@ class BackofficeHandler extends JsonUtil with BoService {
   @throws[NotFoundException]
   @throws[MinMaxQuantityException]
   def createBOReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String, req: CreateBOReturnedItemRequest): Unit = {
-    val customer = accountUuid.map {
+    val customer = accountUuid.flatMap {
       uuid =>
-        accountHandler.load(uuid).map {
+        accountHandler.load(uuid).flatMap {
           account =>
             account.roles.find {
               role => role == RoleName.CUSTOMER
             }.map {
               r => account
             }
-        }.flatten
-    }.flatten getOrElse (throw new NotAuthorizedException(""))
+        }
+    } getOrElse (throw new NotAuthorizedException(""))
 
     val boCart = BOCartDao.findByTransactionUuid(transactionUuid).getOrElse(throw new NotFoundException(""))
     if (boCart.buyer != customer.email) throw new NotAuthorizedException("")
