@@ -21,8 +21,8 @@ object Utils {
 
   def printJSON(o: Object) = {
     import org.json4s.JsonDSL._
-    import org.json4s.native.JsonMethods._
-    import org.json4s.native.Serialization._
+    import org.json4s.jackson.JsonMethods._
+    import org.json4s.jackson.Serialization._
     import org.json4s.{ DefaultFormats, Formats }
 
     implicit def json4sFormats: Formats = DefaultFormats
@@ -35,8 +35,8 @@ object Utils {
 
   def computeAge(birthDate: Option[DateTime]): Int = {
     if (birthDate.isDefined) {
-      val period = new Period(birthDate.get.toLocalDate, DateTime.now().toLocalDate, PeriodType.years());
-      return period.getYears
+      val period = new Period(birthDate.get.toLocalDate, DateTime.now().toLocalDate, PeriodType.years())
+      period.getYears
     } else 0
   }
 

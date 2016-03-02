@@ -62,8 +62,8 @@ object Paging {
    * @return
    */
   def getWrapper(total: Int, pagingParams: PagingParams): JValue = {
-    import org.json4s.native.JsonMethods._
-    import org.json4s.native.Serialization.write
+    import org.json4s.jackson.JsonMethods._
+    import org.json4s.jackson.Serialization.write
     implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[Paging[Any]]()
 
     val paging = get(total, pagingParams)
