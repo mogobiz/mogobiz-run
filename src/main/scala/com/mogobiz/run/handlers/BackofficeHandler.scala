@@ -57,7 +57,7 @@ class BackofficeHandler extends JsonUtil with BoService {
     val filters = List(
       req.lastName.map { lastName => or(createTermFilter("customer.lastName", Some(lastName)).get, createTermFilter("customer.firstName", Some(lastName)).get) },
       createTermFilter("status", req.transactionStatus),
-      createTermFilter("email", req.email),
+      createTermFilter("email", req.email.map(_.toLowerCase)),
       createTermFilter("customer.uuid", customer.map { c => c.uuid }),
       createTermFilter("vendor.uuid", merchant.map { m => m.uuid }),
       createRangeFilter("transactionDate", req.startDate, req.endDate),
@@ -105,9 +105,9 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     val accountFilters = List(
       req.lastName.flatMap {
-        lastName => createTermFilter("lastName", Some(lastName))
+        lastName => createTermFilter("lastName", Some(lastName.toLowerCase))
       },
-      createTermFilter("email", req.email),
+      createTermFilter("email", req.email.map(_.toLowerCase)),
       createTermFilter("owner", Some(merchant.uuid))
     ).flatten
 
@@ -218,17 +218,17 @@ class BackofficeHandler extends JsonUtil with BoService {
   @throws[NotFoundException]
   @throws[IllegalStatusException]
   def updateBOReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String, boReturnedItemUuid: String, req: UpdateBOReturnedItemRequest): Unit = {
-    val merchant = accountUuid.map {
+    val merchant = accountUuid.flatMap {
       uuid =>
-        accountHandler.load(uuid).map {
+        accountHandler.load(uuid).flatMap {
           account =>
             account.roles.find {
               role => role == RoleName.MERCHANT
             }.map {
               r => account
             }
-        }.flatten
-    }.flatten getOrElse (throw new NotAuthorizedException(""))
+        }
+    } getOrElse (throw new NotAuthorizedException(""))
 
     val boCart = BOCartDao.findByTransactionUuid(transactionUuid).getOrElse(throw new NotFoundException(""))
     val boCartItem = BOCartItemDao.load(boCartItemUuid).getOrElse(throw new NotFoundException(""))
