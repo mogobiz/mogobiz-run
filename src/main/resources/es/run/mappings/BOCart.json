@@ -1,34 +1,118 @@
 {
-      "BOCart": {
+  "BOCart": {
+    "properties": {
+      "buyer": {
+        "type": "string"
+      },
+      "cartItems": {
         "properties": {
-          "buyer": {
-            "type": "string"
-          },
-          "cartItems": {
+          "bOProducts": {
             "properties": {
-              "bOProducts": {
+              "acquittement": {
+                "type": "boolean"
+              },
+              "price": {
+                "type": "long"
+              },
+              "principal": {
+                "type": "boolean"
+              },
+              "product": {
                 "properties": {
-                  "acquittement": {
-                    "type": "boolean"
+                  "calendarType": {
+                    "type": "string"
                   },
-                  "price": {
+                  "dateCreated": {
+                    "type": "date",
+                    "format": "dateOptionalTime"
+                  },
+                  "id": {
                     "type": "long"
                   },
-                  "principal": {
-                    "type": "boolean"
+                  "lastUpdated": {
+                    "type": "date",
+                    "format": "dateOptionalTime"
                   },
-                  "product": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "nbSales": {
+                    "type": "long"
+                  },
+                  "poi": {
                     "properties": {
-                      "calendarType": {
+                      "location": {
+                        "properties": {
+                          "city": {
+                            "type": "string"
+                          },
+                          "country": {
+                            "properties": {
+                              "code": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "latitude": {
+                            "type": "double"
+                          },
+                          "longitude": {
+                            "type": "double"
+                          },
+                          "road1": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "name": {
                         "type": "string"
                       },
-                      "dateCreated": {
+                      "picture": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "shipping": {
+                    "properties": {
+                      "amount": {
+                        "type": "long"
+                      },
+                      "depth": {
+                        "type": "long"
+                      },
+                      "free": {
+                        "type": "boolean"
+                      },
+                      "height": {
                         "type": "long"
                       },
                       "id": {
                         "type": "long"
                       },
-                      "lastUpdated": {
+                      "weight": {
+                        "type": "long"
+                      },
+                      "width": {
+                        "type": "long"
+                      }
+                    }
+                  },
+                  "skus": {
+                    "properties": {
+                      "coupons": {
+                        "properties": {
+                          "id": {
+                            "type": "long"
+                          }
+                        }
+                      },
+                      "id": {
+                        "type": "long"
+                      },
+                      "maxOrder": {
+                        "type": "long"
+                      },
+                      "minOrder": {
                         "type": "long"
                       },
                       "name": {
@@ -37,333 +121,253 @@
                       "nbSales": {
                         "type": "long"
                       },
-                      "poi": {
-                        "properties": {
-                          "location": {
-                            "properties": {
-                              "city": {
-                                "type": "string"
-                              },
-                              "country": {
-                                "properties": {
-                                  "code": {
-                                    "type": "string"
-                                  }
-                                }
-                              },
-                              "latitude": {
-                                "type": "double"
-                              },
-                              "longitude": {
-                                "type": "double"
-                              },
-                              "road1": {
-                                "type": "string"
-                              }
-                            }
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "picture": {
-                            "type": "string"
-                          }
-                        }
+                      "price": {
+                        "type": "long"
                       },
-                      "shipping": {
-                        "properties": {
-                          "amount": {
-                            "type": "long"
-                          },
-                          "depth": {
-                            "type": "long"
-                          },
-                          "free": {
-                            "type": "boolean"
-                          },
-                          "height": {
-                            "type": "long"
-                          },
-                          "id": {
-                            "type": "long"
-                          },
-                          "weight": {
-                            "type": "long"
-                          },
-                          "width": {
-                            "type": "long"
-                          }
-                        }
+                      "salePrice": {
+                        "type": "long"
                       },
-                      "skus": {
-                        "properties": {
-                          "coupons": {
-                            "properties": {
-                              "id": {
-                                "type": "long"
-                              }
-                            }
-                          },
-                          "id": {
-                            "type": "long"
-                          },
-                          "maxOrder": {
-                            "type": "long"
-                          },
-                          "minOrder": {
-                            "type": "long"
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "nbSales": {
-                            "type": "long"
-                          },
-                          "price": {
-                            "type": "long"
-                          },
-                          "salePrice": {
-                            "type": "long"
-                          },
-                          "sku": {
-                            "type": "string"
-                          },
-                          "uuid": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "startDate": {
-                        "type": "date",
-                        "format": "dateOptionalTime"
-                      },
-                      "stockDisplay": {
-                        "type": "boolean"
-                      },
-                      "stopDate": {
-                        "type": "date",
-                        "format": "dateOptionalTime"
-                      },
-                      "taxRate": {
-                        "properties": {
-                          "id": {
-                            "type": "long"
-                          },
-                          "localTaxRates": {
-                            "properties": {
-                              "countryCode": {
-                                "type": "string"
-                              },
-                              "id": {
-                                "type": "long"
-                              },
-                              "rate": {
-                                "type": "double"
-                              }
-                            }
-                          },
-                          "name": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "uuid": {
+                      "sku": {
                         "type": "string"
                       },
-                      "xtype": {
+                      "uuid": {
                         "type": "string"
                       }
                     }
                   },
-                  "registeredCartItem": {
+                  "startDate": {
+                    "type": "date",
+                    "format": "dateOptionalTime"
+                  },
+                  "stockDisplay": {
+                    "type": "boolean"
+                  },
+                  "stopDate": {
+                    "type": "date",
+                    "format": "dateOptionalTime"
+                  },
+                  "taxRate": {
                     "properties": {
-                      "age": {
+                      "id": {
                         "type": "long"
                       },
-                      "birthdate": {
-                        "type": "date",
-                        "format": "dateOptionalTime"
+                      "localTaxRates": {
+                        "properties": {
+                          "countryCode": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "long"
+                          },
+                          "rate": {
+                            "type": "double"
+                          }
+                        }
                       },
-                      "email": {
-                        "type": "string"
-                      },
-                      "firstname": {
-                        "type": "string"
-                      },
-                      "lastname": {
-                        "type": "string"
-                      },
-                      "phone": {
-                        "type": "string"
-                      },
-                      "price": {
-                        "type": "long"
-                      },
-                      "quantity": {
-                        "type": "long"
-                      },
-                      "shortCode": {
-                        "type": "string"
-                      },
-                      "ticketType": {
-                        "type": "string"
-                      },
-                      "uuid": {
+                      "name": {
                         "type": "string"
                       }
                     }
                   },
                   "uuid": {
                     "type": "string"
+                  },
+                  "xtype": {
+                    "type": "string"
                   }
                 }
               },
-              "code": {
-                "type": "string"
-              },
-              "endPrice": {
-                "type": "long"
-              },
-              "hidden": {
-                "type": "boolean"
-              },
-              "price": {
-                "type": "long"
-              },
-              "quantity": {
-                "type": "long"
-              },
-              "sku": {
+              "registeredCartItem": {
                 "properties": {
-                  "coupons": {
-                    "properties": {
-                      "id": {
-                        "type": "long"
-                      }
-                    }
-                  },
-                  "id": {
+                  "age": {
                     "type": "long"
                   },
-                  "maxOrder": {
-                    "type": "long"
+                  "birthdate": {
+                    "type": "date",
+                    "format": "dateOptionalTime"
                   },
-                  "minOrder": {
-                    "type": "long"
-                  },
-                  "name": {
+                  "email": {
                     "type": "string"
                   },
-                  "nbSales": {
-                    "type": "long"
+                  "firstname": {
+                    "type": "string"
+                  },
+                  "lastname": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
                   },
                   "price": {
                     "type": "long"
                   },
-                  "salePrice": {
-                    "type": "long"
-                  },
-                  "sku": {
-                    "type": "string"
-                  },
-                  "uuid": {
-                    "type": "string"
-                  }
-                }
-              },
-              "tax": {
-                "type": "double"
-              },
-              "totalEndPrice": {
-                "type": "long"
-              },
-              "totalPrice": {
-                "type": "long"
-              },
-              "uuid": {
-                "type": "string"
-              },
-              "startDate" : {
-                "type": "date",
-                "format": "date_time"
-              },
-              "endDate" : {
-                "type": "date",
-                "format": "date_time"
-              },
-              "bODelivery": {
-                "properties": {
-                  "status": {
-                    "type": "string",
-                    "index":"not_analyzed"
-                  },
-                  "tracking": {
-                    "type": "string"
-                  },
-                  "extra": {
-                    "type": "string"
-                  },
-                  "uuid": {
-                    "type": "string"
-                  }
-                }
-              },
-              "bOReturnedItems": {
-                "properties": {
-                  "motivation": {
-                    "type": "string"
-                  },
-                  "returnStatus": {
-                    "type": "string"
-                  },
                   "quantity": {
                     "type": "long"
                   },
-                  "refunded": {
-                    "type": "long"
+                  "shortCode": {
+                    "type": "string"
                   },
-                  "totalRefunded": {
-                    "type": "long"
-                  },
-                  "status": {
+                  "ticketType": {
                     "type": "string"
                   },
                   "uuid": {
                     "type": "string"
                   }
                 }
+              },
+              "uuid": {
+                "type": "string"
               }
             }
           },
-          "currencyCode": {
+          "code": {
             "type": "string"
           },
-          "currencyRate": {
-            "type": "double"
-          },
-          "dateCreated": {
+          "endPrice": {
             "type": "long"
           },
-          "lastUpdated": {
-            "type": "long"
+          "hidden": {
+            "type": "boolean"
           },
           "price": {
             "type": "long"
           },
-          "status": {
-            "type": "string",
-            "index":"not_analyzed"
+          "quantity": {
+            "type": "long"
           },
-          "transactionUuid": {
-            "type": "string"
+          "sku": {
+            "properties": {
+              "coupons": {
+                "properties": {
+                  "id": {
+                    "type": "long"
+                  }
+                }
+              },
+              "id": {
+                "type": "long"
+              },
+              "maxOrder": {
+                "type": "long"
+              },
+              "minOrder": {
+                "type": "long"
+              },
+              "name": {
+                "type": "string"
+              },
+              "nbSales": {
+                "type": "long"
+              },
+              "price": {
+                "type": "long"
+              },
+              "salePrice": {
+                "type": "long"
+              },
+              "sku": {
+                "type": "string"
+              },
+              "uuid": {
+                "type": "string"
+              }
+            }
+          },
+          "tax": {
+            "type": "double"
+          },
+          "totalEndPrice": {
+            "type": "long"
+          },
+          "totalPrice": {
+            "type": "long"
           },
           "uuid": {
             "type": "string"
           },
-          "xdate": {
+          "startDate": {
             "type": "date",
             "format": "dateOptionalTime"
+          },
+          "endDate": {
+            "type": "date",
+            "format": "dateOptionalTime"
+          },
+          "bODelivery": {
+            "properties": {
+              "status": {
+                "type": "string",
+                "index": "not_analyzed"
+              },
+              "tracking": {
+                "type": "string"
+              },
+              "extra": {
+                "type": "string"
+              },
+              "uuid": {
+                "type": "string"
+              }
+            }
+          },
+          "bOReturnedItems": {
+            "properties": {
+              "motivation": {
+                "type": "string"
+              },
+              "returnStatus": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "long"
+              },
+              "refunded": {
+                "type": "long"
+              },
+              "totalRefunded": {
+                "type": "long"
+              },
+              "status": {
+                "type": "string"
+              },
+              "uuid": {
+                "type": "string"
+              }
+            }
           }
         }
+      },
+      "currencyCode": {
+        "type": "string"
+      },
+      "currencyRate": {
+        "type": "double"
+      },
+      "dateCreated": {
+        "type": "date",
+        "format": "dateOptionalTime"
+      },
+      "lastUpdated": {
+        "type": "date",
+        "format": "dateOptionalTime"
+      },
+      "price": {
+        "type": "long"
+      },
+      "status": {
+        "type": "string",
+        "index": "not_analyzed"
+      },
+      "transactionUuid": {
+        "type": "string"
+      },
+      "uuid": {
+        "type": "string"
+      },
+      "xdate": {
+        "type": "date",
+        "format": "dateOptionalTime"
       }
+    }
+  }
 }

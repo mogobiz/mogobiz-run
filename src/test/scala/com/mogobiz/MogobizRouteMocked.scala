@@ -4,9 +4,8 @@
 
 package com.mogobiz
 
-import com.mogobiz.run.actors.ActorSystemLocator
 import com.mogobiz.run.config.MogobizRoutes
-import com.mogobiz.system.MogobizSystem
+import com.mogobiz.system.{ActorSystemLocator, MogobizSystem}
 import org.specs2.mutable.Specification
 import spray.routing._
 import spray.testkit.Specs2RouteTest

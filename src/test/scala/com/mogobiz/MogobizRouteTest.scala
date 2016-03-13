@@ -4,26 +4,25 @@
 
 package com.mogobiz
 
-import java.io.{IOException, File}
+import java.io.{File, IOException}
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 
-import com.mogobiz.run.config.MogobizRoutes
-import com.mogobiz.run.config.Settings._
-import com.mogobiz.run.es.EmbeddedElasticSearchNode
-import com.mogobiz.system.MogobizSystem
-import org.elasticsearch.node.Node
-import org.specs2.mutable.Specification
-import org.specs2.specification.{AfterExample, Step, Fragments}
-import org.specs2.time.NoTimeConversions
-import spray.http.{MediaTypes, HttpHeaders, ContentType, MediaType}
-import spray.testkit.Specs2RouteTest
-import spray.routing.HttpService
-import com.mogobiz.run.actors.{ActorSystemLocator}
 import com.mogobiz.json.JsonUtil
-import org.specs2.matcher.JsonMatchers
-import scala.concurrent.duration._
+import com.mogobiz.run.config.MogobizRoutes
+import com.mogobiz.run.es.EmbeddedElasticSearchNode
+import com.mogobiz.system.{ActorSystemLocator, MogobizSystem}
+import org.elasticsearch.node.Node
 import org.json4s.JsonAST.{JArray, JValue}
+import org.specs2.matcher.JsonMatchers
+import org.specs2.mutable.Specification
+import org.specs2.specification.{AfterExample, Fragments, Step}
+import org.specs2.time.NoTimeConversions
+import spray.http.{ContentType, MediaTypes}
+import spray.routing.HttpService
+import spray.testkit.Specs2RouteTest
+
+import scala.concurrent.duration._
 
 abstract class MogobizRouteTest extends Specification with Specs2RouteTest with HttpService with MogobizRoutes with MogobizSystem with JsonMatchers with EmbeddedElasticSearchNode with JsonUtil with NoTimeConversions with AfterExample {
   implicit val routeTestTimeout = RouteTestTimeout(FiniteDuration(5, SECONDS))
