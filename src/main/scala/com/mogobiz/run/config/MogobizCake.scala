@@ -44,8 +44,6 @@ trait MogobizCake {
 
   def forUpdateHandler: ForUpdateHandler
 
-  def templateHandler: TemplateHandler
-
   def backofficeHandler: BackofficeHandler
 
   def learningHandler: LearningHandler
@@ -79,7 +77,6 @@ class DefaultMogobizCake extends MogobizCake {
   val taxRateHandler = new TaxRateHandler
   val couponHandler = new CouponHandler
   val forUpdateHandler = new ForUpdateHandler
-  val templateHandler = new TemplateHandler
   val backofficeHandler = new BackofficeHandler
 
   val learningHandler = new LearningHandler
