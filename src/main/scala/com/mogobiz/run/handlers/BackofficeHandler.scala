@@ -44,7 +44,7 @@ class BackofficeHandler extends JsonUtil with BoService {
     val merchant = account.roles.find { role => role == RoleName.MERCHANT }.map { r => account }
 
     val boCartTransactionUuidList = req.deliveryStatus.map { deliveryStatus =>
-      (EsClient.searchAllRaw(search in BOCartESDao.buildIndex(storeCode) types "BOCart" sourceInclude "transactionUuid" query matchQuery("cartItems.bODelivery.status", deliveryStatus)) hits () map { hit =>
+      (EsClient.searchAllRaw(search in BOCartESDao.buildIndex(storeCode) types "BOCart" sourceInclude "transactionUuid" query matchQuery("cartItems.bODelivery.status", deliveryStatus) size 100) hits () map { hit =>
         hit2JValue(hit) \ "transactionUuid" match {
           case JString(uuid) => {
             Some(uuid)
