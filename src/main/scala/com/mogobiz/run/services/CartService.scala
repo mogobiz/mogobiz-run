@@ -172,6 +172,7 @@ class CartService extends Directives with DefaultComplete {
   def payment(storeCode: String, uuid: String) = pathPrefix("payment") {
     post {
       paymentPrepare(storeCode, uuid) ~
+        paymentLinkToTransaction(storeCode, uuid) ~
         paymentCommit(storeCode, uuid) ~
         paymentCancel(storeCode, uuid)
     }
@@ -182,6 +183,15 @@ class CartService extends Directives with DefaultComplete {
       optionalSession { optSession =>
         val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
         handleCall(cartHandler.queryCartPaymentPrepare(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+      }
+    }
+  }
+
+  def paymentLinkToTransaction(storeCode: String, uuid: String) = path("linkToTransaction") {
+    entity(as[CommitTransactionParameters]) { params =>
+      optionalSession { optSession =>
+        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
+        handleCall(cartHandler.queryCartPaymentLinkToTransaction(storeCode, uuid, params, accountId), (res: Unit) => complete(StatusCodes.OK))
       }
     }
   }

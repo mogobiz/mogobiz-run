@@ -43,8 +43,16 @@ class BackofficeHandler extends JsonUtil with BoService {
     val customer = account.roles.find { role => role == RoleName.CUSTOMER }.map { r => account }
     val merchant = account.roles.find { role => role == RoleName.MERCHANT }.map { r => account }
 
+    val _size: Int = req.maxItemPerPage.getOrElse(100)
+    val _from: Int = req.pageOffset.getOrElse(0) * _size
+
     val boCartTransactionUuidList = req.deliveryStatus.map { deliveryStatus =>
-      (EsClient.searchAllRaw(search in BOCartESDao.buildIndex(storeCode) types "BOCart" sourceInclude "transactionUuid" query matchQuery("cartItems.bODelivery.status", deliveryStatus) size 100) hits () map { hit =>
+      (EsClient.searchAllRaw(search in BOCartESDao.buildIndex(storeCode) types "BOCart" sourceInclude "transactionUuid"
+        query matchQuery("cartItems.bODelivery.status", deliveryStatus)
+        size _size
+        sort {
+          by field "xdate" order SortOrder.DESC
+        }) hits () map { hit =>
         hit2JValue(hit) \ "transactionUuid" match {
           case JString(uuid) => {
             Some(uuid)
@@ -64,9 +72,6 @@ class BackofficeHandler extends JsonUtil with BoService {
       createTermFilter("amount", req.price),
       createOrFilterBySplitValues(boCartTransactionUuidList, v => createTermFilter("transactionUUID", Some(v)))
     ).flatten
-
-    val _size: Int = req.maxItemPerPage.getOrElse(100)
-    val _from: Int = req.pageOffset.getOrElse(0) * _size
 
     val response =
       try {

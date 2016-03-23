@@ -416,6 +416,33 @@ class CartHandler {
    * @param params
    * @param accountId
    */
+  def queryCartPaymentLinkToTransaction(storeCode: String, uuid: String,
+    params: CommitTransactionParameters, accountId: Option[Mogopay.Document]): Unit = {
+    val locale = _buildLocal(params.lang, params.country)
+
+    val cart = _initCart(storeCode, uuid, accountId, false, None, None)
+
+    BOCartDao.load(cart.boCartUuid.get) match {
+      case Some(boCart) =>
+        DB localTx { implicit session =>
+          val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid))
+          BOCartDao.updateStatus(transactionBoCart)
+          exportBOCartIntoES(storeCode, transactionBoCart)
+        }
+      case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
+    }
+
+  }
+
+  /**
+   * Complète le panier après un paiement réalisé avec succès. Le contenu du panier est envoyé par mail comme justificatif
+   * et un nouveau panier est créé
+   *
+   * @param storeCode
+   * @param uuid
+   * @param params
+   * @param accountId
+   */
   def queryCartPaymentCommit(storeCode: String, uuid: String,
     params: CommitTransactionParameters, accountId: Option[Mogopay.Document]): Unit = {
     val locale = _buildLocal(params.lang, params.country)
