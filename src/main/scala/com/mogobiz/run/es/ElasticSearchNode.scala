@@ -93,7 +93,7 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
       ImmutableSettings.settingsBuilder().put("path.data", tmpdir).put("script.disable_dynamic", false)
     ).node()
 
-    // On attend que ES est bien démarré
+    // On attend que ES ait bien démarré
     esNode.client().admin().cluster().prepareHealth().setWaitForYellowStatus().execute().actionGet();
 
     logger.info(s"ES is started using '$tmpdir'.")
