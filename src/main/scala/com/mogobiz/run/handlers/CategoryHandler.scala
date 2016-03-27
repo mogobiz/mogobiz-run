@@ -36,14 +36,14 @@ class CategoryHandler extends JsonUtil {
         if (!hidden) filters +:= termFilter("category.hide", "false")
         if (parentId.isDefined) filters +:= termFilter("category.parentId", parentId.get)
         if (categoryPath.isDefined) filters +:= createRegexFilter("category.path", categoryPath, false).get
-        if (promotionId.isDefined) filters +:= createTermFilter("category.coupons", promotionId).get
+        if (promotionId.isDefined) filters +:= createTermFilter("category.categoryCoupons", promotionId).get
         distinctById(results(esearch4s in store -> "product" from 0 size _size sort { by field "position" order SortOrder.ASC }) \ "category")
       case None =>
         if (!hidden) filters +:= termFilter("hide", "false")
         if (parentId.isDefined) filters +:= termFilter("parentId", parentId.get)
         if (categoryPath.isDefined) filters +:= createRegexFilter("path", categoryPath, false).get
         else if (!parentId.isDefined) filters +:= missingFilter("parentId") existence true includeNull true
-        if (promotionId.isDefined) filters +:= createTermFilter("coupons", promotionId).get
+        if (promotionId.isDefined) filters +:= createTermFilter("categoryCoupons", promotionId).get
         results(esearch4s in store -> "category" from 0 size _size sort { by field "position" order SortOrder.ASC })
     }
   }
