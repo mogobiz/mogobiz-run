@@ -18,7 +18,6 @@ import com.mogobiz.run.config.Settings
 import com.mogobiz.run.dashboard.Dashboard
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions._
-import com.mogobiz.run.handlers.EmailHandler.Mail
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.{ CartRegistration, UserActionRegistration }
 import com.mogobiz.run.model.ES.{ BOCart => BOCartES, BOCartEx, BOCartItem => BOCartItemES, BOCartItemEx, BODelivery => BODeliveryES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOReturn => BOReturnES, BOReturnedItem => BOReturnedItemES }
@@ -1491,7 +1490,7 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
     rs.get(rn.dateCreated),
     rs.get(rn.lastUpdated),
     rs.get(rn.price),
-    TransactionStatus.valueOf(rs.get(rn.status)),
+    TransactionStatus.withName(rs.get(rn.status)),
     rs.get(rn.transactionUuid),
     rs.get(rn.uuid))
 
@@ -1575,7 +1574,7 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
   def apply(rn: ResultName[BODelivery])(rs: WrappedResultSet): BODelivery = new BODelivery(
     rs.get(rn.id),
     rs.get(rn.bOCartFk),
-    DeliveryStatus(rs.get(rn.status)),
+    DeliveryStatus.withName(rs.get(rn.status)),
     rs.get(rn.tracking),
     rs.get(rn.extra),
     rs.get(rn.dateCreated),
@@ -1631,7 +1630,7 @@ object BOReturnedItemDao extends SQLSyntaxSupport[BOReturnedItem] with BoService
     rs.get(rn.quantity),
     rs.get(rn.refunded),
     rs.get(rn.totalRefunded),
-    ReturnedItemStatus(rs.get(rn.status)),
+    ReturnedItemStatus.withName(rs.get(rn.status)),
     rs.get(rn.dateCreated),
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))
@@ -1692,7 +1691,7 @@ object BOReturnDao extends SQLSyntaxSupport[BOReturn] with BoService {
     rs.get(rn.id),
     rs.get(rn.bOReturnedItemFk),
     rs.get(rn.motivation),
-    ReturnStatus(rs.get(rn.status)),
+    ReturnStatus.withName(rs.get(rn.status)),
     rs.get(rn.dateCreated),
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))

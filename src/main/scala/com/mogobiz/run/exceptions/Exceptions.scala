@@ -8,6 +8,8 @@ import spray.http.{ StatusCode, StatusCodes }
 
 abstract class MogobizException(message: String, val code: StatusCode) extends Exception(message)
 
+case class SomeParameterIsMissingException(message: String) extends MogobizException(message, StatusCodes.BadRequest)
+
 case class DuplicateException(message: String) extends MogobizException(message, StatusCodes.Conflict)
 
 case class NotAuthorizedException(message: String) extends MogobizException(message, StatusCodes.Unauthorized)

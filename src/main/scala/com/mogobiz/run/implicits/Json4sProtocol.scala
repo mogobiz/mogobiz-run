@@ -4,13 +4,16 @@
 
 package com.mogobiz.run.implicits
 
+import com.mogobiz.run.model.Mogobiz.DeliveryStatus.DeliveryStatus
 import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnit
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnit
-import com.mogobiz.run.model.Mogobiz._
+import com.mogobiz.run.model.Mogobiz.{ DeliveryStatus, _ }
 import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
+import com.mogobiz.run.model.Mogobiz.ReturnStatus.ReturnStatus
+import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus.ReturnedItemStatus
 import org.json4s._
 import org.json4s.ext.JodaTimeSerializers
 import spray.httpx.Json4sSupport
@@ -33,7 +36,7 @@ object Json4sProtocol extends Json4sSupport {
     // deserialisation
     {
       case x: JString =>
-        ProductType.valueOf(x.values)
+        ProductType.withName(x.values)
     },
     // serialisation
     {
@@ -46,7 +49,7 @@ object Json4sProtocol extends Json4sSupport {
     // deserialisation
     {
       case x: JString =>
-        ProductCalendar.valueOf(x.values)
+        ProductCalendar.withName(x.values)
     },
     // serialisation
     {
@@ -59,7 +62,7 @@ object Json4sProtocol extends Json4sSupport {
     // deserialisation
     {
       case x: JString =>
-        WeightUnit(x.values)
+        WeightUnit.withName(x.values)
     },
     // serialisation
     {
@@ -72,7 +75,7 @@ object Json4sProtocol extends Json4sSupport {
     // deserialisation
     {
       case x: JString =>
-        LinearUnit(x.values)
+        LinearUnit.withName(x.values)
     },
     // serialisation
     {
@@ -85,11 +88,11 @@ object Json4sProtocol extends Json4sSupport {
     // deserialisation
     {
       case x: JString =>
-        ReductionRuleType(x.values)
+        ReductionRuleType.withName(x.values)
     },
     // serialisation
     {
-      case x: LinearUnit =>
+      case x: ReductionRuleType =>
         JString(x.toString)
     }
   ))
@@ -98,11 +101,50 @@ object Json4sProtocol extends Json4sSupport {
     // deserialisation
     {
       case x: JString =>
-        TransactionStatus.valueOf(x.values)
+        TransactionStatus.withName(x.values)
     },
     // serialisation
     {
-      case x: LinearUnit =>
+      case x: TransactionStatus =>
+        JString(x.toString)
+    }
+  ))
+
+  class DeliveryStatusSerializer extends CustomSerializer[DeliveryStatus](format => (
+    // deserialisation
+    {
+      case x: JString =>
+        DeliveryStatus.withName(x.values)
+    },
+    // serialisation
+    {
+      case x: DeliveryStatus =>
+        JString(x.toString)
+    }
+  ))
+
+  class ReturnedItemStatusSerializer extends CustomSerializer[ReturnedItemStatus](format => (
+    // deserialisation
+    {
+      case x: JString =>
+        ReturnedItemStatus.withName(x.values)
+    },
+    // serialisation
+    {
+      case x: ReturnedItemStatus =>
+        JString(x.toString)
+    }
+  ))
+
+  class ReturnStatusSerializer extends CustomSerializer[ReturnStatus](format => (
+    // deserialisation
+    {
+      case x: JString =>
+        ReturnStatus.withName(x.values)
+    },
+    // serialisation
+    {
+      case x: ReturnStatus =>
         JString(x.toString)
     }
   ))
@@ -113,5 +155,8 @@ object Json4sProtocol extends Json4sSupport {
     new WeightUnitSerializer() +
     new LinearUnitSerializer() +
     new ReductionRuleTypeSerializer() +
-    new TransactionStatusSerializer()
+    new TransactionStatusSerializer() +
+    new DeliveryStatusSerializer() +
+    new ReturnedItemStatusSerializer() +
+    new ReturnStatusSerializer()
 }

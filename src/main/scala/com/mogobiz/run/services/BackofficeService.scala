@@ -7,8 +7,8 @@ package com.mogobiz.run.services
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.run.model.RequestParameters.{ UpdateBOReturnedItemRequest, CreateBOReturnedItemRequest, BOListCustomersRequest, BOListOrdersRequest }
-import com.mogobiz.run.utils.{ PagingParams, Paging }
+import com.mogobiz.run.model.RequestParameters.{ BOListCustomersRequest, BOListOrdersRequest, CreateBOReturnedItemRequest, UpdateBOReturnedItemRequest }
+import com.mogobiz.run.utils.{ Paging, PagingParams }
 import com.mogobiz.session.Session
 import com.mogobiz.session.SessionESDirectives._
 import org.json4s.JsonAST.JValue
@@ -16,12 +16,14 @@ import spray.http.StatusCodes
 import spray.routing.Directives
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import Json4sProtocol._
+import com.mogobiz.run.exceptions.{ MogobizException, SomeParameterIsMissingException }
 
 class BackofficeService extends Directives with DefaultComplete {
 
   val route = {
     optionalSession { optSession =>
-      val accountUuid = optSession.flatMap { session: Session => session.sessionData.accountId }
+      val accountUuid = optSession.flatMap(_.sessionData.accountId)
+      val locale = optSession.flatMap(_.sessionData.locale)
       pathPrefix(Segment / "backoffice") { implicit storeCode =>
         path("listOrders") {
           get {
@@ -42,12 +44,12 @@ class BackofficeService extends Directives with DefaultComplete {
               pathPrefix(Segment) { boCartItemUuid =>
                 pathEnd {
                   post {
-                    createBoReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid)
+                    createBoReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, locale)
                   }
                 } ~
                   path(Segment) { boReturnedUuid =>
                     put {
-                      updateBoReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, boReturnedUuid)
+                      updateBoReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, boReturnedUuid, locale)
                     }
                   }
               }
@@ -83,15 +85,15 @@ class BackofficeService extends Directives with DefaultComplete {
     handleCall(backofficeHandler.cartDetails(storeCode, accountUuid, transactionUuid),
       (res: JValue) => complete(StatusCodes.OK, res))
 
-  def createBoReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String) =
+  def createBoReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String, locale: Option[String]) =
     entity(as[CreateBOReturnedItemRequest]) { req =>
-      handleCall(backofficeHandler.createBOReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, req),
+      handleCall(backofficeHandler.createBOReturnedItem(storeCode, accountUuid.getOrElse(throw new SomeParameterIsMissingException("accountUuid not found")), transactionUuid, boCartItemUuid, req, locale),
         (res: Unit) => complete(StatusCodes.OK))
     }
 
-  def updateBoReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String, boReturnedUuid: String) =
+  def updateBoReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String, boReturnedUuid: String, locale: Option[String]) =
     entity(as[UpdateBOReturnedItemRequest]) { req =>
-      handleCall(backofficeHandler.updateBOReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, boReturnedUuid, req),
+      handleCall(backofficeHandler.updateBOReturnedItem(storeCode, accountUuid.getOrElse(throw new SomeParameterIsMissingException("accountUuid not found")), transactionUuid, boCartItemUuid, boReturnedUuid, req, locale),
         (res: Unit) => complete(StatusCodes.OK))
     }
 }

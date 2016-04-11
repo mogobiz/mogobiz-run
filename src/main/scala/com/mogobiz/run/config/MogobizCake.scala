@@ -86,3 +86,4 @@ class DefaultMogobizCake extends MogobizCake {
   val logoHandler = new LogoHandler
 
 }
+

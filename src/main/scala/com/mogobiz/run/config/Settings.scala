@@ -4,10 +4,11 @@
 
 package com.mogobiz.run.config
 
+import com.mogobiz.utils.EmailHandler.MailConfig
 import com.typesafe.config.{ Config, ConfigFactory }
 import scalikejdbc.config._
-import collection.JavaConversions._
 
+import collection.JavaConversions._
 import scala.util.Try
 
 trait MogobizTypesafeConfig extends TypesafeConfig {
@@ -81,10 +82,21 @@ object Settings {
       val IsSSLEnabled = config.getBoolean("mail.smtp.ssl")
       val IsSSLCheckServerIdentity = config.getBoolean("mail.smtp.checkserveridentity")
       val IsStartTLSEnabled = config.getBoolean("mail.smtp.starttls")
+
+      implicit val MailSettings = MailConfig(
+        host = Host,
+        port = Port,
+        sslPort = SslPort,
+        username = Username,
+        password = Password,
+        sslEnabled = IsSSLEnabled,
+        sslCheckServerIdentity = IsSSLCheckServerIdentity,
+        startTLSEnabled = IsStartTLSEnabled
+      )
     }
 
     val DefaultFrom = config getString "mail.from"
-    val MaxAge = (config getInt "mail.confirmation.maxage") * 3600
+    val MaxAge = (config getInt "mail.confirmation.maxage")
   }
 
   val Dialect = if (config hasPath "dialect") config getString "dialect" else "test"

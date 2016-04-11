@@ -8,10 +8,10 @@ import java.util.UUID
 
 import akka.actor.ActorSystem
 import com.mogobiz.es.{ EsClient, _ }
-import com.mogobiz.json.JsonUtil
+import com.mogobiz.json.{ JacksonConverter, JsonUtil }
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.pay.config.Settings
-import com.mogobiz.pay.model.Mogopay.RoleName
+import com.mogobiz.pay.model.Mogopay.{ Account, Document, RoleName }
 import com.mogobiz.run.config
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.es._
@@ -19,21 +19,26 @@ import com.mogobiz.run.exceptions.{ IllegalStatusException, MinMaxQuantityExcept
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.RequestParameters.{ BOListCustomersRequest, BOListOrdersRequest, CreateBOReturnedItemRequest, UpdateBOReturnedItemRequest }
 import com.mogobiz.run.utils.Paging
+import com.mogobiz.utils.EmailHandler
+import com.mogobiz.utils.EmailHandler.Mail
 import com.sksamuel.elastic4s.ElasticDsl._
 import org.elasticsearch.common.joda.time.format.ISODateTimeFormat
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
+import org.json4s.Extraction
 import org.json4s.JsonAST._
+import org.json4s.jackson.JsonMethods._
 import scalikejdbc.DB
-import spray.http._
 import spray.client.pipelining._
-
+import spray.http._
 import scala.concurrent.Future
-
+import com.mogobiz.run.config.Settings.Mail.Smtp.MailSettings
 /**
  */
 class BackofficeHandler extends JsonUtil with BoService {
+  import org.json4s.{ DefaultFormats, Formats }
+  implicit def json4sFormats: Formats = DefaultFormats
 
   private val mogopayIndex = Settings.Mogopay.EsIndex
 
@@ -172,23 +177,38 @@ class BackofficeHandler extends JsonUtil with BoService {
     ).getOrElse(throw new NotFoundException(""))
   }
 
+  def notifyItemReturned(merchant: Account, customer: Account, boCartItem: BOCartItem, boReturn: BOReturn, locale: Option[String]): Unit = {
+    import com.mogobiz.run.implicits.Json4sProtocol
+    val json: JValue = JObject(JField("cartItem", Extraction.decompose(boCartItem))) merge
+      JObject(JField("merchant", Extraction.decompose(merchant))) merge
+      JObject(JField("customer", Extraction.decompose(customer))) merge
+      JObject(JField("returnStatus", Extraction.decompose(boReturn)))
+    //    val map = Map("cartItem" -> boCartItem, "merchant" -> merchant, "customer" -> customer, "returnStatus" -> boReturn)
+
+    val (subject, body) = templateHandler.mustache(Some(merchant), "mail-return-created", locale, compact(render(json)))
+    EmailHandler.Send(
+      Mail(
+        merchant.email -> s"""${merchant.firstName.getOrElse("")} ${merchant.lastName.getOrElse("")}""",
+        List(customer.email),
+        Nil,
+        Nil,
+        subject,
+        body,
+        Some(body),
+        None
+      ))
+
+  }
+
   @throws[NotAuthorizedException]
   @throws[NotFoundException]
   @throws[MinMaxQuantityException]
-  def createBOReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String, req: CreateBOReturnedItemRequest): Unit = {
-    val customer = accountUuid.flatMap {
-      uuid =>
-        accountHandler.load(uuid).flatMap {
-          account =>
-            account.roles.find {
-              role => role == RoleName.CUSTOMER
-            }.map {
-              r => account
-            }
-        }
-    } getOrElse (throw new NotAuthorizedException(""))
+  def createBOReturnedItem(storeCode: String, accountUuid: String, transactionUuid: String, boCartItemUuid: String, req: CreateBOReturnedItemRequest, locale: Option[String]): Unit = {
+    val customer: Account = accountHandler.getCustomer(accountUuid).getOrElse(throw new NotAuthorizedException(""))
+    val merchantUuid = customer.owner.getOrElse(throw new NotAuthorizedException("Merchant Id not present in Customer Data (Should never happen)"))
+    val merchant = accountHandler.getMerchant(merchantUuid).getOrElse(throw new NotAuthorizedException("Merchant not found"))
 
-    val boCart = BOCartDao.findByTransactionUuid(transactionUuid).getOrElse(throw new NotFoundException(""))
+    val boCart: BOCart = BOCartDao.findByTransactionUuid(transactionUuid).getOrElse(throw new NotFoundException(""))
     if (boCart.buyer != customer.email) throw new NotAuthorizedException("")
     val boCartItem = BOCartItemDao.load(boCartItemUuid).getOrElse(throw new NotFoundException(""))
     if (boCartItem.bOCartFk != boCart.id) throw new NotFoundException("")
@@ -216,35 +236,48 @@ class BackofficeHandler extends JsonUtil with BoService {
           uuid = UUID.randomUUID().toString))
 
         cartHandler.exportBOCartIntoES(storeCode, boCart, true)
+        notifyItemReturned(merchant, customer, boCartItem, boReturn, locale)
     }
+  }
+
+  def notifyItemReturnedStatusUpdated(merchant: Account, customer: Account, boCartItem: BOCartItem, beforeUpdate: BOReturn, afterUpdate: BOReturn, locale: Option[String]): Unit = {
+    import com.mogobiz.run.implicits.Json4sProtocol
+    val json: JValue = JObject(JField("cartItem", Extraction.decompose(boCartItem))) merge
+      JObject(JField("merchant", Extraction.decompose(merchant))) merge
+      JObject(JField("customer", Extraction.decompose(customer))) merge
+      JObject(JField("beforeUpdate", Extraction.decompose(beforeUpdate))) merge
+      JObject(JField("afterUpdate", Extraction.decompose(afterUpdate)))
+    //val map = Map("cartItem" -> boCartItem, "merchant" -> merchant, "customer" -> customer, "oldReturnStatus" -> beforeUpdate, "newReturnStatus" -> afterUpdate)
+    val (subject, body) = templateHandler.mustache(Some(merchant), "mail-return-updated", locale, compact(render(json)))
+    EmailHandler.Send(
+      Mail(
+        merchant.email -> s"""${merchant.firstName.getOrElse("")} ${merchant.lastName.getOrElse("")}""",
+        List(customer.email),
+        Nil,
+        Nil,
+        subject,
+        body,
+        Some(body),
+        None
+      ))
   }
 
   @throws[NotAuthorizedException]
   @throws[NotFoundException]
   @throws[IllegalStatusException]
-  def updateBOReturnedItem(storeCode: String, accountUuid: Option[String], transactionUuid: String, boCartItemUuid: String, boReturnedItemUuid: String, req: UpdateBOReturnedItemRequest): Unit = {
-    val merchant = accountUuid.flatMap {
-      uuid =>
-        accountHandler.load(uuid).flatMap {
-          account =>
-            account.roles.find {
-              role => role == RoleName.MERCHANT
-            }.map {
-              r => account
-            }
-        }
-    } getOrElse (throw new NotAuthorizedException(""))
-
+  def updateBOReturnedItem(storeCode: String, accountUuid: String, transactionUuid: String, boCartItemUuid: String, boReturnedItemUuid: String, req: UpdateBOReturnedItemRequest, locale: Option[String]): Unit = {
+    val merchant = accountHandler.load(accountUuid).getOrElse(throw new Exception("Merchant not found for returned item"))
     val boCart = BOCartDao.findByTransactionUuid(transactionUuid).getOrElse(throw new NotFoundException(""))
+    val customer = accountHandler.findByEmail(boCart.buyer, Some(accountUuid)).getOrElse(throw new Exception("Customer not found for returned item"))
     val boCartItem = BOCartItemDao.load(boCartItemUuid).getOrElse(throw new NotFoundException(""))
     if (boCartItem.bOCartFk != boCart.id) throw new NotFoundException("")
     val boReturnedItem = BOReturnedItemDao.load(boReturnedItemUuid).getOrElse(throw new NotFoundException(""))
     if (boReturnedItem.bOCartItemFk != boCartItem.id) throw new NotFoundException("")
-    val lastReturn = BOReturnDao.findByBOReturnedItem(boReturnedItem).head
+    val lastReturn: BOReturn = BOReturnDao.findByBOReturnedItem(boReturnedItem).head
 
     // Calcul du nouveau statut en fonction du statut existant
-    val newStatus = ReturnedItemStatus(req.status)
-    val newReturnStatus = (lastReturn.status, ReturnStatus(req.returnStatus)) match {
+    val newStatus = ReturnedItemStatus.withName(req.status)
+    val newReturnStatus = (lastReturn.status, ReturnStatus.withName(req.returnStatus)) match {
       case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_TO_BE_RECEIVED) => ReturnStatus.RETURN_TO_BE_RECEIVED
       case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_REFUSED) => ReturnStatus.RETURN_REFUSED
       case (ReturnStatus.RETURN_TO_BE_RECEIVED, ReturnStatus.RETURN_RECEIVED) => ReturnStatus.RETURN_RECEIVED
@@ -276,13 +309,15 @@ class BackofficeHandler extends JsonUtil with BoService {
             pipeline(Get(config.Settings.jahiaClearCacheUrl + "?productId=" + productAndSku._1.id))
           }
         }
-        cartHandler.exportBOCartIntoES(storeCode, boCart, true)
+        cartHandler.exportBOCartIntoES(storeCode, boCart, refresh = true)
+        notifyItemReturnedStatusUpdated(merchant, customer, boCartItem, lastReturn, boReturn, locale)
+
     }
   }
 
   private def completeBOTransactionWithDeliveryStatus(storeCode: String): PartialFunction[JValue, JValue] = {
     case obj: JObject => {
-      (obj \ "transactionUUID") match {
+      obj \ "transactionUUID" match {
         case (JString(transactionUuid)) => {
           val req = search in BOCartESDao.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid", transactionUuid)
           println(req._builder.toString)
@@ -290,13 +325,13 @@ class BackofficeHandler extends JsonUtil with BoService {
             hit =>
               hit2JValue(hit) \ "cartItems" match {
                 case JArray(cartItems) => {
-                  cartItems.map {
+                  cartItems.flatMap {
                     cartItem =>
                       cartItem \ "bODelivery" \ "status" match {
                         case JString(status) => Some(JString(status))
                         case _ => None
                       }
-                  }.flatten
+                  }
                 }
                 case _ => List()
               }

@@ -10,16 +10,16 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.annotation.{ JsonDeserialize, JsonSerialize }
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import com.mogobiz.run.json.{ JodaDateTimeOptionSerializer, JodaDateTimeOptionDeserializer, JodaDateTimeDeserializer, JodaDateTimeSerializer }
-import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnitType
+import com.mogobiz.run.json.{ JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer }
 import com.mogobiz.run.model.Mogobiz.DeliveryStatus.DeliveryStatus
+import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnit
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
 import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
-import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz.ReturnStatus.ReturnStatus
 import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus.ReturnedItemStatus
-import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnitType
+import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
+import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnit
 import org.joda.time.DateTime
 
 /**
@@ -63,11 +63,11 @@ object Mogobiz {
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Shipping(id: Long,
     weight: Long,
-    @JsonScalaEnumeration(classOf[WeightUnitRef]) weightUnit: WeightUnitType,
+    @JsonScalaEnumeration(classOf[WeightUnitRef]) weightUnit: WeightUnit,
     width: Long,
     height: Long,
     depth: Long,
-    @JsonScalaEnumeration(classOf[LinearUnitRef]) linearUnit: LinearUnitType,
+    @JsonScalaEnumeration(classOf[LinearUnitRef]) linearUnit: LinearUnit,
     amount: Long,
     free: Boolean)
 
@@ -169,7 +169,7 @@ object Mogobiz {
     var dateCreated: Date)
 
   case class BOCart(id: Long,
-    buyer: String,
+    buyer: String, // This is an email
     companyFk: Long,
     currencyCode: String,
     currencyRate: Double,
@@ -299,123 +299,56 @@ object Mogobiz {
     var dateCreated: Date)
 
   object TransactionStatus extends Enumeration {
-
-    class TransactionStatusType(s: String) extends Val(s)
-
-    type TransactionStatus = TransactionStatusType
-    val PENDING = new TransactionStatusType("PENDING")
-    val PAYMENT_NOT_INITIATED = new TransactionStatusType("PAYMENT_NOT_INITIATED")
-    val FAILED = new TransactionStatusType("FAILED")
-    val COMPLETE = new TransactionStatusType("COMPLETE")
-
-    def valueOf(str: String): TransactionStatus = str match {
-      case "PENDING" => PENDING
-      case "PAYMENT_NOT_INITIATED" => PAYMENT_NOT_INITIATED
-      case "FAILED" => FAILED
-      case "COMPLETE" => COMPLETE
-    }
-
-    override def toString = this match {
-      case PENDING => "PENDING"
-      case PAYMENT_NOT_INITIATED => "PAYMENT_NOT_INITIATED"
-      case FAILED => "FAILED"
-      case COMPLETE => "COMPLETE"
-      case _ => "Invalid value"
-    }
+    type TransactionStatus = Value
+    val PENDING = Value("PENDING")
+    val PAYMENT_NOT_INITIATED = Value("PAYMENT_NOT_INITIATED")
+    val FAILED = Value("FAILED")
+    val COMPLETE = Value("COMPLETE")
   }
 
   class TransactionStatusRef extends TypeReference[TransactionStatus.type]
 
   object ProductType extends Enumeration {
-
-    class ProductTypeType(s: String) extends Val(s)
-
-    type ProductType = ProductTypeType
-    val SERVICE = new ProductTypeType("SERVICE")
-    val PRODUCT = new ProductTypeType("PRODUCT")
-    val DOWNLOADABLE = new ProductTypeType("DOWNLOADABLE")
-    val PACKAGE = new ProductTypeType("PACKAGE")
-    val OTHER = new ProductTypeType("OTHER")
-
-    def valueOf(str: String): ProductType = str match {
-      case "SERVICE" => SERVICE
-      case "PRODUCT" => PRODUCT
-      case "DOWNLOADABLE" => DOWNLOADABLE
-      case "PACKAGE" => PACKAGE
-      case _ => OTHER
-    }
-
+    type ProductType = Value
+    val SERVICE = Value("SERVICE")
+    val PRODUCT = Value("PRODUCT")
+    val DOWNLOADABLE = Value("DOWNLOADABLE")
+    val PACKAGE = Value("PACKAGE")
+    val OTHER = Value("OTHER")
   }
 
   class ProductTypeRef extends TypeReference[ProductType.type]
 
   object ProductCalendar extends Enumeration {
-
-    class ProductCalendarType(s: String) extends Val(s)
-
-    type ProductCalendar = ProductCalendarType
-    val NO_DATE = new ProductCalendarType("NO_DATE")
-    val DATE_ONLY = new ProductCalendarType("DATE_ONLY")
-    val DATE_TIME = new ProductCalendarType("DATE_TIME")
-
-    def valueOf(str: String): ProductCalendar = str match {
-      case "DATE_ONLY" => DATE_ONLY
-      case "DATE_TIME" => DATE_TIME
-      case _ => NO_DATE
-    }
+    type ProductCalendar = Value
+    val NO_DATE = Value("NO_DATE")
+    val DATE_ONLY = Value("DATE_ONLY")
+    val DATE_TIME = Value("DATE_TIME")
   }
 
   class ProductCalendarRef extends TypeReference[ProductCalendar.type]
 
   object ReductionRuleType extends Enumeration {
-
-    class ReductionRuleTypeType(s: String) extends Val(s)
-
-    type ReductionRuleType = ReductionRuleTypeType
-    val DISCOUNT = new ReductionRuleTypeType("DISCOUNT")
-    val X_PURCHASED_Y_OFFERED = new ReductionRuleTypeType("X_PURCHASED_Y_OFFERED")
-
-    def apply(name: String) = name match {
-      case "DISCOUNT" => DISCOUNT
-      case "X_PURCHASED_Y_OFFERED" => X_PURCHASED_Y_OFFERED
-      case _ => throw new Exception("Not expected ReductionRuleType")
-    }
+    type ReductionRuleType = Value
+    val DISCOUNT = Value("DISCOUNT")
+    val X_PURCHASED_Y_OFFERED = Value("X_PURCHASED_Y_OFFERED")
   }
 
   class ReductionRuleRef extends TypeReference[ReductionRuleType.type]
 
   object WeightUnit extends Enumeration {
-
-    class WeightUnitType(s: String) extends Val(s)
-
-    type WeightUnit = WeightUnitType
-    val KG = new WeightUnitType("KG")
-    val LB = new WeightUnitType("LB")
-    val G = new WeightUnitType("G")
-
-    def apply(str: String) = str match {
-      case "KG" => KG
-      case "LB" => LB
-      case "G" => G
-      case _ => throw new RuntimeException("unexpected WeightUnit value")
-    }
+    type WeightUnit = Value
+    val KG = Value("KG")
+    val LB = Value("LB")
+    val G = Value("G")
   }
 
   class WeightUnitRef extends TypeReference[WeightUnit.type]
 
   object LinearUnit extends Enumeration {
-
-    class LinearUnitType(s: String) extends Val(s)
-
-    type LinearUnit = LinearUnitType
-    val CM = new LinearUnitType("CM")
-    val IN = new LinearUnitType("IN")
-
-    def apply(str: String) = str match {
-      case "CM" => CM
-      case "IN" => IN
-      case _ => throw new RuntimeException("unexpected LinearUnit value")
-    }
+    type LinearUnit = Value
+    val CM = Value("CM")
+    val IN = Value("IN")
   }
 
   class LinearUnitRef extends TypeReference[LinearUnit.type]
@@ -425,68 +358,33 @@ object Mogobiz {
   class ConcurrentUpdateStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
 
   object DeliveryStatus extends Enumeration {
-
-    class DeliveryStatusType(s: String) extends Val(s)
-
-    type DeliveryStatus = DeliveryStatusType
-    val NOT_STARTED = new DeliveryStatusType("NOT_STARTED")
-    val IN_PROGRESS = new DeliveryStatusType("IN_PROGRESS")
-    val DELIVERED = new DeliveryStatusType("DELIVERED")
-    val RETURNED = new DeliveryStatusType("RETURNED")
-    val CANCELED = new DeliveryStatusType("CANCELED")
-
-    def apply(str: String) = str match {
-      case "NOT_STARTED" => NOT_STARTED
-      case "IN_PROGRESS" => IN_PROGRESS
-      case "DELIVERED" => DELIVERED
-      case "RETURNED" => RETURNED
-      case "CANCELED" => CANCELED
-      case _ => throw new RuntimeException("unexpected DeliveryStatus value")
-    }
+    type DeliveryStatus = Value
+    val NOT_STARTED = Value("NOT_STARTED")
+    val IN_PROGRESS = Value("IN_PROGRESS")
+    val DELIVERED = Value("DELIVERED")
+    val RETURNED = Value("RETURNED")
+    val CANCELED = Value("CANCELED")
   }
 
   class DeliveryStatusRef extends TypeReference[DeliveryStatus.type]
 
   object ReturnStatus extends Enumeration {
-
-    class ReturnStatusType(s: String) extends Val(s)
-
-    type ReturnStatus = ReturnStatusType
-    val RETURN_SUBMITTED = new ReturnStatusType("RETURN_SUBMITTED")
-    val RETURN_TO_BE_RECEIVED = new ReturnStatusType("RETURN_TO_BE_RECEIVED")
-    val RETURN_RECEIVED = new ReturnStatusType("RETURN_RECEIVED")
-    val RETURN_REFUSED = new ReturnStatusType("RETURN_REFUSED")
-    val RETURN_ACCEPTED = new ReturnStatusType("RETURN_ACCEPTED")
-
-    def apply(str: String) = str match {
-      case "RETURN_SUBMITTED" => RETURN_SUBMITTED
-      case "RETURN_TO_BE_RECEIVED" => RETURN_TO_BE_RECEIVED
-      case "RETURN_RECEIVED" => RETURN_RECEIVED
-      case "RETURN_REFUSED" => RETURN_REFUSED
-      case "RETURN_ACCEPTED" => RETURN_ACCEPTED
-      case _ => throw new RuntimeException("unexpected ReturnStatus value")
-    }
+    type ReturnStatus = Value
+    val RETURN_SUBMITTED = Value("RETURN_SUBMITTED")
+    val RETURN_TO_BE_RECEIVED = Value("RETURN_TO_BE_RECEIVED")
+    val RETURN_RECEIVED = Value("RETURN_RECEIVED")
+    val RETURN_REFUSED = Value("RETURN_REFUSED")
+    val RETURN_ACCEPTED = Value("RETURN_ACCEPTED")
   }
 
   class ReturnStatusRef extends TypeReference[ReturnStatus.type]
 
   object ReturnedItemStatus extends Enumeration {
-
-    class ReturnedItemStatusType(s: String) extends Val(s)
-
-    type ReturnedItemStatus = ReturnedItemStatusType
-    val UNDEFINED = new ReturnedItemStatusType("UNDEFINED")
-    val NOT_AVAILABLE = new ReturnedItemStatusType("NOT_AVAILABLE")
-    val BACK_TO_STOCK = new ReturnedItemStatusType("BACK_TO_STOCK")
-    val DISCARDED = new ReturnedItemStatusType("DISCARDED")
-
-    def apply(str: String) = str match {
-      case "UNDEFINED" => UNDEFINED
-      case "NOT_AVAILABLE" => NOT_AVAILABLE
-      case "BACK_TO_STOCK" => BACK_TO_STOCK
-      case "DISCARDED" => DISCARDED
-      case _ => throw new RuntimeException("unexpected ReturnedItemStatus value")
-    }
+    type ReturnedItemStatus = Value
+    val UNDEFINED = Value("UNDEFINED")
+    val NOT_AVAILABLE = Value("NOT_AVAILABLE")
+    val BACK_TO_STOCK = Value("BACK_TO_STOCK")
+    val DISCARDED = Value("DISCARDED")
   }
 
   class ReturnedItemStatusRef extends TypeReference[ReturnedItemStatus.type]
