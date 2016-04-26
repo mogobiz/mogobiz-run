@@ -50,7 +50,6 @@ class PromotionHandler {
     val now = DateTimeFormat.forPattern("yyyy-MM-dd").print(new Date().getTime)
     val filters: List[FilterDefinition] = List(
       termFilter("anonymous", true),
-      termFilter("active", true),
       or(rangeFilter("startDate") lte now, missingFilter("startDate")),
       or(rangeFilter("endDate") gte now, missingFilter("endDate"))
     )
