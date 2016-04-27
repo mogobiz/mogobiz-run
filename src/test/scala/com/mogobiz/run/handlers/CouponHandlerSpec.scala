@@ -54,7 +54,7 @@ class CouponHandlerSpec extends MogobizRouteTest {
   }
 
   private def extractConsumed(storeCode: String, couponCode: String) : Option[Long] = DB readOnly { implicit session =>
-    sql""" select c.consumed from Coupon c where c.code=${couponCode} and company_fk in (select c.id from Company c where c.code = ${storeCode}) """.map(rs => rs.long(1)).first().apply()
+    sql""" select c.consumed from coupon c where c.code=${couponCode} and company_fk in (select c.id from company c where c.code = ${storeCode}) """.map(rs => rs.long(1)).first().apply()
   }
 
 }
