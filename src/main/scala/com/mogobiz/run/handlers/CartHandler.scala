@@ -164,7 +164,7 @@ class CartHandler {
     val skuStartDate = sku.startDate.getOrElse(DateTime.now()).toLocalDate
     val skuEndDate = sku.stopDate.getOrElse(DateTime.now()).toLocalDate
 
-    !skuStartDate.isAfter(now) && !skuEndDate.isBefore(now) && (country.isEmpty || taxRateHandler.findTaxRateByProduct(productAndSku._1, country, state).isDefined)
+    !skuStartDate.isAfter(now) && !skuEndDate.isBefore(now) && (state.isEmpty || taxRateHandler.findTaxRateByProduct(productAndSku._1, country, state).isDefined)
   }
 
   /**
