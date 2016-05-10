@@ -77,9 +77,9 @@ class LearningHandler extends BootedMogobizSystem with LazyLogging {
       logger.debug(req._builder.toString)
       val predictions = EsClient.searchAll[Prediction](req).map(_.uid)
       predictions.foreach(p => logger.debug(p))
-      predictions
+      predictions.distinct
     } else {
-      itemids
+      itemids.distinct
     }
   }
 
