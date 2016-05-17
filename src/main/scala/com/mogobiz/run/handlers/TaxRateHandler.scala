@@ -6,6 +6,7 @@ package com.mogobiz.run.handlers
 
 import com.mogobiz.run.model.Mogobiz
 import com.mogobiz.run.model.Mogobiz.LocalTaxRate
+import org.apache.commons.lang.StringUtils
 
 /**
  */
@@ -32,17 +33,30 @@ class TaxRateHandler {
    * @return : the found tax or None if tax isn't find
    */
   private def findTaxRate(localTaxRates: List[LocalTaxRate], country: Option[String], state: Option[String]): Option[Float] = {
-    if (country.isDefined) {
-      val taxRate = localTaxRates.find { taxRate =>
-        {
-          val isSameState: Boolean = if (state.isDefined) taxRate.stateCode == state.get else taxRate.stateCode == ""
-          isSameState && taxRate.countryCode == country.get
+    country.map { c =>
+      state.map { s =>
+        localTaxRates.find { taxRate =>
+          taxRate.countryCode == c && taxRate.stateCode == s
+        }.map { taxRate =>
+          Some(taxRate.rate)
+        }.getOrElse {
+          findTaxRate(localTaxRates, country, None)
+        }
+      }.getOrElse {
+        val existTaxRateWithState = localTaxRates.find { taxRate =>
+          taxRate.countryCode == c && StringUtils.isNotEmpty(taxRate.stateCode)
+        }
+        existTaxRateWithState.map {
+          ltx => None
+        }.getOrElse {
+          localTaxRates.find { taxRate =>
+            taxRate.countryCode == c && StringUtils.isEmpty(taxRate.stateCode)
+          }.map { taxRate =>
+            Some(taxRate.rate)
+          }.getOrElse(None)
         }
       }
-      if (taxRate.isDefined) Some(taxRate.get.rate)
-      else if (state.isDefined) findTaxRate(localTaxRates, country, None) // On recherche le taxRate sans State
-      else None
-    } else None
+    }.getOrElse(None)
   }
 
   /**
