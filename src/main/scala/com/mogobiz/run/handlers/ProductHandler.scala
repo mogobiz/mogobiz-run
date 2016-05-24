@@ -146,7 +146,9 @@ class ProductHandler extends JsonUtil {
       createOrRegexAndTypeFilter(
         List(
           TypeField("product", "category.path"),
-          TypeField("category", "path")
+          TypeField("category", "path"),
+          TypeField("brand", "categories"),
+          TypeField("tag", "categories")
         ),
         params.categoryPath)
     ).flatten
