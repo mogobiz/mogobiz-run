@@ -22,7 +22,7 @@ object CartRegistration extends BootedMogobizSystem with LazyLogging {
   def computeFIS(store: String, itemids: Seq[String], segment: Option[String]): Unit = {
     val sorted: Seq[String] = itemids.distinct.sorted
 
-    if (sorted.length < 100) {
+    if (sorted.length > 1 && sorted.length < 100) {
       implicit val _ = ActorFlowMaterializer()
 
       val g: FlowGraph = FlowGraph { implicit builder =>
