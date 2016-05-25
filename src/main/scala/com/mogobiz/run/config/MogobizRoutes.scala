@@ -6,9 +6,10 @@ package com.mogobiz.run.config
 
 import akka.actor.Props
 import com.mogobiz.run.exceptions.MogobizException
+import com.mogobiz.run.jobs.CleanCartJob
 import com.mogobiz.run.services._
 import com.mogobiz.system.{ MogobizSystem, RoutedHttpService }
-import spray.http.{ HttpResponse, HttpRequest, StatusCodes }
+import spray.http.{ HttpRequest, HttpResponse, StatusCodes }
 import spray.routing.directives.BasicDirectives._
 import spray.routing.directives.LoggingMagnet
 import spray.routing.{ Directives, _ }
@@ -19,6 +20,12 @@ trait MogobizRoutes extends Directives {
   this: MogobizSystem =>
 
   private implicit val _ = system.dispatcher
+
+  def bootstrap(): Unit = {
+    com.mogobiz.session.boot.DBInitializer()
+    com.mogobiz.notify.boot.DBInitializer()
+    CleanCartJob.start(system)
+  }
 
   lazy val apiRoutes =
     new TagService().route ~

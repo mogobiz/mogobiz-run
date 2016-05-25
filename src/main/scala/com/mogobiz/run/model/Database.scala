@@ -212,11 +212,11 @@ object Mogobiz {
 
   case class BOCartItem(id: Long,
     code: String,
-    price: Long,
-    tax: Double,
-    endPrice: Long,
-    totalPrice: Long,
-    totalEndPrice: Long,
+    price: Long, // unit price excluding VAT
+    tax: Double, // VAT
+    endPrice: Long, // unit price including VAT
+    totalPrice: Long, // unit price excluding VAT * quantity
+    totalEndPrice: Long, // unit price including VAT * quantity
     hidden: Boolean,
     quantity: Int,
     startDate: Option[DateTime],
