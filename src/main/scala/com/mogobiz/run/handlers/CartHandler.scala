@@ -9,7 +9,7 @@ import java.util.{ Date, Locale, UUID }
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
-import com.mogobiz.pay.common.{ Cart => CartPay, CartItem => CartItemPay, CartRate, CompanyAddress, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay }
+import com.mogobiz.pay.common.{ CartRate, CompanyAddress, Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay }
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.actors.EsUpdateActor
 import com.mogobiz.run.actors.EsUpdateActor.ProductStockAvailabilityUpdateRequest
@@ -20,7 +20,7 @@ import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions._
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.learning.{ CartRegistration, UserActionRegistration }
-import com.mogobiz.run.model.ES.{ BOCart => BOCartES, BOCartEx, BOCartItem => BOCartItemES, BOCartItemEx, BODelivery => BODeliveryES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOReturn => BOReturnES, BOReturnedItem => BOReturnedItemES }
+import com.mogobiz.run.model.ES.{ BOCartEx, BOCartItemEx, BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOReturn => BOReturnES, BOReturnedItem => BOReturnedItemES }
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.Render.{ Cart, CartItem, Coupon, RegisteredCartItem }
@@ -32,6 +32,7 @@ import com.mogobiz.system.ActorSystemLocator
 import com.mogobiz.utils.{ QRCodeUtils, SymmetricCrypt }
 import com.sksamuel.elastic4s.ElasticDsl.{ get, tuple2indexestypes }
 import com.sun.org.apache.xml.internal.security.utils.Base64
+import com.typesafe.scalalogging.LazyLogging
 import org.elasticsearch.common.bytes.ChannelBufferBytesReference
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -41,7 +42,7 @@ import org.json4s.jackson.Serialization._
 import org.json4s.{ DefaultFormats, FieldSerializer, Formats }
 import scalikejdbc._
 
-class CartHandler {
+class CartHandler extends LazyLogging {
   val rateService = RateBoService
 
   /**
@@ -205,7 +206,7 @@ class CartHandler {
         StoreCartDao.save(updatedCart)
         updatedCart
       } else {
-        println("silent op")
+        logger.debug("silent op")
         cart
       }
       val computeCart = _computeStoreCart(updatedCart, params.country, params.state)

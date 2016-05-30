@@ -36,7 +36,7 @@ class CouponHandler {
       if (skusIdList.nonEmpty && skusIdList.contains(cartItem.cartItem.skuId)) {
         val price = cartItem.saleEndPrice.getOrElse(cartItem.salePrice)
         val totalPrice = cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice)
-        _applyReductionRules(coupon.coupon.rules, cartItem.quantity, price, totalPrice)
+        applyReductionRules(coupon.coupon.rules, cartItem.quantity, price, totalPrice)
       } else {
         // Le coupon ne s'applique sur aucun SKU, donc prix = 0
         0
@@ -49,11 +49,11 @@ class CouponHandler {
 
   def getWithData(storeCode: String, storeCoupon: StoreCoupon): CouponWithData = {
     val coupon = CouponDao.findByCode(storeCode, storeCoupon.code).get
-    CouponWithData(coupon, _isCouponActive(coupon), 0, promotion = false)
+    CouponWithData(coupon, isCouponActive(coupon), 0, promotion = false)
   }
 
   def getWithData(coupon: Mogobiz.Coupon): CouponWithData = {
-    CouponWithData(coupon, _isCouponActive(coupon), 0, promotion = true)
+    CouponWithData(coupon, isCouponActive(coupon), 0, promotion = true)
   }
 
   def transformAsRender(storeCode: String, coupon: CouponWithData): Option[Render.Coupon] = {
@@ -65,16 +65,16 @@ class CouponHandler {
     }
   }
 
-  private def _isCouponActive(coupon: Mogobiz.Coupon): Boolean = {
+  protected def isCouponActive(coupon: Mogobiz.Coupon): Boolean = {
     if (coupon.startDate.isEmpty && coupon.endDate.isEmpty) true
     else if (coupon.startDate.isDefined && coupon.endDate.isEmpty) coupon.startDate.get.isBeforeNow || coupon.startDate.get.isEqualNow
     else if (coupon.startDate.isEmpty && coupon.endDate.isDefined) coupon.endDate.get.isAfterNow || coupon.endDate.get.isEqualNow
     else (coupon.startDate.get.isBeforeNow || coupon.startDate.get.isEqualNow) && (coupon.endDate.get.isAfterNow || coupon.endDate.get.isEqualNow)
   }
 
-  private def _applyReductionRules(rules: List[ReductionRule], quantity: Long, price: Long, totalPrice: Long): Long = {
+  protected def applyReductionRules(rules: List[ReductionRule], quantity: Long, price: Long, totalPrice: Long): Long = {
     if (rules.isEmpty) 0
-    else _applyReductionRules(rules.tail, quantity, price, totalPrice) + _applyReductionRule(rules.head, quantity, price, totalPrice)
+    else applyReductionRules(rules.tail, quantity, price, totalPrice) + applyReductionRule(rules.head, quantity, price, totalPrice)
   }
 
   /**
@@ -85,7 +85,7 @@ class CouponHandler {
    * @param totalPrice : prix total
    * @return
    */
-  private def _applyReductionRule(rule: ReductionRule, quantity: Long, price: Long, totalPrice: Long): Long = {
+  protected def applyReductionRule(rule: ReductionRule, quantity: Long, price: Long, totalPrice: Long): Long = {
     rule.xtype match {
       case ReductionRuleType.DISCOUNT =>
         computeDiscount(rule.discount, totalPrice)

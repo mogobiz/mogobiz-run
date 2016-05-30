@@ -5,11 +5,12 @@
 package com.mogobiz.services
 
 import com.mogobiz.MogobizRouteTest
+import com.typesafe.scalalogging.LazyLogging
 import org.specs2.matcher._
 import org.json4s.native.JsonParser
 import org.json4s.JsonAST._
 
-class FacetServiceSpec extends MogobizRouteTest {
+class FacetServiceSpec extends MogobizRouteTest with LazyLogging {
 
 
   "The Facet service" should {
@@ -18,7 +19,7 @@ class FacetServiceSpec extends MogobizRouteTest {
       Get("/store/" + STORE + "/facets?priceInterval=5000") ~> sealRoute(routes) ~> check {
         //val res = JsonParser.parse(responseAs[String])
         val res = response
-        println(res)
+        logger.info(res)
         res must be_==(true)
       }
     }
