@@ -13,8 +13,10 @@ import com.mogobiz.run.config.MogobizRoutes
 import com.mogobiz.run.es.EmbeddedElasticSearchNode
 import com.mogobiz.system.{ActorSystemLocator, MogobizSystem}
 import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.slf4j.Logger
 import org.elasticsearch.node.Node
 import org.json4s.JsonAST.{JArray, JValue}
+import org.slf4j.LoggerFactory
 import org.specs2.matcher.JsonMatchers
 import org.specs2.mutable.Specification
 import org.specs2.specification.{AfterExample, Fragments, Step}
@@ -91,7 +93,8 @@ abstract class MogobizRouteTest extends Specification with Specs2RouteTest with 
   }
 }
 
-object StartEmbeddedElasticSearchNodeApp extends App with EmbeddedElasticSearchNode with LazyLogging {
+object StartEmbeddedElasticSearchNodeApp extends App with EmbeddedElasticSearchNode {
+  val logger = Logger(LoggerFactory.getLogger("com.mogobiz.StartEmbeddedElasticSearchNodeApp"))
   val esNode = startES()
 
   println("Press Enter to quit")

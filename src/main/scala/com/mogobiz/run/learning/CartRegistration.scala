@@ -11,14 +11,15 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Learning._
 import com.mogobiz.system.BootedMogobizSystem
 import com.sksamuel.elastic4s.BulkCompatibleDefinition
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import com.typesafe.scalalogging.slf4j.{ LazyLogging, Logger }
 import org.elasticsearch.action.bulk.BulkResponse
-
 import akka.stream.scaladsl._
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ Await, Future }
 
-object CartRegistration extends BootedMogobizSystem with LazyLogging {
+object CartRegistration extends BootedMogobizSystem {
+  val logger = Logger(LoggerFactory.getLogger("com.mogobiz.run.learning.CartRegistration"))
   def computeFIS(store: String, itemids: Seq[String], segment: Option[String]): Unit = {
     val sorted: Seq[String] = itemids.distinct.sorted
 
