@@ -7,7 +7,7 @@ package com.mogobiz.run.services
 import java.util.UUID
 
 import com.mogobiz.pay.common.Cart
-import com.mogobiz.pay.handlers.shipping.ShippingPrice
+import com.mogobiz.pay.handlers.shipping.ShippingData
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import com.mogobiz.pay.model.ParamRequest.ListShippingPriceParam
@@ -233,7 +233,7 @@ class CartService extends Directives with DefaultComplete {
                     session.sessionData.cart = Some(cart)
                     import com.mogobiz.pay.config.MogopayHandlers.handlers.transactionHandler
                     handleCall(transactionHandler.shippingPrices(cart, id),
-                      (shippinggPrices: Seq[ShippingPrice]) => {
+                      (shippinggPrices: Seq[ShippingData]) => {
                         session.sessionData.shippingPrices = Option(shippinggPrices.toList)
                         setSession(session) {
                           complete(StatusCodes.OK -> shippinggPrices)
