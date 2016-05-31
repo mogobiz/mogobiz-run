@@ -26,12 +26,12 @@ import com.sksamuel.elastic4s.ElasticDsl.{ search => esearch4s, _ }
 
 //import com.sksamuel.elastic4s.IndexesTypes
 
-import com.typesafe.scalalogging.slf4j.LazyLogging
+import com.typesafe.scalalogging.StrictLogging
 import org.elasticsearch.search.sort.SortOrder
 
 //import scala.concurrent.Future
 
-class LearningHandler extends BootedMogobizSystem with LazyLogging {
+class LearningHandler extends BootedMogobizSystem with StrictLogging {
   def cooccurences(store: String, productId: String, action: UserAction, customer: Option[String]): Seq[String] = {
     val index = action match {
       case UserAction.Purchase => esPurchasePredictions _

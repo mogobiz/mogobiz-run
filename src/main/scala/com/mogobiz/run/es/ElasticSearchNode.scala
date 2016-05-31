@@ -12,7 +12,7 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{ FileVisitResult, Files, Path, SimpleFileVisitor }
 
 import com.mogobiz.run.config.Settings._
-import com.typesafe.scalalogging.slf4j.Logger
+import com.typesafe.scalalogging.Logger
 import org.elasticsearch.common.collect.Tuple
 import org.elasticsearch.common.io.FileSystemUtils
 import org.elasticsearch.common.settings.ImmutableSettings.Builder.EMPTY_SETTINGS

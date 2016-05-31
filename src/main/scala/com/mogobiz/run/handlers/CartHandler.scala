@@ -32,7 +32,7 @@ import com.mogobiz.system.ActorSystemLocator
 import com.mogobiz.utils.{ QRCodeUtils, SymmetricCrypt }
 import com.sksamuel.elastic4s.ElasticDsl.{ get, tuple2indexestypes }
 import com.sun.org.apache.xml.internal.security.utils.Base64
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.StrictLogging
 import org.elasticsearch.common.bytes.ChannelBufferBytesReference
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -42,7 +42,7 @@ import org.json4s.jackson.Serialization._
 import org.json4s.{ DefaultFormats, FieldSerializer, Formats }
 import scalikejdbc._
 
-class CartHandler extends LazyLogging {
+class CartHandler extends StrictLogging {
   val rateService = RateBoService
 
   /**

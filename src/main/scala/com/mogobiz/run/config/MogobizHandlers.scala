@@ -4,10 +4,6 @@
 
 package com.mogobiz.run.config
 
-import com.mogobiz.pay.handlers.shipping.EasyPostHandler
-import com.mogobiz.run.handlers._
-import com.mogobiz.run.handlers.sql.ForUpdateHandler
-
 object MogobizHandlers {
   val handlers: MogobizCake =
     if (Settings.CakeClass != null && Settings.CakeClass.trim.length > 0)

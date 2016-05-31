@@ -5,12 +5,12 @@
 package com.mogobiz.services
 
 import com.mogobiz.MogobizRouteTest
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.StrictLogging
 import org.specs2.matcher._
 import org.json4s.native.JsonParser
 import org.json4s.JsonAST._
 
-class FacetServiceSpec extends MogobizRouteTest with LazyLogging {
+class FacetServiceSpec extends MogobizRouteTest with StrictLogging {
 
 
   "The Facet service" should {

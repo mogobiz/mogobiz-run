@@ -11,7 +11,7 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Learning._
 import com.mogobiz.system.BootedMogobizSystem
 import com.sksamuel.elastic4s.BulkCompatibleDefinition
-import com.typesafe.scalalogging.slf4j.{ LazyLogging, Logger }
+import com.typesafe.scalalogging.{ StrictLogging, Logger }
 import org.elasticsearch.action.bulk.BulkResponse
 import akka.stream.scaladsl._
 import org.slf4j.LoggerFactory
