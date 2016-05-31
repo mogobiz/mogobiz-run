@@ -359,11 +359,12 @@ object Mogobiz {
 
   object DeliveryStatus extends Enumeration {
     type DeliveryStatus = Value
-    val NOT_STARTED = Value("NOT_STARTED")
-    val IN_PROGRESS = Value("IN_PROGRESS")
-    val DELIVERED = Value("DELIVERED")
-    val RETURNED = Value("RETURNED")
-    val CANCELED = Value("CANCELED")
+    val NOT_STARTED = Value("NOT_STARTED") //  "unknown"
+    val IN_PROGRESS = Value("IN_PROGRESS") // "pre_transit", "in_transit"
+    val DELIVERED = Value("DELIVERED") //"delivered", "available_for_pickup"
+    val RETURNED = Value("RETURNED") // "return_to_sender"
+    val CANCELED = Value("CANCELED") // "cancelled"
+    val ERROR = Value("ERROR") // "error", "failure"
   }
 
   class DeliveryStatusRef extends TypeReference[DeliveryStatus.type]
