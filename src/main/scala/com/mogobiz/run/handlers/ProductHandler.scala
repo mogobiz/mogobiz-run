@@ -905,7 +905,7 @@ object ProductDao extends JsonUtil {
     val productsList = EsClient.searchAll[Mogobiz.Product](req)
 
     // Extract des id des Skus
-    productsList.toList.flatMap(p => p.skus.filter { sku => sku.coupons.exists(c => c.id == couponId) }.map(sku => sku.id))
+    productsList.toList.flatMap(p => p.skus.filter { sku => sku.coupons != null && sku.coupons.exists(c => c.id == couponId) }.map(sku => sku.id))
   }
 
 }
