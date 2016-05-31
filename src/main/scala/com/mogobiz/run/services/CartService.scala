@@ -7,7 +7,6 @@ package com.mogobiz.run.services
 import java.util.UUID
 
 import com.mogobiz.pay.common.Cart
-import com.mogobiz.pay.handlers.shipping.ShippingData
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import com.mogobiz.pay.model.ParamRequest.ListShippingPriceParam
@@ -15,6 +14,7 @@ import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
+import com.mogobiz.pay.model.Mogopay.ShippingData
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.session.Session
 import spray.http.{ HttpCookie, StatusCodes }

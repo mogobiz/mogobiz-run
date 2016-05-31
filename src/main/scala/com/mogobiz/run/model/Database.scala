@@ -332,6 +332,7 @@ object Mogobiz {
     type ReductionRuleType = Value
     val DISCOUNT = Value("DISCOUNT")
     val X_PURCHASED_Y_OFFERED = Value("X_PURCHASED_Y_OFFERED")
+    val CUSTOM = Value("CUSTOM")
   }
 
   class ReductionRuleRef extends TypeReference[ReductionRuleType.type]

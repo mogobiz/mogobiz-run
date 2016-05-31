@@ -29,14 +29,14 @@ class CouponHandler {
     numberModifyLine > 0
   }
 
-  def computeCouponPriceForCartItem(storeCode: String, coupon: CouponWithData, cartItem: StoreCartItemWithPrice): Long = {
+  def computeCouponPriceForCartItem(storeCode: String, coupon: CouponWithData, cartItem: StoreCartItemWithPrice, cartItems: List[StoreCartItemWithPrice]): Long = {
     if (coupon.active) {
       val skusIdList = ProductDao.getSkusIdByCoupon(storeCode, coupon.coupon.id)
 
       if (skusIdList.nonEmpty && skusIdList.contains(cartItem.cartItem.skuId)) {
         val price = cartItem.saleEndPrice.getOrElse(cartItem.salePrice)
         val totalPrice = cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice)
-        applyReductionRules(coupon.coupon.rules, cartItem.quantity, price, totalPrice)
+        applyReductionRules(coupon.coupon.rules, cartItem, price, totalPrice, cartItems)
       } else {
         // Le coupon ne s'applique sur aucun SKU, donc prix = 0
         0
@@ -72,20 +72,18 @@ class CouponHandler {
     else (coupon.startDate.get.isBeforeNow || coupon.startDate.get.isEqualNow) && (coupon.endDate.get.isAfterNow || coupon.endDate.get.isEqualNow)
   }
 
-  protected def applyReductionRules(rules: List[ReductionRule], quantity: Long, price: Long, totalPrice: Long): Long = {
-    if (rules.isEmpty) 0
-    else applyReductionRules(rules.tail, quantity, price, totalPrice) + applyReductionRule(rules.head, quantity, price, totalPrice)
-  }
-
   /**
    * Applique la règle sur le montant total (DISCOUNT) ou sur le montant uniquement en fonction de la quantité (X_PURCHASED_Y_OFFERED)
    * @param rule : règle à appliquer
+   * @param cartItem : Item concerné par la réduction
    * @param quantity : quantité
    * @param price : prix unitaire
    * @param totalPrice : prix total
+   * @param cartItems : liste des items du panier
    * @return
    */
-  protected def applyReductionRule(rule: ReductionRule, quantity: Long, price: Long, totalPrice: Long): Long = {
+
+  protected def applyReductionRule(rule: ReductionRule, cartItem: StoreCartItemWithPrice, quantity: Long, price: Long, totalPrice: Long, cartItems: List[StoreCartItemWithPrice]): Long = {
     rule.xtype match {
       case ReductionRuleType.DISCOUNT =>
         computeDiscount(rule.discount, totalPrice)
@@ -94,6 +92,13 @@ class CouponHandler {
         price * rule.yOffered.getOrElse(1L) * multiple
       case _ => 0L
     }
+  }
+
+  protected def applyReductionRules(rules: Seq[ReductionRule], cartItem: StoreCartItemWithPrice, price: Long, totalPrice: Long, cartItems: List[StoreCartItemWithPrice]): Long = {
+    if (rules.isEmpty)
+      0
+    else
+      applyReductionRules(rules.tail, cartItem, price, totalPrice, cartItems) + applyReductionRule(rules.head, cartItem, cartItem.quantity, price, totalPrice, cartItems)
   }
 
   /**
