@@ -1012,7 +1012,7 @@ class CartHandler extends StrictLogging {
 
   protected def findBestReductionForCartItem(storeCode: String, cartItem: StoreCartItemWithPrice,
     coupons: List[CouponWithData], cartItems: List[StoreCartItemWithPrice]): (Long, Option[CouponWithData]) = {
-    if (coupons.isEmpty) (cartItem.cartItem.price - cartItem.cartItem.salePrice, None)
+    if (coupons.isEmpty) (0, None)
     else {
       val coupon = coupons.head
       val price = couponHandler.computeCouponPriceForCartItem(storeCode, coupon, cartItem, cartItems)
