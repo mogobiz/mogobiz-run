@@ -22,7 +22,6 @@ trait MogobizRoutes extends Directives {
   private implicit val _ = system.dispatcher
 
   def bootstrap(): Unit = {
-    MogobizHandlers.handlers
     com.mogobiz.session.boot.DBInitializer()
     com.mogobiz.notify.boot.DBInitializer()
     CleanCartJob.start(system)
