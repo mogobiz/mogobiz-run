@@ -1012,7 +1012,7 @@ class CartHandler extends StrictLogging {
 
   protected def findBestReductionForCartItem(storeCode: String, cartItem: StoreCartItemWithPrice,
     coupons: List[CouponWithData], cartItems: List[StoreCartItemWithPrice]): (Long, Option[CouponWithData]) = {
-    if (coupons.isEmpty) (0, None)
+    if (coupons.isEmpty) (cartItem.cartItem.price - cartItem.cartItem.salePrice, None)
     else {
       val coupon = coupons.head
       val price = couponHandler.computeCouponPriceForCartItem(storeCode, coupon, cartItem, cartItems)
@@ -1605,6 +1605,25 @@ object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
     }
 
     newBODelivery
+  }
+
+  def save(boDelivery: BODelivery)(implicit session: DBSession): BODelivery = {
+    val updatedboDelivery = boDelivery.copy(lastUpdated = DateTime.now())
+
+    withSQL {
+      update(BODeliveryDao).set(
+        BODeliveryDao.column.id -> updatedboDelivery.id,
+        BODeliveryDao.column.bOCartFk -> updatedboDelivery.bOCartFk,
+        BODeliveryDao.column.status -> updatedboDelivery.status.toString(),
+        BODeliveryDao.column.tracking -> updatedboDelivery.tracking,
+        BODeliveryDao.column.extra -> updatedboDelivery.extra,
+        BODeliveryDao.column.dateCreated -> updatedboDelivery.dateCreated,
+        BODeliveryDao.column.lastUpdated -> updatedboDelivery.lastUpdated,
+        BODeliveryDao.column.uuid -> updatedboDelivery.uuid
+      ).where.eq(BOReturnedItemDao.column.id, updatedboDelivery.id)
+    }.update.apply()
+
+    updatedboDelivery
   }
 
   def findByBOCartItem(boCartItem: BOCartItem)(implicit session: DBSession): Option[BODelivery] = {
