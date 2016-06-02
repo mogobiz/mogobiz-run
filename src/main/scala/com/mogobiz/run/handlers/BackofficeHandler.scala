@@ -176,7 +176,7 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     EsClient.searchRaw(
       search in BOCartESDao.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid", esTransactionUuid)
-    ).getOrElse(throw new NotFoundException(""))
+    ).getOrElse(throw new NotFoundException(s"Transaction UUID $esTransactionUuid"))
   }
 
   def notifyItemReturned(merchant: Account, customer: Account, boCartItem: BOCartItem, boReturn: BOReturn, locale: Option[String]): Unit = {
