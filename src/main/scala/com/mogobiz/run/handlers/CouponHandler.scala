@@ -74,12 +74,13 @@ class CouponHandler {
 
   /**
    * Applique la règle sur le montant total (DISCOUNT) ou sur le montant uniquement en fonction de la quantité (X_PURCHASED_Y_OFFERED)
-   * @param rule : règle à appliquer
-   * @param cartItem : Item concerné par la réduction
-   * @param quantity : quantité
-   * @param price : prix unitaire
+   *
+   * @param rule       : règle à appliquer
+   * @param cartItem   : Item concerné par la réduction
+   * @param quantity   : quantité
+   * @param price      : prix unitaire
    * @param totalPrice : prix total
-   * @param cartItems : liste des items du panier
+   * @param cartItems  : liste des items du panier
    * @return
    */
 
@@ -103,18 +104,18 @@ class CouponHandler {
 
   /**
    *
-   * @param discountRule
-   * @param prixDeBase
+   * @param discount
+   * @param basePrice
    * @return
    */
-  def computeDiscount(discountRule: Option[String], prixDeBase: Long): Long = {
-    discountRule match {
-      case Some(regle) => {
-        if (regle.endsWith("%")) {
-          val pourcentage = java.lang.Float.parseFloat(regle.substring(0, regle.length() - 1))
-          (prixDeBase * pourcentage / 100).toLong //TODO recheck the rounded value computed
-        } else if (regle.startsWith("+")) -java.lang.Long.parseLong(regle.substring(1))
-        else if (regle.startsWith("-")) java.lang.Long.parseLong(regle.substring(1))
+  def computeDiscount(discount: Option[String], basePrice: Long): Long = {
+    discount match {
+      case Some(rule) => {
+        if (rule.endsWith("%")) {
+          val percentage = java.lang.Float.parseFloat(rule.substring(0, rule.length() - 1))
+          Math.ceil(basePrice * percentage / 100).toLong
+        } else if (rule.startsWith("+")) -java.lang.Long.parseLong(rule.substring(1))
+        else if (rule.startsWith("-")) java.lang.Long.parseLong(rule.substring(1))
         else 0
       }
       case None => 0L
@@ -159,7 +160,7 @@ object CouponDao {
         )
       ) from 0 size EsClient.MAX_SIZE
 
-    // Lancement de la requête
-    EsClient.searchAll[Mogobiz.Coupon](req).toList;
+    EsClient.searchAll[Mogobiz.Coupon](req).toList
   }
 }
+
