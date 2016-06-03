@@ -13,7 +13,7 @@ import com.mogobiz.session.Session
 import com.mogobiz.session.SessionESDirectives._
 import org.json4s.JsonAST.JValue
 import spray.http.StatusCodes
-import spray.routing.Directives
+import spray.routing._
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import Json4sProtocol._
 import com.mogobiz.run.exceptions.{ MogobizException, SomeParameterIsMissingException }
@@ -25,11 +25,25 @@ class BackofficeService extends Directives with DefaultComplete {
       val accountUuid = optSession.flatMap(_.sessionData.accountId)
       val locale = optSession.flatMap(_.sessionData.locale)
       pathPrefix(Segment / "backoffice") { implicit storeCode =>
-        path("listOrders") {
-          get {
-            listOrders(storeCode, accountUuid)
+        path("shipping-webhook" / Segment) { webhookProvider =>
+          post {
+            def rawData: Directive1[String] = extract {
+              _.request.entity.asString
+            }
+            rawData { postData =>
+              handleCall(backofficeHandler.shippingWebhook(storeCode, webhookProvider, postData),
+                (_: Unit) => {
+                  complete(StatusCodes.OK)
+                }
+              )
+            }
           }
         } ~
+          path("listOrders") {
+            get {
+              listOrders(storeCode, accountUuid)
+            }
+          } ~
           path("listCustomers") {
             get {
               listCustomers(storeCode, accountUuid)
@@ -96,4 +110,5 @@ class BackofficeService extends Directives with DefaultComplete {
       handleCall(backofficeHandler.updateBOReturnedItem(storeCode, accountUuid.getOrElse(throw new SomeParameterIsMissingException("accountUuid not found")), transactionUuid, boCartItemUuid, boReturnedUuid, req, locale),
         (res: Unit) => complete(StatusCodes.OK))
     }
+
 }

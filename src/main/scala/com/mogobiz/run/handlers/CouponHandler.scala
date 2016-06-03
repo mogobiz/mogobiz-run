@@ -18,13 +18,13 @@ class CouponHandler {
 
   def releaseCoupon(storeCode: String, coupon: Mogobiz.Coupon): Unit = {
     DB localTx { implicit s =>
-      sql""" update coupon set consumed=consumed-1 where code=${coupon.code} and consumed > 0 and company_fk in (select c.id from Company c where c.code = ${storeCode}) """.update().apply()
+      sql""" update coupon set consumed=consumed-1 where code=${coupon.code} and consumed > 0 and company_fk in (select c.id from company c where c.code = ${storeCode}) """.update().apply()
     }
   }
 
   def consumeCoupon(storeCode: String, coupon: Mogobiz.Coupon): Boolean = {
     val numberModifyLine = DB localTx { implicit s =>
-      sql""" update coupon set consumed=consumed+1 where code=${coupon.code} and (number_of_uses is null or number_of_uses > consumed) and company_fk in (select c.id from Company c where c.code = ${storeCode}) """.update().apply()
+      sql""" update coupon set consumed=consumed+1 where code=${coupon.code} and (number_of_uses is null or number_of_uses > consumed) and company_fk in (select c.id from company c where c.code = ${storeCode}) """.update().apply()
     }
     numberModifyLine > 0
   }

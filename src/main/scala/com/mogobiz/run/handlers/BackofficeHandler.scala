@@ -11,13 +11,15 @@ import com.mogobiz.es.{ EsClient, _ }
 import com.mogobiz.json.{ JacksonConverter, JsonUtil }
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.pay.config.Settings
-import com.mogobiz.pay.model.Mogopay.{ Account, Document, RoleName }
+import com.mogobiz.pay.handlers.shipping.EasyPostHandler
+import com.mogobiz.pay.model.Mogopay.{ BOTransaction, Account, Document, RoleName }
 import com.mogobiz.run.config
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions.{ IllegalStatusException, MinMaxQuantityException, NotAuthorizedException, NotFoundException }
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.RequestParameters.{ BOListCustomersRequest, BOListOrdersRequest, CreateBOReturnedItemRequest, UpdateBOReturnedItemRequest }
+import com.mogobiz.run.model.WebHookData
 import com.mogobiz.run.utils.Paging
 import com.mogobiz.utils.EmailHandler
 import com.mogobiz.utils.EmailHandler.Mail
@@ -312,6 +314,64 @@ class BackofficeHandler extends JsonUtil with BoService {
         cartHandler.exportBOCartIntoES(storeCode, boCart, refresh = true)
         notifyItemReturnedStatusUpdated(merchant, customer, boCartItem, lastReturn, boReturn, locale)
 
+    }
+  }
+
+  def shippingWebhook(storeCode: String, webhookProvider: String, data: String): Unit = {
+    extractWebHookData(webhookProvider, data).map { webHookData =>
+      boTransactionHandler.findByShipmentId(EasyPostHandler.EASYPOST_SHIPPING_PREFIX + webHookData.shipmentId).map { tx =>
+        BOCartDao.findByTransactionUuid(tx.transactionUUID).map { boCart =>
+          CompanyDao.findByCode(storeCode).map { company =>
+            if (boCart.companyFk == company.id) {
+              DB localTx {
+                implicit session =>
+                  BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
+                    BODeliveryDao.findByBOCartItem(boCartItem).map { boDelivery =>
+                      BODeliveryDao.save(boDelivery.copy(status = webHookData.newDeliveryStatus))
+                    }
+                  }
+                  cartHandler.exportBOCartIntoES(storeCode, boCart, refresh = true)
+              }
+            }
+          }
+        }
+        val newShippingData = tx.shippingData.map { shippingData =>
+          shippingData.copy(trackingHistory = (data :: shippingData.trackingHistory))
+        }
+        val newTx = tx.copy(shippingData = newShippingData)
+        boTransactionHandler.save(newTx, false)
+      }
+    }
+  }
+
+  protected def extractWebHookData(webhookProvider: String, data: String): Option[WebHookData] = {
+    webhookProvider match {
+      case "esay-post" => extractEasypostWebHookData(data)
+      case _ => None
+    }
+  }
+
+  protected def extractEasypostWebHookData(data: String): Option[WebHookData] = {
+    val result = parse(data) \ "result"
+    (result \ "object", result \ "shipment_id") match {
+      case (JString("Tracker"), JString(shipmentId)) => {
+        val newStatus = result \ "status" match {
+          case JString("pre_transit") => Some(DeliveryStatus.IN_PROGRESS)
+          case JString("in_transit") => Some(DeliveryStatus.IN_PROGRESS)
+          case JString("delivered") => Some(DeliveryStatus.DELIVERED)
+          case JString("available_for_pickup") => Some(DeliveryStatus.DELIVERED)
+          case JString("return_to_sender") => Some(DeliveryStatus.RETURNED)
+          case JString("cancelled") => Some(DeliveryStatus.CANCELED)
+          case JString("error") => Some(DeliveryStatus.ERROR)
+          case JString("failure") => Some(DeliveryStatus.ERROR)
+          case JString("unknown") => None // On en connait pas le statut, on le laisse donc en l'état
+          case _ => None
+        }
+        newStatus.map { status =>
+          WebHookData(shipmentId, status)
+        }
+      }
+      case _ => None
     }
   }
 
