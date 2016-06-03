@@ -50,7 +50,7 @@ trait MogobizCake {
 
   def validatorHandler: ValidatorHandler
 
-  def easyPostHander: EasyPostHandler
+  def easyPostHandler: EasyPostHandler
 
   def logoHandler: LogoHandler
 
@@ -81,7 +81,7 @@ class DefaultMogobizCake extends MogobizCake {
 
   val learningHandler = new LearningHandler
   val validatorHandler = new ValidatorHandler
-  val easyPostHander = new EasyPostHandler
+  val easyPostHandler = new EasyPostHandler
 
   val logoHandler = new LogoHandler
 }
