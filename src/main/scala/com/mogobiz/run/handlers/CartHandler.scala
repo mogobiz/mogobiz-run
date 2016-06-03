@@ -941,11 +941,13 @@ class CartHandler extends StrictLogging {
         totalEndPrice, salePrice, saleEndPrice, saleTotalPrice, saleTotalEndPrice,
         cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping, cartItem.downloadableLink.getOrElse(null))
     }
-
-    def computePricesCartItemAndCoupons(cart: StoreCart, cartItems: List[StoreCartItemWithPrice], coupons: List[CouponWithData]): (Long, Long, Long, List[CartItem], List[CouponWithData]) = {
-      if (cartItems.isEmpty) (0, 0, 0, List(), coupons)
+    type PriceHT = Long
+    type PriceTTC = Long
+    type Reduction = Long
+    def computeStoreCartItemAndCoupons(cart: StoreCart, cartItems: List[StoreCartItemWithPrice], coupons: List[CouponWithData]): (PriceHT, PriceTTC, Reduction, List[CartItem], List[CouponWithData]) = {
+      if (cartItems.isEmpty) (0, 0, 0, Nil, coupons)
       else {
-        val cartItemsAndCoupons = computePricesCartItemAndCoupons(cart, cartItems.tail, coupons)
+        val cartItemsAndCoupons = computeStoreCartItemAndCoupons(cart, cartItems.tail, coupons)
         val cartItem = cartItems.head
         val maxReduction = findBestReductionForCartItem(cart.storeCode, cartItem, coupons, cartItems)
 
@@ -973,7 +975,7 @@ class CartHandler extends StrictLogging {
       else couponHandler.transformAsRender(storeCode, coupons.head) :: computeCouponAsRenderCoupon(storeCode, coupons.tail)
     }
 
-    val pricesCartItemsAndCoupons = computePricesCartItemAndCoupons(cart, cartItemsWithPrice, coupons)
+    val pricesCartItemsAndCoupons = computeStoreCartItemAndCoupons(cart, cartItemsWithPrice, coupons)
     val price = pricesCartItemsAndCoupons._1
     val endPrice = pricesCartItemsAndCoupons._2
     val reduction = pricesCartItemsAndCoupons._3
@@ -986,7 +988,7 @@ class CartHandler extends StrictLogging {
   }
 
   protected def computeCartItemWithPrice(storeCode: String, cartItems: List[StoreCartItem], countryCode: Option[String], stateCode: Option[String]): List[StoreCartItemWithPrice] = {
-    if (cartItems.isEmpty) List()
+    if (cartItems.isEmpty) Nil
     else {
       val cartItem = cartItems.head
       val product = ProductDao.get(storeCode, cartItem.productId).get
