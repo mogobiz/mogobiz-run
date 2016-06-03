@@ -7,7 +7,7 @@ package com.mogobiz.run.config
 object MogobizHandlers {
   val handlers: MogobizCake =
     if (Settings.CakeClass != null && Settings.CakeClass.trim.length > 0)
-      Class.forName(Settings.CakeClass.trim).asInstanceOf[MogobizCake]
+      Class.forName(Settings.CakeClass.trim).newInstance().asInstanceOf[MogobizCake]
     else
       new DefaultMogobizCake()
 }
