@@ -549,12 +549,15 @@ class ProductHandler extends JsonUtil {
   }
 
   def getProductsByNotation(storeCode: String, lang: String): List[JValue] = {
+    import EsClient.secureRequest
     val productsByNotation: SearchResponse = EsClient().execute(
-      esearch4s in s"${storeCode}_comment" types "comment" aggs {
-        aggregation terms "products" field "productId" order Terms.Order.aggregation("avg_notation", false) aggregations (
-          aggregation avg "avg_notation" field "notation"
-        )
-      }
+      secureRequest(
+        esearch4s in s"${storeCode}_comment" types "comment" aggs {
+          aggregation terms "products" field "productId" order Terms.Order.aggregation("avg_notation", false) aggregations (
+            aggregation avg "avg_notation" field "notation"
+          )
+        }
+      )
     ).await
     import scala.collection.JavaConversions._
     val ids: List[Long] =
