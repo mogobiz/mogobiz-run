@@ -247,7 +247,17 @@ class FacetHandler {
     val priceMinAggregation = aggregation min "price_min" field s"product.skus.$priceWithVatField"
     val priceMaxAggregation = aggregation max "price_max" field s"product.skus.$priceWithVatField"
 
-    val query = buildQueryAndFilters(FilterBuilder(withCategory = !req.multiCategory.getOrElse(false)), storeCode, ES_TYPE_PRODUCT, req, fixeFilters)
+    val filterBuilder = FilterBuilder(
+      withCategory = !req.multiCategory.getOrElse(false),
+      withBrand = !req.multiBrand.getOrElse(false),
+      withTags = !req.multiTag.getOrElse(false),
+      withFeatures = !req.multiFeatures.getOrElse(false),
+      withVariations = !req.multiVariations.getOrElse(false),
+      withNotation = !req.multiNotation.getOrElse(false),
+      withPrice = !req.multiPrices.getOrElse(false)
+    )
+
+    val query = buildQueryAndFilters(filterBuilder, storeCode, ES_TYPE_PRODUCT, req, fixeFilters)
 
     val singleQuery = query aggs {
       List(
