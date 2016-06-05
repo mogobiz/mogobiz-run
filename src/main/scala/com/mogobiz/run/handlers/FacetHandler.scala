@@ -62,93 +62,103 @@ class FacetHandler {
       createAndOrFilterBySplitKeyValues(req.property, (k, v) => createTermFilter(k, Some(v)))
     )
 
-    val categoryQuery = buildQueryAndFilters(FilterBuilder(withCategory = !req.multiCategory.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggregations {
-      aggregation terms "category" field "sku.product.category.path" aggs {
-        agg terms "name" field "sku.product.category.name.raw"
-      } aggs {
-        agg terms s"name${_lang}" field s"sku.product.category.${lang}name.raw"
-      }
-    }
-
-    val brandQuery = buildQueryAndFilters(FilterBuilder(withBrand = !req.multiBrand.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs {
-      aggregation terms "brand" field "sku.product.brand.id" aggs {
-        agg terms "name" field "sku.product.brand.name.raw"
-      } aggs {
-        agg terms s"name${_lang}" field s"sku.product.brand.${lang}name.raw"
-      }
-    }
-
-    val tagQuery = buildQueryAndFilters(FilterBuilder(withTags = !req.multiTag.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs {
-      aggregation nested "tags" path "sku.product.tags" aggs {
-        aggregation terms "tags" field "sku.product.tags.name.raw"
-      }
-    }
-
-    val featuresQuery = buildQueryAndFilters(FilterBuilder(withFeatures = !req.multiFeatures.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs {
-      aggregation nested "features" path "sku.product.features" aggs {
-        aggregation terms "features_name" field s"sku.product.features.name.raw" aggs {
-          aggregation terms s"features_name${_lang}" field s"sku.product.features.${lang}name.raw"
-        } aggs {
-          aggregation terms s"feature_values" field s"sku.product.features.value.raw"
-        } aggs {
-          aggregation terms s"feature_values${_lang}" field s"sku.product.features.${lang}value.raw"
-        }
-      }
-    }
-
-    val variationsQuery = buildQueryAndFilters(FilterBuilder(withVariations = !req.multiVariations.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs {
-      aggregation terms "variation1_name" field s"sku.variation1.name.raw" aggs {
-        aggregation terms s"variation1_name${_lang}" field s"sku.variation1.${lang}name.raw"
-      } aggs {
-        aggregation terms s"variation1_values" field s"sku.variation1.value.raw"
-      } aggs {
-        aggregation terms s"variation1_values${_lang}" field s"sku.variation1.${lang}value.raw"
-      }
+    val categoryAggregation = aggregation terms "category" field "sku.product.category.path" aggs {
+      agg terms "name" field "sku.product.category.name.raw"
     } aggs {
-      aggregation terms "variation2_name" field s"sku.variation2.name.raw" aggs {
-        aggregation terms s"variation2_name${_lang}" field s"sku.variation2.${lang}name.raw"
-      } aggs {
-        aggregation terms s"variation2_values" field s"sku.variation2.value.raw"
-      } aggs {
-        aggregation terms s"variation2_values${_lang}" field s"sku.variation2.${lang}value.raw"
-      }
-    } aggs {
-      aggregation terms "variation3_name" field s"sku.variation3.name.raw" aggs {
-        aggregation terms s"variation3_name${_lang}" field s"sku.variation3.${lang}name.raw"
-      } aggs {
-        aggregation terms s"variation3_values" field s"sku.variation3.value.raw"
-      } aggs {
-        aggregation terms s"variation3_values${_lang}" field s"sku.variation3.${lang}value.raw"
-      }
+      agg terms s"name${_lang}" field s"sku.product.category.${lang}name.raw"
     }
 
-    val notationQuery = buildQueryAndFilters(FilterBuilder(withNotation = !req.multiNotation.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs {
-      aggregation nested "notations" path "notations" aggs {
-        aggregation terms "notation" field s"product.notations.notation" aggs {
-          aggregation sum "nbcomments" field s"product.notations.nbcomments"
-        }
+    val brandAggregation = aggregation terms "brand" field "sku.product.brand.id" aggs {
+      agg terms "name" field "sku.product.brand.name.raw"
+    } aggs {
+      agg terms s"name${_lang}" field s"sku.product.brand.${lang}name.raw"
+    }
+
+    val tagAggregation = aggregation nested "tags" path "sku.product.tags" aggs {
+      aggregation terms "tags" field "sku.product.tags.name.raw"
+    }
+
+    val featuresAggregation = aggregation nested "features" path "sku.product.features" aggs {
+      aggregation terms "features_name" field s"sku.product.features.name.raw" aggs {
+        aggregation terms s"features_name${_lang}" field s"sku.product.features.${lang}name.raw"
+      } aggs {
+        aggregation terms s"feature_values" field s"sku.product.features.value.raw"
+      } aggs {
+        aggregation terms s"feature_values${_lang}" field s"sku.product.features.${lang}value.raw"
       }
     }
 
-    val priceQuery = buildQueryAndFilters(FilterBuilder(withPrice = !req.multiPrices.getOrElse(false)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs {
-      aggregation histogram "prices" field s"sku.$priceWithVatField" interval req.priceInterval minDocCount 0
+    val variation1Aggregation = aggregation terms "variation1_name" field s"sku.variation1.name.raw" aggs {
+      aggregation terms s"variation1_name${_lang}" field s"sku.variation1.${lang}name.raw"
     } aggs {
-      aggregation min "price_min" field s"sku.$priceWithVatField"
+      aggregation terms s"variation1_values" field s"sku.variation1.value.raw"
     } aggs {
-      aggregation max "price_max" field s"sku.$priceWithVatField"
+      aggregation terms s"variation1_values${_lang}" field s"sku.variation1.${lang}value.raw"
+    }
+    val variation2Aggregation = aggregation terms "variation2_name" field s"sku.variation2.name.raw" aggs {
+      aggregation terms s"variation2_name${_lang}" field s"sku.variation2.${lang}name.raw"
+    } aggs {
+      aggregation terms s"variation2_values" field s"sku.variation2.value.raw"
+    } aggs {
+      aggregation terms s"variation2_values${_lang}" field s"sku.variation2.${lang}value.raw"
+    }
+    val variation3Aggregation = aggregation terms "variation3_name" field s"sku.variation3.name.raw" aggs {
+      aggregation terms s"variation3_name${_lang}" field s"sku.variation3.${lang}name.raw"
+    } aggs {
+      aggregation terms s"variation3_values" field s"sku.variation3.value.raw"
+    } aggs {
+      aggregation terms s"variation3_values${_lang}" field s"sku.variation3.${lang}value.raw"
     }
 
-    val multiQueries = List(
-      categoryQuery searchType SearchType.Count,
-      brandQuery searchType SearchType.Count,
-      tagQuery searchType SearchType.Count,
-      featuresQuery searchType SearchType.Count,
-      variationsQuery searchType SearchType.Count,
-      //      notationQuery searchType SearchType.Count,
-      priceQuery searchType SearchType.Count
-    )
+    val notationAggregation = aggregation nested "notations" path "notations" aggs {
+      aggregation terms "notation" field s"product.notations.notation" aggs {
+        aggregation sum "nbcomments" field s"product.notations.nbcomments"
+      }
+    }
 
-    EsClient.multiSearchAgg(multiQueries)
+    val priceAggregation = aggregation histogram "prices" field s"sku.$priceWithVatField" interval req.priceInterval minDocCount 0
+    val priceMinAggregation = aggregation min "price_min" field s"sku.$priceWithVatField"
+    val priceMaxAggregation = aggregation max "price_max" field s"sku.$priceWithVatField"
+
+    val query = buildQueryAndFilters(buildFilter(req), storeCode, ES_TYPE_SKU, req, fixeFilters)
+
+    val singleQuery = query aggs {
+      List(
+        categoryAggregation,
+        brandAggregation,
+        tagAggregation,
+        featuresAggregation,
+        variation1Aggregation,
+        variation2Aggregation,
+        variation3Aggregation,
+//        notationAggregation,
+        priceAggregation,
+        priceMinAggregation,
+        priceMaxAggregation
+      ):_*
+    } searchType SearchType.Count
+
+    EsClient.searchAgg(singleQuery)
+
+//    val categoryQuery = query aggregations { categoryAggregation }
+//    val brandQuery = query aggs { brandAggregation }
+//    val tagQuery = query aggs { tagAggregation }
+//    val featuresQuery = query aggs { featuresAggregation }
+//    val variationsQuery = query aggs {variation1Aggregation } aggs { variation2Aggregation } aggs { variation3Aggregation }
+//    val notationQuery = query aggs { notationAggregation }
+//    val priceQuery = query aggs { priceAggregation } aggs { priceMinAggregation } aggs { priceMaxAggregation }
+//
+//    val multiQueries = List(
+//      categoryQuery searchType SearchType.Count,
+//      brandQuery searchType SearchType.Count,
+//      tagQuery searchType SearchType.Count,
+//      featuresQuery searchType SearchType.Count,
+//      variationsQuery searchType SearchType.Count,
+//      //      notationQuery searchType SearchType.Count,
+//      priceQuery searchType SearchType.Count
+//    )
+//
+//    EsClient.multiSearchAgg(multiQueries)
   }
 
   /**
@@ -247,17 +257,7 @@ class FacetHandler {
     val priceMinAggregation = aggregation min "price_min" field s"product.skus.$priceWithVatField"
     val priceMaxAggregation = aggregation max "price_max" field s"product.skus.$priceWithVatField"
 
-    val filterBuilder = FilterBuilder(
-      withCategory = !req.multiCategory.getOrElse(false),
-      withBrand = !req.multiBrand.getOrElse(false),
-      withTags = !req.multiTag.getOrElse(false),
-      withFeatures = !req.multiFeatures.getOrElse(false),
-      withVariations = !req.multiVariations.getOrElse(false),
-      withNotation = !req.multiNotation.getOrElse(false),
-      withPrice = !req.multiPrices.getOrElse(false)
-    )
-
-    val query = buildQueryAndFilters(filterBuilder, storeCode, ES_TYPE_PRODUCT, req, fixeFilters)
+    val query = buildQueryAndFilters(buildFilter(req), storeCode, ES_TYPE_PRODUCT, req, fixeFilters)
 
     val singleQuery = query aggs {
       List(
@@ -295,6 +295,17 @@ class FacetHandler {
 //    )
 //    EsClient.multiSearchAgg(multiQueries)
   }
+
+  private def buildFilter: FacetRequest => FilterBuilder = req => FilterBuilder(
+    withCategory = !req.multiCategory.getOrElse(false),
+    withBrand = !req.multiBrand.getOrElse(false),
+    withTags = !req.multiTag.getOrElse(false),
+    withFeatures = !req.multiFeatures.getOrElse(false),
+    withVariations = !req.multiVariations.getOrElse(false),
+    withNotation = !req.multiNotation.getOrElse(false),
+    withPrice = !req.multiPrices.getOrElse(false)
+  )
+
 
   private def buildQueryAndFilters(builder: FilterBuilder, storeCode: String, esType: String, req: FacetRequest, fixeFilters: List[Option[FilterDefinition]]): SearchDefinition = {
 
