@@ -32,6 +32,7 @@ class FacetService extends Directives with DefaultComplete {
         'xtype.? ::
         'name.? ::
         'code.? ::
+        'rootCategoryPath.? ::
         'categoryPath.? ::
         'brandId.? ::
         'tags.? ::
@@ -60,12 +61,12 @@ class FacetService extends Directives with DefaultComplete {
       )
 
       facetParam.happly {
-        case (priceInterval :: xtype :: name :: code :: categoryPath :: brandId :: tags :: notations :: priceRange ::
+        case (priceInterval :: xtype :: name :: code :: rootCategoryPath :: categoryPath :: brandId :: tags :: notations :: priceRange ::
           creationDateMin :: featured :: lang :: country :: promotionId :: hasPromotion :: inStockOnly :: property :: features :: variations ::
           brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations ::
           multiNotation :: multiPrices :: HNil) =>
 
-          val param = new FacetRequest(priceInterval, None, xtype, name, code, categoryPath, brandId, tags, notations, priceRange,
+          val param = new FacetRequest(priceInterval, None, xtype, name, code, rootCategoryPath, categoryPath, brandId, tags, notations, priceRange,
             creationDateMin, featured, lang, country, promotionId, hasPromotion, inStockOnly, property, features, variations,
             brandName, categoryName, multiCategory, multiBrand, multiTag, multiFeatures, multiVariations,
             multiNotation, multiPrices)
@@ -81,6 +82,7 @@ class FacetService extends Directives with DefaultComplete {
           'xtype.? ::
           'name.? ::
           'code.? ::
+          'rootCategoryPath.? ::
           'categoryPath.? ::
           'brandId.? ::
           'tags.? ::
@@ -108,12 +110,12 @@ class FacetService extends Directives with DefaultComplete {
           HNil
         )
         facetParam.happly {
-          case (priceInterval :: productId :: xtype :: name :: code :: categoryPath :: brandId :: tags :: notations :: priceRange ::
+          case (priceInterval :: productId :: xtype :: name :: code :: rootCategoryPath :: categoryPath :: brandId :: tags :: notations :: priceRange ::
             creationDateMin :: featured :: lang :: country :: promotionId :: hasPromotion :: inStockOnly :: property :: features :: variations ::
             brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations ::
             multiNotation :: multiPrices :: HNil) =>
 
-            val param = new FacetRequest(priceInterval, productId, xtype, name, code, categoryPath, brandId, tags, notations, priceRange,
+            val param = new FacetRequest(priceInterval, productId, xtype, name, code, rootCategoryPath, categoryPath, brandId, tags, notations, priceRange,
               creationDateMin, featured, lang, country, promotionId, hasPromotion, inStockOnly, property, features, variations,
               brandName, categoryName, multiCategory, multiBrand, multiTag, multiFeatures, multiVariations,
               multiNotation, multiPrices)
