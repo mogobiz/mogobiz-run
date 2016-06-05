@@ -131,34 +131,34 @@ class FacetHandler {
         variation1Aggregation,
         variation2Aggregation,
         variation3Aggregation,
-//        notationAggregation,
+        //        notationAggregation,
         priceAggregation,
         priceMinAggregation,
         priceMaxAggregation
-      ):_*
+      ): _*
     } searchType SearchType.Count
 
     EsClient.searchAgg(singleQuery)
 
-//    val categoryQuery = query aggregations { categoryAggregation }
-//    val brandQuery = query aggs { brandAggregation }
-//    val tagQuery = query aggs { tagAggregation }
-//    val featuresQuery = query aggs { featuresAggregation }
-//    val variationsQuery = query aggs {variation1Aggregation } aggs { variation2Aggregation } aggs { variation3Aggregation }
-//    val notationQuery = query aggs { notationAggregation }
-//    val priceQuery = query aggs { priceAggregation } aggs { priceMinAggregation } aggs { priceMaxAggregation }
-//
-//    val multiQueries = List(
-//      categoryQuery searchType SearchType.Count,
-//      brandQuery searchType SearchType.Count,
-//      tagQuery searchType SearchType.Count,
-//      featuresQuery searchType SearchType.Count,
-//      variationsQuery searchType SearchType.Count,
-//      //      notationQuery searchType SearchType.Count,
-//      priceQuery searchType SearchType.Count
-//    )
-//
-//    EsClient.multiSearchAgg(multiQueries)
+    //    val categoryQuery = query aggregations { categoryAggregation }
+    //    val brandQuery = query aggs { brandAggregation }
+    //    val tagQuery = query aggs { tagAggregation }
+    //    val featuresQuery = query aggs { featuresAggregation }
+    //    val variationsQuery = query aggs {variation1Aggregation } aggs { variation2Aggregation } aggs { variation3Aggregation }
+    //    val notationQuery = query aggs { notationAggregation }
+    //    val priceQuery = query aggs { priceAggregation } aggs { priceMinAggregation } aggs { priceMaxAggregation }
+    //
+    //    val multiQueries = List(
+    //      categoryQuery searchType SearchType.Count,
+    //      brandQuery searchType SearchType.Count,
+    //      tagQuery searchType SearchType.Count,
+    //      featuresQuery searchType SearchType.Count,
+    //      variationsQuery searchType SearchType.Count,
+    //      //      notationQuery searchType SearchType.Count,
+    //      priceQuery searchType SearchType.Count
+    //    )
+    //
+    //    EsClient.multiSearchAgg(multiQueries)
   }
 
   /**
@@ -272,28 +272,28 @@ class FacetHandler {
         priceAggregation,
         priceMinAggregation,
         priceMaxAggregation
-      ):_*
+      ): _*
     } searchType SearchType.Count
 
     EsClient.searchAgg(singleQuery)
 
-//    val categoryQuery = query aggs { categoryAggregation }
-//    val brandQuery = query aggs { brandAggregation }
-//    val tagQuery = query aggs { tagAggregation }
-//    val featuresQuery = query aggs { featuresAggregation }
-//    val variationsQuery = query aggs { variation1Aggregation } aggs {variation2Aggregation } aggs { variation3Aggregation }
-//    val notationQuery = query aggs { notationAggregation }
-//    val priceQuery = query aggs { priceAggregation } aggs { priceMinAggregation } aggs { priceMaxAggregation }
-//    val multiQueries = List(
-//      categoryQuery searchType SearchType.Count,
-//      brandQuery searchType SearchType.Count,
-//      tagQuery searchType SearchType.Count,
-//      featuresQuery searchType SearchType.Count,
-//      variationsQuery searchType SearchType.Count,
-//      notationQuery searchType SearchType.Count,
-//      priceQuery searchType SearchType.Count
-//    )
-//    EsClient.multiSearchAgg(multiQueries)
+    //    val categoryQuery = query aggs { categoryAggregation }
+    //    val brandQuery = query aggs { brandAggregation }
+    //    val tagQuery = query aggs { tagAggregation }
+    //    val featuresQuery = query aggs { featuresAggregation }
+    //    val variationsQuery = query aggs { variation1Aggregation } aggs {variation2Aggregation } aggs { variation3Aggregation }
+    //    val notationQuery = query aggs { notationAggregation }
+    //    val priceQuery = query aggs { priceAggregation } aggs { priceMinAggregation } aggs { priceMaxAggregation }
+    //    val multiQueries = List(
+    //      categoryQuery searchType SearchType.Count,
+    //      brandQuery searchType SearchType.Count,
+    //      tagQuery searchType SearchType.Count,
+    //      featuresQuery searchType SearchType.Count,
+    //      variationsQuery searchType SearchType.Count,
+    //      notationQuery searchType SearchType.Count,
+    //      priceQuery searchType SearchType.Count
+    //    )
+    //    EsClient.multiSearchAgg(multiQueries)
   }
 
   private def buildFilter: FacetRequest => FilterBuilder = req => FilterBuilder(
@@ -305,7 +305,6 @@ class FacetHandler {
     withNotation = !req.multiNotation.getOrElse(false),
     withPrice = !req.multiPrices.getOrElse(false)
   )
-
 
   private def buildQueryAndFilters(builder: FilterBuilder, storeCode: String, esType: String, req: FacetRequest, fixeFilters: List[Option[FilterDefinition]]): SearchDefinition = {
 
