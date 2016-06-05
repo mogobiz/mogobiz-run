@@ -330,7 +330,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
   "BackofficeHandler" should {
     "create BOReturnedItem for customer" in {
       val req = new CreateBOReturnedItemRequest(quantity = 1, motivation = "test init return")
-      handler.createBOReturnedItem(storeCode, Some(customerUuid), transactionUuid, boCartItemUuid, req)
+      handler.createBOReturnedItem(storeCode, customerUuid, transactionUuid, boCartItemUuid, req, None)
 
       val bOReturnedItem = retreiveBoReturnedItem()
       bOReturnedItem.refunded must be_==(0)
@@ -351,7 +351,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
         returnStatus = ReturnStatus.RETURN_TO_BE_RECEIVED.toString(),
         motivation = "return is possible"
       )
-      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), transactionUuid, boCartItemUuid, boReturnedItemUudi, req)
+      handler.updateBOReturnedItem(storeCode, merchantUuid, transactionUuid, boCartItemUuid, boReturnedItemUudi, req, None)
 
       val bOReturnedItem = retreiveBoReturnedItem()
       bOReturnedItem.refunded must be_==(0)
@@ -374,7 +374,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
         returnStatus = ReturnStatus.RETURN_RECEIVED.toString(),
         motivation = "item received"
       )
-      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), transactionUuid, boCartItemUuid, boReturnedItemUudi, req)
+      handler.updateBOReturnedItem(storeCode, merchantUuid, transactionUuid, boCartItemUuid, boReturnedItemUudi, req, None)
 
       val bOReturnedItem = retreiveBoReturnedItem()
       bOReturnedItem.refunded must be_==(0)
@@ -399,7 +399,7 @@ class BackofficeHandlerSpec extends MogobizRouteTest {
         returnStatus = ReturnStatus.RETURN_ACCEPTED.toString(),
         motivation = "accepted"
       )
-      handler.updateBOReturnedItem(storeCode, Some(merchantUuid), transactionUuid, boCartItemUuid, boReturnedItemUudi, req)
+      handler.updateBOReturnedItem(storeCode, merchantUuid, transactionUuid, boCartItemUuid, boReturnedItemUudi, req, None)
 
       val bOReturnedItem = retreiveBoReturnedItem()
       bOReturnedItem.refunded must be_==(1000)
