@@ -63,18 +63,15 @@ class FacetHandler {
       createAndOrFilterBySplitKeyValues(req.property, (k, v) => createTermFilter(k, Some(v)))
     )
 
-    val definedCategory = (req.categoryPath.isEmpty && req.categoryName.isEmpty) || !req.multiCategory.getOrElse(false)
-    val definedBrand = (req.brandId.isEmpty && req.brandName.isEmpty) || !req.multiBrand.getOrElse(false)
-    val definedTags = req.tags.isEmpty || !req.multiTag.getOrElse(false)
-    val withVariations = req.variations.isEmpty || !req.multiVariations.getOrElse(false)
-    val withFeature = req.features.isEmpty || !req.multiFeatures.getOrElse(false)
-    val definedNotations = req.notations.isEmpty || !req.multiNotation.getOrElse(false)
-    val definedPrices = req.priceRange.isEmpty || !req.multiPrices.getOrElse(false)
+    val includeCategoryInGlobalQuery = (req.categoryPath.isEmpty && req.categoryName.isEmpty) || !req.multiCategory.getOrElse(false)
+    val includeBrandInGlobalQuery = (req.brandId.isEmpty && req.brandName.isEmpty) || !req.multiBrand.getOrElse(false)
+    val includeTagsInGlobalQuery = req.tags.isEmpty || !req.multiTag.getOrElse(false)
+    val includePriceInGlobalQuery = req.priceRange.isEmpty || !req.multiPrices.getOrElse(false)
 
-    val definedVariations: List[String] = if (req.variations.isDefined && req.multiVariations.getOrElse(false))
+    val variationsExcludedFromGlobalQuery: List[String] = if (req.variations.isDefined && req.multiVariations.getOrElse(false))
       (req.variations.get.split("""\|\|\|""") map (v => { v.split("""\:\:\:""").head })).toList else List()
 
-    val definedFeatures: List[String] = if (req.features.isDefined && req.multiFeatures.getOrElse(false))
+    val featuresExcludedFromGlobalQuery: List[String] = if (req.features.isDefined && req.multiFeatures.getOrElse(false))
       (req.features.get.split("""\|\|\|""") map (v => { v.split("""\:\:\:""").head })).toList else List()
 
     val categoryAggregation = aggregation terms "category" field "sku.product.category.path" aggs {
@@ -133,42 +130,42 @@ class FacetHandler {
 
     val singleQuery = Some(query aggs {
       List(
-        if (definedCategory) Some(categoryAggregation) else None,
-        if (definedBrand) Some(brandAggregation) else None,
-        if (definedTags) Some(tagAggregation) else None,
-        Some(featuresAggregation(excludeFeatures = definedVariations)),
-        Some(variationAggregation("1", excludeVariations = definedVariations)),
-        Some(variationAggregation("2", excludeVariations = definedVariations)),
-        Some(variationAggregation("3", excludeVariations = definedVariations)),
-        if (definedPrices) Some(priceAggregation) else None,
-        if (definedPrices) Some(priceMinAggregation) else None,
-        if (definedPrices) Some(priceMaxAggregation) else None
+        if (includeCategoryInGlobalQuery) Some(categoryAggregation) else None,
+        if (includeBrandInGlobalQuery) Some(brandAggregation) else None,
+        if (includeTagsInGlobalQuery) Some(tagAggregation) else None,
+        Some(featuresAggregation(excludeFeatures = variationsExcludedFromGlobalQuery)),
+        Some(variationAggregation("1", excludeVariations = variationsExcludedFromGlobalQuery)),
+        Some(variationAggregation("2", excludeVariations = variationsExcludedFromGlobalQuery)),
+        Some(variationAggregation("3", excludeVariations = variationsExcludedFromGlobalQuery)),
+        if (includePriceInGlobalQuery) Some(priceAggregation) else None,
+        if (includePriceInGlobalQuery) Some(priceMinAggregation) else None,
+        if (includePriceInGlobalQuery) Some(priceMaxAggregation) else None
       ).flatten: _*
     } searchType SearchType.Count)
 
-    val categoryQuery = if (definedCategory) None else
-      Some(buildQueryAndFilters(FilterBuilder(withCategory = false), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
+    val categoryQuery = if (includeCategoryInGlobalQuery) None else
+      Some(buildQueryAndFilters(FilterBuilder(withCategoryFilter = false), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
         categoryAggregation searchType SearchType.Count)
 
-    val brandQuery = if (definedBrand) None else
-      Some(buildQueryAndFilters(FilterBuilder(withBrand = false), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
+    val brandQuery = if (includeBrandInGlobalQuery) None else
+      Some(buildQueryAndFilters(FilterBuilder(withBrandFilter = false), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
         brandAggregation searchType SearchType.Count)
 
-    val tagQuery = if (definedTags) None else
-      Some(buildQueryAndFilters(FilterBuilder(withTags = false), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
+    val tagQuery = if (includeTagsInGlobalQuery) None else
+      Some(buildQueryAndFilters(FilterBuilder(withTagsFilter = false), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
         tagAggregation searchType SearchType.Count)
 
-    val featuresQueries = definedFeatures map { v =>
-      Some(buildQueryAndFilters(FilterBuilder(excludedFeatures = List(v)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
+    val featuresQueries = featuresExcludedFromGlobalQuery map { v =>
+      Some(buildQueryAndFilters(FilterBuilder(featuresExcludedFromFilter = List(v)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
         featuresAggregation(includeFeatures = List(v)) searchType SearchType.Count)
     }
 
-    val variationsQueries = definedVariations map { v =>
-      Some(buildQueryAndFilters(FilterBuilder(excludedVariations = List(v)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
+    val variationsQueries = variationsExcludedFromGlobalQuery map { v =>
+      Some(buildQueryAndFilters(FilterBuilder(variationsExcludedFromFilter = List(v)), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
         variationAggregation(index = "1", includeVariations = List(v)) aggs variationAggregation(index = "2", includeVariations = List(v)) aggs variationAggregation(index = "3", includeVariations = List(v)) searchType SearchType.Count)
     }
 
-    val priceQuery = if (definedPrices) None else Some(buildQueryAndFilters(FilterBuilder(withPrice = false), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
+    val priceQuery = if (includePriceInGlobalQuery) None else Some(buildQueryAndFilters(FilterBuilder(withPriceFilter = false), storeCode, ES_TYPE_SKU, req, fixeFilters) aggs
       priceAggregation aggs priceMinAggregation aggs priceMaxAggregation searchType SearchType.Count)
 
     val multiQueries = List(
@@ -221,18 +218,16 @@ class FacetHandler {
       createAndOrFilterBySplitKeyValues(req.property, (k, v) => createTermFilter(k, Some(v)))
     )
 
-    val definedCategory = (req.categoryPath.isEmpty && req.categoryName.isEmpty) || !req.multiCategory.getOrElse(false)
-    val definedBrand = (req.brandId.isEmpty && req.brandName.isEmpty) || !req.multiBrand.getOrElse(false)
-    val definedTags = req.tags.isEmpty || !req.multiTag.getOrElse(false)
-    val withVariations = req.variations.isEmpty || !req.multiVariations.getOrElse(false)
-    val withFeature = req.features.isEmpty || !req.multiFeatures.getOrElse(false)
-    val definedNotations = req.notations.isEmpty || !req.multiNotation.getOrElse(false)
-    val definedPrices = req.priceRange.isEmpty || !req.multiPrices.getOrElse(false)
+    val includeCategoryInGlobalQuery = (req.categoryPath.isEmpty && req.categoryName.isEmpty) || !req.multiCategory.getOrElse(false)
+    val includeBrandInGlobalQuery = (req.brandId.isEmpty && req.brandName.isEmpty) || !req.multiBrand.getOrElse(false)
+    val includeTagsInGlobalQuery = req.tags.isEmpty || !req.multiTag.getOrElse(false)
+    val includeNotationsInGlobalQuery = req.notations.isEmpty || !req.multiNotation.getOrElse(false)
+    val includePriceInGlobalQuery = req.priceRange.isEmpty || !req.multiPrices.getOrElse(false)
 
-    val definedVariations: List[String] = if (req.variations.isDefined && req.multiVariations.getOrElse(false))
+    val variationsExcludedFromGlobalQuery: List[String] = if (req.variations.isDefined && req.multiVariations.getOrElse(false))
       (req.variations.get.split("""\|\|\|""") map (v => { v.split("""\:\:\:""").head })).toList else List()
 
-    val definedFeatures: List[String] = if (req.features.isDefined && req.multiFeatures.getOrElse(false))
+    val featuresExcludedFromGlobalQuery: List[String] = if (req.features.isDefined && req.multiFeatures.getOrElse(false))
       (req.features.get.split("""\|\|\|""") map (v => { v.split("""\:\:\:""").head })).toList else List()
 
     val categoryAggregation = aggregation terms "category" field "product.category.path" aggs {
@@ -291,46 +286,46 @@ class FacetHandler {
 
     val singleQuery = Some(query aggs {
       List(
-        if (definedCategory) Some(categoryAggregation) else None,
-        if (definedBrand) Some(brandAggregation) else None,
-        if (definedTags) Some(tagAggregation) else None,
-        Some(featuresAggregation(excludeFeatures = definedVariations)),
-        Some(variationAggregation("1", excludeVariations = definedVariations)),
-        Some(variationAggregation("2", excludeVariations = definedVariations)),
-        Some(variationAggregation("3", excludeVariations = definedVariations)),
-        if (definedNotations) Some(notationAggregation) else None,
-        if (definedPrices) Some(priceAggregation) else None,
-        if (definedPrices) Some(priceMinAggregation) else None,
-        if (definedPrices) Some(priceMaxAggregation) else None
+        if (includeCategoryInGlobalQuery) Some(categoryAggregation) else None,
+        if (includeBrandInGlobalQuery) Some(brandAggregation) else None,
+        if (includeTagsInGlobalQuery) Some(tagAggregation) else None,
+        Some(featuresAggregation(excludeFeatures = variationsExcludedFromGlobalQuery)),
+        Some(variationAggregation("1", excludeVariations = variationsExcludedFromGlobalQuery)),
+        Some(variationAggregation("2", excludeVariations = variationsExcludedFromGlobalQuery)),
+        Some(variationAggregation("3", excludeVariations = variationsExcludedFromGlobalQuery)),
+        if (includeNotationsInGlobalQuery) Some(notationAggregation) else None,
+        if (includePriceInGlobalQuery) Some(priceAggregation) else None,
+        if (includePriceInGlobalQuery) Some(priceMinAggregation) else None,
+        if (includePriceInGlobalQuery) Some(priceMaxAggregation) else None
       ).flatten: _*
     } searchType SearchType.Count)
 
-    val categoryQuery = if (definedCategory) None else
-      Some(buildQueryAndFilters(FilterBuilder(withCategory = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
+    val categoryQuery = if (includeCategoryInGlobalQuery) None else
+      Some(buildQueryAndFilters(FilterBuilder(withCategoryFilter = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
         categoryAggregation searchType SearchType.Count)
 
-    val brandQuery = if (definedBrand) None else
-      Some(buildQueryAndFilters(FilterBuilder(withBrand = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
+    val brandQuery = if (includeBrandInGlobalQuery) None else
+      Some(buildQueryAndFilters(FilterBuilder(withBrandFilter = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
         brandAggregation searchType SearchType.Count)
 
-    val tagQuery = if (definedTags) None else
-      Some(buildQueryAndFilters(FilterBuilder(withTags = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
+    val tagQuery = if (includeTagsInGlobalQuery) None else
+      Some(buildQueryAndFilters(FilterBuilder(withTagsFilter = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
         tagAggregation searchType SearchType.Count)
 
-    val featuresQueries = definedFeatures map { v =>
-      Some(buildQueryAndFilters(FilterBuilder(excludedFeatures = List(v)), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
+    val featuresQueries = featuresExcludedFromGlobalQuery map { v =>
+      Some(buildQueryAndFilters(FilterBuilder(featuresExcludedFromFilter = List(v)), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
         featuresAggregation(includeFeatures = List(v)) searchType SearchType.Count)
     }
 
-    val variationsQueries = definedVariations map { v =>
-      Some(buildQueryAndFilters(FilterBuilder(excludedVariations = List(v)), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
+    val variationsQueries = variationsExcludedFromGlobalQuery map { v =>
+      Some(buildQueryAndFilters(FilterBuilder(variationsExcludedFromFilter = List(v)), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
         variationAggregation(index = "1", includeVariations = List(v)) aggs variationAggregation(index = "2", includeVariations = List(v)) aggs variationAggregation(index = "3", includeVariations = List(v)) searchType SearchType.Count)
     }
 
-    val notationQuery = if (definedNotations) None else Some(buildQueryAndFilters(FilterBuilder(withNotation = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
+    val notationQuery = if (includeNotationsInGlobalQuery) None else Some(buildQueryAndFilters(FilterBuilder(withNotationFilter = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
       notationAggregation searchType SearchType.Count)
 
-    val priceQuery = if (definedPrices) None else Some(buildQueryAndFilters(FilterBuilder(withPrice = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
+    val priceQuery = if (includePriceInGlobalQuery) None else Some(buildQueryAndFilters(FilterBuilder(withPriceFilter = false), storeCode, ES_TYPE_PRODUCT, req, fixeFilters) aggs
       priceAggregation aggs priceMinAggregation aggs priceMaxAggregation searchType SearchType.Count)
 
     val multiQueries = List(
@@ -345,16 +340,6 @@ class FacetHandler {
     EsClient.multiSearchAgg(multiQueries.flatten)
   }
 
-  private def buildFilter: FacetRequest => FilterBuilder = req => FilterBuilder(
-    withCategory = !req.multiCategory.getOrElse(false),
-    withBrand = !req.multiBrand.getOrElse(false),
-    withTags = !req.multiTag.getOrElse(false),
-    withFeatures = !req.multiFeatures.getOrElse(false),
-    withVariations = !req.multiVariations.getOrElse(false),
-    withNotation = !req.multiNotation.getOrElse(false),
-    withPrice = !req.multiPrices.getOrElse(false)
-  )
-
   private def buildQueryAndFilters(builder: FilterBuilder, storeCode: String, esType: String, req: FacetRequest, fixeFilters: List[Option[FilterDefinition]]): SearchDefinition = {
 
     //println("filterBuilder=",builder)
@@ -367,27 +352,27 @@ class FacetHandler {
       case ES_TYPE_PRODUCT =>
         (
           fixeFilters
-          :+ (if (builder.withCategory) createOrFilterBySplitValues(req.categoryPath, v => createRegexFilter("product.category.path", Some(v))) else None)
-          :+ (if (builder.withCategory) createOrFilterBySplitValues(req.categoryName.map(_.toLowerCase), v => createTermFilter("product.category.name", Some(v))) else None)
-          :+ (if (builder.withBrand) createOrFilterBySplitValues(req.brandId, v => createTermFilter("product.brand.id", Some(v))) else None)
-          :+ (if (builder.withBrand) createOrFilterBySplitValues(req.brandName.map(_.toLowerCase), v => createTermFilter("product.brand.name", Some(v))) else None)
-          :+ (if (builder.withTags) createOrFilterBySplitValues(req.tags.map(_.toLowerCase), v => createNestedTermFilter("tags", "tags.name", Some(v))) else None)
-          :+ (if (builder.withFeatures) createFeaturesFilters(req, "features", builder.excludedFeatures) else None)
-          :+ (if (builder.withVariations) createVariationsFilters(req, "product.skus", builder.excludedVariations) else None)
-          :+ (if (builder.withNotation) createOrFilterBySplitValues(req.notations, v => createNestedTermFilter("notations", "notations.notation", Some(v))) else None)
-          :+ (if (builder.withPrice) createOrFilterBySplitKeyValues(req.priceRange, (min, max) => createNumericRangeFilter(s"product.skus.$priceWithVatField", min, max)) else None)
+          :+ (if (builder.withCategoryFilter) createOrFilterBySplitValues(req.categoryPath, v => createRegexFilter("product.category.path", Some(v))) else None)
+          :+ (if (builder.withCategoryFilter) createOrFilterBySplitValues(req.categoryName.map(_.toLowerCase), v => createTermFilter("product.category.name", Some(v))) else None)
+          :+ (if (builder.withBrandFilter) createOrFilterBySplitValues(req.brandId, v => createTermFilter("product.brand.id", Some(v))) else None)
+          :+ (if (builder.withBrandFilter) createOrFilterBySplitValues(req.brandName.map(_.toLowerCase), v => createTermFilter("product.brand.name", Some(v))) else None)
+          :+ (if (builder.withTagsFilter) createOrFilterBySplitValues(req.tags.map(_.toLowerCase), v => createNestedTermFilter("tags", "tags.name", Some(v))) else None)
+          :+ (if (builder.withFeaturesFilter) createFeaturesFilters(req, "features", builder.featuresExcludedFromFilter) else None)
+          :+ (if (builder.withVariationsFilter) createVariationsFilters(req, "product.skus", builder.variationsExcludedFromFilter) else None)
+          :+ (if (builder.withNotationFilter) createOrFilterBySplitValues(req.notations, v => createNestedTermFilter("notations", "notations.notation", Some(v))) else None)
+          :+ (if (builder.withPriceFilter) createOrFilterBySplitKeyValues(req.priceRange, (min, max) => createNumericRangeFilter(s"product.skus.$priceWithVatField", min, max)) else None)
         ).flatten
       case ES_TYPE_SKU =>
         (
           fixeFilters
-          :+ (if (builder.withCategory) createOrFilterBySplitValues(req.categoryPath, v => createRegexFilter("sku.product.category.path", Some(v))) else None)
-          :+ (if (builder.withCategory) createOrFilterBySplitValues(req.categoryName.map(_.toLowerCase), v => createTermFilter("sku.product.category.name", Some(v))) else None)
-          :+ (if (builder.withBrand) createOrFilterBySplitValues(req.brandId, v => createTermFilter("sku.product.brand.id", Some(v))) else None)
-          :+ (if (builder.withBrand) createOrFilterBySplitValues(req.brandName.map(_.toLowerCase), v => createTermFilter("sku.product.brand.name", Some(v))) else None)
-          :+ (if (builder.withTags) createOrFilterBySplitValues(req.tags.map(_.toLowerCase), v => createNestedTermFilter("product.tags", "product.tags.name", Some(v))) else None)
-          :+ (if (builder.withFeatures) createFeaturesFilters(req, "product.features", builder.excludedVariations) else None)
-          :+ (if (builder.withVariations) createVariationsFilters(req, "sku", builder.excludedVariations) else None) //:+ (if (builder.withNotation) createOrFilterBySplitValues (req.notations, v => createNestedTermFilter ("notations", "product.notations.notation", Some (v) ) ) else None)
-          :+ (if (builder.withPrice) createOrFilterBySplitKeyValues(req.priceRange, (min, max) => createNumericRangeFilter(s"sku.$priceWithVatField", min, max)) else None)
+          :+ (if (builder.withCategoryFilter) createOrFilterBySplitValues(req.categoryPath, v => createRegexFilter("sku.product.category.path", Some(v))) else None)
+          :+ (if (builder.withCategoryFilter) createOrFilterBySplitValues(req.categoryName.map(_.toLowerCase), v => createTermFilter("sku.product.category.name", Some(v))) else None)
+          :+ (if (builder.withBrandFilter) createOrFilterBySplitValues(req.brandId, v => createTermFilter("sku.product.brand.id", Some(v))) else None)
+          :+ (if (builder.withBrandFilter) createOrFilterBySplitValues(req.brandName.map(_.toLowerCase), v => createTermFilter("sku.product.brand.name", Some(v))) else None)
+          :+ (if (builder.withTagsFilter) createOrFilterBySplitValues(req.tags.map(_.toLowerCase), v => createNestedTermFilter("product.tags", "product.tags.name", Some(v))) else None)
+          :+ (if (builder.withFeaturesFilter) createFeaturesFilters(req, "product.features", builder.featuresExcludedFromFilter) else None)
+          :+ (if (builder.withVariationsFilter) createVariationsFilters(req, "sku", builder.variationsExcludedFromFilter) else None) //:+ (if (builder.withNotation) createOrFilterBySplitValues (req.notations, v => createNestedTermFilter ("notations", "product.notations.notation", Some (v) ) ) else None)
+          :+ (if (builder.withPriceFilter) createOrFilterBySplitKeyValues(req.priceRange, (min, max) => createNumericRangeFilter(s"sku.$priceWithVatField", min, max)) else None)
         ).flatten
       case _ => List()
     }
@@ -512,13 +497,13 @@ class FacetHandler {
     } yield JObject(List(JField("notation", JString(key)), JField("nbcomments", JInt(value))))
   }
 
-  private case class FilterBuilder(withCategory: Boolean = true,
-    withBrand: Boolean = true,
-    withTags: Boolean = true,
-    withFeatures: Boolean = true,
-    excludedFeatures: List[String] = List(),
-    withVariations: Boolean = true,
-    excludedVariations: List[String] = List(),
-    withNotation: Boolean = true,
-    withPrice: Boolean = true)
+  private case class FilterBuilder(withCategoryFilter: Boolean = true,
+    withBrandFilter: Boolean = true,
+    withTagsFilter: Boolean = true,
+    withFeaturesFilter: Boolean = true,
+    featuresExcludedFromFilter: List[String] = List(),
+    withVariationsFilter: Boolean = true,
+    variationsExcludedFromFilter: List[String] = List(),
+    withNotationFilter: Boolean = true,
+    withPriceFilter: Boolean = true)
 }
