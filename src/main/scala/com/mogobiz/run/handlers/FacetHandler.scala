@@ -107,12 +107,12 @@ class FacetHandler {
     }
 
     def variationAggregation(index: String, includeVariations: List[String] = List(), excludeVariations: List[String] = List()) = {
-      val aggregate = aggregation terms s"variation${index}_name" field s"sku.variation1.name.raw" aggs {
-        aggregation terms s"variation${index}_name${_lang}" field s"sku.variation${index}.${lang}name.raw"
+      val aggregate = aggregation terms s"variation${index}_name" field s"sku.variation$index.name.raw" aggs {
+        aggregation terms s"variation${index}_name${_lang}" field s"sku.variation$index.${lang}name.raw"
       } aggs {
-        aggregation terms s"variation${index}_values" field s"sku.variation${index}.value.raw"
+        aggregation terms s"variation${index}_values" field s"sku.variation$index.value.raw"
       } aggs {
-        aggregation terms s"variation${index}_values${_lang}" field s"sku.variation${index}.${lang}value.raw"
+        aggregation terms s"variation${index}_values${_lang}" field s"sku.variation$index.${lang}value.raw"
       }
       if (includeVariations.nonEmpty) aggregate.builder.include(includeVariations.toArray)
       if (excludeVariations.nonEmpty) aggregate.builder.exclude(excludeVariations.toArray)
@@ -265,12 +265,12 @@ class FacetHandler {
     }
 
     def variationAggregation(index: String, includeVariations: List[String] = List(), excludeVariations: List[String] = List()) = {
-      val aggregate = aggregation terms s"variation${index}_name" field s"product.skus.variation${index}.name.raw" aggs {
-        aggregation terms s"variation${index}_name${_lang}" field s"product.skus.variation${index}.${lang}name.raw"
+      val aggregate = aggregation terms s"variation${index}_name" field s"product.skus.variation$index.name.raw" aggs {
+        aggregation terms s"variation${index}_name${_lang}" field s"product.skus.variation$index.${lang}name.raw"
       } aggs {
-        aggregation terms s"variation${index}_values" field s"product.skus.variation${index}.value.raw"
+        aggregation terms s"variation${index}_values" field s"product.skus.variation$index.value.raw"
       } aggs {
-        aggregation terms s"variation${index}_values${_lang}" field s"product.skus.variation${index}.${lang}value.raw"
+        aggregation terms s"variation${index}_values${_lang}" field s"product.skus.variation$index.${lang}value.raw"
       }
       if (includeVariations.nonEmpty) aggregate.builder.include(includeVariations.toArray)
       if (excludeVariations.nonEmpty) aggregate.builder.exclude(excludeVariations.toArray)
