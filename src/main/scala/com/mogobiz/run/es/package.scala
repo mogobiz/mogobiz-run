@@ -97,24 +97,23 @@ package object es {
    *     }
    *     etc...
    * }
-   * @param optQuery
-   * @param fct
+   * @param optQuery - query
+   * @param fct - function
    * @return
    */
   def createAndOrFilterBySplitKeyValues(optQuery: Option[String], fct: (String, String) => Option[FilterDefinition]): Option[FilterDefinition] = {
     optQuery match {
-      case Some(query) => {
+      case Some(query) =>
         val andFilters = (for (keyValues <- query.split("""\|\|\|""")) yield {
           val kv = keyValues.split("""\:\:\:""")
           if (kv.size == 2) {
             val orFilters = (for (v <- kv(1).split("""\|""")) yield {
               fct(kv(0), v)
             }).toList.flatten
-            if (orFilters.length > 1) Some(or(orFilters: _*)) else if (orFilters.length == 1) Some(orFilters(0)) else None
+            if (orFilters.length > 1) Some(or(orFilters: _*)) else if (orFilters.length == 1) Some(orFilters.head) else None
           } else None
         }).toList.flatten
-        if (andFilters.length > 1) Some(and(andFilters: _*)) else if (andFilters.length == 1) Some(andFilters(0)) else None
-      }
+        if (andFilters.length > 1) Some(and(andFilters: _*)) else if (andFilters.length == 1) Some(andFilters.head) else None
       case _ => None
     }
   }
@@ -128,8 +127,8 @@ package object es {
    *     filter pour tester k2 et v2
    *     etc...
    * }
-   * @param optQuery
-   * @param fct
+   * @param optQuery - query
+   * @param fct - function
    * @return
    */
   def createOrFilterBySplitKeyValues(optQuery: Option[String], fct: (String, String) => Option[FilterDefinition]): Option[FilterDefinition] = {
@@ -165,8 +164,8 @@ package object es {
    *     filter pour tester v2
    *     etc...
    * }
-   * @param optQuery
-   * @param fct
+   * @param optQuery - query
+   * @param fct - function
    * @return
    */
   def createOrFilterBySplitValues(optQuery: Option[String], fct: (String) => Option[FilterDefinition]): Option[FilterDefinition] = {
@@ -281,10 +280,9 @@ package object es {
 
   def createRegexFilter(field: String, value: Option[String], addStars: Boolean = true): Option[FilterDefinition] = {
     value match {
-      case Some(s) => {
+      case Some(s) =>
         val star = if (addStars) ".*" else ""
-        Some(regexFilter(field, s"${star}${s.toLowerCase}${star}"))
-      }
+        Some(regexFilter(field, s"$star${s.toLowerCase}$star"))
       case None => None
     }
   }
