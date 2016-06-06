@@ -47,9 +47,10 @@ class CouponHandler {
     }
   }
 
-  def getWithData(storeCode: String, storeCoupon: StoreCoupon): CouponWithData = {
-    val coupon = CouponDao.findByCode(storeCode, storeCoupon.code).get
-    CouponWithData(coupon, isCouponActive(coupon), 0, promotion = false)
+  def getWithData(storeCode: String, storeCoupon: StoreCoupon): Option[CouponWithData] = {
+    CouponDao.findByCode(storeCode, storeCoupon.code).map { coupon =>
+      CouponWithData(coupon, isCouponActive(coupon), 0, promotion = false)
+    }
   }
 
   def getWithData(coupon: Mogobiz.Coupon): CouponWithData = {

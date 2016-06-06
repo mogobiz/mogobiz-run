@@ -6,7 +6,7 @@ package com.mogobiz.run.handlers
 
 import java.util.{ Calendar, Date, Locale, UUID }
 
-import com.mogobiz.es.EsClient._
+import com.mogobiz.es.EsClient.{ multiSearchRaw }
 import com.mogobiz.es.{ EsClient, _ }
 import com.mogobiz.json.{ JacksonConverter, JsonUtil }
 import com.mogobiz.pay.model.Mogopay.Account
@@ -23,6 +23,7 @@ import com.mogobiz.run.utils.Paging
 import com.sksamuel.elastic4s.ElasticDsl.{ delete => esdelete4s, search => esearch4s, update => esupdate4s, _ }
 import com.sksamuel.elastic4s.source.DocumentSource
 import com.sksamuel.elastic4s.{ FilterDefinition, QueryDefinition }
+import com.typesafe.scalalogging.{ Logger, StrictLogging }
 import org.elasticsearch.action.get.MultiGetItemResponse
 import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.search.aggregations.bucket.terms.Terms
@@ -32,6 +33,7 @@ import org.joda.time.format.DateTimeFormat
 import org.json4s.JsonAST.{ JArray, JObject }
 import org.json4s.JsonDSL._
 import org.json4s._
+import org.slf4j.LoggerFactory
 
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
@@ -879,6 +881,8 @@ class ProductHandler extends JsonUtil {
 
 object ProductDao extends JsonUtil {
 
+  private val logger = Logger(LoggerFactory.getLogger("ProductDao"))
+
   def get(storeCode: String, id: Long): Option[Mogobiz.Product] = {
     // Création de la requête
     val req = esearch4s in storeCode -> "product" postFilter termFilter("product.id", id)
@@ -888,13 +892,22 @@ object ProductDao extends JsonUtil {
   }
 
   def getProductAndSku(indexEs: String, skuId: Long): Option[(Mogobiz.Product, Mogobiz.Sku)] = {
-    // Création de la requête
-    val req = esearch4s in indexEs -> "product" postFilter termFilter("product.skus.id", skuId)
+    val result = Try {
+      // Création de la requête
+      val req = esearch4s in indexEs -> "product" postFilter termFilter("product.skus.id", skuId)
 
-    // Lancement de la requête
-    val productOpt = EsClient.search[Mogobiz.Product](req)
-    if (productOpt.isDefined) Some((productOpt.get, productOpt.get.skus.find(sku => sku.id == skuId).get))
-    else None
+      // Lancement de la requête
+      val productOpt = EsClient.search[Mogobiz.Product](req)
+      if (productOpt.isDefined) Some((productOpt.get, productOpt.get.skus.find(sku => sku.id == skuId).get))
+      else None
+    }
+    result match {
+      case Success(ps) => ps
+      case Failure(e) => {
+        logger.error("Unabled to load product and sku  " + skuId + " from index " + indexEs, e)
+        None
+      }
+    }
   }
 
   def getSkusIdByCoupon(storeCode: String, couponId: Long): List[Long] = {

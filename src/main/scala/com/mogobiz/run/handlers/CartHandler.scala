@@ -698,9 +698,15 @@ class CartHandler extends StrictLogging {
       }
     }
 
+    val newCoupons = cart.coupons.map { coupon =>
+      CouponDao.findByCode(cart.storeCode, coupon.code).map { c =>
+        coupon
+      }
+    }.flatten
+
     updateProductStockAvailability(indexEsAndProductsToUpdate.toSet)
 
-    val updatedCart = cart.copy(cartItems = newCartItems)
+    val updatedCart = cart.copy(cartItems = newCartItems, coupons = newCoupons)
     if (indexEsAndProductsToUpdate.size == 0) {
       StoreCartDao.save(updatedCart)
       updatedCart
@@ -759,13 +765,14 @@ class CartHandler extends StrictLogging {
       val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
       DB localTx { implicit session =>
         cart.cartItems.foreach { cartItem =>
-          val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
-          val product = productAndSku.get._1
-          val sku = productAndSku.get._2
-          stockHandler.decrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
+          ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId).map { productAndSku =>
+            val product = productAndSku._1
+            val sku = productAndSku._2
+            stockHandler.decrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
 
-          val indexEsAndProduct = (cartItem.indexEs, product.id)
-          indexEsAndProductsToUpdate += indexEsAndProduct
+            val indexEsAndProduct = (cartItem.indexEs, product.id)
+            indexEsAndProductsToUpdate += indexEsAndProduct
+          }
         }
       }
 
@@ -788,7 +795,9 @@ class CartHandler extends StrictLogging {
       val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
       DB localTx { implicit session =>
         cart.cartItems.foreach { cartItem =>
-          indexEsAndProductsToUpdate += unvalidateCartItem(cartItem)
+          unvalidateCartItem(cartItem).map { indexAndProduct =>
+            indexEsAndProductsToUpdate += indexAndProduct
+          }
         }
       }
 
@@ -800,9 +809,11 @@ class CartHandler extends StrictLogging {
     } else cart
   }
 
-  protected def unvalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): (String, Long) = {
+  protected def unvalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): Option[(String, Long)] = {
     val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
-    unvalidateCartItem(cartItem, productAndSku.get)
+    productAndSku.map { ps =>
+      unvalidateCartItem(cartItem, ps)
+    }
   }
 
   protected def unvalidateCartItem(cartItem: StoreCartItem, productAndSku: (Mogobiz.Product, Mogobiz.Sku))(implicit session: DBSession): (String, Long) = {
@@ -918,7 +929,7 @@ class CartHandler extends StrictLogging {
    * @return
    */
   protected def computeStoreCart(cart: StoreCart, countryCode: Option[String], stateCode: Option[String]): Cart = {
-    val coupons = cart.coupons.collect { case coupon: StoreCoupon => couponHandler.getWithData(cart.storeCode, coupon) } :::
+    val coupons = cart.coupons.collect { case coupon: StoreCoupon => couponHandler.getWithData(cart.storeCode, coupon) }.flatten :::
       CouponDao.findPromotionsThatOnlyApplyOnCart(cart.storeCode).collect { case promotion: Mogobiz.Coupon => couponHandler.getWithData(promotion) }
     val cartItemsWithPrice = computeCartItemWithPrice(cart.storeCode, cart.cartItems, countryCode, stateCode)
 
