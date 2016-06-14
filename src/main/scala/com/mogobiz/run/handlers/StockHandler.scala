@@ -25,10 +25,10 @@ import scalikejdbc._
  */
 class StockHandler extends IndexesTypesDsl {
 
-  def checkStock(indexEs: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime]): Boolean = {
+  def checkStock(indexEs: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime])(implicit session: DBSession): Boolean = {
     val stockOpt = StockDao.findByProductAndSku(indexEs, product, sku)
     stockOpt match {
-      case Some(stock) => DB localTx { implicit session =>
+      case Some(stock) => {
         // Search the corresponding StockCalendar
         val stockCalendarOpt = StockCalendarDao.findBySkuAndDate(sku, date, false)
 

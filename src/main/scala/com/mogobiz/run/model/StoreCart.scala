@@ -11,11 +11,18 @@ import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.json.{ JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeDeserializer, JodaDateTimeSerializer }
+import com.mogobiz.run.model.Mogobiz
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
-import com.mogobiz.run.model.Mogobiz.{ ProductCalendarRef, ProductTypeRef, Shipping }
+import com.mogobiz.run.model.Mogobiz.{BOCart, ProductCalendarRef, ProductTypeRef, Shipping}
 import com.mogobiz.run.model.Render.RegisteredCartItem
 import org.joda.time.DateTime
+
+case class SaleChange(esIndex: String, product: Mogobiz.Product, sku: Mogobiz.Sku, newNbProductSales: Long, newNbSkuSales: Long)
+
+case class ESIndexAndProductId(esIndex: String, productId: Long)
+
+case class ChangedStoreCart(cart: StoreCart, stockChanges: List[ESIndexAndProductId] = Nil, boCartChanges: Option[BOCart] = None, deletedBOCart: Option[BOCart] = None, saleChanges: List[SaleChange] = Nil)
 
 case class StoreCart(storeCode: String,
     dataUuid: String, // Valeur du cookie de tracking
@@ -72,4 +79,7 @@ case class StoreCartItemWithPrice(cartItem: StoreCartItem,
   reduction: Long)
 
 case class StoreCoupon(id: Long, code: String)
+
+case class CouponWithData(coupon: Mogobiz.Coupon, active: Boolean, reduction: Long, promotion: Boolean)
+
 

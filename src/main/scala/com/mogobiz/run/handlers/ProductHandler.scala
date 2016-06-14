@@ -429,7 +429,7 @@ class ProductHandler extends JsonUtil {
     val res = EsClient.updateRaw(req)
     println(res)
     */
-
+// TODO stoker les commentaires dans la base relationnelle
     val res = EsClient.loadRaw(get(productId) from indexEs -> "product").get
     val v1 = res.getVersion
     val product = response2JValue(res)
@@ -444,6 +444,7 @@ class ProductHandler extends JsonUtil {
   }
 
   def deleteComment(storeCode: String, productId: Long, account: Option[Account], commentId: String): Unit = {
+    // TODO stoker les commentaires dans la base relationnelle
     val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
     findComment(storeCode, productId, userId).find { comment => comment.id == commentId }.getOrElse(throw new NotAuthorizedException(""))
 
@@ -452,6 +453,7 @@ class ProductHandler extends JsonUtil {
 
   @throws[NotAuthorizedException]
   def updateComment(storeCode: String, productId: Long, account: Option[Account], commentId: String, params: CommentPutRequest): Unit = {
+    // TODO stoker les commentaires dans la base relationnelle
     val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
     val oldComment = findComment(storeCode, productId, userId).find { comment => comment.id == commentId }.getOrElse(throw new NotAuthorizedException(""))
 
@@ -467,6 +469,7 @@ class ProductHandler extends JsonUtil {
   }
 
   def noteComment(storeCode: String, productId: Long, commentId: String, params: NoteCommentRequest): Unit = {
+    // TODO stoker les commentaires dans la base relationnelle
     val script = if (params.note == 1) "ctx._source.useful = ctx._source.useful + 1"
     else "ctx._source.notuseful = ctx._source.notuseful + 1"
     val req = esupdate4s id commentId in commentIndex(storeCode) -> "comment" script script retryOnConflict 4
@@ -476,6 +479,7 @@ class ProductHandler extends JsonUtil {
   @throws[NotAuthorizedException]
   @throws[CommentAlreadyExistsException]
   def createComment(storeCode: String, productId: Long, req: CommentRequest, account: Option[Account]): Comment = {
+    // TODO stoker les commentaires dans la base relationnelle
     require(!storeCode.isEmpty)
     require(productId > 0)
 

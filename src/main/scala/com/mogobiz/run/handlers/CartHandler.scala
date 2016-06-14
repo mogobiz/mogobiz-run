@@ -41,9 +41,19 @@ import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization._
 import org.json4s.{ DefaultFormats, FieldSerializer, Formats }
 import scalikejdbc._
+import scalikejdbc.TxBoundary.Try._
+
+import scala.util.{Success, Failure, Try}
 
 class CartHandler extends StrictLogging {
   val rateService = RateBoService
+
+  def runInTransaction[U](call : => ChangedStoreCart, success : StoreCart => U): U = {
+    com.mogobiz.utils.GlobalUtil.runInTransaction(call, { changedCart: ChangedStoreCart =>
+      notifyChangesIntoES(changedCart)
+      success(changedCart.cart)
+    })
+  }
 
   /**
    * Permet de récupérer le contenu du panier<br/>
@@ -80,7 +90,12 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
-    val updatedCart = clearCart(cart)
+    val updatedCart = clearCart(cart, { cart: StoreCart =>
+      val updatedCart = new StoreCart(storeCode = cart.storeCode, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
+      StoreCartDao.save(updatedCart)
+      updatedCart
+    })
+
     val computeCart = computeStoreCart(updatedCart, params.country, params.state)
     renderCart(computeCart, currency, locale)
   }
@@ -152,8 +167,13 @@ class CartHandler extends StrictLogging {
     val cartItem = StoreCartItem(indexEs, newCartItemId, product.id, product.name, product.picture, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
       sku.price, salePrice, startDate, endDate, registeredItems, product.shipping, None, None)
 
-    val updatedCart = addCartItemIntoCart(unvalidateCart(cart), cartItem)
-    StoreCartDao.save(updatedCart)
+    val updatedCart = runInTransaction({
+      val invalidationResult = invalidateCart(cart)
+      invalidationResult.copy(cart = addCartItemIntoCart(invalidationResult.cart, cartItem))
+    }, { cart: StoreCart =>
+      StoreCartDao.save(cart)
+      cart
+    })
 
     val computeCart = computeStoreCart(updatedCart, params.country, params.state)
     renderCart(computeCart, currency, locale)
@@ -187,31 +207,33 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
-    val optCartItem = cart.cartItems.find { item => item.id == cartItemId }
-    if (optCartItem.isDefined) {
-      val existCartItem = optCartItem.get
+    cart.cartItems.find { item => item.id == cartItemId }.map { existCartItem =>
       val updatedCart = if (ProductType.SERVICE != existCartItem.xtype && existCartItem.quantity != cmd.quantity) {
         val productAndSku = ProductDao.getProductAndSku(cart.storeCode, existCartItem.skuId)
         val product = productAndSku.get._1
         val sku = productAndSku.get._2
 
-        if (!stockHandler.checkStock(cart.storeCode, product, sku, cmd.quantity, existCartItem.startDate)) {
-          throw new InsufficientStockCartItemException()
-        }
+        runInTransaction({
+          if (!stockHandler.checkStock(cart.storeCode, product, sku, cmd.quantity, existCartItem.startDate)) {
+            throw new InsufficientStockCartItemException()
+          }
 
-        // Modification du panier
-        val newCartItems = existCartItem.copy(quantity = cmd.quantity) :: Utils.remove(cart.cartItems, existCartItem)
-        val updatedCart = unvalidateCart(cart).copy(cartItems = newCartItems)
-
-        StoreCartDao.save(updatedCart)
-        updatedCart
+          val invalidationResult = invalidateCart(cart)
+          val newCartItems = cart.cartItems.map { item =>
+            if (item == existCartItem) item.copy(quantity = cmd.quantity) else item
+          }
+          invalidationResult.copy(cart = invalidationResult.cart.copy(cartItems = newCartItems))
+        }, {cart =>
+          StoreCartDao.save(cart)
+          cart
+        })
       } else {
         logger.debug("silent op")
         cart
       }
       val computeCart = computeStoreCart(updatedCart, params.country, params.state)
       renderCart(computeCart, currency, locale)
-    } else throw new NotFoundException("")
+    }.getOrElse(throw new NotFoundException(""))
   }
 
   /**
@@ -230,16 +252,15 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
-    val optCartItem = cart.cartItems.find { item => item.id == cartItemId }
-    val updatedCart = if (optCartItem.isDefined) {
-      val existCartItem = optCartItem.get
+    val updatedCart = runInTransaction({
+      val invalidationResult = invalidateCart(cart)
+      val newCartItems = cart.cartItems.filterNot { item => item.id == cartItemId}
+      invalidationResult.copy(cart = invalidationResult.cart.copy(cartItems = newCartItems))
+    }, {cart =>
+      StoreCartDao.save(cart)
+      cart
+    })
 
-      val newCartItems = Utils.remove(cart.cartItems, existCartItem)
-      val updatedCart = unvalidateCart(cart).copy(cartItems = newCartItems)
-
-      StoreCartDao.save(updatedCart)
-      updatedCart
-    } else cart
     val computeCart = computeStoreCart(updatedCart, params.country, params.state)
     renderCart(computeCart, currency, locale)
   }
@@ -262,30 +283,29 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
-    val optCoupon = CouponDao.findByCode(cart.storeCode, couponCode)
-    if (optCoupon.isDefined) {
-      val coupon = optCoupon.get
+    CouponDao.findByCode(cart.storeCode, couponCode).map { coupon =>
       if (!coupon.anonymous) {
-        if (cart.coupons.exists { c => couponCode == c.code }) {
-          throw new DuplicateException("")
-        } else if (!couponHandler.consumeCoupon(cart.storeCode, coupon)) {
-          throw new InsufficientStockCouponException()
-        } else {
-          val newCoupon = StoreCoupon(coupon.id, coupon.code)
+        val updatedCart = runInTransaction({
+          if (cart.coupons.exists { c => couponCode == c.code }) {
+            throw new DuplicateException("")
+          } else if (!couponHandler.consumeCoupon(cart.storeCode, coupon)) {
+            throw new InsufficientStockCouponException()
+          } else {
+            val invalidationResult = invalidateCart(cart)
+            val newCoupons = StoreCoupon(coupon.id, coupon.code) :: cart.coupons
+            invalidationResult.copy(cart = invalidationResult.cart.copy(coupons = newCoupons))
+          }
+        }, {cart =>
+          StoreCartDao.save(cart)
+          cart
+        })
 
-          val coupons = newCoupon :: cart.coupons
-          val updatedCart = unvalidateCart(cart).copy(coupons = coupons)
-          StoreCartDao.save(updatedCart)
-
-          val computeCart = computeStoreCart(updatedCart, params.country, params.state)
-          renderCart(computeCart, currency, locale)
-        }
+        val computeCart = computeStoreCart(updatedCart, params.country, params.state)
+        renderCart(computeCart, currency, locale)
       } else {
         throw new NotFoundException("")
       }
-    } else {
-      throw new NotFoundException("")
-    }
+    }.getOrElse(throw new NotFoundException(""))
   }
 
   /**
@@ -305,22 +325,22 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
-    val optCoupon = CouponDao.findByCode(cart.storeCode, couponCode)
-    if (optCoupon.isDefined) {
-      val existCoupon = cart.coupons.find { c => couponCode == c.code }
-      if (existCoupon.isEmpty) throw new NotFoundException("")
-      else {
-        couponHandler.releaseCoupon(cart.storeCode, optCoupon.get)
-
-        // reprise des items existants sauf celui à supprimer
-        val coupons = Utils.remove(cart.coupons, existCoupon.get)
-        val updatedCart = unvalidateCart(cart).copy(coupons = coupons)
-        StoreCartDao.save(updatedCart)
+    CouponDao.findByCode(cart.storeCode, couponCode).map { coupon =>
+      cart.coupons.find { c => couponCode == c.code }.map { existCoupon =>
+        val updatedCart = runInTransaction({
+          couponHandler.releaseCoupon(cart.storeCode, coupon)
+          val invalidationResult = invalidateCart(cart)
+          val newCoupons = cart.coupons.filterNot { c => c.code == existCoupon.code}
+          invalidationResult.copy(cart = invalidationResult.cart.copy(coupons = newCoupons))
+        }, {cart =>
+          StoreCartDao.save(cart)
+          cart
+        })
 
         val computeCart = computeStoreCart(updatedCart, params.country, params.state)
         renderCart(computeCart, currency, locale)
-      }
-    } else throw new NotFoundException("")
+      }.getOrElse(throw new NotFoundException(""))
+    }.getOrElse(throw new NotFoundException(""))
   }
 
   /**
@@ -341,21 +361,18 @@ class CartHandler extends StrictLogging {
 
     val company = CompanyDao.findByCode(cart.storeCode)
 
-    // Validation du panier au cas où il ne l'était pas déjà
-    val valideCart = validateCart(cart).copy(countryCode = params.country, stateCode = params.state, rate = Some(currency))
-    StoreCartDao.save(valideCart)
+    val transactionalBloc = {
+      val validationResult = validateCart(cart.copy(countryCode = params.country, stateCode = params.state, rate = Some(currency)))
 
-    // Suppression de la transaction en cours (si elle existe). Une nouvelle transaction sera créé
-    val cartWithoutBOCart = deletePendingBOCart(valideCart)
+      val deleteResult = deletePendingBOCart(validationResult)
+      val cartTTC = computeStoreCart(deleteResult.cart, params.country, params.state)
+      createBOCart(deleteResult, cartTTC, currency, params.buyer, company.get, params.shippingAddress)
+    }
 
-    // Calcul des données du panier
-    val cartTTC = computeStoreCart(cartWithoutBOCart, params.country, params.state)
-
-    // Création de la transaction
-    val updatedCart = createBOCart(cartWithoutBOCart, cartTTC, currency, params.buyer, company.get, params.shippingAddress)
-
-    StoreCartDao.save(updatedCart)
-
+    val updatedCart = runInTransaction(transactionalBloc, {cart =>
+      StoreCartDao.save(cart)
+      cart
+    })
     val renderedCart = renderTransactionCart(updatedCart, cartTTC, currency, locale)
     Map(
       "amount" -> rateService.calculateAmount(cartTTC.finalPrice, currency),
@@ -418,20 +435,21 @@ class CartHandler extends StrictLogging {
    */
   def queryCartPaymentLinkToTransaction(storeCode: String, uuid: String,
     params: CommitTransactionParameters, accountId: Option[Mogopay.Document]): Unit = {
-    val locale = buildLocal(params.lang, params.country)
 
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
 
-    BOCartDao.load(cart.boCartUuid.get) match {
-      case Some(boCart) =>
-        DB localTx { implicit session =>
+    runInTransaction({
+      cart.boCartUuid.map { boCartUuid =>
+        BOCartDao.load(boCartUuid).map {boCart =>
           val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid))
           BOCartDao.updateStatus(transactionBoCart)
-          exportBOCartIntoES(storeCode, transactionBoCart)
-        }
-      case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
-    }
+          ChangedStoreCart(cart = cart, boCartChanges = Some(boCart))
+        }.getOrElse(throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated"))
+      }.getOrElse(throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated"))
 
+    }, {cart =>
+      StoreCartDao.save(cart)
+    })
   }
 
   /**
@@ -449,34 +467,35 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
 
-    val productIds = cart.cartItems.map { item =>
-      UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase, item.quantity)
-      item.productId.toString
+    Try {
+      val productIds = cart.cartItems.map { item =>
+        UserActionRegistration.register(storeCode, uuid, item.productId.toString, UserAction.Purchase, item.quantity)
+        item.productId.toString
+      }
+      CartRegistration.register(storeCode, uuid, productIds)
     }
-    CartRegistration.register(storeCode, uuid, productIds)
 
-    val transactionCart = cart.copy(transactionUuid = Some(params.transactionUuid))
-    BOCartDao.load(transactionCart.boCartUuid.get) match {
-      case Some(boCart) =>
-        DB localTx { implicit session =>
-          val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid), status = TransactionStatus.COMPLETE)
-          BOCartDao.updateStatus(transactionBoCart)
-          exportBOCartIntoES(storeCode, transactionBoCart)
+    runInTransaction({
+      val transactionCart = cart.copy(transactionUuid = Some(params.transactionUuid))
+      BOCartDao.load(transactionCart.boCartUuid.get).map {boCart =>
+        val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid), status = TransactionStatus.COMPLETE)
+        BOCartDao.updateStatus(transactionBoCart)
 
-          cart.cartItems.foreach { cartItem =>
-            val productAndSku = ProductDao.getProductAndSku(transactionCart.storeCode, cartItem.skuId)
-            val product = productAndSku.get._1
-            val sku = productAndSku.get._2
-            salesHandler.incrementSales(transactionCart.storeCode, product, sku, cartItem.quantity)
-          }
-          val updatedCart = StoreCart(storeCode = transactionCart.storeCode, dataUuid = transactionCart.dataUuid, userUuid = transactionCart.userUuid)
-          StoreCartDao.save(updatedCart)
-
-          accountId.map(Dashboard.indexCart(storeCode, boCartToESBOCart(storeCode, transactionBoCart), _))
+        val saleChanges = cart.cartItems.map { cartItem =>
+          val productAndSku = ProductDao.getProductAndSku(transactionCart.storeCode, cartItem.skuId)
+          val product = productAndSku.get._1
+          val sku = productAndSku.get._2
+          salesHandler.incrementSales(transactionCart.storeCode, product, sku, cartItem.quantity)
         }
-      case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
-    }
-
+        accountId.map(Dashboard.indexCart(storeCode, boCartToESBOCart(storeCode, transactionBoCart), _))
+        ChangedStoreCart(cart = transactionCart, boCartChanges = Some(transactionBoCart), saleChanges = saleChanges)
+      }.getOrElse(throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated"))
+    }, {cart =>
+      StoreCartDao.save(cart)
+      val updatedCart = StoreCart(storeCode = cart.storeCode, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
+      StoreCartDao.save(updatedCart)
+      cart
+    })
   }
 
   /**
@@ -494,7 +513,13 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
 
-    val updatedCart = cancelCart(unvalidateCart(cart))
+    val updatedCart = runInTransaction({
+      cancelCart(invalidateCart(cart))
+    }, {cart =>
+      StoreCartDao.save(cart)
+      cart
+    })
+
     val computeCart = computeStoreCart(updatedCart, params.country, params.state)
     renderCart(computeCart, currency, locale)
   }
@@ -504,10 +529,14 @@ class CartHandler extends StrictLogging {
    */
   def cleanup(index: String, querySize: Int): Unit = {
     StoreCartDao.getExpired(index, querySize).map { cart =>
-      try {
-        StoreCartDao.delete(clearCart(removeAllUnsalabledItem(cart, None, None)))
-      } catch {
-        case t: Throwable => t.printStackTrace()
+      val r = Try {
+        val updatedCart = clearCart(cart, { cart: StoreCart =>
+          StoreCartDao.delete(cart)
+        })
+      }
+      r match {
+        case Success(_) =>
+        case Failure(e) => logger.error(e.getMessage, e)
       }
     }
   }
@@ -524,24 +553,24 @@ class CartHandler extends StrictLogging {
    * @param shippingAddress
    * @return
    */
-  protected def createBOCart(storeCart: StoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String): StoreCart = {
-    val boCartAndStoreCart = DB localTx { implicit session =>
-      {
-        val storeCode = storeCart.storeCode
-        val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
+  protected def createBOCart(storeCart: ChangedStoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String)(implicit session: DBSession): ChangedStoreCart = {
+    val storeCode = storeCart.cart.storeCode
+    val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
 
-        val newStoreCartItems = cart.cartItemVOs.map { cartItem =>
-          val storeCartItem = storeCart.cartItems.find(i => i.id == cartItem.id).get
+    val cartItems = cart.cartItemVOs.toList
+    val newStoreCartItems = storeCart.cart.cartItems.map {storeCartItem =>
+      cartItems.find{i => i.id == storeCartItem.id}.map { cartItem =>
 
-          val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
-          val product = productAndSku.get._1
-          val sku = productAndSku.get._2
+        val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
+        val product = productAndSku.get._1
+        val sku = productAndSku.get._2
 
-          // Création du BOProduct correspondant au produit principal
-          val boProduct = BOProductDao.create(cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), true, cartItem.productId)
+        // Création du BOProduct correspondant au produit principal
+        val boProduct = BOProductDao.create(cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), true, cartItem.productId)
 
-          val newStoreRegistedCartItems = cartItem.registeredCartItemVOs.map { registeredCartItem =>
-            val storeRegistedCartItem = storeCartItem.registeredCartItems.find(r => r.email == registeredCartItem.email).get
+        val registeredCartItems = cartItem.registeredCartItemVOs.toList
+        val newStoreRegistedCartItems = storeCartItem.registeredCartItems.map { storeRegistedCartItem =>
+          registeredCartItems.find(r => r.email == storeRegistedCartItem.email).map { registeredCartItem =>
             val boTicketId = BOTicketTypeDao.newId()
 
             val shortCodeAndQrCode = product.xtype match {
@@ -558,10 +587,6 @@ class CartHandler extends StrictLogging {
                 QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
                 val qrCodeBase64 = Base64.encode(output.toByteArray)
 
-                /* for debug purpose only
-              val qrCodeBase64 = "test"
-              val encryptedQrCodeContent = "test"
-              */
                 (Some(shortCode), Some(qrCodeBase64), Some(encryptedQrCodeContent))
               }
               case _ => (None, None, None)
@@ -571,30 +596,24 @@ class CartHandler extends StrictLogging {
             if (shortCodeAndQrCode._3.isDefined)
               storeRegistedCartItem.copy(qrCodeContent = Some(product.name + ":" + registeredCartItem.email + "||" + shortCodeAndQrCode._3.get))
             else storeRegistedCartItem
-          }
-
-          //create Sale
-          val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
-
-          // Downloadable Link
-          val boCartItemUuid = BOCartItemDao.create(sku, cartItem, storeCartItem, boCart, Some(boDelivery), boProduct.id).uuid
-          val downloadableLink = product.xtype match {
-            case ProductType.DOWNLOADABLE => {
-              val params = s"boCartItemUuid:$boCartItemUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
-              val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES", true)
-              Some(s"${Settings.AccessUrl}/$storeCode/download/$encryptedParams")
-            }
-            case _ => None
-          }
-          storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
+          }.getOrElse(storeRegistedCartItem)
         }
-        (boCart, storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList))
-      }
+        val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
+
+        // Downloadable Link
+        val boCartItemUuid = BOCartItemDao.create(sku, cartItem, storeCartItem, boCart, Some(boDelivery), boProduct.id).uuid
+        val downloadableLink = product.xtype match {
+          case ProductType.DOWNLOADABLE => {
+            val params = s"boCartItemUuid:$boCartItemUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
+            val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES", true)
+            Some(s"${Settings.AccessUrl}/$storeCode/download/$encryptedParams")
+          }
+          case _ => None
+        }
+        storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
+      }.getOrElse(storeCartItem)
     }
-
-    exportBOCartIntoES(storeCart.storeCode, boCartAndStoreCart._1)
-
-    boCartAndStoreCart._2
+    storeCart.copy(cart = storeCart.cart.copy(boCartUuid = Some(boCart.uuid),cartItems = newStoreCartItems), boCartChanges = Some(boCart))
   }
 
   /**
@@ -604,12 +623,11 @@ class CartHandler extends StrictLogging {
    * @param cart
    * @return
    */
-  protected def deletePendingBOCart(cart: StoreCart): StoreCart = {
-    if (cart.boCartUuid.isDefined) {
-      DB localTx { implicit session =>
-        val boCart = BOCartDao.load(cart.boCartUuid.get)
-        if (boCart.isDefined && boCart.get.status == TransactionStatus.PENDING) {
-          BOCartItemDao.findByBOCart(boCart.get).foreach { boCartItem =>
+  protected def deletePendingBOCart(cart: ChangedStoreCart)(implicit session: DBSession): ChangedStoreCart = {
+    cart.cart.boCartUuid.map { boCartUuid =>
+      BOCartDao.load(boCartUuid).map {boCart =>
+        if (boCart.status == TransactionStatus.PENDING) {
+          BOCartItemDao.findByBOCart(boCart).foreach { boCartItem =>
             BOCartItemDao.delete(boCartItem)
 
             BOCartItemDao.getBOProducts(boCartItem).foreach { boProduct =>
@@ -619,13 +637,13 @@ class CartHandler extends StrictLogging {
               BOProductDao.delete(boProduct)
             }
           }
-          BOCartDao.delete(boCart.get)
-          BOCartESDao.delete(cart.storeCode, boCart.get.uuid)
+          BOCartDao.delete(boCart)
 
-          cart.copy(boCartUuid = None)
-        } else cart
-      }
-    } else cart
+          cart.copy(cart = cart.cart.copy(boCartUuid = None), deletedBOCart = Some(boCart))
+        }
+        else cart
+      }.getOrElse(cart)
+    }.getOrElse(cart)
   }
 
   /**
@@ -653,9 +671,13 @@ class CartHandler extends StrictLogging {
    * @return
    */
   protected def initCart(storeCode: String, uuid: String, currentAccountId: Option[String], removeUnsalableItem: Boolean, country: Option[String], state: Option[String]): StoreCart = {
+    def prepareCart(cart: StoreCart) = {
+      if (removeUnsalableItem) removeAllUnsellableItems(cart, country, state) else cart
+    }
+
     def getOrCreateStoreCart(cart: Option[StoreCart]): StoreCart = {
       cart match {
-        case Some(c) => if (removeUnsalableItem) removeAllUnsalabledItem(c, country, state) else c
+        case Some(c) => prepareCart(c)
         case None =>
           val c = new StoreCart(storeCode = storeCode, dataUuid = uuid, userUuid = currentAccountId)
           StoreCartDao.save(c)
@@ -664,7 +686,7 @@ class CartHandler extends StrictLogging {
     }
 
     if (currentAccountId.isDefined) {
-      val cartAnonyme = StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None).map { c => if (removeUnsalableItem) removeAllUnsalabledItem(c, country, state) else c };
+      val cartAnonyme = StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, None).map { c => prepareCart(c) };
       val cartAuthentifie = getOrCreateStoreCart(StoreCartDao.findByDataUuidAndUserUuid(storeCode, uuid, currentAccountId));
 
       // S'il y a un panier anonyme, il est fusionné avec le panier authentifié et supprimé de la base
@@ -680,77 +702,80 @@ class CartHandler extends StrictLogging {
     }
   }
 
-  protected def removeAllUnsalabledItem(cart: StoreCart, country: Option[String], state: Option[String]): StoreCart = {
-    val currentIndex = EsClient.getUniqueIndexByAlias(cart.storeCode).getOrElse(cart.storeCode)
-    val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
-    val newCartItems = DB localTx { implicit session =>
-      cart.cartItems.flatMap { cartItem =>
+  protected def removeAllUnsellableItems(cart: StoreCart, country: Option[String], state: Option[String]): StoreCart = {
+    val transactionalBloc = {
+      val cartItemsToRemoved = cart.cartItems.flatMap { cartItem =>
         val cartItemWithIndex = cartItem.copy(indexEs = Option(cartItem.indexEs).getOrElse(cart.storeCode))
         val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
         if (productAndSku.isEmpty || !checkProductAndSkuSalabality(productAndSku.get, country, state)) {
-          if (cart.validate) {
-            ProductDao.getProductAndSku(cartItemWithIndex.indexEs, cartItem.skuId).map { realProductAndSku =>
-              indexEsAndProductsToUpdate += unvalidateCartItem(cartItemWithIndex, realProductAndSku)
-            }
-          }
-          None
-        } else Some(cartItemWithIndex)
+          Some(cartItemWithIndex)
+        } else None
       }
+
+      val newCoupons = cart.coupons.map { coupon =>
+        CouponDao.findByCode(cart.storeCode, coupon.code).map { c =>
+          coupon
+        }
+      }.flatten
+
+      removeCartItemsInTransaction(cart.copy(coupons = newCoupons), cartItemsToRemoved)
     }
-
-    val newCoupons = cart.coupons.map { coupon =>
-      CouponDao.findByCode(cart.storeCode, coupon.code).map { c =>
-        coupon
-      }
-    }.flatten
-
-    updateProductStockAvailability(indexEsAndProductsToUpdate.toSet)
-
-    val updatedCart = cart.copy(cartItems = newCartItems, coupons = newCoupons)
-    if (indexEsAndProductsToUpdate.size == 0) {
-      StoreCartDao.save(updatedCart)
-      updatedCart
-    } else unvalidateCart(updatedCart)
+    val successBloc = { cart: StoreCart =>
+      StoreCartDao.save(cart)
+      cart
+    }
+    runInTransaction(transactionalBloc, successBloc)
   }
 
   /**
-   * Réinitialise le panier (en incrémentant en nombre d'utilisation des coupons)
-   *
+   * Supprime les éléments du panier en incrémentant si besoin des stocks (si panier validé).
+   * Doit être fait dans une transaction
    * @param cart
+   * @param cartItemsToRemoved
    * @return
    */
-  protected def clearCart(cart: StoreCart): StoreCart = {
-    cancelCart(unvalidateCart(cart))
+  protected def removeCartItemsInTransaction(cart: StoreCart, cartItemsToRemoved: List[StoreCartItem])(implicit session: DBSession) : ChangedStoreCart = {
+    if (cartItemsToRemoved.isEmpty) ChangedStoreCart(cart)
+    else {
+      val invalidationResult = invalidateCart(cart)
+      val newCartItems = invalidationResult.cart.cartItems.filter{ cartItem =>
+        cartItemsToRemoved.find { item => item.id == cartItem.id }.isEmpty
+      }
+      invalidationResult.copy(cart = invalidationResult.cart.copy(cartItems = newCartItems))
+    }
+  }
 
-    cart.coupons.foreach(coupon => {
-      val optCoupon = CouponDao.findByCode(cart.storeCode, coupon.code)
-      if (optCoupon.isDefined) couponHandler.releaseCoupon(cart.storeCode, optCoupon.get)
-    })
+  protected def clearCart[U](cart: StoreCart, success : StoreCart => U): U = {
+    runInTransaction({
+      val invalidateResult = invalidateCart(cart)
+      val cancelResult = cancelCart(invalidateResult)
 
-    val updatedCart = new StoreCart(storeCode = cart.storeCode, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
-    StoreCartDao.save(updatedCart)
-    updatedCart
+      cart.coupons.foreach(coupon => {
+        val optCoupon = CouponDao.findByCode(cart.storeCode, coupon.code)
+        if (optCoupon.isDefined) couponHandler.releaseCoupon(cart.storeCode, optCoupon.get)
+      })
+
+      cancelResult
+    }, { cart: StoreCart => success(cart) })
   }
 
   /**
    * Annule la transaction courante et génère un nouveau uuid au panier
    *
-   * @param cart
+   * @param changeCart
    * @return
    */
-  protected def cancelCart(cart: StoreCart): StoreCart = {
+  protected def cancelCart(changeCart: ChangedStoreCart)(implicit session: DBSession): ChangedStoreCart = {
+    val cart = changeCart.cart
     cart.boCartUuid.map { boCartUuid =>
-      BOCartDao.load(cart.boCartUuid.get).map { boCart =>
+      val newBoCart = BOCartDao.load(cart.boCartUuid.get).map { boCart =>
         // Mise à jour du statut
         val newBoCart = boCart.copy(status = TransactionStatus.FAILED)
         BOCartDao.updateStatus(newBoCart)
-        exportBOCartIntoES(cart.storeCode, newBoCart)
+        newBoCart
       }
-
-      val updatedCart = cart.copy(boCartUuid = None, transactionUuid = None)
-      StoreCartDao.save(updatedCart)
-      updatedCart
-    } getOrElse (cart)
+      changeCart.copy(cart = cart.copy(boCartUuid = None, transactionUuid = None), boCartChanges = newBoCart)
+    } getOrElse(changeCart)
   }
 
   /**
@@ -760,28 +785,30 @@ class CartHandler extends StrictLogging {
    * @return
    */
   @throws[InsufficientStockException]
-  protected def validateCart(cart: StoreCart): StoreCart = {
-    if (!cart.validate) {
-      val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
-      DB localTx { implicit session =>
-        cart.cartItems.foreach { cartItem =>
-          ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId).map { productAndSku =>
-            val product = productAndSku._1
-            val sku = productAndSku._2
-            stockHandler.decrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
+  protected def validateCart(cart: StoreCart)(implicit session: DBSession): ChangedStoreCart = {
+    if (cart.validate) {
+      val changes = validateCartItems(cart.cartItems)
+      ChangedStoreCart(cart.copy(validate = true, validateUuid = Some(UUID.randomUUID().toString())), changes)
+    } else ChangedStoreCart(cart)
+  }
 
-            val indexEsAndProduct = (cartItem.indexEs, product.id)
-            indexEsAndProductsToUpdate += indexEsAndProduct
-          }
-        }
-      }
+  protected def validateCartItems(cartItems: List[StoreCartItem])(implicit session: DBSession): List[ESIndexAndProductId] = {
+    if (cartItems.isEmpty) Nil
+    else {
+      val result = validateCartItems(cartItems.tail)
+      val cartItem = cartItems.head
+      validateCartItem(cartItem).map { indexAndProduct => indexAndProduct :: result}.getOrElse(result)
+    }
+  }
 
-      updateProductStockAvailability(indexEsAndProductsToUpdate.toSet)
-
-      val updatedCart = cart.copy(validate = true, validateUuid = Some(UUID.randomUUID().toString()))
-      StoreCartDao.save(updatedCart)
-      updatedCart
-    } else cart
+  protected def validateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): Option[ESIndexAndProductId] = {
+    val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
+    productAndSku.map { ps =>
+      val product = ps._1
+      val sku = ps._2
+      stockHandler.decrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
+      ESIndexAndProductId(cartItem.indexEs, product.id)
+    }
   }
 
   /**
@@ -790,55 +817,59 @@ class CartHandler extends StrictLogging {
    * @param cart
    * @return
    */
-  protected def unvalidateCart(cart: StoreCart): StoreCart = {
+  protected def invalidateCart(cart: StoreCart)(implicit session: DBSession): ChangedStoreCart = {
     if (cart.validate) {
-      val indexEsAndProductsToUpdate = scala.collection.mutable.Set[(String, Long)]()
-      DB localTx { implicit session =>
-        cart.cartItems.foreach { cartItem =>
-          unvalidateCartItem(cartItem).map { indexAndProduct =>
-            indexEsAndProductsToUpdate += indexAndProduct
-          }
-        }
-      }
-
-      updateProductStockAvailability(indexEsAndProductsToUpdate.toSet)
-
-      val updatedCart = cart.copy(validate = false, validateUuid = None)
-      StoreCartDao.save(updatedCart)
-      updatedCart
-    } else cart
+      val changes = invalidateCartItems(cart.cartItems)
+      ChangedStoreCart(cart.copy(validate = false, validateUuid = None), changes)
+    } else ChangedStoreCart(cart)
   }
 
-  protected def unvalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): Option[(String, Long)] = {
-    val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
-    productAndSku.map { ps =>
-      unvalidateCartItem(cartItem, ps)
+  protected def invalidateCartItems(cartItems: List[StoreCartItem])(implicit session: DBSession): List[ESIndexAndProductId] = {
+    if (cartItems.isEmpty) Nil
+    else {
+      val result = invalidateCartItems(cartItems.tail)
+      val cartItem = cartItems.head
+      invalidateCartItem(cartItem).map { indexAndProduct => indexAndProduct :: result}.getOrElse(result)
     }
   }
 
-  protected def unvalidateCartItem(cartItem: StoreCartItem, productAndSku: (Mogobiz.Product, Mogobiz.Sku))(implicit session: DBSession): (String, Long) = {
-    val product = productAndSku._1
-    val sku = productAndSku._2
-    stockHandler.incrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
-
-    (cartItem.indexEs, product.id)
+  protected def invalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): Option[ESIndexAndProductId] = {
+    val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
+    productAndSku.map { ps =>
+      val product = ps._1
+      val sku = ps._2
+      stockHandler.incrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
+      ESIndexAndProductId(cartItem.indexEs, product.id)
+    }
   }
 
-  /**
-   * Update products stock availability
-   *
-   * @param indexEsAndProductId
-   */
-  protected def updateProductStockAvailability(indexEsAndProductId: Set[(String, Long)]) = {
+  protected def notifyChangesIntoES(changedCart : ChangedStoreCart, refresh: Boolean = false): Unit = {
     import scala.concurrent.duration._
     val system = ActorSystemLocator()
     import system.dispatcher
     val stockActor = system.actorOf(Props[EsUpdateActor])
-    indexEsAndProductId.foreach { indexEsAndProduct =>
+    changedCart.stockChanges.foreach { indexEsAndProduct =>
       system.scheduler.scheduleOnce(2 seconds) {
-        stockActor ! ProductStockAvailabilityUpdateRequest(indexEsAndProduct._1, indexEsAndProduct._2)
+        stockActor ! ProductStockAvailabilityUpdateRequest(indexEsAndProduct.esIndex, indexEsAndProduct.productId)
       }
     }
+
+    changedCart.saleChanges.foreach { saleChange =>
+      salesHandler.fireUpdateEsSales(saleChange.esIndex, saleChange.product, saleChange.sku, saleChange.newNbProductSales, saleChange.newNbSkuSales)
+    }
+
+
+    val storeCode = changedCart.cart.storeCode
+
+    changedCart.boCartChanges.map { boCart =>
+      val boCartES = boCartToESBOCart(storeCode, boCart)
+      BOCartESDao.save(storeCode, boCartES, refresh)
+    }
+
+    changedCart.boCartChanges.map { boCart =>
+      BOCartESDao.delete(storeCode, boCart.uuid)
+    }
+
   }
 
   /**
@@ -870,14 +901,12 @@ class CartHandler extends StrictLogging {
    * @return
    */
   protected def addCartItemIntoCart(cart: StoreCart, cartItem: StoreCartItem): StoreCart = {
-    val existCartItem = findCartItem(cart, cartItem)
-    if (existCartItem.isDefined) {
-      val newCartItems = existCartItem.get.copy(id = cartItem.id, quantity = existCartItem.get.quantity + cartItem.quantity) :: Utils.remove(cart.cartItems, existCartItem.get)
-      cart.copy(cartItems = newCartItems)
-    } else {
-      val newCartItems = (cartItem :: cart.cartItems)
-      cart.copy(cartItems = newCartItems)
-    }
+    val newCartItems = findCartItem(cart, cartItem).map { existCartItem =>
+      cart.cartItems.map { item =>
+        if (item == existCartItem) item.copy(quantity = item.quantity + cartItem.quantity) else item
+      }
+    }.getOrElse(cartItem :: cart.cartItems)
+    cart.copy(cartItems = newCartItems)
   }
 
   /**
@@ -1294,11 +1323,6 @@ class CartHandler extends StrictLogging {
     )
   }
 
-  def exportBOCartIntoES(storeCode: String, boCart: BOCart, refresh: Boolean = false)(implicit session: DBSession = AutoSession): Boolean = {
-    val boCartES = boCartToESBOCart(storeCode, boCart)
-    BOCartESDao.save(storeCode, boCartES, refresh)
-  }
-
   def boCartToESBOCart(storeCode: String, boCart: BOCart)(implicit session: DBSession = AutoSession): ES.BOCart = {
     // Conversion des BOCartItem
     val cartItems = BOCartItemDao.findByBOCart(boCart).flatMap { boCartItem =>
@@ -1524,16 +1548,14 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
     }.map(BOCartDao(t.resultName)).single().apply()
   }
 
-  def updateStatus(boCart: BOCart): Unit = {
-    DB localTx { implicit session =>
-      withSQL {
-        update(BOCartDao).set(
-          BOCartDao.column.status -> boCart.status.toString(),
-          BOCartDao.column.transactionUuid -> boCart.transactionUuid,
-          BOCartDao.column.lastUpdated -> DateTime.now
-        ).where.eq(BOCartDao.column.id, boCart.id)
-      }.update.apply()
-    }
+  def updateStatus(boCart: BOCart)(implicit session: DBSession): Unit = {
+    withSQL {
+      update(BOCartDao).set(
+        BOCartDao.column.status -> boCart.status.toString(),
+        BOCartDao.column.transactionUuid -> boCart.transactionUuid,
+        BOCartDao.column.lastUpdated -> DateTime.now
+      ).where.eq(BOCartDao.column.id, boCart.id)
+    }.update.apply()
   }
 
   def create(buyer: String, companyId: Long, rate: Currency, price: Long)(implicit session: DBSession): BOCart = {
