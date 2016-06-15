@@ -12,16 +12,16 @@ import com.mogobiz.json.{ JacksonConverter, JsonUtil }
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.handlers.shipping.EasyPostHandler
-import com.mogobiz.pay.model.Mogopay.{ BOTransaction, Account, Document, RoleName }
+import com.mogobiz.pay.model.Mogopay._
 import com.mogobiz.run.config
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions.{ IllegalStatusException, MinMaxQuantityException, NotAuthorizedException, NotFoundException }
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.RequestParameters.{ BOListCustomersRequest, BOListOrdersRequest, CreateBOReturnedItemRequest, UpdateBOReturnedItemRequest }
-import com.mogobiz.run.model.WebHookData
+import com.mogobiz.run.model.{ StockChange, CartChanges, WebHookData }
 import com.mogobiz.run.utils.Paging
-import com.mogobiz.utils.EmailHandler
+import com.mogobiz.utils.{ GlobalUtil, EmailHandler }
 import com.mogobiz.utils.EmailHandler.Mail
 import com.sksamuel.elastic4s.ElasticDsl._
 import org.elasticsearch.common.joda.time.format.ISODateTimeFormat
@@ -31,7 +31,7 @@ import org.joda.time.DateTime
 import org.json4s.Extraction
 import org.json4s.JsonAST._
 import org.json4s.jackson.JsonMethods._
-import scalikejdbc.DB
+import scalikejdbc.{ DBSession, DB }
 import spray.client.pipelining._
 import spray.http._
 import scala.concurrent.Future
@@ -237,7 +237,7 @@ class BackofficeHandler extends JsonUtil with BoService {
           lastUpdated = DateTime.now,
           uuid = UUID.randomUUID().toString))
 
-        cartHandler.exportBOCartIntoES(storeCode, boCart, true)
+        notifyChangesIntoES(storeCode, boCart)
         notifyItemReturned(merchant, customer, boCartItem, boReturn, locale)
     }
   }
@@ -268,53 +268,58 @@ class BackofficeHandler extends JsonUtil with BoService {
   @throws[NotFoundException]
   @throws[IllegalStatusException]
   def updateBOReturnedItem(storeCode: String, accountUuid: String, transactionUuid: String, boCartItemUuid: String, boReturnedItemUuid: String, req: UpdateBOReturnedItemRequest, locale: Option[String]): Unit = {
-    val merchant = accountHandler.load(accountUuid).getOrElse(throw new Exception("Merchant not found for returned item"))
-    val boCart = BOCartDao.findByTransactionUuid(transactionUuid).getOrElse(throw new NotFoundException(""))
-    val customer = accountHandler.findByEmail(boCart.buyer, Some(accountUuid)).getOrElse(throw new Exception("Customer not found for returned item"))
-    val boCartItem = BOCartItemDao.load(boCartItemUuid).getOrElse(throw new NotFoundException(""))
-    if (boCartItem.bOCartFk != boCart.id) throw new NotFoundException("")
-    val boReturnedItem = BOReturnedItemDao.load(boReturnedItemUuid).getOrElse(throw new NotFoundException(""))
-    if (boReturnedItem.bOCartItemFk != boCartItem.id) throw new NotFoundException("")
-    val lastReturn: BOReturn = BOReturnDao.findByBOReturnedItem(boReturnedItem).head
+    val transactionalBloc = { implicit session: DBSession =>
+      val merchant = accountHandler.load(accountUuid).getOrElse(throw new Exception("Merchant not found for returned item"))
+      val boCart = BOCartDao.findByTransactionUuid(transactionUuid).getOrElse(throw new NotFoundException(""))
+      val customer = accountHandler.findByEmail(boCart.buyer, Some(accountUuid)).getOrElse(throw new Exception("Customer not found for returned item"))
+      val boCartItem = BOCartItemDao.load(boCartItemUuid).getOrElse(throw new NotFoundException(""))
+      if (boCartItem.bOCartFk != boCart.id) throw new NotFoundException("")
+      val boReturnedItem = BOReturnedItemDao.load(boReturnedItemUuid).getOrElse(throw new NotFoundException(""))
+      if (boReturnedItem.bOCartItemFk != boCartItem.id) throw new NotFoundException("")
+      val lastReturn: BOReturn = BOReturnDao.findByBOReturnedItem(boReturnedItem).head
 
-    // Calcul du nouveau statut en fonction du statut existant
-    val newStatus = ReturnedItemStatus.withName(req.status)
-    val newReturnStatus = (lastReturn.status, ReturnStatus.withName(req.returnStatus)) match {
-      case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_TO_BE_RECEIVED) => ReturnStatus.RETURN_TO_BE_RECEIVED
-      case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_REFUSED) => ReturnStatus.RETURN_REFUSED
-      case (ReturnStatus.RETURN_TO_BE_RECEIVED, ReturnStatus.RETURN_RECEIVED) => ReturnStatus.RETURN_RECEIVED
-      case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_ACCEPTED) => ReturnStatus.RETURN_ACCEPTED
-      case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_REFUSED) => ReturnStatus.RETURN_REFUSED
-      case (_, _) => throw new IllegalStatusException()
+      // Calcul du nouveau statut en fonction du statut existant
+      val newStatus = ReturnedItemStatus.withName(req.status)
+      val newReturnStatus = (lastReturn.status, ReturnStatus.withName(req.returnStatus)) match {
+        case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_TO_BE_RECEIVED) => ReturnStatus.RETURN_TO_BE_RECEIVED
+        case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_REFUSED) => ReturnStatus.RETURN_REFUSED
+        case (ReturnStatus.RETURN_TO_BE_RECEIVED, ReturnStatus.RETURN_RECEIVED) => ReturnStatus.RETURN_RECEIVED
+        case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_ACCEPTED) => ReturnStatus.RETURN_ACCEPTED
+        case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_REFUSED) => ReturnStatus.RETURN_REFUSED
+        case (_, _) => throw new IllegalStatusException()
+      }
+
+      BOReturnedItemDao.save(boReturnedItem.copy(status = newStatus, refunded = req.refunded, totalRefunded = req.totalRefunded))
+
+      val boReturn = BOReturnDao.create(new BOReturn(id = newId(),
+        bOReturnedItemFk = boReturnedItem.id,
+        motivation = Some(req.motivation),
+        status = newReturnStatus,
+        dateCreated = DateTime.now,
+        lastUpdated = DateTime.now,
+        uuid = UUID.randomUUID().toString))
+
+      val stockChange = if (newReturnStatus == ReturnStatus.RETURN_ACCEPTED && boReturnedItem.status == ReturnedItemStatus.BACK_TO_STOCK) {
+        ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).map { productAndSku =>
+          val stockChange = stockHandler.incrementStock(storeCode, productAndSku._1, productAndSku._2, boReturnedItem.quantity, boCartItem.startDate)
+          implicit val system = ActorSystem()
+          import system.dispatcher
+          val pipeline: HttpRequest => Future[HttpResponse] = (addHeader("accept", "application/json")
+            ~> sendReceive)
+
+          pipeline(Get(config.Settings.jahiaClearCacheUrl + "?productId=" + productAndSku._1.id))
+          stockChange
+        }.flatten
+      } else None
+      (merchant, customer, boCart, boCartItem, lastReturn, boReturn, stockChange)
     }
 
-    DB localTx {
-      implicit session =>
-        BOReturnedItemDao.save(boReturnedItem.copy(status = newStatus, refunded = req.refunded, totalRefunded = req.totalRefunded))
-
-        val boReturn = BOReturnDao.create(new BOReturn(id = newId(),
-          bOReturnedItemFk = boReturnedItem.id,
-          motivation = Some(req.motivation),
-          status = newReturnStatus,
-          dateCreated = DateTime.now,
-          lastUpdated = DateTime.now,
-          uuid = UUID.randomUUID().toString))
-
-        if (newReturnStatus == ReturnStatus.RETURN_ACCEPTED && boReturnedItem.status == ReturnedItemStatus.BACK_TO_STOCK) {
-          ProductDao.getProductAndSku(storeCode, boCartItem.ticketTypeFk).map { productAndSku =>
-            stockHandler.incrementStock(storeCode, productAndSku._1, productAndSku._2, boReturnedItem.quantity, boCartItem.startDate)
-            implicit val system = ActorSystem()
-            import system.dispatcher
-            val pipeline: HttpRequest => Future[HttpResponse] = (addHeader("accept", "application/json")
-              ~> sendReceive)
-
-            pipeline(Get(config.Settings.jahiaClearCacheUrl + "?productId=" + productAndSku._1.id))
-          }
-        }
-        cartHandler.exportBOCartIntoES(storeCode, boCart, refresh = true)
-        notifyItemReturnedStatusUpdated(merchant, customer, boCartItem, lastReturn, boReturn, locale)
-
+    val successBloc = { result: (Account, Account, BOCart, BOCartItem, BOReturn, BOReturn, Option[StockChange]) =>
+      notifyChangesIntoES(storeCode, result._3, result._7)
+      notifyItemReturnedStatusUpdated(result._1, result._2, result._4, result._5, result._6, locale)
     }
+
+    GlobalUtil.runInTransaction(transactionalBloc, successBloc)
   }
 
   def shippingWebhook(storeCode: String, webhookProvider: String, data: String): Unit = {
@@ -330,7 +335,7 @@ class BackofficeHandler extends JsonUtil with BoService {
                       BODeliveryDao.save(boDelivery.copy(status = webHookData.newDeliveryStatus))
                     }
                   }
-                  cartHandler.exportBOCartIntoES(storeCode, boCart, refresh = true)
+                  notifyChangesIntoES(storeCode, boCart)
               }
             }
           }
@@ -402,6 +407,10 @@ class BackofficeHandler extends JsonUtil with BoService {
         case _ => obj
       }
     }
+  }
+
+  def notifyChangesIntoES(storeCode: String, boCart: BOCart, stockChange: Option[StockChange] = None): Unit = {
+    cartHandler.notifyChangesIntoES(storeCode, CartChanges(boCartChange = Some(boCart), stockChanges = stockChange.map { List(_) }.getOrElse(Nil)), true)
   }
 
   private val filterBOTransactionField: PartialFunction[JField, JField] = {

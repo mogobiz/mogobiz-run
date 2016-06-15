@@ -9,10 +9,10 @@ import java.util.{ Date, Locale, UUID }
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
-import com.mogobiz.pay.common.{ CartRate, CompanyAddress, Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay }
+import com.mogobiz.pay.common.{ Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay, _ }
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.actors.EsUpdateActor
-import com.mogobiz.run.actors.EsUpdateActor.ProductStockAvailabilityUpdateRequest
+import com.mogobiz.run.actors.EsUpdateActor.{ StockUpdateRequest, ProductStockAvailabilityUpdateRequest }
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.dashboard.Dashboard
@@ -23,7 +23,7 @@ import com.mogobiz.run.learning.{ CartRegistration, UserActionRegistration }
 import com.mogobiz.run.model.ES.{ BOCartEx, BOCartItemEx, BOCart => BOCartES, BOCartItem => BOCartItemES, BODelivery => BODeliveryES, BOProduct => BOProductES, BORegisteredCartItem => BORegisteredCartItemES, BOReturn => BOReturnES, BOReturnedItem => BOReturnedItemES }
 import com.mogobiz.run.model.Learning.UserAction
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.Render.{ Cart, CartItem, Coupon, RegisteredCartItem }
+import com.mogobiz.run.model.Render.{ Coupon, RegisteredCartItem }
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
@@ -39,19 +39,28 @@ import org.joda.time.format.DateTimeFormat
 import org.json4s.ext.JodaTimeSerializers
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization._
-import org.json4s.{ DefaultFormats, FieldSerializer, Formats }
+import org.json4s._
 import scalikejdbc._
 import scalikejdbc.TxBoundary.Try._
 
-import scala.util.{Success, Failure, Try}
+import scala.util.{ Success, Failure, Try }
 
 class CartHandler extends StrictLogging {
   val rateService = RateBoService
 
-  def runInTransaction[U](call : => ChangedStoreCart, success : StoreCart => U): U = {
-    com.mogobiz.utils.GlobalUtil.runInTransaction(call, { changedCart: ChangedStoreCart =>
-      notifyChangesIntoES(changedCart)
-      success(changedCart.cart)
+  def runInTransaction[U](call: DBSession => CartWithChanges, success: StoreCart => U): U = {
+    com.mogobiz.utils.GlobalUtil.runInTransaction(call, { cartAndChanges: CartWithChanges =>
+      val cart = cartAndChanges.cart
+      notifyChangesIntoES(cart.storeCode, cartAndChanges.changes)
+      success(cart)
+    })
+  }
+
+  def runInTransaction[U](call: => DBSession => CartWithPricesAndChanges, success: StoreCartWithPrice => U): U = {
+    com.mogobiz.utils.GlobalUtil.runInTransaction(call, { cartAndChanges: CartWithPricesAndChanges =>
+      val cart = cartAndChanges.cart
+      notifyChangesIntoES(cart.storeCart.storeCode, cartAndChanges.changes)
+      success(cart)
     })
   }
 
@@ -121,56 +130,57 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
-    val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cmd.skuId)
-    if (productAndSku.isEmpty) throw new NotFoundException("unknown sku")
+    val transactionalBloc = { implicit session: DBSession =>
+      val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cmd.skuId)
+      if (productAndSku.isEmpty) throw new NotFoundException("unknown sku")
 
-    if (!checkProductAndSkuSalabality(productAndSku.get, params.country, params.state))
-      throw new UnsaleableProductException()
+      if (!checkProductAndSkuSalabality(productAndSku.get, params.country, params.state))
+        throw new UnsaleableProductException()
 
-    val product = productAndSku.get._1
-    val sku = productAndSku.get._2
-    val startEndDate = Utils.verifyAndExtractStartEndDate(product, sku, cmd.dateTime)
-    val startDate = if (startEndDate.isDefined) Some(startEndDate.get._1) else None
-    val endDate = if (startEndDate.isDefined) Some(startEndDate.get._2) else None
+      val product = productAndSku.get._1
+      val sku = productAndSku.get._2
+      val startEndDate = Utils.verifyAndExtractStartEndDate(product, sku, cmd.dateTime)
+      val startDate = if (startEndDate.isDefined) Some(startEndDate.get._1) else None
+      val endDate = if (startEndDate.isDefined) Some(startEndDate.get._2) else None
 
-    if (sku.minOrder > cmd.quantity || (sku.maxOrder < cmd.quantity && sku.maxOrder > -1))
-      throw new MinMaxQuantityException(sku.minOrder, sku.maxOrder)
+      if (sku.minOrder > cmd.quantity || (sku.maxOrder < cmd.quantity && sku.maxOrder > -1))
+        throw new MinMaxQuantityException(sku.minOrder, sku.maxOrder)
 
-    if (!cmd.dateTime.isDefined && !ProductCalendar.NO_DATE.equals(product.calendarType))
-      throw new DateIsNullException()
+      if (!cmd.dateTime.isDefined && !ProductCalendar.NO_DATE.equals(product.calendarType))
+        throw new DateIsNullException()
 
-    else if (cmd.dateTime.isDefined && startEndDate == None)
-      throw new UnsaleableDateException()
+      else if (cmd.dateTime.isDefined && startEndDate == None)
+        throw new UnsaleableDateException()
 
-    if (product.xtype == ProductType.SERVICE && cmd.registeredCartItems.size != cmd.quantity)
-      throw new NotEnoughRegisteredCartItemException()
+      if (product.xtype == ProductType.SERVICE && cmd.registeredCartItems.size != cmd.quantity)
+        throw new NotEnoughRegisteredCartItemException()
 
-    if (!stockHandler.checkStock(cart.storeCode, product, sku, cmd.quantity, startDate)) {
-      throw new InsufficientStockCartItemException()
-    }
+      if (!stockHandler.checkStock(cart.storeCode, product, sku, cmd.quantity, startDate)) {
+        throw new InsufficientStockCartItemException()
+      }
 
-    val newCartItemId = cmd.uuid.getOrElse(UUID.randomUUID().toString);
-    val registeredItems = cmd.registeredCartItems.map { item =>
-      new RegisteredCartItem(
-        newCartItemId,
-        item.uuid.getOrElse(UUID.randomUUID().toString),
-        item.email,
-        item.firstname,
-        item.lastname,
-        item.phone,
-        item.birthdate
-      )
-    }
+      val newCartItemId = cmd.uuid.getOrElse(UUID.randomUUID().toString);
+      val registeredItems = cmd.registeredCartItems.map { item =>
+        new RegisteredCartItem(
+          newCartItemId,
+          item.uuid.getOrElse(UUID.randomUUID().toString),
+          item.email,
+          item.firstname,
+          item.lastname,
+          item.phone,
+          item.birthdate
+        )
+      }
 
-    val salePrice = Math.max(sku.salePrice, 0)
-    val indexEs = EsClient.getUniqueIndexByAlias(storeCode).getOrElse(storeCode)
-    val cartItem = StoreCartItem(indexEs, newCartItemId, product.id, product.name, product.picture, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
-      sku.price, salePrice, startDate, endDate, registeredItems, product.shipping, None, None)
+      val salePrice = Math.max(sku.salePrice, 0)
+      val indexEs = EsClient.getUniqueIndexByAlias(storeCode).getOrElse(storeCode)
+      val cartItem = StoreCartItem(indexEs, newCartItemId, product.id, product.name, product.picture, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
+        sku.price, salePrice, startDate, endDate, registeredItems, product.shipping, None, None)
 
-    val updatedCart = runInTransaction({
       val invalidationResult = invalidateCart(cart)
       invalidationResult.copy(cart = addCartItemIntoCart(invalidationResult.cart, cartItem))
-    }, { cart: StoreCart =>
+    }
+    val updatedCart = runInTransaction(transactionalBloc, { cart: StoreCart =>
       StoreCartDao.save(cart)
       cart
     })
@@ -213,7 +223,7 @@ class CartHandler extends StrictLogging {
         val product = productAndSku.get._1
         val sku = productAndSku.get._2
 
-        runInTransaction({
+        runInTransaction({ implicit session: DBSession =>
           if (!stockHandler.checkStock(cart.storeCode, product, sku, cmd.quantity, existCartItem.startDate)) {
             throw new InsufficientStockCartItemException()
           }
@@ -223,7 +233,7 @@ class CartHandler extends StrictLogging {
             if (item == existCartItem) item.copy(quantity = cmd.quantity) else item
           }
           invalidationResult.copy(cart = invalidationResult.cart.copy(cartItems = newCartItems))
-        }, {cart =>
+        }, { cart: StoreCart =>
           StoreCartDao.save(cart)
           cart
         })
@@ -252,11 +262,11 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, true, params.country, params.state)
 
-    val updatedCart = runInTransaction({
+    val updatedCart = runInTransaction({ implicit session: DBSession =>
       val invalidationResult = invalidateCart(cart)
-      val newCartItems = cart.cartItems.filterNot { item => item.id == cartItemId}
+      val newCartItems = cart.cartItems.filterNot { item => item.id == cartItemId }
       invalidationResult.copy(cart = invalidationResult.cart.copy(cartItems = newCartItems))
-    }, {cart =>
+    }, { cart: StoreCart =>
       StoreCartDao.save(cart)
       cart
     })
@@ -285,7 +295,7 @@ class CartHandler extends StrictLogging {
 
     CouponDao.findByCode(cart.storeCode, couponCode).map { coupon =>
       if (!coupon.anonymous) {
-        val updatedCart = runInTransaction({
+        val updatedCart = runInTransaction({ implicit session: DBSession =>
           if (cart.coupons.exists { c => couponCode == c.code }) {
             throw new DuplicateException("")
           } else if (!couponHandler.consumeCoupon(cart.storeCode, coupon)) {
@@ -295,7 +305,7 @@ class CartHandler extends StrictLogging {
             val newCoupons = StoreCoupon(coupon.id, coupon.code) :: cart.coupons
             invalidationResult.copy(cart = invalidationResult.cart.copy(coupons = newCoupons))
           }
-        }, {cart =>
+        }, { cart: StoreCart =>
           StoreCartDao.save(cart)
           cart
         })
@@ -327,12 +337,12 @@ class CartHandler extends StrictLogging {
 
     CouponDao.findByCode(cart.storeCode, couponCode).map { coupon =>
       cart.coupons.find { c => couponCode == c.code }.map { existCoupon =>
-        val updatedCart = runInTransaction({
+        val updatedCart = runInTransaction({ implicit session: DBSession =>
           couponHandler.releaseCoupon(cart.storeCode, coupon)
           val invalidationResult = invalidateCart(cart)
-          val newCoupons = cart.coupons.filterNot { c => c.code == existCoupon.code}
+          val newCoupons = cart.coupons.filterNot { c => c.code == existCoupon.code }
           invalidationResult.copy(cart = invalidationResult.cart.copy(coupons = newCoupons))
-        }, {cart =>
+        }, { cart: StoreCart =>
           StoreCartDao.save(cart)
           cart
         })
@@ -361,21 +371,22 @@ class CartHandler extends StrictLogging {
 
     val company = CompanyDao.findByCode(cart.storeCode)
 
-    val transactionalBloc = {
+    val transactionalBloc = { implicit session: DBSession =>
       val validationResult = validateCart(cart.copy(countryCode = params.country, stateCode = params.state, rate = Some(currency)))
 
       val deleteResult = deletePendingBOCart(validationResult)
-      val cartTTC = computeStoreCart(deleteResult.cart, params.country, params.state)
-      createBOCart(deleteResult, cartTTC, currency, params.buyer, company.get, params.shippingAddress)
+      val cartWithPrice = computeStoreCart(deleteResult.cart, params.country, params.state)
+      val cartPriceWithChanges = CartWithPricesAndChanges(cartWithPrice, deleteResult.changes)
+      createBOCart(cartPriceWithChanges, currency, params.buyer, company.get, params.shippingAddress)
     }
 
-    val updatedCart = runInTransaction(transactionalBloc, {cart =>
-      StoreCartDao.save(cart)
-      cart
+    val updatedCartPrice = runInTransaction(transactionalBloc, { cartPrice: StoreCartWithPrice =>
+      StoreCartDao.save(cartPrice.storeCart)
+      cartPrice
     })
-    val renderedCart = renderTransactionCart(updatedCart, cartTTC, currency, locale)
+    val renderedCart = renderTransactionCart(updatedCartPrice, currency, locale)
     Map(
-      "amount" -> rateService.calculateAmount(cartTTC.finalPrice, currency),
+      "amount" -> rateService.calculateAmount(updatedCartPrice.finalPrice, currency),
       "currencyCode" -> currency.code,
       "currencyRate" -> currency.rate.doubleValue(),
       "transactionExtra" -> renderedCart,
@@ -388,7 +399,7 @@ class CartHandler extends StrictLogging {
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
 
     // Calcul des données du panier
-    val cartTTC = computeStoreCart(cart, cart.countryCode, cart.stateCode)
+    val cartWithPrice = computeStoreCart(cart, cart.countryCode, cart.stateCode)
 
     val compagny = CompanyDao.findByCode(storeCode)
     val shipFromAddressOpt = compagny.map {
@@ -409,9 +420,9 @@ class CartHandler extends StrictLogging {
       )
     }
 
-    val shippingRulePrice = computeShippingRulePrice(cart.storeCode, cart.countryCode, cartTTC.finalPrice)
+    val shippingRulePrice = computeShippingRulePrice(cart.storeCode, cart.countryCode, cartWithPrice.finalPrice)
 
-    transformCartForCartPay(companyAddress, cartTTC, cart.rate.get, shippingRulePrice)
+    transformCartForCartPay(companyAddress, cartWithPrice, cart.rate.get, shippingRulePrice)
   }
 
   protected def computeShippingRulePrice(storeCode: String, countryCode: Option[String], cartPice: Long): Option[Long] = {
@@ -438,16 +449,17 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
 
-    runInTransaction({
+    runInTransaction({ implicit session: DBSession =>
       cart.boCartUuid.map { boCartUuid =>
-        BOCartDao.load(boCartUuid).map {boCart =>
+        BOCartDao.load(boCartUuid).map { boCart =>
           val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid))
           BOCartDao.updateStatus(transactionBoCart)
-          ChangedStoreCart(cart = cart, boCartChanges = Some(boCart))
+          val newChanges = CartChanges(boCartChange = Some(boCart))
+          CartWithChanges(cart = cart, changes = newChanges)
         }.getOrElse(throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated"))
       }.getOrElse(throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated"))
 
-    }, {cart =>
+    }, { cart: StoreCart =>
       StoreCartDao.save(cart)
     })
   }
@@ -475,9 +487,9 @@ class CartHandler extends StrictLogging {
       CartRegistration.register(storeCode, uuid, productIds)
     }
 
-    runInTransaction({
+    runInTransaction({ implicit session: DBSession =>
       val transactionCart = cart.copy(transactionUuid = Some(params.transactionUuid))
-      BOCartDao.load(transactionCart.boCartUuid.get).map {boCart =>
+      BOCartDao.load(transactionCart.boCartUuid.get).map { boCart =>
         val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid), status = TransactionStatus.COMPLETE)
         BOCartDao.updateStatus(transactionBoCart)
 
@@ -488,9 +500,10 @@ class CartHandler extends StrictLogging {
           salesHandler.incrementSales(transactionCart.storeCode, product, sku, cartItem.quantity)
         }
         accountId.map(Dashboard.indexCart(storeCode, boCartToESBOCart(storeCode, transactionBoCart), _))
-        ChangedStoreCart(cart = transactionCart, boCartChanges = Some(transactionBoCart), saleChanges = saleChanges)
+        val newChanges = CartChanges(boCartChange = Some(transactionBoCart), saleChanges = saleChanges)
+        CartWithChanges(cart = transactionCart, changes = newChanges)
       }.getOrElse(throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated"))
-    }, {cart =>
+    }, { cart: StoreCart =>
       StoreCartDao.save(cart)
       val updatedCart = StoreCart(storeCode = cart.storeCode, dataUuid = cart.dataUuid, userUuid = cart.userUuid)
       StoreCartDao.save(updatedCart)
@@ -513,9 +526,9 @@ class CartHandler extends StrictLogging {
 
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
 
-    val updatedCart = runInTransaction({
+    val updatedCart = runInTransaction({ implicit session: DBSession =>
       cancelCart(invalidateCart(cart))
-    }, {cart =>
+    }, { cart: StoreCart =>
       StoreCartDao.save(cart)
       cart
     })
@@ -545,87 +558,88 @@ class CartHandler extends StrictLogging {
    * Crée un BOCart à partir des données fournis en générant si nécessaire les QRCode correspondant. Renvoi
    * un panier en lien avec le BOCart créé
    *
-   * @param storeCart
-   * @param cart
+   * @param cartWithChanges
    * @param rate
    * @param buyer
    * @param company
    * @param shippingAddress
    * @return
    */
-  protected def createBOCart(storeCart: ChangedStoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String)(implicit session: DBSession): ChangedStoreCart = {
-    val storeCode = storeCart.cart.storeCode
-    val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
+  protected def createBOCart(cartWithChanges: CartWithPricesAndChanges, rate: Currency, buyer: String, company: Company, shippingAddress: String)(implicit session: DBSession): CartWithPricesAndChanges = {
+    val cartWithPrice = cartWithChanges.cart
+    val storeCode = cartWithPrice.storeCart.storeCode
+    val boCart = BOCartDao.create(buyer, company.id, rate, cartWithPrice.finalPrice)
 
-    val cartItems = cart.cartItemVOs.toList
-    val newStoreCartItems = storeCart.cart.cartItems.map {storeCartItem =>
-      cartItems.find{i => i.id == storeCartItem.id}.map { cartItem =>
+    val newCartItems = cartWithPrice.cartItems.map { cartItemWithPrice =>
+      val cartItem = cartItemWithPrice.cartItem
+      val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
+      val product = productAndSku.get._1
+      val sku = productAndSku.get._2
 
-        val productAndSku = ProductDao.getProductAndSku(storeCode, cartItem.skuId)
-        val product = productAndSku.get._1
-        val sku = productAndSku.get._2
+      // Création du BOProduct correspondant au produit principal
+      val boProduct = BOProductDao.create(cartItemWithPrice.saleTotalEndPrice.getOrElse(cartItemWithPrice.saleTotalPrice), true, cartItem.productId)
 
-        // Création du BOProduct correspondant au produit principal
-        val boProduct = BOProductDao.create(cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice), true, cartItem.productId)
+      val newStoreRegistedCartItems = cartItem.registeredCartItems.map { registeredCartItem =>
+        val boTicketId = BOTicketTypeDao.newId()
 
-        val registeredCartItems = cartItem.registeredCartItemVOs.toList
-        val newStoreRegistedCartItems = storeCartItem.registeredCartItems.map { storeRegistedCartItem =>
-          registeredCartItems.find(r => r.email == storeRegistedCartItem.email).map { registeredCartItem =>
-            val boTicketId = BOTicketTypeDao.newId()
+        val shortCodeAndQrCode = product.xtype match {
+          case ProductType.SERVICE => {
+            val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
+            val shortCode = "P" + boProduct.id + "T" + boTicketId
+            val qrCodeContent = "EventId:" + product.id + ";BoProductId:" + boProduct.id + ";BoTicketId:" + boTicketId +
+              ";EventName:" + product.name + ";EventDate:" + startDateStr + ";FirstName:" +
+              registeredCartItem.firstname.getOrElse("") + ";LastName:" + registeredCartItem.lastname.getOrElse("") +
+              ";Phone:" + registeredCartItem.phone.getOrElse("") + ";TicketType:" + sku.name + ";shortCode:" + shortCode
 
-            val shortCodeAndQrCode = product.xtype match {
-              case ProductType.SERVICE => {
-                val startDateStr = cartItem.startDate.map(d => d.toString(DateTimeFormat.forPattern("dd/MM/yyyy HH:mm")))
-                val shortCode = "P" + boProduct.id + "T" + boTicketId
-                val qrCodeContent = "EventId:" + product.id + ";BoProductId:" + boProduct.id + ";BoTicketId:" + boTicketId +
-                  ";EventName:" + product.name + ";EventDate:" + startDateStr + ";FirstName:" +
-                  registeredCartItem.firstname.getOrElse("") + ";LastName:" + registeredCartItem.lastname.getOrElse("") +
-                  ";Phone:" + registeredCartItem.phone.getOrElse("") + ";TicketType:" + sku.name + ";shortCode:" + shortCode
+            val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, company.aesPassword, "AES", true)
+            val output = new ByteArrayOutputStream()
+            QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
+            val qrCodeBase64 = Base64.encode(output.toByteArray)
 
-                val encryptedQrCodeContent = SymmetricCrypt.encrypt(qrCodeContent, company.aesPassword, "AES", true)
-                val output = new ByteArrayOutputStream()
-                QRCodeUtils.createQrCode(output, encryptedQrCodeContent, 256, "png")
-                val qrCodeBase64 = Base64.encode(output.toByteArray)
-
-                (Some(shortCode), Some(qrCodeBase64), Some(encryptedQrCodeContent))
-              }
-              case _ => (None, None, None)
-            }
-
-            BOTicketTypeDao.create(boTicketId, sku, cartItem, registeredCartItem, shortCodeAndQrCode._1, shortCodeAndQrCode._2, shortCodeAndQrCode._3, boProduct.id)
-            if (shortCodeAndQrCode._3.isDefined)
-              storeRegistedCartItem.copy(qrCodeContent = Some(product.name + ":" + registeredCartItem.email + "||" + shortCodeAndQrCode._3.get))
-            else storeRegistedCartItem
-          }.getOrElse(storeRegistedCartItem)
-        }
-        val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
-
-        // Downloadable Link
-        val boCartItemUuid = BOCartItemDao.create(sku, cartItem, storeCartItem, boCart, Some(boDelivery), boProduct.id).uuid
-        val downloadableLink = product.xtype match {
-          case ProductType.DOWNLOADABLE => {
-            val params = s"boCartItemUuid:$boCartItemUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
-            val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES", true)
-            Some(s"${Settings.AccessUrl}/$storeCode/download/$encryptedParams")
+            (Some(shortCode), Some(qrCodeBase64), Some(encryptedQrCodeContent))
           }
-          case _ => None
+          case _ => (None, None, None)
         }
-        storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
-      }.getOrElse(storeCartItem)
+
+        BOTicketTypeDao.create(boTicketId, sku, cartItemWithPrice, registeredCartItem, shortCodeAndQrCode._1, shortCodeAndQrCode._2, shortCodeAndQrCode._3, boProduct.id)
+        shortCodeAndQrCode._3.map { qrCodeContent =>
+          registeredCartItem.copy(qrCodeContent = Some(product.name + ":" + registeredCartItem.email + "||" + qrCodeContent))
+        }.getOrElse(registeredCartItem)
+      }
+
+      val boDelivery = BODeliveryDao.create(boCart, Some(shippingAddress))
+
+      // Downloadable Link
+      val boCartItemUuid = BOCartItemDao.create(sku, cartItemWithPrice, boCart, Some(boDelivery), boProduct.id).uuid
+      val downloadableLink = product.xtype match {
+        case ProductType.DOWNLOADABLE => {
+          val params = s"boCartItemUuid:$boCartItemUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
+          val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES", true)
+          Some(s"${Settings.AccessUrl}/$storeCode/download/$encryptedParams")
+        }
+        case _ => None
+      }
+      val newCartItem = cartItem.copy(registeredCartItems = newStoreRegistedCartItems, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
+      cartItemWithPrice.copy(cartItem = newCartItem)
     }
-    storeCart.copy(cart = storeCart.cart.copy(boCartUuid = Some(boCart.uuid),cartItems = newStoreCartItems), boCartChanges = Some(boCart))
+
+    val newCart = cartWithPrice.storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newCartItems.map { _.cartItem })
+    val newCartWithPrice = cartWithPrice.copy(storeCart = newCart)
+    val newChanges = cartWithChanges.changes.copy(boCartChange = Some(boCart))
+    cartWithChanges.copy(cart = newCartWithPrice, changes = newChanges)
   }
 
   /**
    * Supprime le BOCart correspondant au panier s'il est en statut Pending
    * et renvoi un panier sans lien avec le boCart supprimé
    *
-   * @param cart
+   * @param cartWithChange
    * @return
    */
-  protected def deletePendingBOCart(cart: ChangedStoreCart)(implicit session: DBSession): ChangedStoreCart = {
-    cart.cart.boCartUuid.map { boCartUuid =>
-      BOCartDao.load(boCartUuid).map {boCart =>
+  protected def deletePendingBOCart(cartWithChange: CartWithChanges)(implicit session: DBSession): CartWithChanges = {
+    val cart = cartWithChange.cart
+    cart.boCartUuid.map { boCartUuid =>
+      BOCartDao.load(boCartUuid).map { boCart =>
         if (boCart.status == TransactionStatus.PENDING) {
           BOCartItemDao.findByBOCart(boCart).foreach { boCartItem =>
             BOCartItemDao.delete(boCartItem)
@@ -639,11 +653,12 @@ class CartHandler extends StrictLogging {
           }
           BOCartDao.delete(boCart)
 
-          cart.copy(cart = cart.cart.copy(boCartUuid = None), deletedBOCart = Some(boCart))
-        }
-        else cart
-      }.getOrElse(cart)
-    }.getOrElse(cart)
+          val newChanges = cartWithChange.changes.copy(deletedBOCart = Some(boCart))
+          val newCart = cart.copy(boCartUuid = None)
+          cartWithChange.copy(cart = newCart, changes = newChanges)
+        } else cartWithChange
+      }.getOrElse(cartWithChange)
+    }.getOrElse(cartWithChange)
   }
 
   /**
@@ -703,7 +718,7 @@ class CartHandler extends StrictLogging {
   }
 
   protected def removeAllUnsellableItems(cart: StoreCart, country: Option[String], state: Option[String]): StoreCart = {
-    val transactionalBloc = {
+    val transactionalBloc = { implicit session: DBSession =>
       val cartItemsToRemoved = cart.cartItems.flatMap { cartItem =>
         val cartItemWithIndex = cartItem.copy(indexEs = Option(cartItem.indexEs).getOrElse(cart.storeCode))
         val productAndSku = ProductDao.getProductAndSku(cart.storeCode, cartItem.skuId)
@@ -734,19 +749,19 @@ class CartHandler extends StrictLogging {
    * @param cartItemsToRemoved
    * @return
    */
-  protected def removeCartItemsInTransaction(cart: StoreCart, cartItemsToRemoved: List[StoreCartItem])(implicit session: DBSession) : ChangedStoreCart = {
-    if (cartItemsToRemoved.isEmpty) ChangedStoreCart(cart)
+  protected def removeCartItemsInTransaction(cart: StoreCart, cartItemsToRemoved: List[StoreCartItem])(implicit session: DBSession): CartWithChanges = {
+    if (cartItemsToRemoved.isEmpty) CartWithChanges(cart, CartChanges())
     else {
       val invalidationResult = invalidateCart(cart)
-      val newCartItems = invalidationResult.cart.cartItems.filter{ cartItem =>
+      val newCartItems = invalidationResult.cart.cartItems.filter { cartItem =>
         cartItemsToRemoved.find { item => item.id == cartItem.id }.isEmpty
       }
       invalidationResult.copy(cart = invalidationResult.cart.copy(cartItems = newCartItems))
     }
   }
 
-  protected def clearCart[U](cart: StoreCart, success : StoreCart => U): U = {
-    runInTransaction({
+  protected def clearCart[U](cart: StoreCart, success: StoreCart => U): U = {
+    runInTransaction({ implicit session: DBSession =>
       val invalidateResult = invalidateCart(cart)
       val cancelResult = cancelCart(invalidateResult)
 
@@ -762,11 +777,11 @@ class CartHandler extends StrictLogging {
   /**
    * Annule la transaction courante et génère un nouveau uuid au panier
    *
-   * @param changeCart
+   * @param cartAndChanges
    * @return
    */
-  protected def cancelCart(changeCart: ChangedStoreCart)(implicit session: DBSession): ChangedStoreCart = {
-    val cart = changeCart.cart
+  protected def cancelCart(cartAndChanges: CartWithChanges)(implicit session: DBSession): CartWithChanges = {
+    val cart = cartAndChanges.cart
     cart.boCartUuid.map { boCartUuid =>
       val newBoCart = BOCartDao.load(cart.boCartUuid.get).map { boCart =>
         // Mise à jour du statut
@@ -774,8 +789,10 @@ class CartHandler extends StrictLogging {
         BOCartDao.updateStatus(newBoCart)
         newBoCart
       }
-      changeCart.copy(cart = cart.copy(boCartUuid = None, transactionUuid = None), boCartChanges = newBoCart)
-    } getOrElse(changeCart)
+      val newChanges = cartAndChanges.changes.copy(boCartChange = newBoCart)
+      val newCart = cart.copy(boCartUuid = None, transactionUuid = None)
+      cartAndChanges.copy(cart = newCart, changes = newChanges)
+    } getOrElse (cartAndChanges)
   }
 
   /**
@@ -785,30 +802,29 @@ class CartHandler extends StrictLogging {
    * @return
    */
   @throws[InsufficientStockException]
-  protected def validateCart(cart: StoreCart)(implicit session: DBSession): ChangedStoreCart = {
-    if (cart.validate) {
-      val changes = validateCartItems(cart.cartItems)
-      ChangedStoreCart(cart.copy(validate = true, validateUuid = Some(UUID.randomUUID().toString())), changes)
-    } else ChangedStoreCart(cart)
+  protected def validateCart(cart: StoreCart)(implicit session: DBSession): CartWithChanges = {
+    if (!cart.validate) {
+      val changes = CartChanges(stockChanges = validateCartItems(cart.cartItems))
+      CartWithChanges(cart.copy(validate = true, validateUuid = Some(UUID.randomUUID().toString())), changes)
+    } else CartWithChanges(cart, CartChanges())
   }
 
-  protected def validateCartItems(cartItems: List[StoreCartItem])(implicit session: DBSession): List[ESIndexAndProductId] = {
+  protected def validateCartItems(cartItems: List[StoreCartItem])(implicit session: DBSession): List[StockChange] = {
     if (cartItems.isEmpty) Nil
     else {
       val result = validateCartItems(cartItems.tail)
       val cartItem = cartItems.head
-      validateCartItem(cartItem).map { indexAndProduct => indexAndProduct :: result}.getOrElse(result)
+      validateCartItem(cartItem).map { indexAndProduct => indexAndProduct :: result }.getOrElse(result)
     }
   }
 
-  protected def validateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): Option[ESIndexAndProductId] = {
+  protected def validateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): Option[StockChange] = {
     val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
     productAndSku.map { ps =>
       val product = ps._1
       val sku = ps._2
       stockHandler.decrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
-      ESIndexAndProductId(cartItem.indexEs, product.id)
-    }
+    }.flatten
   }
 
   /**
@@ -817,56 +833,50 @@ class CartHandler extends StrictLogging {
    * @param cart
    * @return
    */
-  protected def invalidateCart(cart: StoreCart)(implicit session: DBSession): ChangedStoreCart = {
+  protected def invalidateCart(cart: StoreCart)(implicit session: DBSession): CartWithChanges = {
     if (cart.validate) {
-      val changes = invalidateCartItems(cart.cartItems)
-      ChangedStoreCart(cart.copy(validate = false, validateUuid = None), changes)
-    } else ChangedStoreCart(cart)
+      val changes = CartChanges(stockChanges = invalidateCartItems(cart.cartItems))
+      CartWithChanges(cart.copy(validate = false, validateUuid = None), changes)
+    } else CartWithChanges(cart, CartChanges())
   }
 
-  protected def invalidateCartItems(cartItems: List[StoreCartItem])(implicit session: DBSession): List[ESIndexAndProductId] = {
+  protected def invalidateCartItems(cartItems: List[StoreCartItem])(implicit session: DBSession): List[StockChange] = {
     if (cartItems.isEmpty) Nil
     else {
       val result = invalidateCartItems(cartItems.tail)
       val cartItem = cartItems.head
-      invalidateCartItem(cartItem).map { indexAndProduct => indexAndProduct :: result}.getOrElse(result)
+      invalidateCartItem(cartItem).map { indexAndProduct => indexAndProduct :: result }.getOrElse(result)
     }
   }
 
-  protected def invalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): Option[ESIndexAndProductId] = {
+  protected def invalidateCartItem(cartItem: StoreCartItem)(implicit session: DBSession): Option[StockChange] = {
     val productAndSku = ProductDao.getProductAndSku(cartItem.indexEs, cartItem.skuId)
     productAndSku.map { ps =>
       val product = ps._1
       val sku = ps._2
       stockHandler.incrementStock(cartItem.indexEs, product, sku, cartItem.quantity, cartItem.startDate)
-      ESIndexAndProductId(cartItem.indexEs, product.id)
-    }
+    }.flatten
   }
 
-  protected def notifyChangesIntoES(changedCart : ChangedStoreCart, refresh: Boolean = false): Unit = {
+  def notifyChangesIntoES(storeCode: String, changes: CartChanges, refresh: Boolean = false): Unit = {
     import scala.concurrent.duration._
     val system = ActorSystemLocator()
     import system.dispatcher
     val stockActor = system.actorOf(Props[EsUpdateActor])
-    changedCart.stockChanges.foreach { indexEsAndProduct =>
-      system.scheduler.scheduleOnce(2 seconds) {
-        stockActor ! ProductStockAvailabilityUpdateRequest(indexEsAndProduct.esIndex, indexEsAndProduct.productId)
-      }
+    changes.stockChanges.foreach { stockChange =>
+      stockActor ! StockUpdateRequest(stockChange.esIndex, stockChange.product, stockChange.sku, stockChange.stock, stockChange.stockCalendar)
     }
 
-    changedCart.saleChanges.foreach { saleChange =>
+    changes.saleChanges.foreach { saleChange =>
       salesHandler.fireUpdateEsSales(saleChange.esIndex, saleChange.product, saleChange.sku, saleChange.newNbProductSales, saleChange.newNbSkuSales)
     }
 
-
-    val storeCode = changedCart.cart.storeCode
-
-    changedCart.boCartChanges.map { boCart =>
+    changes.boCartChange.map { boCart =>
       val boCartES = boCartToESBOCart(storeCode, boCart)
       BOCartESDao.save(storeCode, boCartES, refresh)
     }
 
-    changedCart.boCartChanges.map { boCart =>
+    changes.deletedBOCart.map { boCart =>
       BOCartESDao.delete(storeCode, boCart.uuid)
     }
 
@@ -957,86 +967,56 @@ class CartHandler extends StrictLogging {
    * @param stateCode
    * @return
    */
-  protected def computeStoreCart(cart: StoreCart, countryCode: Option[String], stateCode: Option[String]): Cart = {
+  protected def computeStoreCart(cart: StoreCart, countryCode: Option[String], stateCode: Option[String]): StoreCartWithPrice = {
     val coupons = cart.coupons.collect { case coupon: StoreCoupon => couponHandler.getWithData(cart.storeCode, coupon) }.flatten :::
       CouponDao.findPromotionsThatOnlyApplyOnCart(cart.storeCode).collect { case promotion: Mogobiz.Coupon => couponHandler.getWithData(promotion) }
     val cartItemsWithPrice = computeCartItemWithPrice(cart.storeCode, cart.cartItems, countryCode, stateCode)
 
-    def computeCartItemAsRenderCartItem(cart: StoreCart, cartItemWithPrice: StoreCartItemWithPrice, reduction: Long): CartItem = {
-      val cartItem = cartItemWithPrice.cartItem
-      val product = ProductDao.get(cart.storeCode, cartItem.productId).get
-      val tax = taxRateHandler.findTaxRateByProduct(product, countryCode, stateCode)
-      val discounts = findSuggestionDiscount(cart, cartItem.productId)
-      val price = cartItem.price
-      val salePrice = computeDiscounts(Math.max(0, cartItem.price - reduction), discounts)
-      val endPrice = taxRateHandler.calculateEndPrice(price, tax)
-      val saleEndPrice = taxRateHandler.calculateEndPrice(salePrice, tax)
-      val totalPrice = price * cartItem.quantity
-      val saleTotalPrice = salePrice * cartItem.quantity
-      val totalEndPrice = endPrice.map { p: Long => p * cartItem.quantity }
-      val saleTotalEndPrice = saleEndPrice.map { p: Long => p * cartItem.quantity }
-
-      CartItem(cartItem.id, cartItem.productId, cartItem.productName, cartItem.productPicture, cartItem.productUrl, cartItem.xtype,
-        cartItem.calendarType, cartItem.skuId, cartItem.skuName, cartItem.quantity, price, endPrice, tax, totalPrice,
-        totalEndPrice, salePrice, saleEndPrice, saleTotalPrice, saleTotalEndPrice,
-        cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping, cartItem.downloadableLink.getOrElse(null))
-    }
-    type PriceHT = Long
-    type PriceTTC = Long
-    type Reduction = Long
-    def computeStoreCartItemAndCoupons(cart: StoreCart, cartItems: List[StoreCartItemWithPrice], coupons: List[CouponWithData]): (PriceHT, PriceTTC, Reduction, List[CartItem], List[CouponWithData]) = {
-      if (cartItems.isEmpty) (0, 0, 0, Nil, coupons)
-      else {
-        val cartItemsAndCoupons = computeStoreCartItemAndCoupons(cart, cartItems.tail, coupons)
-        val cartItem = cartItems.head
-        val maxReduction = findBestReductionForCartItem(cart.storeCode, cartItem, coupons, cartItems)
-
-        // Si la réduction est associé à un coupon. Le réduction sera appliquée au panier sinon elle est appliquée
-        // au produit
-        val reductionValue = Math.max(0, Math.min(cartItem.totalEndPrice.getOrElse(cartItem.totalPrice), maxReduction._1))
-        val renderCartItem = computeCartItemAsRenderCartItem(cart, cartItem, maxReduction._2.map { couponReduction: CouponWithData => 0L }.getOrElse(reductionValue))
-        val newCoupons = maxReduction._2.map { couponReduction: CouponWithData =>
-          cartItemsAndCoupons._5.collect {
-            case c: CouponWithData => {
-              if (c.coupon.id == couponReduction.coupon.id) c.copy(reduction = c.reduction + reductionValue)
-              else c
-            }
-          }
-        }.getOrElse(cartItemsAndCoupons._5)
-        val newPrice = cartItemsAndCoupons._1 + renderCartItem.saleTotalPrice
-        val newEndPrice = cartItemsAndCoupons._2 + renderCartItem.saleTotalEndPrice.getOrElse(renderCartItem.saleTotalPrice)
-        val newReduction = cartItemsAndCoupons._3 + maxReduction._2.map { couponReduction: CouponWithData => reductionValue }.getOrElse(0L)
-        (newPrice, newEndPrice, newReduction, renderCartItem :: cartItemsAndCoupons._4, newCoupons)
-      }
-    }
-
-    def computeCouponAsRenderCoupon(storeCode: String, coupons: List[CouponWithData]): List[Option[Coupon]] = {
-      if (coupons.isEmpty) List()
-      else couponHandler.transformAsRender(storeCode, coupons.head) :: computeCouponAsRenderCoupon(storeCode, coupons.tail)
-    }
-
-    val pricesCartItemsAndCoupons = computeStoreCartItemAndCoupons(cart, cartItemsWithPrice, coupons)
+    val pricesCartItemsAndCoupons = computeCartPriceAndCartItemWithSalePriceAndCoupons(cart, cartItemsWithPrice, coupons)
     val price = pricesCartItemsAndCoupons._1
     val endPrice = pricesCartItemsAndCoupons._2
     val reduction = pricesCartItemsAndCoupons._3
-    val renderCartItems = pricesCartItemsAndCoupons._4
-    val renderCoupons = computeCouponAsRenderCoupon(cart.storeCode, pricesCartItemsAndCoupons._5).flatten
 
-    val count = calculateCount(renderCartItems)
-    val validateUuid = if (cart.validate) cart.validateUuid else None
-    Cart(validateUuid, price, endPrice, reduction, Math.max(0, endPrice - reduction), count, renderCartItems.toArray, renderCoupons.toArray)
+    StoreCartWithPrice(cart, pricesCartItemsAndCoupons._4, pricesCartItemsAndCoupons._5, price, endPrice, reduction, Math.max(0, endPrice - reduction))
+  }
+
+  type PriceHT = Long
+  type PriceTTC = Long
+  type Reduction = Long
+
+  def computeCartPriceAndCartItemWithSalePriceAndCoupons(cart: StoreCart, cartItems: List[StoreCartItemWithPrice], coupons: List[CouponWithData]): (PriceHT, PriceTTC, Reduction, List[StoreCartItemWithPrice], List[CouponWithData]) = {
+    if (cartItems.isEmpty) (0, 0, 0, Nil, coupons)
+    else {
+      val cartItemsAndCoupons = computeCartPriceAndCartItemWithSalePriceAndCoupons(cart, cartItems.tail, coupons)
+      val cartItem = cartItems.head
+      val maxReduction = findBestReductionForCartItem(cart.storeCode, cartItem, coupons, cartItems)
+
+      // Si la réduction est associé à un coupon. Le réduction sera appliquée au panier sinon elle est appliquée
+      // au produit
+      val reductionValue = Math.max(0, Math.min(cartItem.totalEndPrice.getOrElse(cartItem.totalPrice), maxReduction._1))
+      val renderCartItem = computeCartItemWithSalePrice(cart, cartItem, maxReduction._2.map { couponReduction: CouponWithData => 0L }.getOrElse(reductionValue))
+      val newCoupons = maxReduction._2.map { couponReduction: CouponWithData =>
+        cartItemsAndCoupons._5.collect {
+          case c: CouponWithData => {
+            if (c.coupon.id == couponReduction.coupon.id) c.copy(reduction = c.reduction + reductionValue)
+            else c
+          }
+        }
+      }.getOrElse(cartItemsAndCoupons._5)
+      val newPrice = cartItemsAndCoupons._1 + renderCartItem.saleTotalPrice
+      val newEndPrice = cartItemsAndCoupons._2 + renderCartItem.saleTotalEndPrice.getOrElse(renderCartItem.saleTotalPrice)
+      val newReduction = cartItemsAndCoupons._3 + maxReduction._2.map { couponReduction: CouponWithData => reductionValue }.getOrElse(0L)
+      (newPrice, newEndPrice, newReduction, renderCartItem :: cartItemsAndCoupons._4, newCoupons)
+    }
   }
 
   protected def computeCartItemWithPrice(storeCode: String, cartItems: List[StoreCartItem], countryCode: Option[String], stateCode: Option[String]): List[StoreCartItemWithPrice] = {
-    if (cartItems.isEmpty) Nil
-    else {
-      val cartItem = cartItems.head
+    cartItems.map { cartItem =>
       val product = ProductDao.get(storeCode, cartItem.productId).get
       val tax = taxRateHandler.findTaxRateByProduct(product, countryCode, stateCode)
       val endPrice = taxRateHandler.calculateEndPrice(cartItem.price, tax)
       val totalPrice = cartItem.price * cartItem.quantity
       val totalEndPrice = endPrice.map { p: Long => p * cartItem.quantity }
-
       StoreCartItemWithPrice(cartItem,
         cartItem.quantity,
         cartItem.price,
@@ -1048,8 +1028,26 @@ class CartHandler extends StrictLogging {
         endPrice,
         totalPrice,
         totalEndPrice,
-        0) :: computeCartItemWithPrice(storeCode, cartItems.tail, countryCode, stateCode)
+        0)
     }
+  }
+
+  protected def computeCartItemWithSalePrice(cart: StoreCart, cartItemWithPrice: StoreCartItemWithPrice, reduction: Long): StoreCartItemWithPrice = {
+    val cartItem = cartItemWithPrice.cartItem
+    val product = ProductDao.get(cart.storeCode, cartItem.productId).get
+    val discounts = findSuggestionDiscount(cart, cartItem.productId)
+    val salePrice = computeDiscounts(Math.max(0, cartItem.price - reduction), discounts)
+    val saleEndPrice = taxRateHandler.calculateEndPrice(salePrice, cartItemWithPrice.tax)
+    val saleTotalPrice = salePrice * cartItem.quantity
+    val saleTotalEndPrice = saleEndPrice.map { p: Long => p * cartItem.quantity }
+
+    cartItemWithPrice.copy(
+      salePrice = salePrice,
+      saleEndPrice = saleEndPrice,
+      saleTotalPrice = saleTotalPrice,
+      saleTotalEndPrice = saleTotalEndPrice,
+      reduction = reduction
+    )
   }
 
   protected def findBestReductionForCartItem(storeCode: String, cartItem: StoreCartItemWithPrice,
@@ -1086,32 +1084,36 @@ class CartHandler extends StrictLogging {
     }
   }
 
-  /**
-   * Calcule le nombre d'item du panier en prenant en compte les quantités
-   *
-   * @param list
-   * @return
-   */
-  protected def calculateCount(list: List[CartItem]): Int = {
-    if (list.isEmpty) 0
-    else {
-      list.head.quantity + calculateCount(list.tail)
-    }
+  protected def calculateCount(cart: StoreCartWithPrice): Int = {
+    cart.cartItems.map { cartItem => cartItem.quantity }.sum
   }
 
-  protected def renderCart(cart: Cart, currency: Currency, locale: Locale): Map[String, Any] = {
-    var map: Map[String, Any] = Map()
-    map += ("validateUuid" -> cart.validateUuid.getOrElse(""))
-    map += ("count" -> cart.count)
-    map += ("cartItemVOs" -> cart.cartItemVOs.map(item => renderCartItem(item, currency, locale)))
-    map += ("coupons" -> cart.coupons.map(c => renderCoupon(c, currency, locale)))
-    map ++= renderPriceCart(cart, currency, locale)
-    map
+  protected def renderCart(cart: StoreCartWithPrice, currency: Currency, locale: Locale): Map[String, Any] = {
+    val formatedPrice = rateService.formatLongPrice(cart.price, currency, locale)
+    val formatedEndPrice = rateService.formatLongPrice(cart.endPrice, currency, locale)
+    val formatedReduction = rateService.formatLongPrice(cart.reduction, currency, locale)
+    val formatedFinalPrice = rateService.formatLongPrice(cart.finalPrice, currency, locale)
+
+    Map(
+      "validateUuid" -> cart.storeCart.validateUuid.getOrElse(""),
+      "count" -> calculateCount(cart),
+      "cartItemVOs" -> cart.cartItems.map(item => renderCartItem(item, currency, locale)),
+      "coupons" -> cart.coupons.map(c => renderCoupon(cart.storeCart.storeCode, c, currency, locale)).flatten,
+      "price" -> cart.price,
+      "endPrice" -> cart.endPrice,
+      "reduction" -> cart.reduction,
+      "finalPrice" -> cart.finalPrice,
+      "formatedPrice" -> formatedPrice,
+      "formatedEndPrice" -> formatedEndPrice,
+      "formatedReduction" -> formatedReduction,
+      "formatedFinalPrice" -> formatedFinalPrice
+    )
   }
 
-  protected def transformCartForCartPay(compagnyAddress: Option[CompanyAddress], cart: Cart, rate: Currency, shippingRulePrice: Option[Long]): CartPay = {
-    val cartItemsPay = cart.cartItemVOs.map { cartItem =>
-      val registeredCartItemsPay = cartItem.registeredCartItemVOs.map { rci =>
+  protected def transformCartForCartPay(compagnyAddress: Option[CompanyAddress], cartWithPrice: StoreCartWithPrice, rate: Currency, shippingRulePrice: Option[Long]): CartPay = {
+    val cartItemsPay = cartWithPrice.cartItems.map { cartItemWithPrice =>
+      val cartItem = cartItemWithPrice.cartItem
+      val registeredCartItemsPay = cartItem.registeredCartItems.map { rci =>
         new RegisteredCartItemPay(rci.id, rci.email, rci.firstname, rci.lastname, rci.phone, rci.birthdate, rci.qrCodeContent, Map())
       }
       val shippingPay = cartItem.shipping.map { shipping =>
@@ -1127,76 +1129,95 @@ class CartHandler extends StrictLogging {
         "startDate" -> cartItem.startDate,
         "endDate" -> cartItem.endDate)
       val name = s"${cartItem.productName} ${cartItem.skuName}"
-      val endPrice = cartItem.endPrice.getOrElse(cartItem.price)
-      val totalEndPrice = cartItem.totalEndPrice.getOrElse(cartItem.totalPrice)
-      val saleEndPrice = cartItem.saleEndPrice.getOrElse(cartItem.salePrice)
-      val saleTotalEndPrice = cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice)
-      new CartItemPay(cartItem.id, name, cartItem.productPicture, cartItem.productUrl, cartItem.quantity, cartItem.price, endPrice, cartItem.tax.getOrElse(0), endPrice - cartItem.price,
-        cartItem.totalPrice, totalEndPrice, totalEndPrice - cartItem.totalPrice,
-        cartItem.salePrice, saleEndPrice, saleEndPrice - cartItem.salePrice,
-        cartItem.saleTotalPrice, saleTotalEndPrice, saleTotalEndPrice - cartItem.saleTotalPrice,
-        registeredCartItemsPay, shippingPay, cartItem.downloadableLink, customCartItem)
+      val endPrice = cartItemWithPrice.endPrice.getOrElse(cartItemWithPrice.price)
+      val totalEndPrice = cartItemWithPrice.totalEndPrice.getOrElse(cartItemWithPrice.totalPrice)
+      val saleEndPrice = cartItemWithPrice.saleEndPrice.getOrElse(cartItemWithPrice.salePrice)
+      val saleTotalEndPrice = cartItemWithPrice.saleTotalEndPrice.getOrElse(cartItemWithPrice.saleTotalPrice)
+      new CartItemPay(cartItem.id, name, cartItem.productPicture, cartItem.productUrl, cartItem.quantity, cartItemWithPrice.price, endPrice, cartItemWithPrice.tax.getOrElse(0), endPrice - cartItemWithPrice.price,
+        cartItemWithPrice.totalPrice, totalEndPrice, totalEndPrice - cartItemWithPrice.totalPrice,
+        cartItemWithPrice.salePrice, saleEndPrice, saleEndPrice - cartItemWithPrice.salePrice,
+        cartItemWithPrice.saleTotalPrice, saleTotalEndPrice, saleTotalEndPrice - cartItemWithPrice.saleTotalPrice,
+        registeredCartItemsPay, shippingPay, cartItem.downloadableLink.getOrElse(""), customCartItem)
     }
-    val couponsPay = cart.coupons.map { coupon =>
-      val customCoupon = Map("name" -> coupon.name, "active" -> coupon.active)
-      new CouponPay(coupon.code, coupon.startDate, coupon.endDate, coupon.price, customCoupon)
-    }
+    val couponsPay = cartWithPrice.coupons.map { couponWithData =>
+      couponHandler.transformAsRender(cartWithPrice.storeCart.storeCode, couponWithData).map { coupon =>
+        val customCoupon = Map("name" -> coupon.name, "active" -> coupon.active)
+        new CouponPay(coupon.code, coupon.startDate, coupon.endDate, coupon.price, customCoupon)
+      }
+    }.flatten
 
     val cartRate = CartRate(rate.code, rate.numericCode, rate.rate, rate.currencyFractionDigits)
 
-    new CartPay(cart.count, cartRate, cart.price, cart.endPrice, cart.endPrice - cart.price, cart.reduction, cart.finalPrice, shippingRulePrice, cartItemsPay, couponsPay, Map(), compagnyAddress)
+    new CartPay(calculateCount(cartWithPrice), cartRate, cartWithPrice.price, cartWithPrice.endPrice, cartWithPrice.endPrice - cartWithPrice.price, cartWithPrice.reduction, cartWithPrice.finalPrice, shippingRulePrice, cartItemsPay, couponsPay, Map(), compagnyAddress)
   }
 
   /**
    * Idem que renderCart à quelques différences près d'où la dupplication de code
    *
-   * @param cart
+   * @param cartWithPrice
    * @param rate
    * @return
    */
-  protected def renderTransactionCart(storeCart: StoreCart, cart: Cart, rate: Currency, locale: Locale): Map[String, Any] = {
-    var map: Map[String, Any] = Map(
+  protected def renderTransactionCart(cartWithPrice: StoreCartWithPrice, rate: Currency, locale: Locale): Map[String, Any] = {
+    val storeCart = cartWithPrice.storeCart
+    val price = rateService.calculateAmount(cartWithPrice.price, rate)
+    val endPrice = rateService.calculateAmount(cartWithPrice.endPrice, rate)
+    val reduction = rateService.calculateAmount(cartWithPrice.reduction, rate)
+    val finalPrice = rateService.calculateAmount(cartWithPrice.finalPrice, rate)
+
+    Map(
       "boCartUuid" -> storeCart.boCartUuid.getOrElse(""),
       "transactionUuid" -> storeCart.transactionUuid.getOrElse(""),
-      "count" -> cart.count,
-      "cartItemVOs" -> cart.cartItemVOs.map(item => renderTransactionCartItem(item, rate, locale)),
-      "coupons" -> cart.coupons.map(c => renderTransactionCoupon(c, rate, locale))
+      "count" -> calculateCount(cartWithPrice),
+      "cartItemVOs" -> cartWithPrice.cartItems.map(item => renderTransactionCartItem(item, rate, locale)),
+      "coupons" -> cartWithPrice.coupons.map(c => renderTransactionCoupon(storeCart.storeCode, c, rate, locale)).flatten,
+      "price" -> price,
+      "endPrice" -> endPrice,
+      "reduction" -> reduction,
+      "finalPrice" -> finalPrice,
+      "formatedPrice" -> rateService.formatLongPrice(cartWithPrice.price, rate, locale),
+      "formatedEndPrice" -> rateService.formatLongPrice(cartWithPrice.endPrice, rate, locale),
+      "formatedReduction" -> rateService.formatLongPrice(cartWithPrice.reduction, rate, locale),
+      "formatedFinalPrice" -> rateService.formatLongPrice(cartWithPrice.finalPrice, rate, locale),
+      "date" -> new Date().getTime
     )
-    map ++= renderTransactionPriceCart(cart, rate, locale)
-    map ++= Map("date" -> new Date().getTime)
-    map
   }
 
   /**
    * Renvoie un coupon JSONiné augmenté par un calcul de prix formaté
    *
-   * @param coupon
+   * @param storeCode
+   * @param couponWithData
    * @param currency
    * @param locale
    * @return
    */
-  protected def renderCoupon(coupon: Coupon, currency: Currency, locale: Locale) = {
-    implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[Coupon]()
-    val jsonCoupon = parse(write(coupon))
+  protected def renderCoupon(storeCode: String, couponWithData: CouponWithData, currency: Currency, locale: Locale) = {
+    couponHandler.transformAsRender(storeCode, couponWithData).map { coupon =>
+      implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[Coupon]()
+      val jsonCoupon = parse(write(coupon))
 
-    //code from renderPriceCoupon
-    val formatedPrice = rateService.formatPrice(coupon.price, currency, locale)
-    val additionalsData = parse(write(Map("formatedPrice" -> formatedPrice)))
+      //code from renderPriceCoupon
+      val formatedPrice = rateService.formatPrice(coupon.price, currency, locale)
+      val additionalsData = parse(write(Map("formatedPrice" -> formatedPrice)))
 
-    jsonCoupon merge additionalsData
+      jsonCoupon merge additionalsData
+    }
   }
 
-  protected def renderTransactionCoupon(coupon: Coupon, rate: Currency, locale: Locale) = {
-    implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[Coupon]()
-    val jsonCoupon = parse(write(coupon))
+  protected def renderTransactionCoupon(storeCode: String, couponWithData: CouponWithData, rate: Currency, locale: Locale) = {
+    couponHandler.transformAsRender(storeCode, couponWithData).map { coupon =>
+      implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[Coupon]()
+      val jsonCoupon = parse(write(coupon))
 
-    val price = rateService.calculateAmount(coupon.price, rate)
-    val updatedData = parse(write(Map(
-      "price" -> price,
-      "formatedPrice" -> rateService.formatPrice(coupon.price, rate, locale)
-    )))
+      val price = rateService.calculateAmount(coupon.price, rate)
+      val updatedData = parse(write(Map(
+        "price" -> price,
+        "formatedPrice" -> rateService.formatPrice(coupon.price, rate, locale)
+      )))
 
-    jsonCoupon merge updatedData
+      jsonCoupon merge updatedData
+    }
   }
 
   /**
@@ -1207,13 +1228,22 @@ class CartHandler extends StrictLogging {
    * @param locale
    * @return
    */
-  protected def renderCartItem(item: CartItem, currency: Currency, locale: Locale) = {
+  protected def renderCartItem(item: StoreCartItemWithPrice, currency: Currency, locale: Locale) = {
     import org.json4s.jackson.JsonMethods._
     import org.json4s.jackson.Serialization.write
-    implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[CartItem]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar)
-    val jsonItem = parse(write(item))
+    implicit def json4sFormats: Formats = DefaultFormats ++ JodaTimeSerializers.all + FieldSerializer[StoreCartItem]() + new org.json4s.ext.EnumNameSerializer(ProductCalendar)
+    val jsonItem = parse(write(item.cartItem))
 
     val additionalsData = parse(write(Map(
+      "price" -> item.price,
+      "endPrice" -> item.endPrice,
+      "tax" -> item.tax,
+      "totalPrice" -> item.totalPrice,
+      "totalEndPrice" -> item.totalEndPrice,
+      "salePrice" -> item.salePrice,
+      "saleEndPrice" -> item.saleEndPrice,
+      "saleTotalPrice" -> item.saleTotalPrice,
+      "saleTotalEndPrice" -> item.saleTotalEndPrice,
       "formatedPrice" -> rateService.formatPrice(item.price, currency, locale),
       "formatedSalePrice" -> rateService.formatPrice(item.salePrice, currency, locale),
       "formatedEndPrice" -> item.endPrice.map {
@@ -1232,21 +1262,14 @@ class CartHandler extends StrictLogging {
       }
     )))
 
-    //TODO Traduction aussi du nom en traduisant le produit et le sku
-    /*
-    price["productName"] = translateName(cartItem.productId, locale.language, cartItem.productName)
-    price["skuName"] = translateName(cartItem.skuId, locale.language, cartItem.skuName)
-    */
-
     jsonItem merge additionalsData
   }
 
-  protected def renderTransactionCartItem(item: CartItem, rate: Currency, locale: Locale) = {
+  protected def renderTransactionCartItem(item: StoreCartItemWithPrice, rate: Currency, locale: Locale) = {
     import org.json4s.jackson.JsonMethods._
     import org.json4s.jackson.Serialization.write
-    //implicit def json4sFormats: Formats = DefaultFormats + FieldSerializer[CartItemVO]()
     import Json4sProtocol._
-    val jsonItem = parse(write(item))
+    val jsonItem = parse(write(item.cartItem))
 
     val price = rateService.calculateAmount(item.price, rate)
     val salePrice = rateService.calculateAmount(item.salePrice, rate)
@@ -1262,6 +1285,7 @@ class CartHandler extends StrictLogging {
       "salePrice" -> salePrice,
       "endPrice" -> endPrice,
       "saleEndPrice" -> saleEndPrice,
+      "tax" -> item.tax,
       "totalPrice" -> totalPrice,
       "saleTotalPrice" -> saleTotalPrice,
       "totalEndPrice" -> totalEndPrice,
@@ -1277,50 +1301,6 @@ class CartHandler extends StrictLogging {
     )))
 
     jsonItem merge updatedData
-  }
-
-  /**
-   * Renvoie tous les champs prix calculé sur le panier
-   *
-   * @param cart
-   * @param currency
-   * @param locale
-   * @return
-   */
-  protected def renderPriceCart(cart: Cart, currency: Currency, locale: Locale) = {
-    val formatedPrice = rateService.formatLongPrice(cart.price, currency, locale)
-    val formatedEndPrice = rateService.formatLongPrice(cart.endPrice, currency, locale)
-    val formatedReduction = rateService.formatLongPrice(cart.reduction, currency, locale)
-    val formatedFinalPrice = rateService.formatLongPrice(cart.finalPrice, currency, locale)
-
-    Map(
-      "price" -> cart.price,
-      "endPrice" -> cart.endPrice,
-      "reduction" -> cart.reduction,
-      "finalPrice" -> cart.finalPrice,
-      "formatedPrice" -> formatedPrice,
-      "formatedEndPrice" -> formatedEndPrice,
-      "formatedReduction" -> formatedReduction,
-      "formatedFinalPrice" -> formatedFinalPrice
-    )
-  }
-
-  protected def renderTransactionPriceCart(cart: Cart, rate: Currency, locale: Locale) = {
-    val price = rateService.calculateAmount(cart.price, rate)
-    val endPrice = rateService.calculateAmount(cart.endPrice, rate)
-    val reduction = rateService.calculateAmount(cart.reduction, rate)
-    val finalPrice = rateService.calculateAmount(cart.finalPrice, rate)
-
-    Map(
-      "price" -> price,
-      "endPrice" -> endPrice,
-      "reduction" -> reduction,
-      "finalPrice" -> finalPrice,
-      "formatedPrice" -> rateService.formatLongPrice(cart.price, rate, locale),
-      "formatedEndPrice" -> rateService.formatLongPrice(cart.endPrice, rate, locale),
-      "formatedReduction" -> rateService.formatLongPrice(cart.reduction, rate, locale),
-      "formatedFinalPrice" -> rateService.formatLongPrice(cart.finalPrice, rate, locale)
-    )
   }
 
   def boCartToESBOCart(storeCode: String, boCart: BOCart)(implicit session: DBSession = AutoSession): ES.BOCart = {
@@ -1799,7 +1779,7 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
     rs.get(rn.uuid),
     rs.get(rn.url))
 
-  def create(sku: Mogobiz.Sku, cartItem: Render.CartItem, storeCartItem: StoreCartItem, boCart: BOCart, bODelivery: Option[BODelivery], boProductId: Long)(implicit session: DBSession): BOCartItem = {
+  def create(sku: Mogobiz.Sku, cartItem: StoreCartItemWithPrice, boCart: BOCart, bODelivery: Option[BODelivery], boProductId: Long)(implicit session: DBSession): BOCartItem = {
     val newBOCartItem = new BOCartItem(
       newId(),
       "SALE_" + boCart.id + "_" + boProductId,
@@ -1810,15 +1790,15 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
       cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice),
       false,
       cartItem.quantity,
-      cartItem.startDate,
-      cartItem.endDate,
+      cartItem.cartItem.startDate,
+      cartItem.cartItem.endDate,
       sku.id,
       boCart.id,
       if (bODelivery.isDefined) Some(bODelivery.get.id) else None,
       DateTime.now,
       DateTime.now,
       UUID.randomUUID().toString,
-      storeCartItem.productUrl
+      cartItem.cartItem.productUrl
     )
 
     applyUpdate {
@@ -1911,7 +1891,7 @@ object BOTicketTypeDao extends SQLSyntaxSupport[BOTicketType] with BoService {
     rs.get(rn.lastUpdated),
     rs.get(rn.uuid))
 
-  def create(boTicketId: Long, sku: Sku, cartItem: Render.CartItem, registeredCartItem: Render.RegisteredCartItem, shortCode: Option[String], qrCode: Option[String], qrCodeContent: Option[String], boProductId: Long)(implicit session: DBSession): BOTicketType = {
+  def create(boTicketId: Long, sku: Sku, cartItem: StoreCartItemWithPrice, registeredCartItem: Render.RegisteredCartItem, shortCode: Option[String], qrCode: Option[String], qrCodeContent: Option[String], boProductId: Long)(implicit session: DBSession): BOTicketType = {
     val newBOTicketType = new BOTicketType(
       boTicketId,
       1, // Un seul ticket par bénéficiaire
@@ -1924,8 +1904,8 @@ object BOTicketTypeDao extends SQLSyntaxSupport[BOTicketType] with BoService {
       registeredCartItem.phone,
       Utils.computeAge(registeredCartItem.birthdate),
       registeredCartItem.birthdate,
-      cartItem.startDate,
-      cartItem.endDate,
+      cartItem.cartItem.startDate,
+      cartItem.cartItem.endDate,
       qrCode,
       qrCodeContent,
       boProductId,

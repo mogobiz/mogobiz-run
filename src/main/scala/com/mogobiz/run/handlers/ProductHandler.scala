@@ -429,7 +429,7 @@ class ProductHandler extends JsonUtil {
     val res = EsClient.updateRaw(req)
     println(res)
     */
-// TODO stoker les commentaires dans la base relationnelle
+    // TODO stoker les commentaires dans la base relationnelle
     val res = EsClient.loadRaw(get(productId) from indexEs -> "product").get
     val v1 = res.getVersion
     val product = response2JValue(res)

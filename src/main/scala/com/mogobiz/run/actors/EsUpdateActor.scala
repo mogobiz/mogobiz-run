@@ -21,8 +21,6 @@ object EsUpdateActor {
 
   case class ProductNotationsUpdateRequest(indexEs: String, productId: Long)
 
-  case class SkuStockAvailabilityUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar: StockCalendar)
-
   case class ProductStockAvailabilityUpdateRequest(indexEs: String, productId: Long)
 }
 
@@ -40,10 +38,6 @@ class EsUpdateActor extends Actor {
     case q: ProductNotationsUpdateRequest =>
       val notations = facetHandler.getCommentNotations(q.indexEs, Some(q.productId))
       productHandler.updateProductNotations(q.indexEs, q.productId, notations)
-      context.stop(self)
-
-    case q: SkuStockAvailabilityUpdateRequest =>
-      skuHandler.updateStockAvailability(q.indexEs, q.sku, q.stock, q.stockCalendar)
       context.stop(self)
 
     case q: ProductStockAvailabilityUpdateRequest =>
