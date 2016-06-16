@@ -11,7 +11,17 @@ import com.mogobiz.run.handlers.BoService
 import org.joda.time.DateTime
 import scalikejdbc._
 
-case class Comment(id: String, userId: String, surname: String, notation: Int, subject: String, comment: String, externalCode: Option[String], created: Date, productId: Long, useful: Int = 0, notuseful: Int = 0)
+case class Comment(id: String,
+  userId: String,
+  surname: String,
+  notation: Int,
+  subject: String,
+  comment: String,
+  externalCode: Option[String],
+  created: Date,
+  productId: Long,
+  useful: Int = 0,
+  notuseful: Int = 0)
 
 case class BOComment(id: Long,
   uuid: String,

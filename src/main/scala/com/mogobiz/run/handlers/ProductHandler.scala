@@ -527,7 +527,7 @@ class ProductHandler extends JsonUtil {
       val notation = Math.min(Math.max(req.notation, MIN_NOTATION), MAX_NOTATION)
       val newComment = Comment(UUID.randomUUID().toString, userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId)
       BOCommentDao.create(storeCode, newComment)
-      EsClient.index(commentIndex(storeCode), newComment, true, Some(newComment.id))
+      EsClient.simpleIndex(commentIndex(storeCode), newComment, true, newComment.id)
       newComment
     }
 

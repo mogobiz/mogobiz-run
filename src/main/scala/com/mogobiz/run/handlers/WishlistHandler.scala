@@ -44,7 +44,7 @@ class WishlistHandler {
 
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlistId) :+ wishlist.copy(items = wishlist.items :+ item, lastUpdated = now))
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -63,7 +63,7 @@ class WishlistHandler {
 
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlistId) :+ wishlist.copy(brands = wishlist.brands :+ brand, lastUpdated = now))
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -82,7 +82,7 @@ class WishlistHandler {
 
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlistId) :+ wishlist.copy(categories = wishlist.categories :+ cat, lastUpdated = now))
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -98,7 +98,7 @@ class WishlistHandler {
       wishlistList.wishlists.find(_.uuid == wishlistId).map { wishlist =>
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlistId) :+ wishlist.copy(ideas = wishlist.ideas :+ idea, lastUpdated = now))
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -114,7 +114,7 @@ class WishlistHandler {
       wishlistList.wishlists.find(_.uuid == wishlistId).map { wishlist =>
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlist.uuid) :+ wishlist.copy(items = wishlist.items.filter(_.uuid != itemUuid), lastUpdated = now))
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -129,7 +129,7 @@ class WishlistHandler {
       wishlistList.wishlists.find(_.uuid == wishlistId).map { wishlist =>
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlist.uuid) :+ wishlist.copy(ideas = wishlist.ideas.filter(_.uuid != ideaUuid), lastUpdated = now))
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -144,7 +144,7 @@ class WishlistHandler {
       wishlistList.wishlists.find(_.uuid == wishlistId).map { wishlist =>
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlist.uuid) :+ wishlist.copy(brands = wishlist.brands.filter(_.uuid != brandUuid), lastUpdated = now))
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -159,7 +159,7 @@ class WishlistHandler {
       wishlistList.wishlists.find(_.uuid == wishlistId).map { wishlist =>
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = wishlistList.wishlists.filter(_.uuid != wishlist.uuid) :+ wishlist.copy(categories = wishlist.categories.filter(_.uuid != catUuid), lastUpdated = now))
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -172,7 +172,7 @@ class WishlistHandler {
   def setOwnerInfo(store: String, wishlistListId: String, owner: WishlistOwner): Unit = {
     val transactionalBloc = { (session: DBSession, boWishList: BOWishList, wishlistList: WishlistList) =>
       val newWishList = wishlistList.copy(owner = owner)
-      BOWishListDao.save(boWishList, newWishList)
+      BOWishListDao.save(boWishList, newWishList)(session)
       newWishList
     }
     val successBloc = { newWishList: WishlistList =>
@@ -188,7 +188,7 @@ class WishlistHandler {
       val wishlistsWithUpdatedDefault = wishlistList.wishlists.map(ws => ws.copy(default = (!useNewWishListAsDefault && ws.default)))
       val now = Calendar.getInstance().getTime
       val newWishList = wishlistList.copy(wishlists = wishlistsWithUpdatedDefault :+ wishlist.copy(token = newUUID, default = useNewWishListAsDefault, dateCreated = now, lastUpdated = now))
-      BOWishListDao.save(boWishList, newWishList)
+      BOWishListDao.save(boWishList, newWishList)(session)
       newWishList
     }
     val successBloc = { newWishList: WishlistList =>
@@ -207,7 +207,7 @@ class WishlistHandler {
         }
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = setFirstAsDefault(wishlistList.wishlists.filter(_.uuid != wishlistId)), lastUpdated = now)
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -222,7 +222,7 @@ class WishlistHandler {
       wishlistList.wishlists.find(_.uuid == wishlistId).map { wishlist =>
         val now = Calendar.getInstance().getTime
         val newWishList = wishlistList.copy(wishlists = wishlistList.wishlists.map(ws => ws.copy(default = (ws.uuid == wishlist.uuid))), lastUpdated = now)
-        BOWishListDao.save(boWishList, newWishList)
+        BOWishListDao.save(boWishList, newWishList)(session)
         newWishList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
     }
@@ -254,7 +254,7 @@ class WishlistHandler {
     }.getOrElse {
       val transactionalBlock = { implicit session: DBSession =>
         val wishlistList = WishlistList(newUUID, Nil, WishlistOwner(email = owner_email))
-        BOWishListDao.create(store, wishlistList)
+        BOWishListDao.create(store, wishlistList)(session)
         wishlistList
       }
       val successBlock = { newWishList: WishlistList =>
@@ -272,7 +272,7 @@ class WishlistHandler {
           val newWishlists = wishlistList.wishlists.filter(_.uuid != wishlistId) :+ wishlist.copy(visibility = WishlistVisibility.SHARED)
           val now = Calendar.getInstance().getTime
           val newWishList = wishlistList.copy(wishlists = newWishlists, lastUpdated = now)
-          BOWishListDao.save(boWishList, newWishList)
+          BOWishListDao.save(boWishList, newWishList)(session)
           newWishList
         } else wishlistList
       }.getOrElse(throw NotFoundException(s"Invalid wishlist uuid $wishlistId"))
