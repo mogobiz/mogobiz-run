@@ -1512,13 +1512,11 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
     rs.get(rn.transactionUuid),
     rs.get(rn.uuid))
 
-  def load(uuid: String): Option[BOCart] = {
+  def load(uuid: String)(implicit session: DBSession): Option[BOCart] = {
     val t = BOCartDao.syntax("t")
-    DB readOnly { implicit session =>
-      withSQL {
-        select.from(BOCartDao as t).where.eq(t.uuid, uuid)
-      }.map(BOCartDao(t.resultName)).single().apply()
-    }
+    withSQL {
+      select.from(BOCartDao as t).where.eq(t.uuid, uuid)
+    }.map(BOCartDao(t.resultName)).single().apply()
   }
 
   def findByTransactionUuid(transactionUuid: String)(implicit session: DBSession = AutoSession): Option[BOCart] = {

@@ -6,20 +6,27 @@ package com.mogobiz.run.handlers
 
 import java.util.{ Calendar, Date, Locale, UUID }
 
+import akka.actor.Props
 import com.mogobiz.es.EsClient.{ multiSearchRaw }
 import com.mogobiz.es.{ EsClient, _ }
 import com.mogobiz.json.{ JacksonConverter, JsonUtil }
 import com.mogobiz.pay.model.Mogopay.Account
+import com.mogobiz.run.actors.EsUpdateActor
+import com.mogobiz.run.actors.EsUpdateActor.{ ProductNotationsUpdateRequest, StockUpdateRequest }
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions.{ CommentAlreadyExistsException, NotAuthorizedException, NotFoundException }
+import com.mogobiz.run.handlers.BOCartDao._
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.Learning.UserAction
-import com.mogobiz.run.model.Mogobiz.Suggestion
+import com.mogobiz.run.model.Mogobiz.{ TransactionStatus, BOCart, Suggestion }
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
 import com.mogobiz.run.utils.Paging
+import com.mogobiz.system.ActorSystemLocator
+import com.mogobiz.utils.GlobalUtil.runInTransaction
+import com.sksamuel.elastic4s.ElasticDsl.update
 import com.sksamuel.elastic4s.ElasticDsl.{ delete => esdelete4s, search => esearch4s, update => esupdate4s, _ }
 import com.sksamuel.elastic4s.source.DocumentSource
 import com.sksamuel.elastic4s.{ FilterDefinition, QueryDefinition }
@@ -29,11 +36,13 @@ import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.search.aggregations.bucket.terms.Terms
 import org.elasticsearch.search.sort.SortOrder
 import org.elasticsearch.search.{ SearchHit, SearchHits }
+import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.json4s.JsonAST.{ JArray, JObject }
 import org.json4s.JsonDSL._
 import org.json4s._
 import org.slf4j.LoggerFactory
+import scalikejdbc._
 
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
@@ -417,19 +426,6 @@ class ProductHandler extends JsonUtil {
   }
 
   def updateProductNotations(indexEs: String, productId: Long, values: List[JValue]): Boolean = {
-    /* marche pas avec un script :(
-    val script = "ctx._source.notations4=notations"
-    //val notations = compact(render(JField("notations", JArray(values))))
-    val notations = compact(render(values))
-    println(notations)
-    val notations_str ="""[{"notation":"2","nbcomments":2},{"notation":"3","nbcomments":2},{"notation":"5","nbcomments":2},{"notation":"1","nbcomments":1}]"""
-    println(notations_str)
-    val req = esupdate4s id productId in storeCode -> "product" script script params {"notations" -> Map("notation" -> 2) }
-    println(req)
-    val res = EsClient.updateRaw(req)
-    println(res)
-    */
-    // TODO stoker les commentaires dans la base relationnelle
     val res = EsClient.loadRaw(get(productId) from indexEs -> "product").get
     val v1 = res.getVersion
     val product = response2JValue(res)
@@ -439,67 +435,114 @@ class ProductHandler extends JsonUtil {
     val notation = Notation(UUID.randomUUID().toString, productId, compact(render(notations)))
     val updatedProduct = (product removeField { f => f._1 == "notations" }) merge notations
     val res2 = EsClient.updateRaw(esupdate4s id productId in indexEs -> "product" doc updatedProduct retryOnConflict 4)
-    //res2.getVersion > v1
     true
   }
 
-  def deleteComment(storeCode: String, productId: Long, account: Option[Account], commentId: String): Unit = {
-    // TODO stoker les commentaires dans la base relationnelle
-    val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
-    findComment(storeCode, productId, userId).find { comment => comment.id == commentId }.getOrElse(throw new NotAuthorizedException(""))
+  def notifyProductNotationChange(indexEs: String, productId: Long): Unit = {
+    import scala.concurrent.duration._
+    val system = ActorSystemLocator()
+    import system.dispatcher
+    val actor = system.actorOf(Props[EsUpdateActor])
+    actor ! ProductNotationsUpdateRequest(indexEs, productId)
+  }
 
-    EsClient.deleteRaw(esdelete4s id commentId from s"${commentIndex(storeCode)}/comment" refresh true)
+  def deleteComment(storeCode: String, productId: Long, account: Option[Account], commentId: String): Unit = {
+    val transactionalBloc = { implicit session: DBSession =>
+      val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
+      findComment(storeCode, productId, userId).find { comment => comment.id == commentId }.getOrElse(throw new NotAuthorizedException(""))
+      BOCommentDao.delete(commentId)
+    }
+    val successBloc = { nbDelete: Int =>
+      EsClient.deleteRaw(esdelete4s id commentId from s"${commentIndex(storeCode)}/comment" refresh true)
+      notifyProductNotationChange(storeCode, productId)
+    }
+
+    runInTransaction(transactionalBloc, successBloc)
   }
 
   @throws[NotAuthorizedException]
   def updateComment(storeCode: String, productId: Long, account: Option[Account], commentId: String, params: CommentPutRequest): Unit = {
-    // TODO stoker les commentaires dans la base relationnelle
-    val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
-    val oldComment = findComment(storeCode, productId, userId).find { comment => comment.id == commentId }.getOrElse(throw new NotAuthorizedException(""))
+    val transactionalBloc = { implicit session: DBSession =>
+      val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
+      val oldComment = findComment(storeCode, productId, userId).find { comment => comment.id == commentId }.getOrElse(throw new NotAuthorizedException(""))
 
-    val newComment = oldComment.copy(
-      subject = params.subject.getOrElse(oldComment.subject),
-      comment = params.comment.getOrElse(oldComment.comment),
-      notation = Math.min(Math.max(params.notation.getOrElse(oldComment.notation), MIN_NOTATION), MAX_NOTATION)
-    )
+      val newComment = oldComment.copy(
+        subject = params.subject.getOrElse(oldComment.subject),
+        comment = params.comment.getOrElse(oldComment.comment),
+        notation = Math.min(Math.max(params.notation.getOrElse(oldComment.notation), MIN_NOTATION), MAX_NOTATION)
+      )
 
-    EsClient.updateRaw(esupdate4s id commentId in commentIndex(storeCode) -> "comment" doc new DocumentSource {
-      override def json: String = JacksonConverter.serialize(newComment)
-    } refresh true retryOnConflict 4)
+      val comment = BOCommentDao.load(storeCode, commentId).getOrElse(throw new NotAuthorizedException(""))
+      BOCommentDao.save(comment, newComment)
+      newComment
+    }
+
+    val successBloc = { newComment: Comment =>
+      EsClient.updateRaw(esupdate4s id commentId in commentIndex(storeCode) -> "comment" doc new DocumentSource {
+        override def json: String = JacksonConverter.serialize(newComment)
+      } refresh true retryOnConflict 4)
+    }
+
+    runInTransaction(transactionalBloc, successBloc)
   }
 
   def noteComment(storeCode: String, productId: Long, commentId: String, params: NoteCommentRequest): Unit = {
-    // TODO stoker les commentaires dans la base relationnelle
-    val script = if (params.note == 1) "ctx._source.useful = ctx._source.useful + 1"
-    else "ctx._source.notuseful = ctx._source.notuseful + 1"
-    val req = esupdate4s id commentId in commentIndex(storeCode) -> "comment" script script retryOnConflict 4
-    EsClient.updateRaw(req)
+    val transactionalBloc = { implicit session: DBSession =>
+      BOCommentDao.load(storeCode, commentId).map { comment =>
+        val newComment = findCommentById(storeCode, commentId).map { comment =>
+          if (params.note == 1) comment.copy(useful = comment.useful + 1)
+          else comment.copy(notuseful = comment.notuseful + 1)
+        }
+        newComment.map { c =>
+          BOCommentDao.save(comment, c)
+        }
+        newComment
+      }.flatten
+    }
+
+    val successBloc = { newComment: Option[Comment] =>
+      newComment.map { _ =>
+        val script = if (params.note == 1) "ctx._source.useful = ctx._source.useful + 1"
+        else "ctx._source.notuseful = ctx._source.notuseful + 1"
+        val req = esupdate4s id commentId in commentIndex(storeCode) -> "comment" script script retryOnConflict 4
+        EsClient.updateRaw(req)
+      }
+      EsClient.updateRaw(esupdate4s id commentId in commentIndex(storeCode) -> "comment" doc new DocumentSource {
+        override def json: String = JacksonConverter.serialize(newComment)
+      } refresh true retryOnConflict 4)
+    }
+
+    runInTransaction(transactionalBloc, successBloc)
   }
 
   @throws[NotAuthorizedException]
   @throws[CommentAlreadyExistsException]
   def createComment(storeCode: String, productId: Long, req: CommentRequest, account: Option[Account]): Comment = {
-    // TODO stoker les commentaires dans la base relationnelle
-    require(!storeCode.isEmpty)
-    require(productId > 0)
+    val transactionalBloc = { implicit session: DBSession =>
+      val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
+      val surname = account.map { c => c.firstName.getOrElse("") + " " + c.lastName.getOrElse("") }.getOrElse(throw new NotAuthorizedException(""))
 
-    val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
-    val surname = account.map { c => c.firstName.getOrElse("") + " " + c.lastName.getOrElse("") }.getOrElse(throw new NotAuthorizedException(""))
+      findComment(storeCode, productId, userId).map { comment => throw new CommentAlreadyExistsException() }
 
-    findComment(storeCode, productId, userId).map { comment => throw new CommentAlreadyExistsException() }
-
-    val notation = Math.min(Math.max(req.notation, MIN_NOTATION), MAX_NOTATION)
-    val comment = Try(Comment(UUID.randomUUID().toString, userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId))
-    comment match {
-      case Success(s) =>
-        Comment(EsClient.indexLowercase(commentIndex(storeCode), s, true), userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId)
-      case Failure(f) => throw f
+      val notation = Math.min(Math.max(req.notation, MIN_NOTATION), MAX_NOTATION)
+      val newComment = Comment(UUID.randomUUID().toString, userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId)
+      BOCommentDao.create(storeCode, newComment)
+      EsClient.index(commentIndex(storeCode), newComment, true, Some(newComment.id))
+      newComment
     }
+
+    val successBloc = { newComment: Comment => newComment }
+
+    runInTransaction(transactionalBloc, successBloc)
   }
 
   private def findComment(storeCode: String, productId: Long, userId: String) = {
     val query = must(termQuery("productId", s"$productId"), matchQuery("userId", userId))
     EsClient.searchRaw(esearch4s in commentIndex(storeCode) -> "comment" query query).map(deserializeComment)
+  }
+
+  private def findCommentById(storeCode: String, commentId: String) = {
+    EsClient.load[Comment](commentIndex(storeCode), commentId)
   }
 
   def deserializeComment(hit: SearchHit): Comment = {
