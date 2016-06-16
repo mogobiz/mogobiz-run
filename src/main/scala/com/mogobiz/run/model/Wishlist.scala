@@ -68,20 +68,18 @@ case class AddCategoryCommand(name: String, category: String, owner_email: Strin
 case class BOWishList(id: Long,
   uuid: String,
   company: String,
-  ownerEmail: String,
   extra: String,
   dateCreated: DateTime,
   lastUpdated: DateTime)
 
 object BOWishListDao extends SQLSyntaxSupport[BOWishList] with BoService {
 
-  override val tableName = "wishlist"
+  override val tableName = "b_o_wishlist"
 
   def apply(rn: ResultName[BOWishList])(rs: WrappedResultSet): BOWishList = BOWishList(
     rs.get(rn.id),
     rs.get(rn.uuid),
     rs.get(rn.company),
-    rs.get(rn.ownerEmail),
     rs.get(rn.extra),
     rs.get(rn.dateCreated),
     rs.get(rn.lastUpdated)
@@ -91,14 +89,6 @@ object BOWishListDao extends SQLSyntaxSupport[BOWishList] with BoService {
     val t = BOWishListDao.syntax("t")
     val whishList = withSQL {
       select.from(BOWishListDao as t).where.eq(t.uuid, uuid)
-    }.map(BOWishListDao(t.resultName)).single().apply()
-    whishList.filter { c => c.company == company }
-  }
-
-  def findByOwner(company: String, ownerEmail: String)(implicit session: DBSession): Option[BOWishList] = {
-    val t = BOWishListDao.syntax("t")
-    val whishList = withSQL {
-      select.from(BOWishListDao as t).where.eq(t.ownerEmail, ownerEmail)
     }.map(BOWishListDao(t.resultName)).single().apply()
     whishList.filter { c => c.company == company }
   }
@@ -115,7 +105,6 @@ object BOWishListDao extends SQLSyntaxSupport[BOWishList] with BoService {
         BOWishListDao.column.id -> updatedWishlist.id,
         BOWishListDao.column.uuid -> updatedWishlist.uuid,
         BOWishListDao.column.company -> updatedWishlist.company,
-        BOWishListDao.column.ownerEmail -> updatedWishlist.ownerEmail,
         BOWishListDao.column.extra -> updatedWishlist.extra,
         BOWishListDao.column.dateCreated -> updatedWishlist.dateCreated,
         BOWishListDao.column.lastUpdated -> updatedWishlist.lastUpdated
@@ -130,7 +119,6 @@ object BOWishListDao extends SQLSyntaxSupport[BOWishList] with BoService {
     val newWishlist = new BOWishList(
       newId(),
       wishlistExtra.uuid,
-      wishlistExtra.owner.email,
       company,
       getExtra(wishlistExtra),
       DateTime.now,
@@ -141,7 +129,6 @@ object BOWishListDao extends SQLSyntaxSupport[BOWishList] with BoService {
         BOWishListDao.column.id -> newWishlist.id,
         BOWishListDao.column.uuid -> newWishlist.uuid,
         BOWishListDao.column.company -> newWishlist.company,
-        BOWishListDao.column.ownerEmail -> newWishlist.ownerEmail,
         BOWishListDao.column.extra -> newWishlist.extra,
         BOWishListDao.column.dateCreated -> newWishlist.dateCreated,
         BOWishListDao.column.lastUpdated -> newWishlist.lastUpdated
