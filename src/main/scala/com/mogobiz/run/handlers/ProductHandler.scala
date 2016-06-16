@@ -501,15 +501,15 @@ class ProductHandler extends JsonUtil {
     }
 
     val successBloc = { newComment: Option[Comment] =>
-      newComment.map { _ =>
+      newComment.map { c: Comment =>
         val script = if (params.note == 1) "ctx._source.useful = ctx._source.useful + 1"
         else "ctx._source.notuseful = ctx._source.notuseful + 1"
         val req = esupdate4s id commentId in commentIndex(storeCode) -> "comment" script script retryOnConflict 4
         EsClient.updateRaw(req)
+        EsClient.updateRaw(esupdate4s id commentId in commentIndex(storeCode) -> "comment" doc new DocumentSource {
+          override def json: String = JacksonConverter.serialize(c)
+        } refresh true retryOnConflict 4)
       }
-      EsClient.updateRaw(esupdate4s id commentId in commentIndex(storeCode) -> "comment" doc new DocumentSource {
-        override def json: String = JacksonConverter.serialize(newComment)
-      } refresh true retryOnConflict 4)
     }
 
     runInTransaction(transactionalBloc, successBloc)
@@ -518,20 +518,24 @@ class ProductHandler extends JsonUtil {
   @throws[NotAuthorizedException]
   @throws[CommentAlreadyExistsException]
   def createComment(storeCode: String, productId: Long, req: CommentRequest, account: Option[Account]): Comment = {
+    val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
+    val surname = account.map { c => c.firstName.getOrElse("") + " " + c.lastName.getOrElse("") }.getOrElse(throw new NotAuthorizedException(""))
+    val notation = Math.min(Math.max(req.notation, MIN_NOTATION), MAX_NOTATION)
+    findComment(storeCode, productId, userId).map { comment => throw new CommentAlreadyExistsException() }
+
+    val newCommentWithoutId = Comment(UUID.randomUUID().toString, userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId)
+    val newComment = newCommentWithoutId.copy(id = EsClient.indexLowercase(commentIndex(storeCode), newCommentWithoutId, true))
+
     val transactionalBloc = { implicit session: DBSession =>
-      val userId = account.map { c => c.uuid }.getOrElse(throw new NotAuthorizedException(""))
-      val surname = account.map { c => c.firstName.getOrElse("") + " " + c.lastName.getOrElse("") }.getOrElse(throw new NotAuthorizedException(""))
-
-      findComment(storeCode, productId, userId).map { comment => throw new CommentAlreadyExistsException() }
-
-      val notation = Math.min(Math.max(req.notation, MIN_NOTATION), MAX_NOTATION)
-      val newComment = Comment(UUID.randomUUID().toString, userId, surname, notation, req.subject, req.comment, req.externalCode, req.created, productId)
       BOCommentDao.create(storeCode, newComment)
-      EsClient.simpleIndex(commentIndex(storeCode), newComment, true, newComment.id)
       newComment
     }
 
     val successBloc = { newComment: Comment => newComment }
+
+    val failure = { e: Throwable =>
+      EsClient.deleteRaw(esdelete4s id newComment.id from s"${commentIndex(storeCode)}/comment" refresh true)
+    }
 
     runInTransaction(transactionalBloc, successBloc)
   }
@@ -542,7 +546,7 @@ class ProductHandler extends JsonUtil {
   }
 
   private def findCommentById(storeCode: String, commentId: String) = {
-    EsClient.load[Comment](commentIndex(storeCode), commentId)
+    EsClient.load[Comment](commentIndex(storeCode), commentId, "comment")
   }
 
   def deserializeComment(hit: SearchHit): Comment = {
