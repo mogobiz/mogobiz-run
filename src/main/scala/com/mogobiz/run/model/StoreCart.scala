@@ -22,6 +22,7 @@ case class StoreCart(storeCode: String,
     userUuid: Option[Mogopay.Document], // Uuid du l'utilisateur connecté
     boCartUuid: Option[String] = None, // uuid du boCart correspondant (quand le BOCart a été créé)
     transactionUuid: Option[String] = None, // Identifiant de la BOTransaction (quand la transaction est validée)
+    externalOrderId: Option[String] = None, // Identifiant d'une commande issue d'un système externe (ex: MIRAKL)
     cartItems: List[StoreCartItem] = List(), // liste des items du panier
     coupons: List[StoreCoupon] = List(), // liste des coupons du panier
     validate: Boolean = false, // Indique si le panier a été validé, c'est à dire si les stocks ont été décrémenté
@@ -56,7 +57,8 @@ case class StoreCartItem(indexEs: String,
   registeredCartItems: List[RegisteredCartItem],
   shipping: Option[Shipping],
   boCartItemUuid: Option[String],
-  downloadableLink: Option[String])
+  downloadableLink: Option[String],
+  externalOfferId: Option[Long] = None)
 
 case class StoreCartItemWithPrice(cartItem: StoreCartItem,
   quantity: Int,

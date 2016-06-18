@@ -1,0 +1,364 @@
+{
+  "shops" : [ {
+    "approval_delay" : null,
+    "approval_rate" : null,
+    "banner" : null,
+    "billing_info" : {
+      "bank_city" : null,
+      "bank_name" : null,
+      "bank_street" : null,
+      "bic" : null,
+      "iban" : null,
+      "owner" : null,
+      "zip_code" : null
+    },
+    "channels" : [ "INIT" ],
+    "closed_from" : null,
+    "closed_to" : null,
+    "contact_informations" : {
+      "city" : "BOIS D'ARCY",
+      "civility" : "Mr",
+      "country" : "FRA",
+      "email" : "stephane.manciot@ebiznext.com",
+      "fax" : null,
+      "firstname" : "Stephane",
+      "lastname" : "Manciot",
+      "phone" : null,
+      "phone_secondary" : null,
+      "state" : "Ile-de-France",
+      "street1" : "13 rue Jean Gabin",
+      "street2" : null,
+      "web_site" : null,
+      "zip_code" : "78390"
+    },
+    "currency_iso_code" : "EUR",
+    "date_created" : "2016-06-19T05:58:21Z",
+    "description" : null,
+    "evaluations_count" : 0,
+    "free_shipping" : false,
+    "grade" : null,
+    "immunity_date" : null,
+    "is_professional" : true,
+    "last_updated_date" : "2016-06-19T06:16:51Z",
+    "logo" : null,
+    "offers_count" : 0,
+    "operator_internal_id" : null,
+    "order_messages_response_delay" : null,
+    "orders_count" : 0,
+    "payment_details" : {
+      "paid_balance" : 0.00,
+      "pay_subscription" : true,
+      "payable_balance" : 0.00,
+      "payment_blocked" : false,
+      "pending_balance" : 0.00,
+      "subscription_free_from" : null,
+      "subscription_free_to" : null
+    },
+    "premium" : false,
+    "premium_state" : "DEFAULT",
+    "pro_details" : {
+      "VAT_number" : null,
+      "corporate_name" : "PIPOBINGO",
+      "identification_number" : "44268625900078",
+      "tax_identification_number" : null
+    },
+    "return_policy" : null,
+    "shipping_country" : "FRA",
+    "shipping_types" : [ "EXP", "STD", "SUPEX" ],
+    "shipping_zones" : [ "EUR", "FR1", "FR2", "WW" ],
+    "shippings" : [ {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "EXP",
+      "shipping_type_label" : "Express",
+      "shipping_zone_code" : "EUR",
+      "shipping_zone_label" : "Europe"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "EXP",
+      "shipping_type_label" : "Express",
+      "shipping_zone_code" : "FR1",
+      "shipping_zone_label" : "France mÃ©tropolitaine"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "EXP",
+      "shipping_type_label" : "Express",
+      "shipping_zone_code" : "FR2",
+      "shipping_zone_label" : "France DOM&TOM"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "EUR",
+      "shipping_zone_label" : "Europe"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "FR1",
+      "shipping_zone_label" : "France mÃ©tropolitaine"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "FR2",
+      "shipping_zone_label" : "France DOM&TOM"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "WW",
+      "shipping_zone_label" : "Worldwide"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "SUPEX",
+      "shipping_type_label" : "Super Express",
+      "shipping_zone_code" : "FR1",
+      "shipping_zone_label" : "France mÃ©tropolitaine"
+    } ],
+    "shop_additional_fields" : [ ],
+    "shop_id" : 2002,
+    "shop_name" : "PIPOBINGO",
+    "shop_state" : "OPEN"
+  }, {
+    "approval_delay" : null,
+    "approval_rate" : null,
+    "banner" : null,
+    "billing_info" : {
+      "bank_city" : null,
+      "bank_name" : null,
+      "bank_street" : null,
+      "bic" : null,
+      "iban" : null,
+      "owner" : null,
+      "zip_code" : null
+    },
+    "channels" : [ "INIT" ],
+    "closed_from" : null,
+    "closed_to" : null,
+    "contact_informations" : {
+      "city" : "Paris",
+      "civility" : "Mr",
+      "country" : "FRA",
+      "email" : "yoann.baudy@ebiznext.com",
+      "fax" : null,
+      "firstname" : "Yoann",
+      "lastname" : "Baudy",
+      "phone" : null,
+      "phone_secondary" : null,
+      "state" : null,
+      "street1" : "adresse",
+      "street2" : null,
+      "web_site" : null,
+      "zip_code" : "75000"
+    },
+    "currency_iso_code" : "EUR",
+    "date_created" : "2016-01-20T10:06:46Z",
+    "description" : null,
+    "evaluations_count" : 0,
+    "free_shipping" : false,
+    "grade" : null,
+    "immunity_date" : null,
+    "is_professional" : true,
+    "last_updated_date" : "2016-01-20T10:06:46Z",
+    "logo" : null,
+    "offers_count" : 0,
+    "operator_internal_id" : null,
+    "order_messages_response_delay" : null,
+    "orders_count" : 0,
+    "payment_details" : {
+      "paid_balance" : 0.00,
+      "pay_subscription" : true,
+      "payable_balance" : 0.00,
+      "payment_blocked" : false,
+      "pending_balance" : 0.00,
+      "subscription_free_from" : null,
+      "subscription_free_to" : null
+    },
+    "premium" : false,
+    "premium_state" : "DEFAULT",
+    "pro_details" : {
+      "VAT_number" : null,
+      "corporate_name" : "rainsonsocial",
+      "identification_number" : "44268625900078",
+      "tax_identification_number" : null
+    },
+    "return_policy" : null,
+    "shipping_country" : null,
+    "shipping_types" : [ "EXP", "STD", "SUPEX" ],
+    "shipping_zones" : [ "EUR", "FR1", "FR2", "WW" ],
+    "shippings" : [ {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "EXP",
+      "shipping_type_label" : "Express",
+      "shipping_zone_code" : "EUR",
+      "shipping_zone_label" : "Europe"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "EXP",
+      "shipping_type_label" : "Express",
+      "shipping_zone_code" : "FR1",
+      "shipping_zone_label" : "France mÃ©tropolitaine"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "EXP",
+      "shipping_type_label" : "Express",
+      "shipping_zone_code" : "FR2",
+      "shipping_zone_label" : "France DOM&TOM"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "EUR",
+      "shipping_zone_label" : "Europe"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "FR1",
+      "shipping_zone_label" : "France mÃ©tropolitaine"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "FR2",
+      "shipping_zone_label" : "France DOM&TOM"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "WW",
+      "shipping_zone_label" : "Worldwide"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "SUPEX",
+      "shipping_type_label" : "Super Express",
+      "shipping_zone_code" : "FR1",
+      "shipping_zone_label" : "France mÃ©tropolitaine"
+    } ],
+    "shop_additional_fields" : [ ],
+    "shop_id" : 2000,
+    "shop_name" : "SHOP",
+    "shop_state" : "OPEN"
+  }, {
+    "approval_delay" : null,
+    "approval_rate" : null,
+    "banner" : null,
+    "billing_info" : {
+      "bank_city" : null,
+      "bank_name" : null,
+      "bank_street" : null,
+      "bic" : null,
+      "iban" : null,
+      "owner" : null,
+      "zip_code" : null
+    },
+    "channels" : [ "INIT" ],
+    "closed_from" : null,
+    "closed_to" : null,
+    "contact_informations" : {
+      "city" : "PARIS",
+      "civility" : "Mr",
+      "country" : "FRA",
+      "email" : "christophe.galant@ebiznext.com",
+      "fax" : null,
+      "firstname" : "CHRISTOPHE",
+      "lastname" : "GALANT",
+      "phone" : null,
+      "phone_secondary" : null,
+      "state" : null,
+      "street1" : "avenue des champs elyssÃ©e",
+      "street2" : null,
+      "web_site" : null,
+      "zip_code" : "75017"
+    },
+    "currency_iso_code" : "EUR",
+    "date_created" : "2016-06-14T16:02:18Z",
+    "description" : null,
+    "evaluations_count" : 0,
+    "free_shipping" : false,
+    "grade" : null,
+    "immunity_date" : null,
+    "is_professional" : true,
+    "last_updated_date" : "2016-06-14T16:02:18Z",
+    "logo" : null,
+    "offers_count" : 40,
+    "operator_internal_id" : null,
+    "order_messages_response_delay" : null,
+    "orders_count" : 0,
+    "payment_details" : {
+      "paid_balance" : 0.00,
+      "pay_subscription" : true,
+      "payable_balance" : 0.00,
+      "payment_blocked" : false,
+      "pending_balance" : 0.00,
+      "subscription_free_from" : null,
+      "subscription_free_to" : null
+    },
+    "premium" : false,
+    "premium_state" : "DEFAULT",
+    "pro_details" : {
+      "VAT_number" : null,
+      "corporate_name" : "TOF SHOP",
+      "identification_number" : "FR12345TOFSHOP",
+      "tax_identification_number" : null
+    },
+    "return_policy" : null,
+    "shipping_country" : null,
+    "shipping_types" : [ "EXP", "STD", "SUPEX" ],
+    "shipping_zones" : [ "EUR", "FR1", "FR2", "WW" ],
+    "shippings" : [ {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "EXP",
+      "shipping_type_label" : "Express",
+      "shipping_zone_code" : "EUR",
+      "shipping_zone_label" : "Europe"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "EXP",
+      "shipping_type_label" : "Express",
+      "shipping_zone_code" : "FR1",
+      "shipping_zone_label" : "France mÃ©tropolitaine"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "EXP",
+      "shipping_type_label" : "Express",
+      "shipping_zone_code" : "FR2",
+      "shipping_zone_label" : "France DOM&TOM"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "EUR",
+      "shipping_zone_label" : "Europe"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "FR1",
+      "shipping_zone_label" : "France mÃ©tropolitaine"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "FR2",
+      "shipping_zone_label" : "France DOM&TOM"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "STD",
+      "shipping_type_label" : "Standard",
+      "shipping_zone_code" : "WW",
+      "shipping_zone_label" : "Worldwide"
+    }, {
+      "shipping_free_amount" : null,
+      "shipping_type_code" : "SUPEX",
+      "shipping_type_label" : "Super Express",
+      "shipping_zone_code" : "FR1",
+      "shipping_zone_label" : "France mÃ©tropolitaine"
+    } ],
+    "shop_additional_fields" : [ ],
+    "shop_id" : 2001,
+    "shop_name" : "tofshop",
+    "shop_state" : "OPEN"
+  } ],
+  "total_count" : 3
+}

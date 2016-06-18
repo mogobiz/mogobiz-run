@@ -9,8 +9,10 @@ import java.util.{ Date, Locale, UUID }
 
 import akka.actor.Props
 import com.mogobiz.es.EsClient
+import com.mogobiz.json.JacksonConverter
 import com.mogobiz.pay.common.{ CartRate, CompanyAddress, Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay }
 import com.mogobiz.pay.model.Mogopay
+import com.mogobiz.pay.model.Mogopay.AccountAddress
 import com.mogobiz.run.actors.EsUpdateActor
 import com.mogobiz.run.actors.EsUpdateActor.ProductStockAvailabilityUpdateRequest
 import com.mogobiz.run.config.MogobizHandlers.handlers._
@@ -44,6 +46,8 @@ import scalikejdbc._
 
 class CartHandler extends StrictLogging {
   val rateService = RateBoService
+
+  val miraklHandler = new MiraklHandler //TODO revoir l'injection
 
   /**
    * Permet de récupérer le contenu du panier<br/>
@@ -356,6 +360,12 @@ class CartHandler extends StrictLogging {
 
     StoreCartDao.save(updatedCart)
 
+    // Traitement MIRAKL
+    val shippingAddress = JacksonConverter.deserialize[AccountAddress](params.shippingAddress)
+    val miraklOrder = miraklHandler.createOrder(updatedCart, accountId, locale, currency, params.country, params.state, shippingAddress)
+    logger.debug("miraklOrder=", miraklOrder)
+
+    // Reponse API
     val renderedCart = renderTransactionCart(updatedCart, cartTTC, currency, locale)
     Map(
       "amount" -> rateService.calculateAmount(cartTTC.finalPrice, currency),
@@ -365,6 +375,7 @@ class CartHandler extends StrictLogging {
       "cartProvider" -> "mogobizRun",
       "cartKeys" -> s"$storeCode|||$uuid|||${accountId.getOrElse("")}"
     )
+
   }
 
   def getCartForPay(storeCode: String, uuid: String, accountId: Option[String]): CartPay = {
@@ -473,10 +484,12 @@ class CartHandler extends StrictLogging {
           StoreCartDao.save(updatedCart)
 
           accountId.map(Dashboard.indexCart(storeCode, boCartToESBOCart(storeCode, transactionBoCart), _))
+
+          //
+          miraklHandler.validateOrder(cart, boCart)
         }
       case None => throw new IllegalArgumentException("Unabled to retrieve Cart " + cart.uuid + " into BO. It has not been initialized or has already been validated")
     }
-
   }
 
   /**
@@ -495,6 +508,7 @@ class CartHandler extends StrictLogging {
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
 
     val updatedCart = cancelCart(unvalidateCart(cart))
+
     val computeCart = computeStoreCart(updatedCart, params.country, params.state)
     renderCart(computeCart, currency, locale)
   }
@@ -745,6 +759,9 @@ class CartHandler extends StrictLogging {
         val newBoCart = boCart.copy(status = TransactionStatus.FAILED)
         BOCartDao.updateStatus(newBoCart)
         exportBOCartIntoES(cart.storeCode, newBoCart)
+
+        // notif Mirakl
+        miraklHandler.cancelOrder(boCart, cart.userUuid.get)
       }
 
       val updatedCart = cart.copy(boCartUuid = None, transactionUuid = None)

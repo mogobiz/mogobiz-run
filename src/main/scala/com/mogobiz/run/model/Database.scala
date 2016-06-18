@@ -179,7 +179,8 @@ object Mogobiz {
     price: Long,
     status: TransactionStatus,
     transactionUuid: Option[String],
-    uuid: String)
+    uuid: String,
+    externalOrderId: Option[String] = None)
 
   case class BOProduct(id: Long,
     acquittement: Boolean,

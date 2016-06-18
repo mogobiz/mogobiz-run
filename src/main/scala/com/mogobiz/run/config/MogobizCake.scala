@@ -1,5 +1,6 @@
 package com.mogobiz.run.config
 
+import com.mogobiz.pay.handlers.AccountHandler
 import com.mogobiz.pay.handlers.shipping.EasyPostHandler
 import com.mogobiz.run.handlers._
 import com.mogobiz.run.handlers.sql.ForUpdateHandler
@@ -54,6 +55,8 @@ trait MogobizCake {
 
   def logoHandler: LogoHandler
 
+  def miraklHandler: MiraklHandler
+
 }
 
 class DefaultMogobizCake extends MogobizCake {
@@ -84,4 +87,8 @@ class DefaultMogobizCake extends MogobizCake {
   val easyPostHandler = new EasyPostHandler
 
   val logoHandler = new LogoHandler
+
+  val miraklHandler = new MiraklHandler
+  val accountHandler = new AccountHandler
+
 }
