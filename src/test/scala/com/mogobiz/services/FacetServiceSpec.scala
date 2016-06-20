@@ -19,7 +19,7 @@ class FacetServiceSpec extends MogobizRouteTest with StrictLogging {
       Get("/store/" + STORE + "/facets?priceInterval=5000") ~> sealRoute(routes) ~> check {
         //val res = JsonParser.parse(responseAs[String])
         val res = response
-        logger.info(res)
+//        logger.info(res)
         res must be_==(true)
       }
     }
