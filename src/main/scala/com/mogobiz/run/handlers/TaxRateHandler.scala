@@ -67,7 +67,7 @@ class TaxRateHandler {
    */
   def calculateEndPrice(price: Long, taxRate: Option[Float]): Option[Long] = taxRate match {
     case Some(s) =>
-      Some((price + (price * s / 100f)).toLong)
+      Some(math.round(price + (price * s / 100f)))
     case None => None
   }
 
