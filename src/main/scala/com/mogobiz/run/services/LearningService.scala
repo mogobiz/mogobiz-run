@@ -20,10 +20,10 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
   val route = {
     pathPrefix(Segment / "learning") { implicit storeCode =>
       fis ~
-        last ~
-        cooccurrence ~
-        similarity ~
-        popular
+      last ~
+      cooccurrence ~
+      similarity ~
+      popular
     }
   }
 
@@ -33,20 +33,23 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
     get {
       parameters('action, 'history_count.as[Int], 'count.as[Int], 'match_count.as[Int], 'customer.?) {
         (action, historyCount, count, matchCount, customer) =>
-          handleCall(learningHandler.browserHistory(storeCode, uuid, UserAction.withName(action), historyCount, count, matchCount, customer),
-            (res: Seq[String]) => complete(StatusCodes.OK, res)
-          )
+          handleCall(learningHandler.browserHistory(storeCode,
+                                                    uuid,
+                                                    UserAction.withName(action),
+                                                    historyCount,
+                                                    count,
+                                                    matchCount,
+                                                    customer),
+                     (res: Seq[String]) => complete(StatusCodes.OK, res))
       }
     }
   }
 
   def last(implicit storeCode: String) = path(Segment / "last") { uuid =>
     get {
-      parameter('count.as[Int]) {
-        count =>
-          handleCall(learningHandler.browserHistory(storeCode, uuid, UserAction.View, count, -1, -1, None),
-            (res: Seq[String]) => complete(StatusCodes.OK, res)
-          )
+      parameter('count.as[Int]) { count =>
+        handleCall(learningHandler.browserHistory(storeCode, uuid, UserAction.View, count, -1, -1, None),
+                   (res: Seq[String]) => complete(StatusCodes.OK, res))
       }
     }
   }
@@ -55,22 +58,18 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
     get {
       parameters('action, 'customer.?) { (action, customer) =>
         handleCall(learningHandler.cooccurences(storeCode, productId, UserAction.withName(action), customer),
-          (res: Seq[String]) => {
-            complete(StatusCodes.OK, res)
-          }
-        )
+                   (res: Seq[String]) => {
+                     complete(StatusCodes.OK, res)
+                   })
       }
     }
   }
 
   def fis(implicit storeCode: String) = path(Segment / "fis") { productId =>
     get {
-      parameters('frequency.as[Double], 'customer.?) {
-        (frequency, customer) =>
-          handleCall(learningHandler.fis(storeCode, productId, frequency, customer),
-            (res: (Seq[String], Seq[String])) =>
-              complete(StatusCodes.OK, res)
-          )
+      parameters('frequency.as[Double], 'customer.?) { (frequency, customer) =>
+        handleCall(learningHandler.fis(storeCode, productId, frequency, customer),
+                   (res: (Seq[String], Seq[String])) => complete(StatusCodes.OK, res))
       }
     }
   }
@@ -79,9 +78,13 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
     get {
       parameters('action, 'since, 'count.as[Int], 'with_quantity.as[Boolean], 'customer.?) {
         (action, since, count, with_quantity, customer) =>
-          handleCall(learningHandler.popular(storeCode, UserAction.withName(action), format.parseDateTime(since).toDate, count, with_quantity, customer),
-            (res: List[String]) => complete(StatusCodes.OK, res)
-          )
+          handleCall(learningHandler.popular(storeCode,
+                                             UserAction.withName(action),
+                                             format.parseDateTime(since).toDate,
+                                             count,
+                                             with_quantity,
+                                             customer),
+                     (res: List[String]) => complete(StatusCodes.OK, res))
       }
     }
   }

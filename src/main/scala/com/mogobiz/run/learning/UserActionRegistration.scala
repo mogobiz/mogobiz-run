@@ -4,7 +4,7 @@
 
 package com.mogobiz.run.learning
 
-import java.util.{ Calendar, UUID }
+import java.util.{Calendar, UUID}
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.config.Settings
@@ -19,14 +19,14 @@ object UserActionRegistration {
   private def indexName(esIndex: String): String = {
     def dateFormat(date: Calendar, dateFormat: String) = {
       val format = DateTimeFormat.forPattern(dateFormat)
-      val str = format.print(date.getTimeInMillis())
+      val str    = format.print(date.getTimeInMillis())
       str
     }
     val format = esIndexRotate match {
-      case "DAILY" => Some("yyyy-MM-dd")
+      case "DAILY"   => Some("yyyy-MM-dd")
       case "MONTHLY" => Some("yyyy-MM")
-      case "YEARLY" => Some("yyyy")
-      case _ => None
+      case "YEARLY"  => Some("yyyy")
+      case _         => None
     }
     val suffix = format map (dateFormat(Calendar.getInstance(), _)) map ("_" + _) getOrElse ("")
     esIndex + suffix
@@ -34,6 +34,9 @@ object UserActionRegistration {
 
   def register(store: String, trackingid: String, itemid: String, action: UserAction, count: Int): String = {
     def esLearning(store: String): String = s"${store}_learning"
-    EsClient.index(indexName(esLearning(store)), UserItemAction(trackingid, itemid, action, count), false, Some(UUID.randomUUID().toString))
+    EsClient.index(indexName(esLearning(store)),
+                   UserItemAction(trackingid, itemid, action, count),
+                   false,
+                   Some(UUID.randomUUID().toString))
   }
 }

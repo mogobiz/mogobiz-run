@@ -4,13 +4,13 @@
 
 package com.mogobiz.run.utils
 
-import com.mogobiz.run.model.Mogobiz.{ ProductCalendar, IntraDayPeriod, Sku, Product }
+import com.mogobiz.run.model.Mogobiz.{ProductCalendar, IntraDayPeriod, Sku, Product}
 import org.joda.time._
 import scalikejdbc._
 
 /**
- *
- */
+  *
+  */
 object Utils {
 
   def remove[A](list: List[A], item: A): List[A] = {
@@ -23,7 +23,7 @@ object Utils {
     import org.json4s.JsonDSL._
     import org.json4s.jackson.JsonMethods._
     import org.json4s.jackson.Serialization._
-    import org.json4s.{ DefaultFormats, Formats }
+    import org.json4s.{DefaultFormats, Formats}
 
     implicit def json4sFormats: Formats = DefaultFormats
     println("-----------------------------------------------------------------------------------------------")
@@ -41,21 +41,25 @@ object Utils {
   }
 
   /**
-   * Cette méthode permet de récupérer la date de début et de fin d'utilisation d'un ticket à partir de la date
-   * choisie par le client et de la configuration du produit et du TicketType.
-   * Si la date n'est pas valide, la méthode renvoie null sinon elle renvoie un tableau de 2 dates, la première étant
-   * la date de début et la seconde étant la date de fin
-   * @param product : Product
-   * @param sku : Sku
-   * @param optDate
-   * @return
-   */
-  def verifyAndExtractStartEndDate(product: Product, sku: Sku, optDate: Option[DateTime]): Option[(DateTime, DateTime)] = {
+    * Cette méthode permet de récupérer la date de début et de fin d'utilisation d'un ticket à partir de la date
+    * choisie par le client et de la configuration du produit et du TicketType.
+    * Si la date n'est pas valide, la méthode renvoie null sinon elle renvoie un tableau de 2 dates, la première étant
+    * la date de début et la seconde étant la date de fin
+    * @param product : Product
+    * @param sku : Sku
+    * @param optDate
+    * @return
+    */
+  def verifyAndExtractStartEndDate(product: Product,
+                                   sku: Sku,
+                                   optDate: Option[DateTime]): Option[(DateTime, DateTime)] = {
     if (optDate.isDefined) {
-      val date = optDate.get.toDateTime(DateTimeZone.UTC)
+      val date      = optDate.get.toDateTime(DateTimeZone.UTC)
       val localDate = date.toLocalDate
-      val start = sku.startDate.getOrElse(DateTime.now()).toDateTime(DateTimeZone.UTC).toLocalDate
-      val stop = sku.stopDate.map { date => date.toDateTime(DateTimeZone.UTC).toLocalDate }
+      val start     = sku.startDate.getOrElse(DateTime.now()).toDateTime(DateTimeZone.UTC).toLocalDate
+      val stop = sku.stopDate.map { date =>
+        date.toDateTime(DateTimeZone.UTC).toLocalDate
+      }
 
       // On controle maintenant la date avec le calendrier du produit
       product.calendarType match {
@@ -68,8 +72,9 @@ object Utils {
             val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period =>
               {
                 val start = period.startDate.toLocalDate
-                val end = period.endDate.toLocalDate
-                checkWeekDay(period, date) && (start.isBefore(localDate) || start.isEqual(localDate)) && (end.isAfter(localDate) || end.isEqual(localDate))
+                val end   = period.endDate.toLocalDate
+                checkWeekDay(period, date) && (start.isBefore(localDate) || start.isEqual(localDate)) && (end.isAfter(
+                        localDate) || end.isEqual(localDate))
               }
             }
             if (intraDatePeriod.isDefined) {
@@ -87,21 +92,23 @@ object Utils {
             val intraDatePeriod = product.intraDayPeriods.getOrElse(List()).find { period =>
               {
                 val startDate = period.startDate.toDateTime(DateTimeZone.UTC).toLocalDate
-                val startTime = period.startDate.toDateTime(DateTimeZone.UTC).toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+                val startTime =
+                  period.startDate.toDateTime(DateTimeZone.UTC).toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
                 val endDate = period.endDate.toDateTime(DateTimeZone.UTC).toLocalDate
-                val endTime = period.endDate.toDateTime(DateTimeZone.UTC).toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
+                val endTime =
+                  period.endDate.toDateTime(DateTimeZone.UTC).toLocalTime.withMillisOfSecond(0).withSecondOfMinute(0)
                 checkWeekDay(period, date) &&
-                  (startDate.isBefore(localDate) || startDate.isEqual(localDate)) &&
-                  (endDate.isAfter(localDate) || endDate.isEqual(localDate)) &&
-                  (startTime.isBefore(localTime) || startTime.isEqual(localTime)) &&
-                  (endTime.isAfter(localTime) || endTime.isEqual(localTime))
+                (startDate.isBefore(localDate) || startDate.isEqual(localDate)) &&
+                (endDate.isAfter(localDate) || endDate.isEqual(localDate)) &&
+                (startTime.isBefore(localTime) || startTime.isEqual(localTime)) &&
+                (endTime.isAfter(localTime) || endTime.isEqual(localTime))
               }
             }
             if (intraDatePeriod.isDefined) {
               val startTime = intraDatePeriod.get.startDate.toLocalTime
-              val endTime = intraDatePeriod.get.endDate.toLocalTime
-              val start = date.withHourOfDay(startTime.getHourOfDay).withMinuteOfHour(startTime.getMinuteOfHour)
-              val end = date.withHourOfDay(endTime.getHourOfDay).withMinuteOfHour(endTime.getMinuteOfHour)
+              val endTime   = intraDatePeriod.get.endDate.toLocalTime
+              val start     = date.withHourOfDay(startTime.getHourOfDay).withMinuteOfHour(startTime.getMinuteOfHour)
+              val end       = date.withHourOfDay(endTime.getHourOfDay).withMinuteOfHour(endTime.getMinuteOfHour)
               Some((start, end))
             } else None
           }
@@ -112,39 +119,42 @@ object Utils {
 
   private def isExcludeDate(product: Product, date: DateTime): Boolean = {
     val localDate = date.toLocalDate
-    product.datePeriods.getOrElse(List()).find { period =>
-      {
-        val start = period.startDate.toLocalDate
-        val end = period.endDate.toLocalDate
-        (start.isBefore(localDate) || start.isEqual(localDate)) && (end.isAfter(localDate) || end.isEqual(localDate))
+    product.datePeriods
+      .getOrElse(List())
+      .find { period =>
+        {
+          val start = period.startDate.toLocalDate
+          val end   = period.endDate.toLocalDate
+          (start.isBefore(localDate) || start.isEqual(localDate)) && (end.isAfter(localDate) || end.isEqual(localDate))
+        }
       }
-    }.isDefined
+      .isDefined
   }
 
   private def checkWeekDay(intraDayPeriod: IntraDayPeriod, date: DateTime): Boolean = {
     date.dayOfWeek().get() match {
-      case DateTimeConstants.MONDAY => intraDayPeriod.weekday1
-      case DateTimeConstants.TUESDAY => intraDayPeriod.weekday2
+      case DateTimeConstants.MONDAY    => intraDayPeriod.weekday1
+      case DateTimeConstants.TUESDAY   => intraDayPeriod.weekday2
       case DateTimeConstants.WEDNESDAY => intraDayPeriod.weekday3
-      case DateTimeConstants.THURSDAY => intraDayPeriod.weekday4
-      case DateTimeConstants.FRIDAY => intraDayPeriod.weekday5
-      case DateTimeConstants.SATURDAY => intraDayPeriod.weekday6
-      case DateTimeConstants.SUNDAY => intraDayPeriod.weekday7
-      case _ => false
+      case DateTimeConstants.THURSDAY  => intraDayPeriod.weekday4
+      case DateTimeConstants.FRIDAY    => intraDayPeriod.weekday5
+      case DateTimeConstants.SATURDAY  => intraDayPeriod.weekday6
+      case DateTimeConstants.SUNDAY    => intraDayPeriod.weekday7
+      case _                           => false
     }
   }
 }
 
 /**
- * @see http://jayconrod.com/posts/32/convenient-updates-for-immutable-objects-in-scala
- * @tparam T
- */
+  * @see http://jayconrod.com/posts/32/convenient-updates-for-immutable-objects-in-scala
+  * @tparam T
+  */
 trait Copying[T] {
   def copyWith(changes: (String, AnyRef)*): T = {
-    val clas = getClass
-    val constructor = clas.getDeclaredConstructors.head
+    val clas          = getClass
+    val constructor   = clas.getDeclaredConstructors.head
     val argumentCount = constructor.getParameterTypes.size
-    val fields = clas.getDeclaredFields
+    val fields        = clas.getDeclaredFields
     val arguments = (0 until argumentCount) map { i =>
       val fieldName = fields(i).getName
       changes.find(_._1 == fieldName) match {

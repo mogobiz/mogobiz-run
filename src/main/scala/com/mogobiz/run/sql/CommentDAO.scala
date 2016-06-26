@@ -4,7 +4,7 @@
 
 package com.mogobiz.run.sql
 
-import java.util.{ Date, UUID }
+import java.util.{Date, UUID}
 
 import com.mogobiz.json.JacksonConverter
 import com.mogobiz.pay.model
@@ -19,25 +19,27 @@ object CommentDAO extends SQLSyntaxSupport[Comment] with SqlService {
   //    def apply(rs: ResultSet, index: Int): UUID = UUID.fromString(rs.getString(index))
   //  }
 
-  def apply(rn: ResultName[Comment])(rs: WrappedResultSet): Comment = Comment(
-    rs.get(rn.id),
-    UUID.fromString(rs.get(rn.uuid)),
-    rs.get(rn.extra),
-    rs.date(rn.dateCreated),
-    rs.date(rn.lastUpdated))
+  def apply(rn: ResultName[Comment])(rs: WrappedResultSet): Comment =
+    Comment(rs.get(rn.id),
+            UUID.fromString(rs.get(rn.uuid)),
+            rs.get(rn.extra),
+            rs.date(rn.dateCreated),
+            rs.date(rn.lastUpdated))
 
   def create(comment: com.mogobiz.run.model.Comment)(implicit session: DBSession): Comment = {
-    val newComment = new Comment(newId(), UUID.fromString(comment.id), JacksonConverter.serialize(comment),
-      new Date, new Date)
+    val newComment =
+      new Comment(newId(), UUID.fromString(comment.id), JacksonConverter.serialize(comment), new Date, new Date)
 
     applyUpdate {
-      insert.into(CommentDAO).namedValues(
-        CommentDAO.column.id -> newComment.id,
-        CommentDAO.column.uuid -> newComment.uuid.toString,
-        CommentDAO.column.extra -> newComment.extra,
-        CommentDAO.column.dateCreated -> newComment.dateCreated,
-        CommentDAO.column.lastUpdated -> newComment.lastUpdated
-      )
+      insert
+        .into(CommentDAO)
+        .namedValues(
+            CommentDAO.column.id          -> newComment.id,
+            CommentDAO.column.uuid        -> newComment.uuid.toString,
+            CommentDAO.column.extra       -> newComment.extra,
+            CommentDAO.column.dateCreated -> newComment.dateCreated,
+            CommentDAO.column.lastUpdated -> newComment.lastUpdated
+        )
     }
 
     newComment
@@ -53,10 +55,14 @@ object CommentDAO extends SQLSyntaxSupport[Comment] with SqlService {
   def update(comment: com.mogobiz.run.model.Comment): Int = {
     DB localTx { implicit session =>
       applyUpdate {
-        QueryDSL.update(CommentDAO).set(
-          CommentDAO.column.extra -> JacksonConverter.serialize(comment),
-          CommentDAO.column.lastUpdated -> new Date
-        ).where.eq(CommentDAO.column.uuid, comment.id)
+        QueryDSL
+          .update(CommentDAO)
+          .set(
+              CommentDAO.column.extra       -> JacksonConverter.serialize(comment),
+              CommentDAO.column.lastUpdated -> new Date
+          )
+          .where
+          .eq(CommentDAO.column.uuid, comment.id)
       }
     }
   }

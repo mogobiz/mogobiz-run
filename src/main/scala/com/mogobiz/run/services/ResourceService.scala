@@ -6,7 +6,7 @@ package com.mogobiz.run.services
 
 import akka.actor.ActorRefFactory
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import spray.routing.{ RoutingSettings, Directives }
+import spray.routing.{RoutingSettings, Directives}
 import spray.http.StatusCodes
 
 import scala.concurrent.ExecutionContext
@@ -16,7 +16,7 @@ class ResourceService(implicit settings: RoutingSettings, refFactory: ActorRefFa
   val route = {
     pathPrefix(Segment / "resources" / Segment) { (storeCode, resourceId) =>
       resizeResource(storeCode, resourceId) ~
-        resource(storeCode, resourceId)
+      resource(storeCode, resourceId)
     }
   }
 
@@ -24,7 +24,7 @@ class ResourceService(implicit settings: RoutingSettings, refFactory: ActorRefFa
     get {
       resourceHandler.queryResource(storeCode, resourceId, Some(size)) match {
         case Some(path) => getFromFile(path)
-        case None => complete(StatusCodes.NotFound)
+        case None       => complete(StatusCodes.NotFound)
       }
     }
   }
@@ -33,7 +33,7 @@ class ResourceService(implicit settings: RoutingSettings, refFactory: ActorRefFa
     get {
       resourceHandler.queryResource(storeCode, resourceId, None) match {
         case Some(path) => getFromFile(path)
-        case None => complete(StatusCodes.NotFound)
+        case None       => complete(StatusCodes.NotFound)
       }
     }
 }

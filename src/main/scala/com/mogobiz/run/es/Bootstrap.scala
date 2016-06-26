@@ -5,7 +5,7 @@
 package com.mogobiz.run.es
 
 /**
- */
+  */
 object Bootstrap {
 
   def createIndex(): Unit = {

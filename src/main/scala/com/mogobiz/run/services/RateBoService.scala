@@ -10,8 +10,8 @@ import java.util.Locale
 import com.mogobiz.run.model.Currency
 
 /**
- *
- */
+  *
+  */
 object RateBoService {
 
   type MogopayRate = Currency
@@ -29,10 +29,10 @@ object RateBoService {
   }
 
   /**
-   * Return the amount convert into the given currency. The return is in cents
-   * @param amount - amount
-   * @return calculated amount
-   */
+    * Return the amount convert into the given currency. The return is in cents
+    * @param amount - amount
+    * @return calculated amount
+    */
   def calculateAmount(amount: Long, rate: MogopayRate): Long = {
     (amount * rate.rate.doubleValue() * Math.pow(10, rate.currencyFractionDigits)).toLong
   }

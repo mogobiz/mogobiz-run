@@ -20,22 +20,21 @@ class TagService extends Directives with DefaultComplete {
         get {
           parameters('hidden ? false, 'inactive ? false, 'lang ? "_all", 'size.as[Option[Int]]) {
             (hidden, inactive, lang, size) =>
-              handleCall(tagHandler.queryTags(storeCode, hidden, inactive, lang, size), (json: JValue) => complete(StatusCodes.OK, json))
+              handleCall(tagHandler.queryTags(storeCode, hidden, inactive, lang, size),
+                         (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
       } ~
-        pathPrefix("id" / Segment) { tagId =>
-          get {
-            handleCall(tagHandler.queryTagId(storeCode, tagId),
-              (json: JValue) => complete(StatusCodes.OK, json))
-          }
-        } ~
-        pathPrefix("name" / Segment) { tagName =>
-          get {
-            handleCall(tagHandler.queryTagName(storeCode, tagName),
-              (json: JValue) => complete(StatusCodes.OK, json))
-          }
+      pathPrefix("id" / Segment) { tagId =>
+        get {
+          handleCall(tagHandler.queryTagId(storeCode, tagId), (json: JValue) => complete(StatusCodes.OK, json))
         }
+      } ~
+      pathPrefix("name" / Segment) { tagName =>
+        get {
+          handleCall(tagHandler.queryTagName(storeCode, tagName), (json: JValue) => complete(StatusCodes.OK, json))
+        }
+      }
     }
   }
   /*

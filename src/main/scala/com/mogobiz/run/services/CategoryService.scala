@@ -20,19 +20,25 @@ class CategoryService extends Directives with DefaultComplete {
     pathPrefix(Segment / "categories") { storeCode =>
       pathEnd {
         get {
-          parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang ? "_all", 'promotionId.?, 'size.as[Option[Int]]) {
-            (hidden, parentId, brandId, categoryPath, lang, promotionId, size) =>
-              handleCall(categoryHandler.queryCategories(storeCode, hidden, parentId, brandId, categoryPath, lang, promotionId, size),
-                (json: JValue) => complete(StatusCodes.OK, json))
+          parameters('hidden ? false,
+                     'parentId.?,
+                     'brandId.?,
+                     'categoryPath.?,
+                     'lang ? "_all",
+                     'promotionId.?,
+                     'size.as[Option[Int]]) { (hidden, parentId, brandId, categoryPath, lang, promotionId, size) =>
+            handleCall(categoryHandler
+                         .queryCategories(storeCode, hidden, parentId, brandId, categoryPath, lang, promotionId, size),
+                       (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
       } ~
-        pathPrefix(Segment) { categoryId =>
-          get {
-            handleCall(categoryHandler.queryCategory(storeCode, categoryId),
-              (json: JValue) => complete(StatusCodes.OK, json))
-          }
+      pathPrefix(Segment) { categoryId =>
+        get {
+          handleCall(categoryHandler.queryCategory(storeCode, categoryId),
+                     (json: JValue) => complete(StatusCodes.OK, json))
         }
+      }
     }
   }
 

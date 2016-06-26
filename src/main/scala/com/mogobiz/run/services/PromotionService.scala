@@ -20,18 +20,19 @@ class PromotionService extends Directives with DefaultComplete {
     pathPrefix(Segment / "promotions") { storeCode =>
       pathEnd {
         get {
-          parameters(
-            'maxItemPerPage.?, 'pageOffset.?, 'orderBy.?, 'orderDirection.?, 'categoryPath.?, 'lang ? "_all").as(PromotionRequest) { params =>
-              handleCall(promotionHandler.getPromotions(storeCode, params), (json: JValue) => complete(StatusCodes.OK, json))
+          parameters('maxItemPerPage.?, 'pageOffset.?, 'orderBy.?, 'orderDirection.?, 'categoryPath.?, 'lang ? "_all")
+            .as(PromotionRequest) { params =>
+              handleCall(promotionHandler.getPromotions(storeCode, params),
+                         (json: JValue) => complete(StatusCodes.OK, json))
             }
         }
       } ~
-        pathPrefix(Segment) { promotionId =>
-          get {
-            handleCall(promotionHandler.getPromotionById(storeCode, promotionId),
-              (json: JValue) => complete(StatusCodes.OK, json))
-          }
+      pathPrefix(Segment) { promotionId =>
+        get {
+          handleCall(promotionHandler.getPromotionById(storeCode, promotionId),
+                     (json: JValue) => complete(StatusCodes.OK, json))
         }
+      }
     }
   }
 

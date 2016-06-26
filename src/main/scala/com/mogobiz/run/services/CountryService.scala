@@ -18,18 +18,18 @@ class CountryService extends Directives with DefaultComplete {
     pathPrefix(Segment / "countries") { storeCode =>
       pathEnd {
         get {
-          parameters('lang ? "_all") {
-            lang =>
-              handleCall(countryHandler.queryCountries(storeCode, lang), (json: JValue) => complete(StatusCodes.OK, json))
+          parameters('lang ? "_all") { lang =>
+            handleCall(countryHandler.queryCountries(storeCode, lang),
+                       (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
       } ~
-        pathPrefix(Segment) { countryCode =>
-          get {
-            handleCall(countryHandler.queryCountryByCode(storeCode, countryCode),
-              (json: JValue) => complete(StatusCodes.OK, json))
-          }
+      pathPrefix(Segment) { countryCode =>
+        get {
+          handleCall(countryHandler.queryCountryByCode(storeCode, countryCode),
+                     (json: JValue) => complete(StatusCodes.OK, json))
         }
+      }
     }
   }
   /*
