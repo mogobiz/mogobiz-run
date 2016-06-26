@@ -47,7 +47,8 @@ class SalesHandler {
     val req = esupdate id product.id in indexEs -> "product" doc new DocumentSource {
       override def json: String = js
     }
-    EsClient().execute(req)
+    import EsClient.secureRequest
+    EsClient().execute(secureRequest(req))
   }
 
 }

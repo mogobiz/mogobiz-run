@@ -98,7 +98,8 @@ object Dashboard {
         "buyerGeoCoordinates" typed GeoPointType
       )
     )
-    Await.result(EsClient().execute(request), Duration.Inf).isAcknowledged
+    import EsClient.secureRequest
+    Await.result(EsClient().execute(secureRequest(request)), Duration.Inf).isAcknowledged
   }
 
   case class LinearCart(itemCode: String,

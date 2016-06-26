@@ -160,7 +160,8 @@ class LearningHandler extends BootedMogobizSystem with StrictLogging {
       }
     }
 
-    val terms = EsClient().execute(popularReq).await.getAggregations.get("top-itemid").asInstanceOf[Terms]
+    import EsClient.secureRequest
+    val terms = EsClient().execute(secureRequest(popularReq)).await.getAggregations.get("top-itemid").asInstanceOf[Terms]
     terms.getBuckets.map { term =>
       logger.debug(term.getKey + "/" + term.getDocCount)
       term.getKey
