@@ -4,7 +4,7 @@
 
 package com.mogobiz.run.sql
 
-import java.util.{ Date, UUID }
+import java.util.{Date, UUID}
 
 import com.mogobiz.json.JacksonConverter
 import com.mogobiz.run.sql.Sql.WishlistList
@@ -18,25 +18,30 @@ object WishlistListDAO extends SQLSyntaxSupport[WishlistList] with SqlService {
   //    def apply(rs: ResultSet, index: Int): UUID = UUID.fromString(rs.getString(index))
   //  }
 
-  def apply(rn: ResultName[WishlistList])(rs: WrappedResultSet): WishlistList = WishlistList(
-    rs.get(rn.id),
-    UUID.fromString(rs.get(rn.uuid)),
-    rs.get(rn.extra),
-    rs.date(rn.dateCreated),
-    rs.date(rn.lastUpdated))
+  def apply(rn: ResultName[WishlistList])(rs: WrappedResultSet): WishlistList =
+    WishlistList(rs.get(rn.id),
+                 UUID.fromString(rs.get(rn.uuid)),
+                 rs.get(rn.extra),
+                 rs.date(rn.dateCreated),
+                 rs.date(rn.lastUpdated))
 
   def create(wishlistList: com.mogobiz.run.model.WishlistList)(implicit session: DBSession): WishlistList = {
-    val newWishlist = new WishlistList(newId(), UUID.fromString(wishlistList.uuid), JacksonConverter.serialize(WishlistList),
-      new Date, new Date)
+    val newWishlist = new WishlistList(newId(),
+                                       UUID.fromString(wishlistList.uuid),
+                                       JacksonConverter.serialize(WishlistList),
+                                       new Date,
+                                       new Date)
 
     applyUpdate {
-      insert.into(WishlistListDAO).namedValues(
-        WishlistListDAO.column.id -> newWishlist.id,
-        WishlistListDAO.column.uuid -> newWishlist.uuid.toString,
-        WishlistListDAO.column.extra -> newWishlist.extra,
-        WishlistListDAO.column.dateCreated -> newWishlist.dateCreated,
-        WishlistListDAO.column.lastUpdated -> newWishlist.lastUpdated
-      )
+      insert
+        .into(WishlistListDAO)
+        .namedValues(
+            WishlistListDAO.column.id          -> newWishlist.id,
+            WishlistListDAO.column.uuid        -> newWishlist.uuid.toString,
+            WishlistListDAO.column.extra       -> newWishlist.extra,
+            WishlistListDAO.column.dateCreated -> newWishlist.dateCreated,
+            WishlistListDAO.column.lastUpdated -> newWishlist.lastUpdated
+        )
     }
 
     newWishlist
@@ -52,10 +57,14 @@ object WishlistListDAO extends SQLSyntaxSupport[WishlistList] with SqlService {
   def update(wishlistList: com.mogobiz.run.model.WishlistList): Int = {
     DB localTx { implicit session =>
       applyUpdate {
-        QueryDSL.update(WishlistListDAO).set(
-          WishlistListDAO.column.extra -> JacksonConverter.serialize(wishlistList),
-          WishlistListDAO.column.lastUpdated -> new Date
-        ).where.eq(WishlistListDAO.column.uuid, wishlistList.uuid)
+        QueryDSL
+          .update(WishlistListDAO)
+          .set(
+              WishlistListDAO.column.extra       -> JacksonConverter.serialize(wishlistList),
+              WishlistListDAO.column.lastUpdated -> new Date
+          )
+          .where
+          .eq(WishlistListDAO.column.uuid, wishlistList.uuid)
       }
     }
   }

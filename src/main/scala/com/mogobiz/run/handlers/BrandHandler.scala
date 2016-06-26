@@ -8,11 +8,11 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.run.es._
 import com.mogobiz.json.JsonUtil
 import com.mogobiz.run.exceptions.NotFoundException
-import com.sksamuel.elastic4s.ElasticDsl.{ search => esearch4s, _ }
+import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
 import com.sksamuel.elastic4s.FilterDefinition
 import org.elasticsearch.search.sort.SortOrder
 import org.json4s.JValue
-import org.json4s.JsonAST.{ JValue, JArray }
+import org.json4s.JsonAST.{JValue, JArray}
 import org.json4s.JsonDSL._
 import org.json4s._
 import com.mogobiz.es._
@@ -22,20 +22,31 @@ class BrandHandler extends JsonUtil {
   def queryBrandId(store: String, brandId: String): JValue = {
     var filters: List[FilterDefinition] = List(termFilter("id", brandId))
     val req = esearch4s in store -> "brand"
-    EsClient.searchRaw(filterRequest(req, filters) sourceExclude ("imported")).map { hit =>
-      hit2JValue(hit)
-    }.getOrElse(throw new NotFoundException(""))
+    EsClient
+      .searchRaw(filterRequest(req, filters) sourceExclude ("imported"))
+      .map { hit =>
+        hit2JValue(hit)
+      }
+      .getOrElse(throw new NotFoundException(""))
   }
 
   def queryBrandName(store: String, brandName: String): JValue = {
     var filters: List[FilterDefinition] = List(termFilter("name.raw", brandName))
     val req = esearch4s in store -> "brand"
-    EsClient.searchRaw(filterRequest(req, filters) sourceExclude ("imported")).map { hit =>
-      hit2JValue(hit)
-    }.getOrElse(throw new NotFoundException(""))
+    EsClient
+      .searchRaw(filterRequest(req, filters) sourceExclude ("imported"))
+      .map { hit =>
+        hit2JValue(hit)
+      }
+      .getOrElse(throw new NotFoundException(""))
   }
 
-  def queryBrands(storeCode: String, hidden: Boolean, categoryPath: Option[String], lang: String, promotionId: Option[String], size: Option[Int]): JValue = {
+  def queryBrands(storeCode: String,
+                  hidden: Boolean,
+                  categoryPath: Option[String],
+                  lang: String,
+                  promotionId: Option[String],
+                  size: Option[Int]): JValue = {
     var filters: List[FilterDefinition] = List.empty
     val _size = size.getOrElse(Integer.MAX_VALUE / 2)
     categoryPath match {
@@ -44,21 +55,25 @@ class BrandHandler extends JsonUtil {
         filters :+= regexFilter("category.path", s".*${s.toLowerCase}.*")
         if (promotionId.isDefined) filters +:= createTermFilter("category.coupons", promotionId).get
         if (!hidden) filters :+= termFilter("brand.hide", "false")
-        val r: JArray = EsClient.searchAllRaw(
-          filterRequest(req, filters)
-            sourceInclude "brand.*"
-            sourceExclude (createExcludeLang(storeCode, lang) :+ "brand.imported": _*)
-            sort { by field "brand.name.raw" order SortOrder.ASC }
-        ).getHits
+        val r: JArray = EsClient
+          .searchAllRaw(
+              filterRequest(req, filters)
+                sourceInclude "brand.*"
+                sourceExclude (createExcludeLang(storeCode, lang) :+ "brand.imported": _*)
+                sort { by field "brand.name.raw" order SortOrder.ASC }
+          )
+          .getHits
         distinctById(r \ "brand")
       case None =>
         val req = esearch4s in storeCode -> "brand" from 0 size _size
         if (!hidden) filters :+= termFilter("hide", "false")
-        val r: JArray = EsClient.searchAllRaw(
-          filterRequest(req, filters)
-            sourceExclude (createExcludeLang(storeCode, lang) :+ "imported": _*)
-            sort { by field "name.raw" order SortOrder.ASC }
-        ).getHits
+        val r: JArray = EsClient
+          .searchAllRaw(
+              filterRequest(req, filters)
+                sourceExclude (createExcludeLang(storeCode, lang) :+ "imported": _*)
+                sort { by field "name.raw" order SortOrder.ASC }
+          )
+          .getHits
         r
     }
   }

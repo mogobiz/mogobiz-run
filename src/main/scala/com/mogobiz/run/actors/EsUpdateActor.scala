@@ -7,17 +7,25 @@ package com.mogobiz.run.actors
 import akka.actor.Actor
 import com.mogobiz.run.actors.EsUpdateActor._
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import com.mogobiz.run.model.Mogobiz.{ Product, Sku }
-import com.mogobiz.run.model.{ Stock, StockCalendar }
+import com.mogobiz.run.model.Mogobiz.{Product, Sku}
+import com.mogobiz.run.model.{Stock, StockCalendar}
 
 /**
- * Actor in charge of every updates operations on ES data
- */
+  * Actor in charge of every updates operations on ES data
+  */
 object EsUpdateActor {
 
-  case class StockUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar: StockCalendar)
+  case class StockUpdateRequest(indexEs: String,
+                                product: Product,
+                                sku: Sku,
+                                stock: Stock,
+                                stockCalendar: StockCalendar)
 
-  case class SalesUpdateRequest(indexEs: String, product: Product, sku: Sku, newNbProductSales: Long, newNbSkuSales: Long)
+  case class SalesUpdateRequest(indexEs: String,
+                                product: Product,
+                                sku: Sku,
+                                newNbProductSales: Long,
+                                newNbSkuSales: Long)
 
   case class ProductNotationsUpdateRequest(indexEs: String, productId: Long)
 

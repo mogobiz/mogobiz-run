@@ -26,103 +26,150 @@ class FacetService extends Directives with DefaultComplete {
 
   import shapeless._
 
-  def getFacets(implicit storeCode: String) = pathEnd {
-    get {
-      val facetParam = parameters('priceInterval.as[Long] ::
-        'xtype.? ::
-        'name.? ::
-        'code.? ::
-        'rootCategoryPath.? ::
-        'categoryPath.? ::
-        'brandId.? ::
-        'tags.? ::
-        'notations.? ::
-        'priceRange.? ::
-        'creationDateMin.? ::
-        'featured.?.as[Option[Boolean]] ::
-        'lang ? "_all" ::
-        'country.? ::
-        'promotionId.? ::
-        'hasPromotion.?.as[Option[Boolean]] ::
-        'inStockOnly.?.as[Option[Boolean]] ::
-        'property.? ::
-        'features.? ::
-        'variations.? ::
-        'brandName.? ::
-        'categoryName.? ::
-        'multiCategory.?.as[Option[Boolean]] ::
-        'multiBrand.?.as[Option[Boolean]] ::
-        'multiTag.?.as[Option[Boolean]] ::
-        'multiFeatures.?.as[Option[Boolean]] ::
-        'multiVariations.?.as[Option[Boolean]] ::
-        'multiNotation.?.as[Option[Boolean]] ::
-        'multiPrices.?.as[Option[Boolean]] ::
-        HNil
-      )
-
-      facetParam.happly {
-        case (priceInterval :: xtype :: name :: code :: rootCategoryPath :: categoryPath :: brandId :: tags :: notations :: priceRange ::
-          creationDateMin :: featured :: lang :: country :: promotionId :: hasPromotion :: inStockOnly :: property :: features :: variations ::
-          brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations ::
-          multiNotation :: multiPrices :: HNil) =>
-
-          val param = new FacetRequest(priceInterval, None, xtype, name, code, rootCategoryPath, categoryPath, brandId, tags, notations, priceRange,
-            creationDateMin, featured, lang, country, promotionId, hasPromotion, inStockOnly, property, features, variations,
-            brandName, categoryName, multiCategory, multiBrand, multiTag, multiFeatures, multiVariations,
-            multiNotation, multiPrices)
-
-          handleCall(facetHandler.getProductCriteria(storeCode, param), (json: JValue) => complete(StatusCodes.OK, json))
-      }
-    }
-  } ~ pathPrefix("skus") {
+  def getFacets(implicit storeCode: String) =
     pathEnd {
       get {
-        val facetParam = parameters('priceInterval.as[Long] ::
-          'productId.? ::
-          'xtype.? ::
-          'name.? ::
-          'code.? ::
-          'rootCategoryPath.? ::
-          'categoryPath.? ::
-          'brandId.? ::
-          'tags.? ::
-          'notations.? ::
-          'priceRange.? ::
-          'creationDateMin.? ::
-          'featured.?.as[Option[Boolean]] ::
-          'lang ? "_all" ::
-          'country.? ::
-          'promotionId.? ::
-          'hasPromotion.?.as[Option[Boolean]] ::
-          'inStockOnly.?.as[Option[Boolean]] ::
-          'property.? ::
-          'features.? ::
-          'variations.? ::
-          'brandName.? ::
-          'categoryName.? ::
-          'multiCategory.?.as[Option[Boolean]] ::
-          'multiBrand.?.as[Option[Boolean]] ::
-          'multiTag.?.as[Option[Boolean]] ::
-          'multiFeatures.?.as[Option[Boolean]] ::
-          'multiVariations.?.as[Option[Boolean]] ::
-          'multiNotation.?.as[Option[Boolean]] ::
-          'multiPrices.?.as[Option[Boolean]] ::
-          HNil
-        )
+        val facetParam = parameters(
+            'priceInterval.as[Long] ::
+              'xtype.? ::
+                'name.? ::
+                  'code.? ::
+                    'rootCategoryPath.? ::
+                      'categoryPath.? ::
+                        'brandId.? ::
+                          'tags.? ::
+                            'notations.? ::
+                              'priceRange.? ::
+                                'creationDateMin.? ::
+                                  'featured.?.as[Option[Boolean]] ::
+                                    'lang ? "_all" ::
+                                      'country.? ::
+                                        'promotionId.? ::
+                                          'hasPromotion.?.as[Option[Boolean]] ::
+                                            'inStockOnly.?.as[Option[Boolean]] ::
+                                              'property.? ::
+                                                'features.? ::
+                                                  'variations.? ::
+                                                    'brandName.? ::
+                                                      'categoryName.? ::
+                                                        'multiCategory.?.as[Option[Boolean]] ::
+                                                          'multiBrand.?.as[Option[Boolean]] ::
+                                                            'multiTag.?.as[Option[Boolean]] ::
+                                                              'multiFeatures.?.as[Option[Boolean]] ::
+                                                                'multiVariations.?.as[Option[Boolean]] ::
+                                                                  'multiNotation.?.as[Option[Boolean]] ::
+                                                                    'multiPrices.?.as[Option[Boolean]] ::
+                                                                      HNil)
+
         facetParam.happly {
-          case (priceInterval :: productId :: xtype :: name :: code :: rootCategoryPath :: categoryPath :: brandId :: tags :: notations :: priceRange ::
-            creationDateMin :: featured :: lang :: country :: promotionId :: hasPromotion :: inStockOnly :: property :: features :: variations ::
-            brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations ::
-            multiNotation :: multiPrices :: HNil) =>
+          case (priceInterval :: xtype :: name :: code :: rootCategoryPath :: categoryPath :: brandId :: tags :: notations :: priceRange :: creationDateMin :: featured :: lang :: country :: promotionId :: hasPromotion :: inStockOnly :: property :: features :: variations :: brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations :: multiNotation :: multiPrices :: HNil) =>
+            val param = new FacetRequest(priceInterval,
+                                         None,
+                                         xtype,
+                                         name,
+                                         code,
+                                         rootCategoryPath,
+                                         categoryPath,
+                                         brandId,
+                                         tags,
+                                         notations,
+                                         priceRange,
+                                         creationDateMin,
+                                         featured,
+                                         lang,
+                                         country,
+                                         promotionId,
+                                         hasPromotion,
+                                         inStockOnly,
+                                         property,
+                                         features,
+                                         variations,
+                                         brandName,
+                                         categoryName,
+                                         multiCategory,
+                                         multiBrand,
+                                         multiTag,
+                                         multiFeatures,
+                                         multiVariations,
+                                         multiNotation,
+                                         multiPrices)
 
-            val param = new FacetRequest(priceInterval, productId, xtype, name, code, rootCategoryPath, categoryPath, brandId, tags, notations, priceRange,
-              creationDateMin, featured, lang, country, promotionId, hasPromotion, inStockOnly, property, features, variations,
-              brandName, categoryName, multiCategory, multiBrand, multiTag, multiFeatures, multiVariations,
-              multiNotation, multiPrices)
+            handleCall(facetHandler.getProductCriteria(storeCode, param),
+                       (json: JValue) => complete(StatusCodes.OK, json))
+        }
+      }
+    } ~ pathPrefix("skus") {
+      pathEnd {
+        get {
+          val facetParam = parameters(
+              'priceInterval.as[Long] ::
+                'productId.? ::
+                  'xtype.? ::
+                    'name.? ::
+                      'code.? ::
+                        'rootCategoryPath.? ::
+                          'categoryPath.? ::
+                            'brandId.? ::
+                              'tags.? ::
+                                'notations.? ::
+                                  'priceRange.? ::
+                                    'creationDateMin.? ::
+                                      'featured.?.as[Option[Boolean]] ::
+                                        'lang ? "_all" ::
+                                          'country.? ::
+                                            'promotionId.? ::
+                                              'hasPromotion.?.as[Option[Boolean]] ::
+                                                'inStockOnly.?.as[Option[Boolean]] ::
+                                                  'property.? ::
+                                                    'features.? ::
+                                                      'variations.? ::
+                                                        'brandName.? ::
+                                                          'categoryName.? ::
+                                                            'multiCategory.?.as[Option[Boolean]] ::
+                                                              'multiBrand.?.as[Option[Boolean]] ::
+                                                                'multiTag.?.as[Option[Boolean]] ::
+                                                                  'multiFeatures.?.as[Option[Boolean]] ::
+                                                                    'multiVariations.?.as[Option[Boolean]] ::
+                                                                      'multiNotation.?.as[Option[Boolean]] ::
+                                                                        'multiPrices.?.as[Option[Boolean]] ::
+                                                                          HNil)
+          facetParam.happly {
+            case (priceInterval :: productId :: xtype :: name :: code :: rootCategoryPath :: categoryPath :: brandId :: tags :: notations :: priceRange :: creationDateMin :: featured :: lang :: country :: promotionId :: hasPromotion :: inStockOnly :: property :: features :: variations :: brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations :: multiNotation :: multiPrices :: HNil) =>
+              val param = new FacetRequest(priceInterval,
+                                           productId,
+                                           xtype,
+                                           name,
+                                           code,
+                                           rootCategoryPath,
+                                           categoryPath,
+                                           brandId,
+                                           tags,
+                                           notations,
+                                           priceRange,
+                                           creationDateMin,
+                                           featured,
+                                           lang,
+                                           country,
+                                           promotionId,
+                                           hasPromotion,
+                                           inStockOnly,
+                                           property,
+                                           features,
+                                           variations,
+                                           brandName,
+                                           categoryName,
+                                           multiCategory,
+                                           multiBrand,
+                                           multiTag,
+                                           multiFeatures,
+                                           multiVariations,
+                                           multiNotation,
+                                           multiPrices)
 
-            handleCall(facetHandler.getSkuCriteria(storeCode, param), (json: JValue) => complete(StatusCodes.OK, json))
+              handleCall(facetHandler.getSkuCriteria(storeCode, param),
+                         (json: JValue) => complete(StatusCodes.OK, json))
+          }
         }
       }
     }
-  }
 }

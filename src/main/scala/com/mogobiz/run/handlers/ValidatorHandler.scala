@@ -4,8 +4,8 @@
 
 package com.mogobiz.run.handlers
 
-import java.io.{ FileOutputStream, File }
-import java.nio.file.{ Files, Paths }
+import java.io.{FileOutputStream, File}
+import java.nio.file.{Files, Paths}
 import java.util.UUID
 
 import com.mogobiz.run.config.Settings
@@ -17,7 +17,7 @@ import scalikejdbc._
 import sqls.count
 
 /**
- */
+  */
 class ValidatorHandler {
 
   @throws[NotFoundException]
@@ -31,11 +31,21 @@ class ValidatorHandler {
         (kv(0), kv(1))
       }
     }
-    val paramBOCartItemUuid = paramsMap.find { kv => kv._1 == "boCartItemUuid" }.getOrElse(throw new NotFoundException(""))._2
-    val paramSkuId = paramsMap.find { kv => kv._1 == "skuId" }.getOrElse(throw new NotFoundException(""))._2
-    val paramStoreCode = paramsMap.find { kv => kv._1 == "storeCode" }.getOrElse(throw new NotFoundException(""))._2
-    val paramMaxDelay = paramsMap.find { kv => kv._1 == "maxDelay" }.getOrElse(throw new NotFoundException(""))._2.toInt
-    val paramMaxTimes = paramsMap.find { kv => kv._1 == "maxTimes" }.getOrElse(throw new NotFoundException(""))._2.toInt
+    val paramBOCartItemUuid = paramsMap.find { kv =>
+      kv._1 == "boCartItemUuid"
+    }.getOrElse(throw new NotFoundException(""))._2
+    val paramSkuId = paramsMap.find { kv =>
+      kv._1 == "skuId"
+    }.getOrElse(throw new NotFoundException(""))._2
+    val paramStoreCode = paramsMap.find { kv =>
+      kv._1 == "storeCode"
+    }.getOrElse(throw new NotFoundException(""))._2
+    val paramMaxDelay = paramsMap.find { kv =>
+      kv._1 == "maxDelay"
+    }.getOrElse(throw new NotFoundException(""))._2.toInt
+    val paramMaxTimes = paramsMap.find { kv =>
+      kv._1 == "maxTimes"
+    }.getOrElse(throw new NotFoundException(""))._2.toInt
 
     DB localTx { implicit session =>
       val boCartItem = BOCartItemDao.load(paramBOCartItemUuid).getOrElse(throw new NotFoundException(""))
@@ -44,8 +54,8 @@ class ValidatorHandler {
       val expiredDate = boCartItem.dateCreated.plusDays(paramMaxDelay).toLocalDate
 
       if (storeCode == paramStoreCode &&
-        (paramMaxDelay == 0 || !expiredDate.isBefore(DateTime.now().toLocalDate)) &&
-        (paramMaxTimes == 0 || ConsumptionDao.countByBOProducts(boProducts) < paramMaxTimes)) {
+          (paramMaxDelay == 0 || !expiredDate.isBefore(DateTime.now().toLocalDate)) &&
+          (paramMaxTimes == 0 || ConsumptionDao.countByBOProducts(boProducts) < paramMaxTimes)) {
 
         if (ConsumptionDao.createConsumption(boProducts)) {
           val file = new File(s"${Settings.ResourcesRootPath}/download/$paramSkuId")
@@ -60,7 +70,14 @@ class ValidatorHandler {
           }
 
           if (file.exists()) {
-            val productName = ProductDao.get(storeCode, boProducts.find { p => p.principal }.get.productFk).map { p => p.name }.getOrElse(file.getName)
+            val productName = ProductDao
+              .get(storeCode, boProducts.find { p =>
+                p.principal
+              }.get.productFk)
+              .map { p =>
+                p.name
+              }
+              .getOrElse(file.getName)
             (productName, file)
           } else throw new NotFoundException("")
         } else throw new NotFoundException("")
@@ -80,15 +97,15 @@ object ConsumptionDao extends BoService {
     if (boProducts.isEmpty) true
     else {
       val consumption = new Consumption(id = newId(),
-        bOTicketTypeFk = None,
-        xdate = DateTime.now(),
-        dateCreated = DateTime.now(),
-        lastUpdated = DateTime.now(),
-        uuid = UUID.randomUUID().toString)
+                                        bOTicketTypeFk = None,
+                                        xdate = DateTime.now(),
+                                        dateCreated = DateTime.now(),
+                                        lastUpdated = DateTime.now(),
+                                        uuid = UUID.randomUUID().toString)
 
       ConsumptionSQL.create(consumption) &&
-        BOProductConsumptionSQL.add(consumption, boProducts.head) &&
-        createConsumption(boProducts.tail)
+      BOProductConsumptionSQL.add(consumption, boProducts.head) &&
+      createConsumption(boProducts.tail)
     }
   }
 
@@ -105,10 +122,12 @@ object ConsumptionDao extends BoService {
 
     def add(consumption: Consumption, boProduct: BOProduct)(implicit session: DBSession): Boolean = {
       applyUpdate {
-        insert.into(BOProductConsumptionSQL).namedValues(
-          BOProductConsumptionSQL.column.consumptionsFk -> boProduct.id,
-          BOProductConsumptionSQL.column.consumptionId -> consumption.id
-        )
+        insert
+          .into(BOProductConsumptionSQL)
+          .namedValues(
+              BOProductConsumptionSQL.column.consumptionsFk -> boProduct.id,
+              BOProductConsumptionSQL.column.consumptionId  -> consumption.id
+          )
       } == 1
     }
   }
@@ -119,14 +138,16 @@ object ConsumptionDao extends BoService {
 
     def create(consumption: Consumption)(implicit session: DBSession): Boolean = {
       applyUpdate {
-        insert.into(ConsumptionSQL).namedValues(
-          ConsumptionSQL.column.id -> consumption.id,
-          ConsumptionSQL.column.bOTicketTypeFk -> consumption.bOTicketTypeFk,
-          ConsumptionSQL.column.xdate -> consumption.xdate,
-          ConsumptionSQL.column.dateCreated -> consumption.dateCreated,
-          ConsumptionSQL.column.lastUpdated -> consumption.lastUpdated,
-          ConsumptionSQL.column.uuid -> consumption.uuid
-        )
+        insert
+          .into(ConsumptionSQL)
+          .namedValues(
+              ConsumptionSQL.column.id             -> consumption.id,
+              ConsumptionSQL.column.bOTicketTypeFk -> consumption.bOTicketTypeFk,
+              ConsumptionSQL.column.xdate          -> consumption.xdate,
+              ConsumptionSQL.column.dateCreated    -> consumption.dateCreated,
+              ConsumptionSQL.column.lastUpdated    -> consumption.lastUpdated,
+              ConsumptionSQL.column.uuid           -> consumption.uuid
+          )
       } == 1
     }
 
@@ -211,6 +232,6 @@ object ConsumptionDao extends BoService {
       deleteFrom(BOCartDao).where.eq(BOCartDao.column.id,  boCart.id)
     }.update.apply()
   }
-*/
+   */
   }
 }

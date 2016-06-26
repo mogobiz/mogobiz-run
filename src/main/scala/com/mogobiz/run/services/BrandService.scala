@@ -30,22 +30,21 @@ class BrandService extends Directives with DefaultComplete {
           parameters('hidden ? false, 'categoryPath.?, 'lang ? "_all", 'promotionId.?, 'size.as[Option[Int]]) {
             (hidden, categoryPath, lang, promotionId, size) =>
               handleCall(brandHandler.queryBrands(storeCode, hidden, categoryPath, lang, promotionId, size),
-                (json: JValue) => complete(StatusCodes.OK, json))
+                         (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
       } ~
-        pathPrefix("id" / Segment) { brandId =>
-          get {
-            handleCall(brandHandler.queryBrandId(storeCode, brandId),
-              (json: JValue) => complete(StatusCodes.OK, json))
-          }
-        } ~
-        pathPrefix("name" / Segment) { brandName =>
-          get {
-            handleCall(brandHandler.queryBrandName(storeCode, URLDecoder.decode(brandName, "UTF-8")),
-              (json: JValue) => complete(StatusCodes.OK, json))
-          }
+      pathPrefix("id" / Segment) { brandId =>
+        get {
+          handleCall(brandHandler.queryBrandId(storeCode, brandId), (json: JValue) => complete(StatusCodes.OK, json))
         }
+      } ~
+      pathPrefix("name" / Segment) { brandName =>
+        get {
+          handleCall(brandHandler.queryBrandName(storeCode, URLDecoder.decode(brandName, "UTF-8")),
+                     (json: JValue) => complete(StatusCodes.OK, json))
+        }
+      }
     }
   }
   /*

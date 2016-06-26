@@ -29,5 +29,5 @@ class LangService extends Directives with DefaultComplete {
       handleCall(langHandler.queryLang(storeCode), (json: JValue) => complete(StatusCodes.OK, json))
     }
   }
-  */
+ */
 }

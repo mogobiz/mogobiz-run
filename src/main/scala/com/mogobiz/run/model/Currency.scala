@@ -10,4 +10,3 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 case class Currency(currencyFractionDigits: Int, rate: Double, name: String, code: String) {
   val numericCode = java.util.Currency.getInstance(code).getNumericCode
 }
-

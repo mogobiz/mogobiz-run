@@ -16,7 +16,7 @@ import com.mogobiz.session.Session
 import com.mogobiz.session.SessionESDirectives._
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import spray.http.{ HttpCookie, StatusCodes }
+import spray.http.{HttpCookie, StatusCodes}
 import spray.routing.Directives
 //import com.mogobiz.pay.config.MogopayHandlers.accountHandler
 
@@ -36,7 +36,7 @@ class SkuService extends Directives with DefaultComplete {
             skuRoutes(id)
           }
       }
-      */
+       */
       skuRoutes
     }
   }
@@ -45,7 +45,7 @@ class SkuService extends Directives with DefaultComplete {
   def skuRoutes(uuid:String)(implicit storeCode: String) = products ~
     find ~ compare ~ notation ~
     product(uuid)
-  */
+   */
 
   def skuRoutes(implicit storeCode: String) = skus ~ skuSearchRoute
 
@@ -54,38 +54,35 @@ class SkuService extends Directives with DefaultComplete {
   def skuSearchRoute(implicit storeCode: String) = pathEnd {
     get {
       val productsParams = parameters(
-
-        'maxItemPerPage.?.as[Option[Int]] ::
-          'pageOffset.?.as[Option[Int]] ::
-          'id.? ::
-          'productId.? ::
-          'xtype.? ::
-          'name.? ::
-          'code.? ::
-          'categoryPath.? ::
-          'brandId.? ::
-          'tagName.? ::
-          'notations.? ::
-          'priceRange.? ::
-          'creationDateMin.? ::
-          'featured.?.as[Option[Boolean]] ::
-          'orderBy.? ::
-          'orderDirection.? ::
-          'lang ? "_all" ::
-          'currency.? ::
-          'country.? ::
-          'promotionId.? ::
-          'hasPromotion.?.as[Option[Boolean]] ::
-          'inStockOnly.?.as[Option[Boolean]] ::
-          'property.? ::
-          'feature.? ::
-          'variations.? :: HNil
+          'maxItemPerPage.?.as[Option[Int]] ::
+            'pageOffset.?.as[Option[Int]] ::
+              'id.? ::
+                'productId.? ::
+                  'xtype.? ::
+                    'name.? ::
+                      'code.? ::
+                        'categoryPath.? ::
+                          'brandId.? ::
+                            'tagName.? ::
+                              'notations.? ::
+                                'priceRange.? ::
+                                  'creationDateMin.? ::
+                                    'featured.?.as[Option[Boolean]] ::
+                                      'orderBy.? ::
+                                        'orderDirection.? ::
+                                          'lang ? "_all" ::
+                                            'currency.? ::
+                                              'country.? ::
+                                                'promotionId.? ::
+                                                  'hasPromotion.?.as[Option[Boolean]] ::
+                                                    'inStockOnly.?.as[Option[Boolean]] ::
+                                                      'property.? ::
+                                                        'feature.? ::
+                                                          'variations.? :: HNil
       )
 
       productsParams.happly {
-        case (maxItemPerPage :: pageOffset :: id :: productId :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin
-          :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: inStockOnly :: property :: feature :: variations :: HNil) =>
-
+        case (maxItemPerPage :: pageOffset :: id :: productId :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: inStockOnly :: property :: feature :: variations :: HNil) =>
           val promotionIds = hasPromotion.map(v => {
             if (v) {
               val ids = promotionHandler.getPromotionIds(storeCode)
@@ -94,26 +91,48 @@ class SkuService extends Directives with DefaultComplete {
             } else None
           }) match {
             case Some(s) => s
-            case _ => promotionId
+            case _       => promotionId
           }
 
           val params = new SkuRequest(
-            maxItemPerPage, pageOffset, id, productId, xtype, name, code, categoryPath,
-            brandId, tagName, notations, priceRange, creationDateMin,
-            featured, orderBy, orderDirection, lang, currencyCode, countryCode, promotionIds, hasPromotion, inStockOnly, property, feature, variations
+              maxItemPerPage,
+              pageOffset,
+              id,
+              productId,
+              xtype,
+              name,
+              code,
+              categoryPath,
+              brandId,
+              tagName,
+              notations,
+              priceRange,
+              creationDateMin,
+              featured,
+              orderBy,
+              orderDirection,
+              lang,
+              currencyCode,
+              countryCode,
+              promotionIds,
+              hasPromotion,
+              inStockOnly,
+              property,
+              feature,
+              variations
           )
           handleCall(skuHandler.querySkusByCriteria(storeCode, params),
-            (json: JValue) => complete(StatusCodes.OK, json))
+                     (json: JValue) => complete(StatusCodes.OK, json))
       }
     }
   }
 
-  def skus(implicit storeCode: String) = pathPrefix(Segment) {
-    skuId =>
-      get {
-        parameters('update ? false, 'stock ? false, 'date ?) { (update, stock, date) =>
-          handleCall(skuHandler.getSku(storeCode, skuId, update, stock, date), (json: JValue) => complete(StatusCodes.OK, json))
-        }
+  def skus(implicit storeCode: String) = pathPrefix(Segment) { skuId =>
+    get {
+      parameters('update ? false, 'stock ? false, 'date ?) { (update, stock, date) =>
+        handleCall(skuHandler.getSku(storeCode, skuId, update, stock, date),
+                   (json: JValue) => complete(StatusCodes.OK, json))
       }
+    }
   }
 }

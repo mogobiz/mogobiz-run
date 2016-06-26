@@ -19,16 +19,17 @@ class CurrencyService extends Directives with DefaultComplete {
       pathEnd {
         get {
           parameters('lang ? "_all") { lang =>
-            handleCall(currencyHandler.queryCurrency(storeCode, lang), (json: JValue) => complete(StatusCodes.OK, json))
+            handleCall(currencyHandler.queryCurrency(storeCode, lang),
+                       (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
       } ~
-        pathPrefix(Segment) { currencyCde =>
-          get {
-            handleCall(currencyHandler.queryCurrencyByCode(storeCode, currencyCde),
-              (json: JValue) => complete(StatusCodes.OK, json))
-          }
+      pathPrefix(Segment) { currencyCde =>
+        get {
+          handleCall(currencyHandler.queryCurrencyByCode(storeCode, currencyCde),
+                     (json: JValue) => complete(StatusCodes.OK, json))
         }
+      }
     }
   }
 

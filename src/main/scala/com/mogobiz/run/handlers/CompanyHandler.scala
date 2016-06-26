@@ -5,14 +5,12 @@
 package com.mogobiz.run.handlers
 
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.model.Mogobiz.{ Company, ShippingRule }
+import com.mogobiz.run.model.Mogobiz.{Company, ShippingRule}
 import com.sksamuel.elastic4s.ElasticDsl._
 
 /**
- */
-class CompanyHandler {
-
-}
+  */
+class CompanyHandler {}
 
 object CompanyDao {
 

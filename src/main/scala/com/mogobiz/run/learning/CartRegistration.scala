@@ -4,19 +4,19 @@
 
 package com.mogobiz.run.learning
 
-import java.util.{ Calendar, Date }
+import java.util.{Calendar, Date}
 
 import akka.stream.ActorFlowMaterializer
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Learning._
 import com.mogobiz.system.BootedMogobizSystem
 import com.sksamuel.elastic4s.BulkCompatibleDefinition
-import com.typesafe.scalalogging.{ StrictLogging, Logger }
+import com.typesafe.scalalogging.{StrictLogging, Logger}
 import org.elasticsearch.action.bulk.BulkResponse
 import akka.stream.scaladsl._
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.{ Await, Future }
+import scala.concurrent.{Await, Future}
 
 object CartRegistration extends BootedMogobizSystem {
   val logger = Logger(LoggerFactory.getLogger("com.mogobiz.run.learning.CartRegistration"))
@@ -34,16 +34,11 @@ object CartRegistration extends BootedMogobizSystem {
         import com.sksamuel.elastic4s.ElasticDsl._
 
         val transform = Flow[List[Seq[String]]].map(_.map(seq => {
-          val now = Calendar.getInstance().getTime
+          val now  = Calendar.getInstance().getTime
           val uuid = seq.mkString("-")
           update(uuid)
             .in(s"${esFISStore(store, segment)}/CartCombination")
-            .upsert(
-              "uuid" -> uuid,
-              "combinations" -> seq,
-              "counter" -> 1,
-              "dateCreated" -> now,
-              "lastUpdated" -> now)
+            .upsert("uuid" -> uuid, "combinations" -> seq, "counter" -> 1, "dateCreated" -> now, "lastUpdated" -> now)
             .script("ctx._source.counter += count;ctx._source.lastUpdated = now")
             .params("count" -> 1, "now" -> now)
         }))

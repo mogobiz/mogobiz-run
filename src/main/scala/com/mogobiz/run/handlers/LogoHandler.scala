@@ -4,12 +4,12 @@
 
 package com.mogobiz.run.handlers
 
-import java.io.{ File, FileOutputStream }
+import java.io.{File, FileOutputStream}
 import java.util.Calendar
 
 import com.mogobiz.es.EsClient._
 import com.mogobiz.run.config.Settings._
-import com.mogobiz.utils.{ HashTools, ImageUtils }
+import com.mogobiz.utils.{HashTools, ImageUtils}
 import com.mogobiz.utils.ImageUtils._
 import com.sksamuel.elastic4s.ElasticDsl._
 import org.elasticsearch.common.bytes.ChannelBufferBytesReference
@@ -17,7 +17,7 @@ import org.elasticsearch.common.bytes.ChannelBufferBytesReference
 class LogoHandler {
 
   def queryLogo(storeCode: String, brandId: String, size: Option[String]): Option[String] = {
-    val dir = s"$ResourcesRootPath/logo/$storeCode/image"
+    val dir  = s"$ResourcesRootPath/logo/$storeCode/image"
     val path = s"$dir/$brandId"
     val file = new File(path)
     if (!file.exists()) {
@@ -35,7 +35,8 @@ class LogoHandler {
         case Some(response) =>
           if (response.getFields.containsKey("md5")) {
             val md5 = response.getField("md5").getValue.asInstanceOf[String]
-            if (!HashTools.generateFileMD5(file).getOrElse("unknown").equals(md5) && response.getFields.containsKey("content")) {
+            if (!HashTools.generateFileMD5(file).getOrElse("unknown").equals(md5) && response.getFields.containsKey(
+                    "content")) {
               val content = response.getField("content").getValue.asInstanceOf[ChannelBufferBytesReference]
               content.writeTo(new FileOutputStream(file))
             }

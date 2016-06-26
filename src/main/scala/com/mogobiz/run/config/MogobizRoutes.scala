@@ -8,13 +8,13 @@ import akka.actor.Props
 import com.mogobiz.run.exceptions.MogobizException
 import com.mogobiz.run.jobs.CleanCartJob
 import com.mogobiz.run.services._
-import com.mogobiz.system.{ MogobizSystem, RoutedHttpService }
-import spray.http.{ HttpRequest, HttpResponse, StatusCodes }
+import com.mogobiz.system.{MogobizSystem, RoutedHttpService}
+import spray.http.{HttpRequest, HttpResponse, StatusCodes}
 import spray.routing.directives.BasicDirectives._
 import spray.routing.directives.LoggingMagnet
-import spray.routing.{ Directives, _ }
+import spray.routing.{Directives, _}
 
-import scala.util.{ Failure, Success, Try }
+import scala.util.{Failure, Success, Try}
 
 trait MogobizRoutes extends Directives {
   this: MogobizSystem =>
@@ -49,7 +49,7 @@ trait MogobizRoutes extends Directives {
 
   def timeRequest(magnet: LoggingMagnet[HttpRequest ⇒ Any ⇒ Unit]): Directive0 =
     mapRequestContext { ctx ⇒
-      val timeStamp = System.currentTimeMillis
+      val timeStamp   = System.currentTimeMillis
       val logResponse = magnet.f(ctx.request)
       ctx.withRouteResponseMapped { response =>
         val duration = System.currentTimeMillis - timeStamp
@@ -80,7 +80,8 @@ trait DefaultComplete {
       case Failure(t: MogobizException) =>
         t.printStackTrace(); complete(t.code -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
       case Failure(t: Throwable) =>
-        t.printStackTrace(); complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+        t.printStackTrace();
+        complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
       case Success(res) => handler(res)
     }
     val duration = System.currentTimeMillis() - start
@@ -92,13 +93,16 @@ trait DefaultComplete {
     val start = System.currentTimeMillis()
     val ret = call match {
       case Failure(t) =>
-        t.printStackTrace(); complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+        t.printStackTrace();
+        complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
       case Success(res) =>
         res match {
           case Success(id) => handler(id)
           case Failure(t: MogobizException) =>
             t.printStackTrace(); complete(t.code -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
-          case Failure(t) => t.printStackTrace(); complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+          case Failure(t) =>
+            t.printStackTrace();
+            complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
         }
     }
     val duration = System.currentTimeMillis() - start
