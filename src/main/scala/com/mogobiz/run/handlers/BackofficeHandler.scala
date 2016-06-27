@@ -217,29 +217,31 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     if (req.quantity < 1 || req.quantity > boCartItem.quantity) throw new MinMaxQuantityException(1, boCartItem.quantity)
 
-    DB localTx {
-      implicit session =>
-        val boReturnedItem = BOReturnedItemDao.create(new BOReturnedItem(id = newId(),
-          bOCartItemFk = boCartItem.id,
-          quantity = req.quantity,
-          refunded = 0,
-          totalRefunded = 0,
-          status = ReturnedItemStatus.UNDEFINED,
-          dateCreated = DateTime.now,
-          lastUpdated = DateTime.now,
-          uuid = UUID.randomUUID().toString))
+    val transactionalBlock = { implicit session: DBSession =>
+      val boReturnedItem = BOReturnedItemDao.create(new BOReturnedItem(id = newId(),
+        bOCartItemFk = boCartItem.id,
+        quantity = req.quantity,
+        refunded = 0,
+        totalRefunded = 0,
+        status = ReturnedItemStatus.UNDEFINED,
+        dateCreated = DateTime.now,
+        lastUpdated = DateTime.now,
+        uuid = UUID.randomUUID().toString))
 
-        val boReturn = BOReturnDao.create(new BOReturn(id = newId(),
-          bOReturnedItemFk = boReturnedItem.id,
-          motivation = Some(req.motivation),
-          status = ReturnStatus.RETURN_SUBMITTED,
-          dateCreated = DateTime.now,
-          lastUpdated = DateTime.now,
-          uuid = UUID.randomUUID().toString))
-
-        notifyChangesIntoES(storeCode, boCart)
-        notifyItemReturned(merchant, customer, boCartItem, boReturn, locale)
+      BOReturnDao.create(new BOReturn(id = newId(),
+        bOReturnedItemFk = boReturnedItem.id,
+        motivation = Some(req.motivation),
+        status = ReturnStatus.RETURN_SUBMITTED,
+        dateCreated = DateTime.now,
+        lastUpdated = DateTime.now,
+        uuid = UUID.randomUUID().toString))
     }
+    val successBlock = { boReturn: BOReturn =>
+      notifyChangesIntoES(storeCode, boCart)
+      notifyItemReturned(merchant, customer, boCartItem, boReturn, locale)
+    }
+
+    GlobalUtil.runInTransaction(transactionalBlock, successBlock)
   }
 
   def notifyItemReturnedStatusUpdated(merchant: Account, customer: Account, boCartItem: BOCartItem, beforeUpdate: BOReturn, afterUpdate: BOReturn, locale: Option[String]): Unit = {
@@ -328,15 +330,17 @@ class BackofficeHandler extends JsonUtil with BoService {
         BOCartDao.findByTransactionUuid(tx.transactionUUID).map { boCart =>
           CompanyDao.findByCode(storeCode).map { company =>
             if (boCart.companyFk == company.id) {
-              DB localTx {
-                implicit session =>
-                  BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
-                    BODeliveryDao.findByBOCartItem(boCartItem).map { boDelivery =>
-                      BODeliveryDao.save(boDelivery.copy(status = webHookData.newDeliveryStatus))
-                    }
+              val transactionalBlock = { implicit session: DBSession =>
+                BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
+                  BODeliveryDao.findByBOCartItem(boCartItem).map { boDelivery =>
+                    BODeliveryDao.save(boDelivery.copy(status = webHookData.newDeliveryStatus))
                   }
-                  notifyChangesIntoES(storeCode, boCart)
+                }
               }
+              val successBlock = { list: List[Option[BODelivery]] =>
+                notifyChangesIntoES(storeCode, boCart)
+              }
+              GlobalUtil.runInTransaction(transactionalBlock, successBlock)
             }
           }
         }
