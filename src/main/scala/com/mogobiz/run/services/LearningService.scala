@@ -4,12 +4,16 @@
 
 package com.mogobiz.run.services
 
+import java.util.UUID
+
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
+import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.model.Learning.UserAction
 import org.joda.time.format.DateTimeFormat
 import spray.http.StatusCodes
+import spray.http.{HttpCookie, StatusCodes}
 import spray.routing.Directives
 import Json4sProtocol._
 import org.json4s._
@@ -23,7 +27,8 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
       last ~
       cooccurrence ~
       similarity ~
-      popular
+      popular ~
+      commit
     }
   }
 
@@ -89,4 +94,24 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
     }
   }
 
+  def commit(implicit storeCode: String) = path("commit"){
+    optionalCookie(CookieTracking) {
+      case Some(mogoCookie) =>
+        register(mogoCookie.content)
+      case None =>
+        val id = UUID.randomUUID.toString
+        setCookie(HttpCookie(CookieTracking, content = id, path = Some("/api/store/" + storeCode))) {
+          register(id)
+        }
+    }
+  }
+
+  def register(uuid: String)(implicit storeCode: String) = {
+    get{
+      parameters('itemids) {
+        (itemids) =>
+          handleCall(learningHandler.register(storeCode, uuid, itemids.split(",")), (res: Unit) => complete(StatusCodes.OK))
+      }
+    }
+  }
 }

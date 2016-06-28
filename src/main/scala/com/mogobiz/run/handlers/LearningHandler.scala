@@ -8,6 +8,7 @@ import java.util.Date
 
 import akka.actor.ActorSystem
 import akka.event.Logging
+import com.mogobiz.run.learning.CartRegistration
 import org.elasticsearch.search.aggregations.bucket.terms.Terms
 
 //import akka.stream.ActorFlowMaterializer
@@ -168,6 +169,9 @@ class LearningHandler extends BootedMogobizSystem with StrictLogging {
     } toList
   }
 
+  def register(store: String, trackingid: String, itemids: Seq[String]): Unit = {
+    CartRegistration.register(store, trackingid, itemids)
+  }
 }
 
 // Logging elements of a stream
