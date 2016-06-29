@@ -11,8 +11,9 @@ import akka.actor.Props
 import com.mogobiz.es.EsClient
 import com.mogobiz.json.JacksonConverter
 import com.mogobiz.pay.common.{ CartRate, CompanyAddress, Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay }
+import com.mogobiz.pay.config.MogopayHandlers
 import com.mogobiz.pay.model.Mogopay
-import com.mogobiz.pay.model.Mogopay.AccountAddress
+import com.mogobiz.pay.model.Mogopay.{ ShippingData, AccountAddress }
 import com.mogobiz.run.actors.EsUpdateActor
 import com.mogobiz.run.actors.EsUpdateActor.ProductStockAvailabilityUpdateRequest
 import com.mogobiz.run.config.MogobizHandlers.handlers._
@@ -43,6 +44,8 @@ import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization._
 import org.json4s.{ DefaultFormats, FieldSerializer, Formats }
 import scalikejdbc._
+
+import scala.collection.Seq
 
 class CartHandler extends StrictLogging {
   val rateService = RateBoService
@@ -406,6 +409,15 @@ class CartHandler extends StrictLogging {
     val shippingRulePrice = computeShippingRulePrice(cart.storeCode, cart.countryCode, cartTTC.finalPrice)
 
     transformCartForCartPay(companyAddress, cartTTC, cart.rate.get, shippingRulePrice)
+  }
+
+  def shippingPrices(cart: CartPay, accountId: String): Seq[ShippingData] = {
+    val addressAndList = MogopayHandlers.handlers.transactionHandler.shippingPrices(cart, accountId)
+
+    val miraklList = addressAndList._1.map { addr =>
+      miraklHandler.shippingPrices(cart, addr)
+    }.getOrElse(Nil)
+    addressAndList._2 ++ miraklList
   }
 
   protected def computeShippingRulePrice(storeCode: String, countryCode: Option[String], cartPice: Long): Option[Long] = {
@@ -967,7 +979,7 @@ class CartHandler extends StrictLogging {
       CartItem(cartItem.id, cartItem.productId, cartItem.productName, cartItem.productPicture, cartItem.productUrl, cartItem.xtype,
         cartItem.calendarType, cartItem.skuId, cartItem.skuName, cartItem.quantity, price, endPrice, tax, totalPrice,
         totalEndPrice, salePrice, saleEndPrice, saleTotalPrice, saleTotalEndPrice,
-        cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping, cartItem.downloadableLink.getOrElse(null))
+        cartItem.startDate, cartItem.endDate, cartItem.registeredCartItems.toArray, cartItem.shipping, cartItem.externalCodes, cartItem.downloadableLink.getOrElse(null))
     }
     type PriceHT = Long
     type PriceTTC = Long
@@ -1123,7 +1135,7 @@ class CartHandler extends StrictLogging {
         cartItem.totalPrice, totalEndPrice, totalEndPrice - cartItem.totalPrice,
         cartItem.salePrice, saleEndPrice, saleEndPrice - cartItem.salePrice,
         cartItem.saleTotalPrice, saleTotalEndPrice, saleTotalEndPrice - cartItem.saleTotalPrice,
-        registeredCartItemsPay, shippingPay, cartItem.downloadableLink, customCartItem)
+        registeredCartItemsPay, shippingPay, cartItem.downloadableLink, cartItem.externalCodes, customCartItem)
     }
     val couponsPay = cart.coupons.map { coupon =>
       val customCoupon = Map("name" -> coupon.name, "active" -> coupon.active)

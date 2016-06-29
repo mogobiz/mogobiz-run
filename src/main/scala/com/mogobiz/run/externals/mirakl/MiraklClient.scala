@@ -1,6 +1,6 @@
 package com.mogobiz.run.externals.mirakl
 
-import java.util.{Date, Locale, UUID}
+import java.util.{ Date, Locale, UUID }
 
 import akka.actor.ActorSystem
 import akka.event.Logging
@@ -11,12 +11,12 @@ import com.mogobiz.run.externals.mirakl.Mirakl.PaymentWorkflow.PaymentWorkflow
 import com.mogobiz.run.externals.mirakl.MiraklApi.ApiCode.ApiCode
 import com.mogobiz.run.externals.mirakl.exception._
 import spray.client.pipelining._
-import spray.http.{HttpRequest, _}
+import spray.http.{ HttpRequest, _ }
 
 import scala.collection.immutable.HashMap
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success}
+import scala.concurrent.{ Await, Future }
+import scala.util.{ Failure, Success }
 
 object MiraklClient {
   import org.json4s.JsonAST.JString
@@ -221,15 +221,15 @@ object Mirakl {
     )
 
   case class OrderBean(
-                        channel_code: Option[String],
-                        commercial_id: String,
-                        customer: Customer,
-                        offers: Array[Offer],
-                        order_additional_fields: Array[OrderAdditionalField],
-                        payment_info: Option[PaymentInfo],
-                        payment_workflow: Option[String],
-                        scored: Boolean,
-                        shipping_zone_code: String) {
+      channel_code: Option[String],
+      commercial_id: String,
+      customer: Customer,
+      offers: Array[Offer],
+      order_additional_fields: Array[OrderAdditionalField],
+      payment_info: Option[PaymentInfo],
+      payment_workflow: Option[String],
+      scored: Boolean,
+      shipping_zone_code: String) {
 
     def this(commercialId: String, customer: Customer, offers: Array[Offer], shippingZoneCode: String) {
       this(None, commercialId, customer, offers, Array(), None, Some(PaymentWorkflow.PAY_ON_ACCEPTANCE.toString), false, shippingZoneCode)
@@ -241,18 +241,18 @@ object Mirakl {
   case class OfferLineAdditionalField(code: String, value: String)
   case class OrderAdditionalField(code: String, `type`: Option[String], value: String)
   case class Offer(
-                    currency_iso_code: String,
-                    leadtime_to_ship: Option[Integer] = None,
-                    offer_id: Long,
-                    offer_price: BigDecimal,
-                    order_line_additional_fields: Array[OfferLineAdditionalField] = Array(),
-                    order_line_id: Option[String], // should be unique
-                    price: BigDecimal, // = offer_price * quantity
-                    quantity: Integer,
-                    shipping_price: BigDecimal,
-                    shipping_type_code: String,
-                    shipping_taxes: Array[ShippingTax] = Array(),
-                    taxes: Array[Tax] = Array())
+    currency_iso_code: String,
+    leadtime_to_ship: Option[Integer] = None,
+    offer_id: Long,
+    offer_price: BigDecimal,
+    order_line_additional_fields: Array[OfferLineAdditionalField] = Array(),
+    order_line_id: Option[String], // should be unique
+    price: BigDecimal, // = offer_price * quantity
+    quantity: Integer,
+    shipping_price: BigDecimal,
+    shipping_type_code: String,
+    shipping_taxes: Array[ShippingTax] = Array(),
+    taxes: Array[Tax] = Array())
 
   case class Tax(amount: BigDecimal, code: String)
   case class ShippingTax(amount: BigDecimal, code: String)
@@ -311,7 +311,6 @@ object MiraklApi {
     val PA02 = Value("PA02")
   }
 
-
   val apiEndpoints = HashMap[ApiCode, String](
     (ApiCode.S03 -> "/api/shops/{{SHOP_ID}}/evaluations"),
     (ApiCode.S04 -> "/api/shops/SHOP_ID/offers"),
@@ -349,9 +348,9 @@ object MiraklApi {
 
   def getShippingFeesUrl(shippingZoneCode: String, offerIdsAndQuantity: List[(Long, Int)]) = {
     val preparedUrl = MiraklApi.getApiEndpointUrl(ApiCode.SH01)
-//    {{URL}}/api/shipping/fees?shipping_zone_code=FR1&offers=2040|1
-//    (ApiCode.SH01 -> "/api/shipping/fees?shipping_zone_code=SHIP_ZONE_CODE&offers=OFFER_IDS_AND_QUANTITY"),
-    val params:List[String] = offerIdsAndQuantity.map({case (id, qty) => (id.toString+"|"+qty.toString)})
+    //    {{URL}}/api/shipping/fees?shipping_zone_code=FR1&offers=2040|1
+    //    (ApiCode.SH01 -> "/api/shipping/fees?shipping_zone_code=SHIP_ZONE_CODE&offers=OFFER_IDS_AND_QUANTITY"),
+    val params: List[String] = offerIdsAndQuantity.map({ case (id, qty) => (id.toString + "|" + qty.toString) })
     preparedUrl.replaceFirst("SHIP_ZONE_CODE", shippingZoneCode).replaceFirst("OFFER_IDS_AND_QUANTITY", params.mkString(","))
   }
 
@@ -367,15 +366,14 @@ object MiraklApi {
 }
 
 object MiraklClientMain extends App {
-//  MiraklClient.getAllShops()
+  //  MiraklClient.getAllShops()
 
-  val address = Address(city = "PARIS", civility = Some("mr"), company = Some("MonsterInc"), country = "FRANCE", country_iso_code = "FR", firstname = Some("Pierre"), lastname = "DUPONT", phone = Some("0102030405"), phone_secondary = Some("0612345678"),state = None,street_1 = "Avenue de la République", street_2 = Some("apt 123"), zip_code = Some("75001"))
-  val shippingAddress = ShippingAddress(city = "PARIS", civility = Some("mr"), company = Some("MonsterInc"), country = "FRANCE", country_iso_code = "FR", firstname = Some("Pierre"), lastname = "DUPONT", phone = Some("0102030405"), phone_secondary = Some("0612345678"),state = None,street_1 = "Avenue de la République", street_2 = Some("apt 123"), zip_code = Some("75001"))
+  val address = Address(city = "PARIS", civility = Some("mr"), company = Some("MonsterInc"), country = "FRANCE", country_iso_code = "FR", firstname = Some("Pierre"), lastname = "DUPONT", phone = Some("0102030405"), phone_secondary = Some("0612345678"), state = None, street_1 = "Avenue de la République", street_2 = Some("apt 123"), zip_code = Some("75001"))
+  val shippingAddress = ShippingAddress(city = "PARIS", civility = Some("mr"), company = Some("MonsterInc"), country = "FRANCE", country_iso_code = "FR", firstname = Some("Pierre"), lastname = "DUPONT", phone = Some("0102030405"), phone_secondary = Some("0612345678"), state = None, street_1 = "Avenue de la République", street_2 = Some("apt 123"), zip_code = Some("75001"))
   val locale = Locale.getDefault
   val customer = Customer(
     UUID.randomUUID().toString, Some("mr"), "Pierre", "DUPONT", "pierre.dupont@gmail.com",
     Some(locale.toString), billing_address = address, shipping_address = shippingAddress)
-
 
   object OperatorShippingZone extends Enumeration {
     type OperatorShippingZone = Value

@@ -2,15 +2,38 @@ package com.mogobiz.run.handlers
 
 import java.util.Locale
 
-import com.mogobiz.pay.model.Mogopay.{ Account, AccountAddress, Document, PaymentResult, PaymentStatus, SessionData }
+import com.mogobiz.pay.common.{ ShippingWithQuantity, Cart }
+import com.mogobiz.pay.model.Mogopay._
 import com.mogobiz.run.model.{ Currency, StoreCart, StoreCartItem }
 import com.mogobiz.pay.config.MogopayHandlers.handlers.accountHandler
+import com.mogobiz.pay.config.MogopayHandlers.handlers.rateHandler
 import com.mogobiz.run.config.MogobizHandlers.handlers.taxRateHandler
 import com.mogobiz.run.externals.mirakl.Mirakl.{ Customer, Offer, OrderBean, ShippingAddress }
 import com.mogobiz.run.externals.mirakl.{ Mirakl, MiraklClient }
 import com.mogobiz.run.model.Mogobiz.{ ExternalSource, BOCart }
 
+import scala.collection.Seq
+
 class MiraklHandler {
+
+  def shippingPrices(cart: Cart, address: AccountAddress): Seq[ShippingData] = {
+    def createShippingData(externalOfferId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
+      var rate: Option[Rate] = rateHandler.findByCurrencyCode(currencyCode)
+      ShippingData(address, externalOfferId, shippingCode, shippingCode, shippingCode, shippingCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2)
+    }
+
+    //TODO faire l'appel à MIRAKL pour récupérer les shippingData
+    cart.cartItems.map { cartItem =>
+      ExternalSource.MIRAKL.extractExternalCodeFromList(cartItem.externalCodes).map { externalOfferId =>
+        cartItem.shipping.map { shipping =>
+          if (shipping.isDefine) {
+            //TODO remplacer les données par celles recues de MIRAKL
+            Some(createShippingData(externalOfferId, "UPS", 500, "EUR"))
+          } else None
+        }.flatten
+      }.flatten
+    }.flatten.toList
+  }
 
   /**
    * Création d'une commande coté Mirakl
@@ -53,7 +76,7 @@ class MiraklHandler {
     )
 
     val offers = cart.cartItems.map { item =>
-      ExternalSource.MIRAKL.extractExternalCode(item.externalCodes).map { externalOfferId =>
+      ExternalSource.MIRAKL.extractExternalCodeFromList(item.externalCodes).map { externalOfferId =>
         Offer(
           currency_iso_code = currency.code,
           leadtime_to_ship = None,
