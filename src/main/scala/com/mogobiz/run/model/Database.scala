@@ -92,6 +92,7 @@ object Mogobiz {
     uuid: String,
     sku: String,
     name: String,
+    externalCode: Option[String],
     price: Long,
     salePrice: Long,
     minOrder: Long = 0,
@@ -392,4 +393,13 @@ object Mogobiz {
 
   class ReturnedItemStatusRef extends TypeReference[ReturnedItemStatus.type]
 
+  object ExternalSource extends Enumeration {
+    class ExternalSource(name: String) extends Value {
+      def id: scala.Int = name.hashCode
+      def extractExternalCode(externalCodes: Option[String]) = {
+        externalCodes.map { _.split(",").find(_.startsWith(name + "_")).map(_.substring(name.length + 1)) }.flatten
+      }
+    }
+    val MIRAKL = new ExternalSource("MIRAKL")
+  }
 }

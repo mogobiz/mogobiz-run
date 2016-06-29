@@ -153,8 +153,8 @@ class CartHandler extends StrictLogging {
 
     val salePrice = Math.max(sku.salePrice, 0)
     val indexEs = EsClient.getUniqueIndexByAlias(storeCode).getOrElse(storeCode)
-    val cartItem = StoreCartItem(indexEs, newCartItemId, product.id, product.name, product.picture, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name, cmd.quantity,
-      sku.price, salePrice, startDate, endDate, registeredItems, product.shipping, None, None)
+    val cartItem = StoreCartItem(indexEs, newCartItemId, product.id, product.name, product.picture, cmd.productUrl, product.xtype, product.calendarType, sku.id, sku.name,
+      cmd.quantity, sku.price, salePrice, startDate, endDate, registeredItems, product.shipping, None, None, sku.externalCode)
 
     val updatedCart = addCartItemIntoCart(unvalidateCart(cart), cartItem)
     StoreCartDao.save(updatedCart)

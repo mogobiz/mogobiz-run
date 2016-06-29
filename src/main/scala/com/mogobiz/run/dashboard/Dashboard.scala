@@ -280,8 +280,8 @@ object Dashboard {
 
   def main(args: Array[String]) = {
 
-    val sku00: Sku = Sku(id = 0L, uuid = "00000000-0000-0000-0000-000000000000", sku = "sku00", name = "sku00", price = 500, salePrice = 500, coupons = Nil, nbSales = 0)
-    val sku01: Sku = Sku(id = 1L, uuid = "11111111-1111-1111-1111-111111111111", sku = "sku11", name = "sku11", price = 2000, salePrice = 2000, coupons = Nil, nbSales = 0)
+    val sku00: Sku = Sku(id = 0L, uuid = "00000000-0000-0000-0000-000000000000", sku = "sku00", name = "sku00", None, price = 500, salePrice = 500, coupons = Nil, nbSales = 0)
+    val sku01: Sku = Sku(id = 1L, uuid = "11111111-1111-1111-1111-111111111111", sku = "sku11", name = "sku11", None, price = 2000, salePrice = 2000, coupons = Nil, nbSales = 0)
 
     val productA: BOProduct = BOProduct(
       acquittement = true, principal = true, price = 500, registeredCartItem = Nil, uuid = "00000000-0000-0000-0000-000000000000",

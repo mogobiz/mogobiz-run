@@ -58,7 +58,7 @@ case class StoreCartItem(indexEs: String,
   shipping: Option[Shipping],
   boCartItemUuid: Option[String],
   downloadableLink: Option[String],
-  externalOfferId: Option[Long] = None)
+  externalCodes: Option[String])
 
 case class StoreCartItemWithPrice(cartItem: StoreCartItem,
   quantity: Int,

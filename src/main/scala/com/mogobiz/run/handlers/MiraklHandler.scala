@@ -8,7 +8,7 @@ import com.mogobiz.pay.config.MogopayHandlers.handlers.accountHandler
 import com.mogobiz.run.config.MogobizHandlers.handlers.taxRateHandler
 import com.mogobiz.run.externals.mirakl.Mirakl.{ Customer, Offer, OrderBean, ShippingAddress }
 import com.mogobiz.run.externals.mirakl.{ Mirakl, MiraklClient }
-import com.mogobiz.run.model.Mogobiz.BOCart
+import com.mogobiz.run.model.Mogobiz.{ ExternalSource, BOCart }
 
 class MiraklHandler {
 
@@ -52,24 +52,24 @@ class MiraklHandler {
       )
     )
 
-    val miraklItems = cart.cartItems.filter(item => item.externalOfferId.isDefined)
-
-    val offers = miraklItems.map { item =>
-      Offer(
-        currency_iso_code = currency.code,
-        leadtime_to_ship = None,
-        offer_id = item.externalOfferId.get,
-        offer_price = (item.price / 100),
-        order_line_additional_fields = Array(),
-        order_line_id = item.boCartItemUuid, // should be unique
-        price = (item.price / 100) * item.quantity,
-        quantity = item.quantity,
-        shipping_price = 0, //TODO BigDecimal,
-        shipping_taxes = Array(), //TODO : Array[ShippingTax],
-        shipping_type_code = "TODO", //TODO a retrouver depuis property API Mirakl +
-        taxes = Array() //TODO Array[Tax]
-      )
-    }
+    val offers = cart.cartItems.map { item =>
+      ExternalSource.MIRAKL.extractExternalCode(item.externalCodes).map { externalOfferId =>
+        Offer(
+          currency_iso_code = currency.code,
+          leadtime_to_ship = None,
+          offer_id = externalOfferId.toLong,
+          offer_price = (item.price / 100),
+          order_line_additional_fields = Array(),
+          order_line_id = item.boCartItemUuid, // should be unique
+          price = (item.price / 100) * item.quantity,
+          quantity = item.quantity,
+          shipping_price = 0, //TODO BigDecimal,
+          shipping_taxes = Array(), //TODO : Array[ShippingTax],
+          shipping_type_code = "TODO", //TODO a retrouver depuis property API Mirakl +
+          taxes = Array() //TODO Array[Tax]
+        )
+      }
+    }.flatten
     val shippingZoneCode = "TODO" //TODO retrieve from SH01
     val order = new OrderBean(cart.boCartUuid.getOrElse(""), customer, offers.toArray, shippingZoneCode)
     val orderId = MiraklClient.createOrder(order)
@@ -83,9 +83,10 @@ class MiraklHandler {
   def validateOrder(cart: StoreCart, boCart: BOCart) = {
     val orderId = boCart.externalOrderId
     if (orderId.isDefined) {
-      val externalCartItems = cart.cartItems.filter(item => item.externalOfferId.isDefined)
+      //TODO il faut reprendre le prix du BOCart
+      //val externalCartItems = cart.cartItems.filter(item => item.externalOfferId.isDefined)
       var amount = 0l; //TODO faire un foldLeft ou récup amount depuis boCart ou autre
-      externalCartItems.foreach(it => amount = amount + computeMiraklPrices(cart, it))
+      //externalCartItems.foreach(it => amount = amount + computeMiraklPrices(cart, it))
 
       MiraklClient.validateOrder(amount, boCart.currencyCode, orderId.get, cart.userUuid.get, Some(boCart.lastUpdated.toDate), boCart.transactionUuid)
     }
