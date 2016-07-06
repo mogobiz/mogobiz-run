@@ -14,29 +14,64 @@ import com.mogobiz.run.model.Mogobiz.{ ExternalSource, BOCart }
 
 import scala.collection.Seq
 
+object MiraklHandler {
+  val MIRAKL_SHIPPING_PREFIX = "MIRAKL_"
+  val MIRAKL_SHOP_PREFIX = "SHOP_"
+  val MIRAKL_OFFER_PREFIX = "OFFER_"
+}
+
 class MiraklHandler {
 
   def shippingPrices(cart: Cart, address: AccountAddress): Seq[ShippingData] = {
+
     def createShippingData(externalOfferId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
-      var rate: Option[Rate] = rateHandler.findByCurrencyCode(currencyCode)
+      val rate: Option[Rate] = rateHandler.findByCurrencyCode(currencyCode)
       ShippingData(address, externalOfferId, shippingCode, shippingCode, shippingCode, shippingCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2)
     }
 
-    //TODO faire l'appel à MIRAKL pour récupérer les shippingData
-    cart.cartItems.map { cartItem =>
+    // get only Mirakl Items
+    val miraklItems = cart.cartItems.filter(cartItem => cartItem.externalCodes.isEmpty == false && cartItem.externalCodes.contains(ExternalSource.MIRAKL))
+
+    // extract Mirakl item ids and qty
+    val offerIdsAndQuantity: List[(Long, Int)] = miraklItems.flatMap { cartItem =>
       ExternalSource.MIRAKL.extractExternalCodeFromList(cartItem.externalCodes).map { externalOfferId =>
-        cartItem.shipping.map { shipping =>
-          if (shipping.isDefine) {
-            //TODO remplacer les données par celles recues de MIRAKL
-            Some(createShippingData(externalOfferId, "UPS", 500, "EUR"))
-          } else None
-        }.flatten
-      }.flatten
-    }.flatten.toList
+        (externalOfferId.toLong, cartItem.quantity)
+      }
+    }.toList
+
+    // determine the shippingZoneCode from the shipping address
+    val shippingZoneCode = getShippingZoneCode(address)
+
+    // call Mirakl API to get shippingFees for every items in the cart
+    val shippingFees = MiraklClient.getShippingFeesByOffersAndShippingType(shippingZoneCode, offerIdsAndQuantity)
+
+    shippingFees.map { fee =>
+      //val externalOfferId = MiraklHandler.MIRAKL_SHIPPING_PREFIX + "|" + MiraklHandler.MIRAKL_SHOP_PREFIX + fee.shopId + "|" + MiraklHandler.MIRAKL_OFFER_PREFIX + fee.offerId
+      val externalOfferId = fee.offerId.toString
+      createShippingData(externalOfferId, ExternalSource.MIRAKL.toString, (fee.totalPrice * 100).toLongExact, fee.shopCurrencyIsoCode)
+    }
+  }
+
+  def getShippingZoneCode(shippingAddress: AccountAddress) = {
+
+    shippingAddress.country match {
+      case Some(countryCode) => {
+        countryCode match {
+          case "FR" => "FR1"
+          case "IT" => "EUROPE"
+          case "UK" => "EUROPE"
+          case "DE" => "EUROPE"
+          case "ES" => "EUROPE"
+          case _ => "WORLDWIDE"
+        }
+      }
+      case None => "FR1"
+    }
   }
 
   /**
    * Création d'une commande coté Mirakl
+   * TODO => changer en CartPay
    */
   def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress) = {
 
@@ -86,14 +121,14 @@ class MiraklHandler {
           order_line_id = item.boCartItemUuid, // should be unique
           price = (item.price / 100) * item.quantity,
           quantity = item.quantity,
-          shipping_price = 0, //TODO BigDecimal,
+          shipping_price = 0, //TODO BigDecimal, a récupérer via MiraklClient.getShippingFees() et le shipping_type_code
           shipping_taxes = Array(), //TODO : Array[ShippingTax],
-          shipping_type_code = "TODO", //TODO a retrouver depuis property API Mirakl +
+          shipping_type_code = "TODO", //TODO=CODE TYPE DE LIVRAISON (ex: STD, EXPRESS, SUPEX) : à retrouver depuis property API Mirakl + StoreCart ou BoCart => valeurs
           taxes = Array() //TODO Array[Tax]
         )
       }
     }.flatten
-    val shippingZoneCode = "TODO" //TODO retrieve from SH01
+    val shippingZoneCode = "TODO" //TODO a récupérer via MiraklClient.getShippingFees()
     val order = new OrderBean(cart.boCartUuid.getOrElse(""), customer, offers.toArray, shippingZoneCode)
     val orderId = MiraklClient.createOrder(order)
     //TODO stocker l'orderId
