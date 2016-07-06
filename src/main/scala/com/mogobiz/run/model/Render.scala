@@ -6,6 +6,7 @@ package com.mogobiz.run.model
 
 import com.fasterxml.jackson.databind.annotation.{ JsonDeserialize, JsonSerialize }
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
+import com.mogobiz.pay.common.ExternalCode
 import com.mogobiz.run.json.{ JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer }
 import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnit
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
@@ -49,7 +50,7 @@ object Render {
     endDate: Option[DateTime],
     registeredCartItemVOs: Array[RegisteredCartItem],
     shipping: Option[Shipping],
-    externalCodes: Option[String],
+    externalCodes: List[ExternalCode],
     downloadableLink: String)
 
   class Coupon(private val elems: List[JField], val active: Boolean, val price: Long, val promotion: Boolean)

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.core.`type`.TypeReference
 import com.fasterxml.jackson.databind.annotation.{ JsonDeserialize, JsonSerialize }
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
+import com.mogobiz.pay.common.ExternalCode
 import com.mogobiz.run.json.{ JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer }
 import com.mogobiz.run.model.Mogobiz.DeliveryStatus.DeliveryStatus
 import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnit
@@ -89,19 +90,30 @@ object Mogobiz {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Sku(id: Long,
-    uuid: String,
-    sku: String,
-    name: String,
-    externalCode: Option[String],
-    price: Long,
-    salePrice: Long,
-    minOrder: Long = 0,
-    maxOrder: Long = 0,
-    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) availabilityDate: Option[DateTime] = None,
-    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) startDate: Option[DateTime] = None,
-    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) stopDate: Option[DateTime] = None,
-    coupons: List[InnerCoupon],
-    nbSales: Long)
+      uuid: String,
+      sku: String,
+      name: String,
+      externalCode: Option[String],
+      price: Long,
+      salePrice: Long,
+      minOrder: Long = 0,
+      maxOrder: Long = 0,
+      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) availabilityDate: Option[DateTime] = None,
+      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) startDate: Option[DateTime] = None,
+      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) stopDate: Option[DateTime] = None,
+      coupons: List[InnerCoupon],
+      nbSales: Long) {
+
+    val externalCodes: List[ExternalCode] = {
+      externalCode.map { externalCode =>
+        externalCode.split(",").toList.map { ec =>
+          val providerAndCode = ec.split("_")
+          if (providerAndCode.length == 2) Some(ExternalCode(providerAndCode(0), providerAndCode(1)))
+          else None
+        }.flatten
+      }.getOrElse(Nil)
+    }
+  }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class InnerCoupon(id: Long)
@@ -392,16 +404,4 @@ object Mogobiz {
   }
 
   class ReturnedItemStatusRef extends TypeReference[ReturnedItemStatus.type]
-
-  object ExternalSource extends Enumeration {
-    class ExternalSource(name: String) extends Value {
-      def id: scala.Int = name.hashCode
-      def extractExternalCodeFromList(externalCodes: Option[String]): Option[String] = {
-        externalCodes.map { _.split(",").find(isValidExternalCode(_)).map(extractExternalCode(_)) }.flatten
-      }
-      def extractExternalCode(externalCode: String) = externalCode.substring(name.length + 1)
-      def isValidExternalCode(externalCode: String) = externalCode.startsWith(name + "_")
-    }
-    val MIRAKL = new ExternalSource("MIRAKL")
-  }
 }

@@ -8,6 +8,7 @@ import java.util.{ UUID, Calendar, Date }
 
 import com.fasterxml.jackson.databind.annotation.{ JsonDeserialize, JsonSerialize }
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
+import com.mogobiz.pay.common.ExternalCode
 import com.mogobiz.pay.model.Mogopay
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.json.{ JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeDeserializer, JodaDateTimeSerializer }
@@ -58,7 +59,7 @@ case class StoreCartItem(indexEs: String,
   shipping: Option[Shipping],
   boCartItemUuid: Option[String],
   downloadableLink: Option[String],
-  externalCodes: Option[String])
+  externalCodes: List[ExternalCode])
 
 case class StoreCartItemWithPrice(cartItem: StoreCartItem,
   quantity: Int,

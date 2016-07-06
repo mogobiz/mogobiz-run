@@ -2,7 +2,7 @@ package com.mogobiz.run.handlers
 
 import java.util.Locale
 
-import com.mogobiz.pay.common.{ CartItem, ShippingWithQuantity, Cart }
+import com.mogobiz.pay.common._
 import com.mogobiz.pay.model.Mogopay._
 import com.mogobiz.run.model.{ Currency, StoreCart, StoreCartItem }
 import com.mogobiz.pay.config.MogopayHandlers.handlers.accountHandler
@@ -10,31 +10,29 @@ import com.mogobiz.pay.config.MogopayHandlers.handlers.rateHandler
 import com.mogobiz.run.config.MogobizHandlers.handlers.taxRateHandler
 import com.mogobiz.run.externals.mirakl.Mirakl.{ Customer, Offer, OrderBean, ShippingAddress }
 import com.mogobiz.run.externals.mirakl.{ Mirakl, MiraklClient }
-import com.mogobiz.run.model.Mogobiz.{ ExternalSource, BOCart }
-
-import scala.collection.Seq
+import com.mogobiz.run.model.Mogobiz.BOCart
 
 class MiraklHandler {
 
-  def shippingPrices(cart: Cart, address: AccountAddress): Map[String, List[ShippingData]] = {
+  def shippingPrices(cart: Cart, address: AccountAddress): Map[ExternalCode, List[ShippingData]] = {
     computeMiraklShipping(address, cart.cartItems)
   }
 
-  protected def createShippingData(address: AccountAddress, externalOfferId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
+  protected def createShippingData(address: AccountAddress, miraklCode: ExternalCode, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
     var rate: Option[Rate] = rateHandler.findByCurrencyCode(currencyCode)
-    ShippingData(address, externalOfferId, shippingCode, shippingCode, shippingCode, shippingCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2)
+    ShippingData(address, miraklCode.provider, miraklCode.code, shippingCode, shippingCode, shippingCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2)
   }
 
-  protected def computeMiraklShipping(address: AccountAddress, cartItems: Array[CartItem]): Map[String, List[ShippingData]] = {
+  protected def computeMiraklShipping(address: AccountAddress, cartItems: Array[CartItem]): Map[ExternalCode, List[ShippingData]] = {
     val cartItem = cartItems.head
     val tailResult = computeMiraklShipping(address, cartItems.tail)
 
     //TODO faire l'appel à MIRAKL pour récupérer les shippingData
-    ExternalSource.MIRAKL.extractExternalCodeFromList(cartItem.externalCodes).map { externalOfferId =>
+    cartItem.externalCodes.find(_.provider == ExternalProvider.MIRAKL).map { miraklCode =>
       cartItem.shipping.map { shipping =>
-        val map: Map[String, List[ShippingData]] = if (shipping.isDefine) {
+        val map: Map[ExternalCode, List[ShippingData]] = if (shipping.isDefine) {
           //TODO remplacer les données par celles recues de MIRAKL
-          Map(externalOfferId -> List(createShippingData(address, externalOfferId, "UPS", 500, "EUR")))
+          Map(miraklCode -> List(createShippingData(address, miraklCode, "UPS", 500, "EUR")))
         } else Map()
         map
       }.getOrElse(tailResult)
@@ -82,11 +80,11 @@ class MiraklHandler {
     )
 
     val offers = cart.cartItems.map { item =>
-      ExternalSource.MIRAKL.extractExternalCodeFromList(item.externalCodes).map { externalOfferId =>
+      item.externalCodes.find(_.provider == ExternalProvider.MIRAKL).map { miraklCode =>
         Offer(
           currency_iso_code = currency.code,
           leadtime_to_ship = None,
-          offer_id = externalOfferId.toLong,
+          offer_id = miraklCode.code.toLong,
           offer_price = (item.price / 100),
           order_line_additional_fields = Array(),
           order_line_id = item.boCartItemUuid, // should be unique
