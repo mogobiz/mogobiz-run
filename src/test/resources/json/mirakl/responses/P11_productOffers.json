@@ -1,0 +1,72 @@
+{
+  "products" : [ {
+    "category_code" : "football_footballs",
+    "category_label" : "Footballs",
+    "category_type" : "MERCHANDISE",
+    "offers" : [ {
+      "active" : true,
+      "available_end_date" : "2049-12-30T23:00:00Z",
+      "available_start_date" : "2010-12-31T23:00:00Z",
+      "channels" : [ "INIT" ],
+      "currency_iso_code" : "EUR",
+      "description" : null,
+      "discount" : null,
+      "is_professional" : true,
+      "logistic_class" : {
+        "code" : "A",
+        "label" : "Famille A"
+      },
+      "min_quantity_alert" : null,
+      "min_shipping_price" : 1.00,
+      "min_shipping_price_additional" : 2.00,
+      "min_shipping_type" : "STD",
+      "min_shipping_zone" : "FR1",
+      "nb_evaluation" : 0,
+      "offer_additional_fields" : [ ],
+      "offer_id" : 2027,
+      "premium" : false,
+      "price" : 3.99,
+      "price_additional_info" : null,
+      "quantity" : 100,
+      "shop_grade" : null,
+      "shop_id" : 2001,
+      "shop_name" : "tofshop",
+      "state_code" : "11",
+      "total_price" : 4.99
+    }, {
+      "active" : true,
+      "available_end_date" : "2049-12-30T23:00:00Z",
+      "available_start_date" : "2010-12-31T23:00:00Z",
+      "channels" : [ "INIT" ],
+      "currency_iso_code" : "EUR",
+      "description" : null,
+      "discount" : null,
+      "is_professional" : true,
+      "logistic_class" : {
+        "code" : "A",
+        "label" : "Famille A"
+      },
+      "min_quantity_alert" : null,
+      "min_shipping_price" : 1.00,
+      "min_shipping_price_additional" : 2.00,
+      "min_shipping_type" : "STD",
+      "min_shipping_zone" : "FR1",
+      "nb_evaluation" : 0,
+      "offer_additional_fields" : [ ],
+      "offer_id" : 2071,
+      "premium" : false,
+      "price" : 3.99,
+      "price_additional_info" : null,
+      "quantity" : 100,
+      "shop_grade" : null,
+      "shop_id" : 2002,
+      "shop_name" : "PIPOBINGO",
+      "state_code" : "11",
+      "total_price" : 4.99
+    } ],
+    "product_references" : [ ],
+    "product_sku" : "fcd8a674-3d8e-4427-aff2-48377751d011",
+    "product_title" : "Classic White Football",
+    "total_count" : 2
+  } ]
+}
