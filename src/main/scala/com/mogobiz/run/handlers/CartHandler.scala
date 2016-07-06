@@ -13,7 +13,7 @@ import com.mogobiz.json.JacksonConverter
 import com.mogobiz.pay.common.{ CartRate, CompanyAddress, Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay }
 import com.mogobiz.pay.config.MogopayHandlers
 import com.mogobiz.pay.model.Mogopay
-import com.mogobiz.pay.model.Mogopay.{ ShippingData, AccountAddress }
+import com.mogobiz.pay.model.Mogopay.{ ShippingCart, ShippingData, AccountAddress }
 import com.mogobiz.run.actors.EsUpdateActor
 import com.mogobiz.run.actors.EsUpdateActor.ProductStockAvailabilityUpdateRequest
 import com.mogobiz.run.config.MogobizHandlers.handlers._
@@ -411,13 +411,13 @@ class CartHandler extends StrictLogging {
     transformCartForCartPay(companyAddress, cartTTC, cart.rate.get, shippingRulePrice)
   }
 
-  def shippingPrices(cart: CartPay, accountId: String): Seq[ShippingData] = {
+  def shippingPrices(cart: CartPay, accountId: String): ShippingCart = {
     val addressAndList = MogopayHandlers.handlers.transactionHandler.shippingPrices(cart, accountId)
 
-    val miraklList = addressAndList._1.map { addr =>
+    val externalShippingPrices = addressAndList._1.map { addr =>
       miraklHandler.shippingPrices(cart, addr)
-    }.getOrElse(Nil)
-    addressAndList._2 ++ miraklList
+    }.getOrElse(Map())
+    ShippingCart(addressAndList._2.toList, externalShippingPrices)
   }
 
   protected def computeShippingRulePrice(storeCode: String, countryCode: Option[String], cartPice: Long): Option[Long] = {

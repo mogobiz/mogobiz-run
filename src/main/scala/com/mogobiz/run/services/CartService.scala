@@ -14,7 +14,7 @@ import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
-import com.mogobiz.pay.model.Mogopay.ShippingData
+import com.mogobiz.pay.model.Mogopay.{ ShippingCart, ShippingData }
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.session.Session
 import spray.http.{ HttpCookie, StatusCodes }
@@ -232,10 +232,10 @@ class CartService extends Directives with DefaultComplete {
                   }, (cart: Cart) => {
                     session.sessionData.cart = Some(cart)
                     handleCall(cartHandler.shippingPrices(cart, id),
-                      (shippinggPrices: Seq[ShippingData]) => {
-                        session.sessionData.shippingPrices = Option(shippinggPrices.toList)
+                      (shippingCart: ShippingCart) => {
+                        session.sessionData.shippingCart = Some(shippingCart)
                         setSession(session) {
-                          complete(StatusCodes.OK -> shippinggPrices)
+                          complete(StatusCodes.OK -> shippingCart)
                         }
                       }
                     )

@@ -2,7 +2,7 @@ package com.mogobiz.run.handlers
 
 import java.util.Locale
 
-import com.mogobiz.pay.common.{ ShippingWithQuantity, Cart }
+import com.mogobiz.pay.common.{ CartItem, ShippingWithQuantity, Cart }
 import com.mogobiz.pay.model.Mogopay._
 import com.mogobiz.run.model.{ Currency, StoreCart, StoreCartItem }
 import com.mogobiz.pay.config.MogopayHandlers.handlers.accountHandler
@@ -16,23 +16,29 @@ import scala.collection.Seq
 
 class MiraklHandler {
 
-  def shippingPrices(cart: Cart, address: AccountAddress): Seq[ShippingData] = {
-    def createShippingData(externalOfferId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
-      var rate: Option[Rate] = rateHandler.findByCurrencyCode(currencyCode)
-      ShippingData(address, externalOfferId, shippingCode, shippingCode, shippingCode, shippingCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2)
-    }
+  def shippingPrices(cart: Cart, address: AccountAddress): Map[String, List[ShippingData]] = {
+    computeMiraklShipping(address, cart.cartItems)
+  }
+
+  protected def createShippingData(address: AccountAddress, externalOfferId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
+    var rate: Option[Rate] = rateHandler.findByCurrencyCode(currencyCode)
+    ShippingData(address, externalOfferId, shippingCode, shippingCode, shippingCode, shippingCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2)
+  }
+
+  protected def computeMiraklShipping(address: AccountAddress, cartItems: Array[CartItem]): Map[String, List[ShippingData]] = {
+    val cartItem = cartItems.head
+    val tailResult = computeMiraklShipping(address, cartItems.tail)
 
     //TODO faire l'appel à MIRAKL pour récupérer les shippingData
-    cart.cartItems.map { cartItem =>
-      ExternalSource.MIRAKL.extractExternalCodeFromList(cartItem.externalCodes).map { externalOfferId =>
-        cartItem.shipping.map { shipping =>
-          if (shipping.isDefine) {
-            //TODO remplacer les données par celles recues de MIRAKL
-            Some(createShippingData(externalOfferId, "UPS", 500, "EUR"))
-          } else None
-        }.flatten
-      }.flatten
-    }.flatten.toList
+    ExternalSource.MIRAKL.extractExternalCodeFromList(cartItem.externalCodes).map { externalOfferId =>
+      cartItem.shipping.map { shipping =>
+        val map: Map[String, List[ShippingData]] = if (shipping.isDefine) {
+          //TODO remplacer les données par celles recues de MIRAKL
+          Map(externalOfferId -> List(createShippingData(address, externalOfferId, "UPS", 500, "EUR")))
+        } else Map()
+        map
+      }.getOrElse(tailResult)
+    }.getOrElse(tailResult)
   }
 
   /**

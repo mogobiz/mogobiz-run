@@ -396,7 +396,7 @@ object Mogobiz {
   object ExternalSource extends Enumeration {
     class ExternalSource(name: String) extends Value {
       def id: scala.Int = name.hashCode
-      def extractExternalCodeFromList(externalCodes: Option[String]) = {
+      def extractExternalCodeFromList(externalCodes: Option[String]): Option[String] = {
         externalCodes.map { _.split(",").find(isValidExternalCode(_)).map(extractExternalCode(_)) }.flatten
       }
       def extractExternalCode(externalCode: String) = externalCode.substring(name.length + 1)
