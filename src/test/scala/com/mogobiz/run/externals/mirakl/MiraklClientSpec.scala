@@ -31,21 +31,103 @@ class MiraklClientSpec extends Specification  with StrictLogging {
       response must not beNull
     }
 
-    "return offers of a shop" in {
-      val shopId = 2001 //tof_shop
-      val response = MiraklClient.getShopOffers(shopId)
+    "return offers of a shop with default paging" in {
+      val EXPECTED_TOTAL_COUNT = 39 //40
+      val EXPECTED_PAGINATED_OFFERS = 10
+
+      val SHOP_ID = 2001 //tof_shop
+      val response = MiraklClient.getShopOffers(SHOP_ID)
       logger.debug(response)
       response must not beNull
       val jsonResponse = JsonParser.parse(response)
-      jsonResponse \ "total_count" must be_==(JInt(40))
+      jsonResponse \ "total_count" must be_==(JInt(EXPECTED_TOTAL_COUNT))
+      (jsonResponse \ "offers").children.size must be_==(EXPECTED_PAGINATED_OFFERS)
+    }
+
+    "return max offers of a shop with specific paging" in {
+      val EXPECTED_TOTAL_COUNT = 39 //40
+      val MAX_BY_PAGE = 100
+
+      val SHOP_ID = 2001 //tof_shop
+      val response = MiraklClient.getShopOffers(SHOP_ID, Some(MAX_BY_PAGE))
+      logger.debug(response)
+      response must not beNull
+      val jsonResponse = JsonParser.parse(response)
+      jsonResponse \ "total_count" must be_==(JInt(EXPECTED_TOTAL_COUNT))
+      (jsonResponse \ "offers").children.size must be_==(EXPECTED_TOTAL_COUNT)
+    }
+
+    "return last 20 offers of a shop with paging" in {
+      val EXPECTED_TOTAL_COUNT = 39 //40
+      val MAX_BY_PAGE = 20
+      val OFFSET = 20
+
+      val SHOP_ID = 2001 //tof_shop
+      val response = MiraklClient.getShopOffers(SHOP_ID, Some(MAX_BY_PAGE), Some(OFFSET))
+      logger.debug(response)
+      response must not beNull
+      val jsonResponse = JsonParser.parse(response)
+      jsonResponse \ "total_count" must be_==(JInt(EXPECTED_TOTAL_COUNT))
+      (jsonResponse \ "offers").children.size must be_==(EXPECTED_TOTAL_COUNT - MAX_BY_PAGE)
+    }
+
+
+
+    "return one product offers" in {
+      val productIds = List("fcd8a674-3d8e-4427-aff2-48377751d011")
+      val response = MiraklClient.getProductsOffers(productIds)
+      logger.debug(response)
+      response must not beNull
+      val jsonResponse = JsonParser.parse(response)
+      jsonResponse \ "products" \ "total_count" must be_==(JInt(2))
+
+    }
+
+    "return many products offers" in {
+      val productIds = List("fcd8a674-3d8e-4427-aff2-48377751d011", "eb1869b8-c6c3-4db3-9a07-d0784391bdc8", "7bd7bcec-c507-4f31-9550-5bf2a1a8a09e", "8bd7bcec-c507-4f31-9550-5bf2a1a8a09e")
+
+      val EXPECTED_PRODUCT_NB = productIds.size
+
+      val response = MiraklClient.getProductsOffers(productIds)
+      logger.debug(response)
+      response must not beNull
+      val jsonResponse = JsonParser.parse(response)
+      (jsonResponse \ "products").children.size must be_==(EXPECTED_PRODUCT_NB)
+      val skus = (jsonResponse \ "products" \ "product_sku").extract[List[String]]
+//      logger.debug("{}",skus)
+
+      productIds.forall{
+        pid => skus.contains(pid)
+      } must beTrue
+
     }
 
     "return shipping fees for an offer in FRANCE" in {
       val offerId:Long = 2040
       val qty:Int = 1
-      val response = MiraklClient.getShippingFees(OperatorShippingZone.FRANCE_METRO.toString, List((offerId,qty)))
+      val response = MiraklClient.getShippingFeesRaw(OperatorShippingZone.FRANCE_METRO.toString, List((offerId,qty)))
       logger.debug(response)
       response must not beNull
+      val jsonFees = JsonParser.parse(response)
+      val shops = (jsonFees \ "shops")
+      shops.children.size must be_==(1)
+      shops \ "offers"
+      response must not beNull
+    }
+
+    "test getShippingFeesByOffers in FRANCE" in {
+      // épuisé val offerId:Long = 2040
+      val shippingFees = MiraklClient.getShippingFeesByOffersAndShippingType(
+        OperatorShippingZone.FRANCE_METRO.toString,
+        List((2033L,3),(2036L,2)))
+
+      //shippingFees must not beEmpty
+      shippingFees.size must be_==(6)
+      //List(ShippingFeeFlattenOrderLine(2001,EUR,2033,9.99,3,STD,Standard,34.97), ShippingFeeFlattenOrderLine(2001,EUR,2033,9.99,3,EXP,Express,39.97), ShippingFeeFlattenOrderLine(2001,EUR,2033,9.99,3,SUPEX,Super Express,49.97), ShippingFeeFlattenOrderLine(2001,EUR,2036,100.0,2,STD,Standard,204.0), ShippingFeeFlattenOrderLine(2001,EUR,2036,100.0,2,EXP,Express,208.0), ShippingFeeFlattenOrderLine(2001,EUR,2036,100.0,2,SUPEX,Super Express,216.0))
+      shippingFees.forall(_.shopId == 2001) must beTrue
+      shippingFees.filter(_.offerId==2033).size must be_==(3)
+      shippingFees.filter(_.offerId==2036).size must be_==(3)
+
     }
 
     "create an order and return order id" in {
@@ -55,7 +137,7 @@ class MiraklClientSpec extends Specification  with StrictLogging {
       val shippingZoneCode = OperatorShippingZone.FRANCE_METRO
 
       //get shipping fees
-      val shippingFees = MiraklClient.getShippingFees(shippingZoneCode.toString, List((offerId, offerQty)))
+      val shippingFees = MiraklClient.getShippingFeesRaw(shippingZoneCode.toString, List((offerId, offerQty)))
       //logger.debug(shippingFees)
       val jsonFees = JsonParser.parse(shippingFees)
 //      jsonFees \ "offers_not_found" must be_==(JArray(_))
@@ -122,7 +204,5 @@ class MiraklClientSpec extends Specification  with StrictLogging {
       shipping_type_code = shippingTypeCode
     )
   }
-
-
 
 }
