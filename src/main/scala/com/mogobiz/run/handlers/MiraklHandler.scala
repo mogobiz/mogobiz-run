@@ -27,7 +27,7 @@ trait MiraklHandler {
 
   //passé privé pour l'instant  def getShippingZoneCode(shippingAddress: AccountAddress): String
 
-  def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress): Unit
+  def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress): Option[String]
 
   /**
    * valide une commande auprès de Mirakl
@@ -47,7 +47,7 @@ class MiraklHandlerUndef extends MiraklHandler {
 
   def shippingPrices(cart: Cart, address: AccountAddress): Seq[ShippingData] = Seq()
 
-  def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress) = {}
+  def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress) = None
 
   /**
    * valide une commande auprès de Mirakl
@@ -65,9 +65,9 @@ class MiraklHandlerUndef extends MiraklHandler {
 class MiraklHandlerImpl extends MiraklHandler {
   def shippingPrices(cart: Cart, address: AccountAddress): Seq[ShippingData] = {
 
-    def createShippingData(externalOfferId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
+    def createShippingData(externalOfferId: String, shippingCode: String, shippingTypeCode: String, price: Long, currencyCode: String): ShippingData = {
       val rate: Option[Rate] = rateHandler.findByCurrencyCode(currencyCode)
-      ShippingData(address, externalOfferId, shippingCode, shippingCode, shippingCode, shippingCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2)
+      ShippingData(address, externalOfferId, shippingTypeCode, shippingCode, shippingCode, shippingTypeCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2)
     }
 
     // get only Mirakl Items
@@ -89,10 +89,18 @@ class MiraklHandlerImpl extends MiraklHandler {
     shippingFees.map { fee =>
       //val externalOfferId = MiraklHandler.MIRAKL_SHIPPING_PREFIX + "|" + MiraklHandler.MIRAKL_SHOP_PREFIX + fee.shopId + "|" + MiraklHandler.MIRAKL_OFFER_PREFIX + fee.offerId
       val externalOfferId = fee.offerId.toString
-      createShippingData(externalOfferId, ExternalSource.MIRAKL.toString, (fee.totalPrice * 100).toLongExact, fee.shopCurrencyIsoCode)
+      val rate = rateHandler.findByCurrencyCode(fee.shopCurrencyIsoCode)
+      val multiplyFactorToConvertToCents = rate.get.currencyFractionDigits
+      val factor = 10^multiplyFactorToConvertToCents
+      val shippingPrice = (fee.lineShippingPrice * factor).toLongExact
+      createShippingData(externalOfferId, ExternalSource.MIRAKL.toString, fee.shippingTypeCode, shippingPrice, fee.shopCurrencyIsoCode)
     }
   }
 
+  /**
+  * Permet de faire la correspondance entre le pays de livraison et la zone de shipping correspondante configuré dans Mirakl
+  * TODO à externaliser pour être surchargé par le client
+  */
   private def getShippingZoneCode(shippingAddress: AccountAddress): String = {
 
     shippingAddress.country match {
@@ -112,9 +120,9 @@ class MiraklHandlerImpl extends MiraklHandler {
 
   /**
   * Création d'une commande coté Mirakl
-  * TODO => changer en CartPay
+  * TODO => changer en CartPay ??
   */
-  def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress) = {
+  def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress): Option[String] = {
 
     val account: Account = accountHandler.load(accountId.get).get
 
@@ -151,8 +159,14 @@ class MiraklHandlerImpl extends MiraklHandler {
       )
     )
 
-    val offers = cart.cartItems.map { item =>
+    val offers = cart.cartItems.flatMap { item =>
       ExternalSource.MIRAKL.extractExternalCodeFromList(item.externalCodes).map { externalOfferId =>
+        //TODO BigDecimal, a récupérer via MiraklClient.getShippingFees() et le shipping_type_code
+        val shippingPrice = if(item.shipping.isDefined) item.shipping.get.amount else 0
+
+        //TODO=CODE TYPE DE LIVRAISON (ex: STD, EXPRESS, SUPEX) : à retrouver depuis property API Mirakl + StoreCart ou BoCart => valeurs
+        val selectedShippingTypeCode = if(item.shipping.isDefined) item.shipping.get.id.toString else "TODO"
+
         Offer(
           currency_iso_code = currency.code,
           leadtime_to_ship = None,
@@ -162,18 +176,18 @@ class MiraklHandlerImpl extends MiraklHandler {
           order_line_id = item.boCartItemUuid, // should be unique
           price = (item.price / 100) * item.quantity,
           quantity = item.quantity,
-          shipping_price = 0, //TODO BigDecimal, a récupérer via MiraklClient.getShippingFees() et le shipping_type_code
-          shipping_taxes = Array(), //TODO : Array[ShippingTax],
-          shipping_type_code = "TODO", //TODO=CODE TYPE DE LIVRAISON (ex: STD, EXPRESS, SUPEX) : à retrouver depuis property API Mirakl + StoreCart ou BoCart => valeurs
-          taxes = Array() //TODO Array[Tax]
+          shipping_price = shippingPrice,
+          shipping_taxes = Array(),
+          shipping_type_code = selectedShippingTypeCode,
+          taxes = Array()
+
         )
       }
-    }.flatten
-    val shippingZoneCode = "TODO" //TODO a récupérer via MiraklClient.getShippingFees()
+    }
+    val shippingZoneCode = getShippingZoneCode(shippingAddr)
     val order = new OrderBean(cart.boCartUuid.getOrElse(""), customer, offers.toArray, shippingZoneCode)
     val orderId = MiraklClient.createOrder(order)
-    //TODO stocker l'orderId
-
+    Some(orderId)
   }
 
   /**

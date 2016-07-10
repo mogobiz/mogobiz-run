@@ -114,7 +114,6 @@ object MiraklClient {
       Post(MiraklApi.createOrderUrl, order)
     }
     val response = Await.result(responseFuture, TIMEOUT)
-    println(response)
     log.debug("order response = {}", response)
     val json = parse(response)
     (json \ "orders" \ "order_id") match {
@@ -176,12 +175,22 @@ object MiraklClient {
         (offer \ "shipping_types").children.map { shippingType =>
           val shippingTypeCode = (shippingType \ "code").extract[String]
           val shippingTypeLabel = (shippingType \ "label").extract[String]
-
+          val lineOnlyShippingPrice = (shippingType \ "line_only_shipping_price").extract[BigDecimal]
+          val lineOnlyTotalPrice = (shippingType \ "line_only_total_price").extract[BigDecimal]
+          val lineShippingPrice = (shippingType \ "line_shipping_price").extract[BigDecimal]
           val lineTotalPrice = (shippingType \ "line_total_price").extract[BigDecimal]
+          val shippingPriceAdditionalUnit = (shippingType \ "shipping_price_additional_unit").extract[BigDecimal]
+          val shippingPriceUnit = (shippingType \ "shipping_price_unit").extract[BigDecimal]
 
           ShippingFeeFlattenOrderLine(shopId, shopCurrencyIsoCode,
             offerId, offerPrice, offerQty,
-            shippingTypeCode, shippingTypeLabel, lineTotalPrice
+            shippingTypeCode, shippingTypeLabel,
+            lineOnlyShippingPrice,
+            lineOnlyTotalPrice,
+            lineShippingPrice,
+            lineTotalPrice,
+            shippingPriceAdditionalUnit,
+            shippingPriceUnit
           )
         }
       }
@@ -325,7 +334,14 @@ object Mirakl {
   case class ShippingFeeFlattenOrderLine(
     shopId: Long, shopCurrencyIsoCode: String,
     offerId: Long, offerPrice: BigDecimal, offerQty: Integer,
-    shippingTypeCode: String, shippingTypeLabel: String, totalPrice: BigDecimal)
+    shippingTypeCode: String, shippingTypeLabel: String,
+    lineOnlyShippingPrice: BigDecimal,
+    lineOnlyTotalPrice: BigDecimal,
+    lineShippingPrice: BigDecimal,
+    lineTotalPrice: BigDecimal,
+    shippingPriceAdditionalUnit: BigDecimal,
+    shippingPriceUnit: BigDecimal
+  )
 
   object JsonApiTemplate {
 
