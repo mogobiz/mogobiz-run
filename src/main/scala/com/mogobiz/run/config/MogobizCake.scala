@@ -88,7 +88,7 @@ class DefaultMogobizCake extends MogobizCake {
 
   val logoHandler = new LogoHandler
 
-  val miraklHandler = new MiraklHandler
+  val miraklHandler = if(Settings.Externals.mirakl) new MiraklHandlerImpl else new MiraklHandlerUndef
   val accountHandler = new AccountHandler
 
 }

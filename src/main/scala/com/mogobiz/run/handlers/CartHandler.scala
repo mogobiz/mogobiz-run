@@ -50,8 +50,6 @@ import scala.collection.Seq
 class CartHandler extends StrictLogging {
   val rateService = RateBoService
 
-  val miraklHandler = new MiraklHandler //TODO revoir l'injection
-
   /**
    * Permet de récupérer le contenu du panier<br/>
    * Si le panier n'existe pas, il est créé<br/>

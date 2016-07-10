@@ -2,7 +2,8 @@ package com.mogobiz.run.handlers
 
 import java.util.Locale
 
-import com.mogobiz.pay.common.{ ShippingWithQuantity, Cart }
+import com.mogobiz.pay.common.{ CartRate, CompanyAddress, Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay }
+import com.mogobiz.pay.common.{ Cart }
 import com.mogobiz.pay.model.Mogopay._
 import com.mogobiz.run.model.{ Currency, StoreCart, StoreCartItem }
 import com.mogobiz.pay.config.MogopayHandlers.handlers.accountHandler
@@ -20,8 +21,48 @@ object MiraklHandler {
   val MIRAKL_OFFER_PREFIX = "OFFER_"
 }
 
-class MiraklHandler {
+trait MiraklHandler {
 
+  def shippingPrices(cart: Cart, address: AccountAddress): Seq[ShippingData]
+
+  //passé privé pour l'instant  def getShippingZoneCode(shippingAddress: AccountAddress): String
+
+  def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress): Unit
+
+  /**
+   * valide une commande auprès de Mirakl
+   */
+  def validateOrder(cart: StoreCart, boCart: BOCart)
+
+  /**
+   * Annule une commande auprès de Mirakl
+   */
+  def cancelOrder(boCart: BOCart, customerId: String)
+
+  def refundOrder(cart: StoreCart, boCart: BOCart)
+
+}
+
+class MiraklHandlerUndef extends MiraklHandler {
+
+  def shippingPrices(cart: Cart, address: AccountAddress): Seq[ShippingData] = Seq()
+
+  def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress) = {}
+
+  /**
+   * valide une commande auprès de Mirakl
+   */
+  def validateOrder(cart: StoreCart, boCart: BOCart) = {}
+
+  /**
+   * Annule une commande auprès de Mirakl
+   */
+  def cancelOrder(boCart: BOCart, customerId: String) = {}
+
+  def refundOrder(cart: StoreCart, boCart: BOCart) = {}
+}
+
+class MiraklHandlerImpl extends MiraklHandler {
   def shippingPrices(cart: Cart, address: AccountAddress): Seq[ShippingData] = {
 
     def createShippingData(externalOfferId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
@@ -52,7 +93,7 @@ class MiraklHandler {
     }
   }
 
-  def getShippingZoneCode(shippingAddress: AccountAddress) = {
+  private def getShippingZoneCode(shippingAddress: AccountAddress): String = {
 
     shippingAddress.country match {
       case Some(countryCode) => {
@@ -70,9 +111,9 @@ class MiraklHandler {
   }
 
   /**
-   * Création d'une commande coté Mirakl
-   * TODO => changer en CartPay
-   */
+  * Création d'une commande coté Mirakl
+  * TODO => changer en CartPay
+  */
   def createOrder(cart: StoreCart, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress) = {
 
     val account: Account = accountHandler.load(accountId.get).get
@@ -174,8 +215,8 @@ class MiraklHandler {
   }
 
   /**
-   * Soit on calcul à la volée, soit il faut stocker les montants calculé au createOrdre
-   */
+ * Soit on calcul à la volée, soit il faut stocker les montants calculé au createOrdre
+ */
   private def computeMiraklPrices(cart: StoreCart, cartItem: StoreCartItem): Long = {
     val countryCode = cart.countryCode
     val stateCode = cart.stateCode
@@ -192,4 +233,5 @@ class MiraklHandler {
     //    val saleTotalEndPrice = saleEndPrice.map { p: Long => p * cartItem.quantity }
     totalEndPrice.get
   }
+
 }
