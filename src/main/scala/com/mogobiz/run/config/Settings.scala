@@ -41,6 +41,16 @@ object Settings {
   val AccessUrl = config getString "mogobiz.accessUrl"
   val jahiaClearCacheUrl = config getString "mogobiz.jahiaClearCacheUrl"
 
+  object Externals {
+    val providers = config getString "mogobiz.externals.providers"
+    def mirakl = providers.contains("mirakl")
+
+    object Mirakl {
+      val url = config getString "mogobiz.externals.mirakl.url"
+      val frontApiKey = config getString "mogobiz.externals.mirakl.frontApiKey"
+    }
+  }
+
   object Cart {
     val Lifetime = config.getInt("mogobiz.cart.lifetime")
 

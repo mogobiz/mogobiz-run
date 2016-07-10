@@ -1,25 +1,27 @@
 package com.mogobiz.run.externals.mirakl
 
-import java.util.{ Date, Locale, UUID }
+import java.util.{Date, Locale, UUID}
 
 import akka.actor.ActorSystem
 import akka.event.Logging
 import com.mogobiz.pay.model.Mogopay.IdGenerator
+import com.mogobiz.run.config.Settings
 import com.mogobiz.run.externals.mirakl.Mirakl._
 import com.mogobiz.run.externals.mirakl.Mirakl.PaymentStatus.PaymentStatus
 import com.mogobiz.run.externals.mirakl.Mirakl.PaymentWorkflow.PaymentWorkflow
 import com.mogobiz.run.externals.mirakl.MiraklApi.ApiCode.ApiCode
 import com.mogobiz.run.externals.mirakl.exception._
 import com.mogobiz.run.utils.Paging
+import com.mogobiz.system.ActorSystemLocator
 import org.json4s.native.JsonParser
 import org.slf4j.LoggerFactory
 import spray.client.pipelining._
-import spray.http.{ HttpRequest, _ }
+import spray.http.{HttpRequest, _}
 
 import scala.collection.immutable.HashMap
 import scala.concurrent.duration._
-import scala.concurrent.{ Await, Future }
-import scala.util.{ Failure, Success }
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success}
 
 object MiraklClient {
   import org.json4s.JsonAST.JString
@@ -28,10 +30,10 @@ object MiraklClient {
 
   val TIMEOUT = 60.seconds
 
-  val apiFrontKey = "096401e5-c3e8-42fe-9891-ed94cd4c1a89"
-  val url = "https://ebiznext-dev.mirakl.net"
+  val frontApiKey = Settings.Externals.Mirakl.frontApiKey
+  val url = Settings.Externals.Mirakl.url
 
-  implicit val system = ActorSystem("mogobiz-mirakl-client")
+  implicit val system = ActorSystemLocator.apply()
   import system.dispatcher
   val log = Logging(system, getClass)
 
@@ -47,7 +49,7 @@ object MiraklClient {
  */
 
   private def defaultHeaders() = {
-    (addHeader("Accept", "application/json") ~> addHeader("Authorization", apiFrontKey))
+    (addHeader("Accept", "application/json") ~> addHeader("Authorization", frontApiKey))
   }
 
   private def defaultPipeline: HttpRequest => Future[String] = defaultHeaders ~> sendReceive ~> unmarshal[String]
@@ -457,31 +459,5 @@ object MiraklClientMain extends App {
     val WORLDWIDE = Value("WORLDWIDE")
   }
 
-  /*
-  private def createOffer(offerId: Long, unitPrice: BigDecimal, quantity: Int) = {
-    Offer(
-     currencyIsoCode = "EUR",
-      leadtimeToShip = None,
-      offerId = offerId,
-      offerPrice = unitPrice,
-      orderLineAdditionalFields = Array(),
-      orderLineId = None,
-      price = unitPrice * quantity,
-      quantity = quantity,
-      shippingPrice = shippingPrice,
-      shippingTaxes = shippingTaxes,
-      shippingTypeCode = shippingTypeCode,
-      taxes = taxes
-    )
-  }
-  val offers = Array(
-    createOffer(1, )
-  )
-
-  val order: OrderBean = OrderBean(
-    Some("CHANNEL_CODE"), "TEST-ORDER-1", customer, offers, Array(), paymentInfo, paymentWorkflow, false, shippingZoneCode)
-
-  MiraklClient.createOrder(order)
-  */
 }
 
