@@ -50,8 +50,6 @@ import scala.collection.Seq
 class CartHandler extends StrictLogging {
   val rateService = RateBoService
 
-  val miraklHandler = new MiraklHandler //TODO revoir l'injection
-
   /**
    * Permet de récupérer le contenu du panier<br/>
    * Si le panier n'existe pas, il est créé<br/>
@@ -359,15 +357,13 @@ class CartHandler extends StrictLogging {
     // Calcul des données du panier
     val cartTTC = computeStoreCart(cartWithoutBOCart, params.country, params.state)
 
-    // Création de la transaction
-    val updatedCart = createBOCart(cartWithoutBOCart, cartTTC, currency, params.buyer, company.get, params.shippingAddress)
-
-    StoreCartDao.save(updatedCart)
-
     // Traitement MIRAKL
     val shippingAddress = JacksonConverter.deserialize[AccountAddress](params.shippingAddress)
-    val miraklOrder = miraklHandler.createOrder(updatedCart, accountId, locale, currency, params.country, params.state, shippingAddress)
-    logger.debug("miraklOrder=", miraklOrder)
+    val miraklOrderId = miraklHandler.createOrder(cartWithoutBOCart, accountId, locale, currency, params.country, params.state, shippingAddress)
+
+    // Création de la transaction
+    val updatedCart = createBOCart(cartWithoutBOCart, cartTTC, currency, params.buyer, company.get, params.shippingAddress, miraklOrderId)
+    StoreCartDao.save(updatedCart)
 
     // Reponse API
     val renderedCart = renderTransactionCart(updatedCart, cartTTC, currency, locale)
@@ -551,10 +547,11 @@ class CartHandler extends StrictLogging {
    * @param shippingAddress
    * @return
    */
-  protected def createBOCart(storeCart: StoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String): StoreCart = {
+  protected def createBOCart(storeCart: StoreCart, cart: Render.Cart, rate: Currency, buyer: String, company: Company, shippingAddress: String, externalOrderId: Option[String]): StoreCart = {
     val boCartAndStoreCart = DB localTx { implicit session =>
       {
         val storeCode = storeCart.storeCode
+        //TODO ajouter l'externalOrderId au BOCart ????
         val boCart = BOCartDao.create(buyer, company.id, rate, cart.finalPrice)
 
         val newStoreCartItems = cart.cartItemVOs.map { cartItem =>
@@ -615,7 +612,7 @@ class CartHandler extends StrictLogging {
           }
           storeCartItem.copy(registeredCartItems = newStoreRegistedCartItems.toList, boCartItemUuid = Some(boCartItemUuid), downloadableLink = downloadableLink)
         }
-        (boCart, storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList))
+        (boCart, storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newStoreCartItems.toList, externalOrderId = externalOrderId))
       }
     }
 

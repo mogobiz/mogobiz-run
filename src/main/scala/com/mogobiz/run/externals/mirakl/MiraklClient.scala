@@ -5,11 +5,16 @@ import java.util.{ Date, Locale, UUID }
 import akka.actor.ActorSystem
 import akka.event.Logging
 import com.mogobiz.pay.model.Mogopay.IdGenerator
+import com.mogobiz.run.config.Settings
 import com.mogobiz.run.externals.mirakl.Mirakl._
 import com.mogobiz.run.externals.mirakl.Mirakl.PaymentStatus.PaymentStatus
 import com.mogobiz.run.externals.mirakl.Mirakl.PaymentWorkflow.PaymentWorkflow
 import com.mogobiz.run.externals.mirakl.MiraklApi.ApiCode.ApiCode
 import com.mogobiz.run.externals.mirakl.exception._
+import com.mogobiz.run.utils.Paging
+import com.mogobiz.system.ActorSystemLocator
+import org.json4s.native.JsonParser
+import org.slf4j.LoggerFactory
 import spray.client.pipelining._
 import spray.http.{ HttpRequest, _ }
 
@@ -25,10 +30,10 @@ object MiraklClient {
 
   val TIMEOUT = 60.seconds
 
-  val apiFrontKey = "096401e5-c3e8-42fe-9891-ed94cd4c1a89"
-  val url = "https://ebiznext-dev.mirakl.net"
+  val frontApiKey = Settings.Externals.Mirakl.frontApiKey
+  val url = Settings.Externals.Mirakl.url
 
-  implicit val system = ActorSystem("mogobiz-mirakl-client")
+  implicit val system = ActorSystemLocator.apply()
   import system.dispatcher
   val log = Logging(system, getClass)
 
@@ -44,7 +49,7 @@ object MiraklClient {
  */
 
   private def defaultHeaders() = {
-    (addHeader("Accept", "application/json") ~> addHeader("Authorization", apiFrontKey))
+    (addHeader("Accept", "application/json") ~> addHeader("Authorization", frontApiKey))
   }
 
   private def defaultPipeline: HttpRequest => Future[String] = defaultHeaders ~> sendReceive ~> unmarshal[String]
@@ -72,11 +77,11 @@ object MiraklClient {
     */
   }
 
-  def getShopOffers(shopId: Long) = {
+  def getShopOffers(shopId: Long, max: Option[Int] = None, offset: Option[Int] = None) = {
     val pipeline = defaultPipeline
 
     val responseFuture = pipeline {
-      Get(MiraklApi.shopOffersUrl(shopId))
+      Get(MiraklApi.shopOffersUrl(shopId, max, offset))
     }
     Await.result(responseFuture, TIMEOUT)
   }
@@ -109,7 +114,6 @@ object MiraklClient {
       Post(MiraklApi.createOrderUrl, order)
     }
     val response = Await.result(responseFuture, TIMEOUT)
-    println(response)
     log.debug("order response = {}", response)
     val json = parse(response)
     (json \ "orders" \ "order_id") match {
@@ -126,12 +130,75 @@ object MiraklClient {
 
   }
 
-  def getShippingFees(shippingZoneCode: String, offerIdsAndQuantity: List[(Long, Int)]) = {
+  /**
+   * return shipping fees response as raw json string
+   */
+  def getShippingFeesRaw(shippingZoneCode: String, offerIdsAndQuantity: List[(Long, Int)]) = {
 
     val responseFuture = defaultPipeline {
       Get(MiraklApi.getShippingFeesUrl(shippingZoneCode, offerIdsAndQuantity))
     }
+
+    /*
+    responseFuture onComplete {
+      case Success(response) =>
+        val shops = (response \ "shops")
+        //log.info("Success: {}", s)
+
+      case Failure(error) =>
+        log.error(error, "Couldn't get elevation")
+    }*/
+
     Await.result(responseFuture, TIMEOUT)
+  }
+
+  def getShippingFeesByOffersAndShippingType(shippingZoneCode: String, offerIdsAndQuantity: List[(Long, Int)]): List[ShippingFeeFlattenOrderLine] = {
+    import org.json4s.{ DefaultFormats, Formats }
+    implicit def json4sFormats: Formats = DefaultFormats
+
+    val response = getShippingFeesRaw(shippingZoneCode, offerIdsAndQuantity)
+    //println(response)
+    val jsonFees = JsonParser.parse(response)
+
+    //      jsonFees \ "offers_not_found" must be_==(JArray(_))
+    val fees = (jsonFees \ "shops").children.map { shop =>
+      val shopId = (shop \ "shop_id").extract[Long]
+      val shopCurrencyIsoCode = (shop \ "currency_iso_code").extract[String]
+      (shop \ "offers").children.map { offer =>
+        val offerId = (offer \ "offer_id").extract[Long]
+        val offerQty = (offer \ "line_quantity").extract[Integer]
+        //val linePrice = (offer \ "line_price").extract[BigDecimal]
+        val offerPrice = (offer \ "offer_price").extract[BigDecimal]
+        //val selectedShippingPrice = (offer \ "line_shipping_price").extract[Double]
+        //val selectedShippingTypeCode = (offer \ "selected_shipping_type" \ "code").extract[String]
+
+        (offer \ "shipping_types").children.map { shippingType =>
+          val shippingTypeCode = (shippingType \ "code").extract[String]
+          val shippingTypeLabel = (shippingType \ "label").extract[String]
+          val lineOnlyShippingPrice = (shippingType \ "line_only_shipping_price").extract[BigDecimal]
+          val lineOnlyTotalPrice = (shippingType \ "line_only_total_price").extract[BigDecimal]
+          val lineShippingPrice = (shippingType \ "line_shipping_price").extract[BigDecimal]
+          val lineTotalPrice = (shippingType \ "line_total_price").extract[BigDecimal]
+          val shippingPriceAdditionalUnit = (shippingType \ "shipping_price_additional_unit").extract[BigDecimal]
+          val shippingPriceUnit = (shippingType \ "shipping_price_unit").extract[BigDecimal]
+
+          ShippingFeeFlattenOrderLine(shopId, shopCurrencyIsoCode,
+            offerId, offerPrice, offerQty,
+            shippingTypeCode, shippingTypeLabel,
+            lineOnlyShippingPrice,
+            lineOnlyTotalPrice,
+            lineShippingPrice,
+            lineTotalPrice,
+            shippingPriceAdditionalUnit,
+            shippingPriceUnit
+          )
+        }
+      }
+    }
+
+    //    println(fees)
+    //    println(fees.flatten.flatten)
+    fees.flatten.flatten
   }
 
   def validateOrder(amount: Long, currencyCode: String, orderId: String, customerId: String, transactionDate: Option[Date], transactionNumber: Option[String]): Boolean = {
@@ -264,6 +331,17 @@ object Mirakl {
   case class OrderPayment(order_id: String, customer_id: String, payment_status: PaymentStatus, amount: Option[BigDecimal] = None, currency_iso_code: Option[String] = None, transaction_date: Option[Date] = None, transaction_number: Option[String] = None)
   case class OrderPaymentsDto(orders: Array[OrderPayment])
 
+  case class ShippingFeeFlattenOrderLine(
+    shopId: Long, shopCurrencyIsoCode: String,
+    offerId: Long, offerPrice: BigDecimal, offerQty: Integer,
+    shippingTypeCode: String, shippingTypeLabel: String,
+    lineOnlyShippingPrice: BigDecimal,
+    lineOnlyTotalPrice: BigDecimal,
+    lineShippingPrice: BigDecimal,
+    lineTotalPrice: BigDecimal,
+    shippingPriceAdditionalUnit: BigDecimal,
+    shippingPriceUnit: BigDecimal)
+
   object JsonApiTemplate {
 
     def TPL_PA01(amount: Long, currencyCode: String, orderId: String, customerId: String, paymentStatus: PaymentStatus) =
@@ -293,7 +371,10 @@ object Mirakl {
   }
 }
 
+//https://developer.mirakl.net/api/front/current/index.html#pagination-sort
 object MiraklApi {
+
+  val log = LoggerFactory.getLogger(getClass)
 
   object ApiCode extends Enumeration {
     type ApiCode = Value
@@ -312,10 +393,10 @@ object MiraklApi {
   }
 
   val apiEndpoints = HashMap[ApiCode, String](
-    (ApiCode.S03 -> "/api/shops/{{SHOP_ID}}/evaluations"),
+    (ApiCode.S03 -> "/api/shops/SHOP_ID/evaluations"),
     (ApiCode.S04 -> "/api/shops/SHOP_ID/offers"),
     (ApiCode.S20 -> "/api/shops"),
-    (ApiCode.P11 -> "/api/products/offers?product_ids={{PRODUCT_SKU}}&offer_state_codes=11"),
+    (ApiCode.P11 -> "/api/products/offers?product_ids=PRODUCT_SKU"), //&offer_state_codes=11
     (ApiCode.SH21 -> "/api/shipping/carriers"),
     (ApiCode.SH01 -> "/api/shipping/fees?shipping_zone_code=SHIP_ZONE_CODE&offers=OFFER_IDS_AND_QUANTITY"),
     (ApiCode.SH02 -> "/api/shipping/rates"),
@@ -332,16 +413,25 @@ object MiraklApi {
 
   def listShops() = MiraklApi.getApiEndpointUrl(ApiCode.S20)
 
-  def getShopEvaluations() = MiraklApi.getApiEndpointUrl(ApiCode.S03)
-
-  def shopOffersUrl(shopId: Long) = {
-    val preparedUrl = MiraklApi.getApiEndpointUrl(ApiCode.S04)
+  def getShopEvaluations(shopId: Long, max: Option[Int], offset: Option[Int]) = {
+    val preparedUrl = MiraklApi.getApiEndpointUrl(ApiCode.S03)
     preparedUrl.replaceFirst("SHOP_ID", shopId.toString)
   }
 
+  def shopOffersUrl(shopId: Long, max: Option[Int], offset: Option[Int]) = {
+
+    val maxParams = max.map { mv => s"?max=$mv" }.getOrElse("?max=10")
+    val offsetParams = offset.map { ov => s"&offset=$ov" }.getOrElse("&offset=0")
+
+    val preparedUrl = MiraklApi.getApiEndpointUrl(ApiCode.S04) + maxParams + offsetParams
+    val returnedUrl = preparedUrl.replaceFirst("SHOP_ID", shopId.toString)
+    log.debug("shopOffersUrl returnedUrl={}", returnedUrl)
+    returnedUrl
+  }
+
   def productsOffers(productIds: List[String]) = {
-    val preparedUrl = MiraklApi.getApiEndpointUrl(ApiCode.S20)
-    preparedUrl.replaceAll("{{PRODUCT_SKU}}", productIds.mkString(","))
+    val preparedUrl = MiraklApi.getApiEndpointUrl(ApiCode.P11)
+    preparedUrl.replaceFirst("PRODUCT_SKU", productIds.mkString(","))
   }
 
   def listCarriers = MiraklApi.getApiEndpointUrl(ApiCode.SH21)
@@ -384,31 +474,5 @@ object MiraklClientMain extends App {
     val WORLDWIDE = Value("WORLDWIDE")
   }
 
-  /*
-  private def createOffer(offerId: Long, unitPrice: BigDecimal, quantity: Int) = {
-    Offer(
-     currencyIsoCode = "EUR",
-      leadtimeToShip = None,
-      offerId = offerId,
-      offerPrice = unitPrice,
-      orderLineAdditionalFields = Array(),
-      orderLineId = None,
-      price = unitPrice * quantity,
-      quantity = quantity,
-      shippingPrice = shippingPrice,
-      shippingTaxes = shippingTaxes,
-      shippingTypeCode = shippingTypeCode,
-      taxes = taxes
-    )
-  }
-  val offers = Array(
-    createOffer(1, )
-  )
-
-  val order: OrderBean = OrderBean(
-    Some("CHANNEL_CODE"), "TEST-ORDER-1", customer, offers, Array(), paymentInfo, paymentWorkflow, false, shippingZoneCode)
-
-  MiraklClient.createOrder(order)
-  */
 }
 
