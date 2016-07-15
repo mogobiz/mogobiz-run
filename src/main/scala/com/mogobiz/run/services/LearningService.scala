@@ -94,7 +94,7 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
     }
   }
 
-  def commit(implicit storeCode: String) = path("commit"){
+  def commit(implicit storeCode: String) = path("commit") {
     optionalCookie(CookieTracking) {
       case Some(mogoCookie) =>
         register(mogoCookie.content)
@@ -107,10 +107,10 @@ class LearningService(implicit executionContext: ExecutionContext) extends Direc
   }
 
   def register(uuid: String)(implicit storeCode: String) = {
-    get{
-      parameters('itemids) {
-        (itemids) =>
-          handleCall(learningHandler.register(storeCode, uuid, itemids.split(",")), (res: Unit) => complete(StatusCodes.OK))
+    get {
+      parameters('itemids) { (itemids) =>
+        handleCall(learningHandler.register(storeCode, uuid, itemids.split(",")),
+                   (res: Unit) => complete(StatusCodes.OK))
       }
     }
   }
