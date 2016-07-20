@@ -7,27 +7,21 @@ package com.mogobiz.run.actors
 import akka.actor.Actor
 import com.mogobiz.run.actors.EsUpdateActor._
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import com.mogobiz.run.model.Mogobiz.{Product, Sku}
-import com.mogobiz.run.model.{Stock, StockCalendar}
+import com.mogobiz.run.model.Mogobiz.{ Product, Sku }
+import com.mogobiz.run.model.{ Stock, StockCalendar }
 
 /**
-  * Actor in charge of every updates operations on ES data
-  */
+ * Actor in charge of every updates operations on ES data
+ */
 object EsUpdateActor {
 
-  case class StockUpdateRequest(indexEs: String,
-                                product: Product,
-                                sku: Sku,
-                                stock: Stock,
-                                stockCalendar: StockCalendar)
+  case class StockUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar: StockCalendar)
 
-  case class SalesUpdateRequest(indexEs: String,
-                                product: Product,
-                                sku: Sku,
-                                newNbProductSales: Long,
-                                newNbSkuSales: Long)
+  case class SalesUpdateRequest(indexEs: String, product: Product, sku: Sku, newNbProductSales: Long, newNbSkuSales: Long)
 
   case class ProductNotationsUpdateRequest(indexEs: String, productId: Long)
+
+  case class SkuStockAvailabilityUpdateRequest(indexEs: String, product: Product, sku: Sku, stock: Stock, stockCalendar: StockCalendar)
 
   case class ProductStockAvailabilityUpdateRequest(indexEs: String, productId: Long)
 }
@@ -46,6 +40,10 @@ class EsUpdateActor extends Actor {
     case q: ProductNotationsUpdateRequest =>
       val notations = facetHandler.getCommentNotations(q.indexEs, Some(q.productId))
       productHandler.updateProductNotations(q.indexEs, q.productId, notations)
+      context.stop(self)
+
+    case q: SkuStockAvailabilityUpdateRequest =>
+      skuHandler.updateStockAvailability(q.indexEs, q.sku, q.stock, q.stockCalendar)
       context.stop(self)
 
     case q: ProductStockAvailabilityUpdateRequest =>
