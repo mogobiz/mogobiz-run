@@ -107,7 +107,7 @@ object Mogobiz {
     val externalCodes: List[ExternalCode] = {
       externalCode.map { externalCode =>
         externalCode.split(",").toList.map { ec =>
-          val providerAndCode = ec.split("_")
+          val providerAndCode = ec.split("::")
           if (providerAndCode.length == 2) Some(ExternalCode(providerAndCode(0), providerAndCode(1)))
           else None
         }.flatten
