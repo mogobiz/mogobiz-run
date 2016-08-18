@@ -42,12 +42,12 @@ object Settings {
   val jahiaClearCacheUrl = config getString "mogobiz.jahiaClearCacheUrl"
 
   object Externals {
-    val providers = config getString "mogobiz.externals.providers"
-    def mirakl = providers.contains("mirakl")
+    private val providers = (config getString "mogobiz.externals.providers").toLowerCase.split(",").toList
+    val mirakl = providers.contains("mirakl")
 
     object Mirakl {
-      val url = config getString "mogobiz.externals.mirakl.url"
-      val frontApiKey = config getString "mogobiz.externals.mirakl.frontApiKey"
+      lazy val url = if(mirakl) config getString "mogobiz.externals.mirakl.url" else ""
+      lazy val frontApiKey = if(mirakl) config getString "mogobiz.externals.mirakl.frontApiKey" else ""
     }
   }
 
