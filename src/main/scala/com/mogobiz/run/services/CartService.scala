@@ -216,8 +216,8 @@ class CartService extends Directives with DefaultComplete {
 
   def shippingPrices(storeCode: String, uuid: String) = path("list-shipping-prices") {
     get {
-      parameters('cartProvider, 'cartKeys).as(ListShippingPriceParam) {
-        params =>
+      parameters('currency) {
+        currency => {
           session {
             session =>
               import Implicits._
@@ -226,9 +226,8 @@ class CartService extends Directives with DefaultComplete {
                   StatusCodes.Forbidden -> Map('error -> "Not logged in")
                 }
                 case Some(id) => {
-                  val keys = params.cartKeys.split("\\|\\|\\|")
                   handleCall({
-                    cartHandler.getCartForPay(keys(0), keys(1), if (!keys(2).isEmpty) Some(keys(2)) else None)
+                    cartHandler.getCartForPay(storeCode, uuid, Some(id), currency)
                   }, (cart: Cart) => {
                     session.sessionData.cart = Some(cart)
                     handleCall(cartHandler.shippingPrices(cart, id),
@@ -244,6 +243,7 @@ class CartService extends Directives with DefaultComplete {
                 }
               }
           }
+        }
       }
     }
   }

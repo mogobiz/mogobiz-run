@@ -22,7 +22,7 @@ object MiraklHandler {
 
 trait MiraklHandler {
 
-  def shippingPrices(cart: Cart, address: AccountAddress): Map[ExternalCode, List[ShippingData]]
+  def shippingPrices(cart: Cart, address: AccountAddress): List[ExternalShippingDataList]
 
   //passé privé pour l'instant  def getShippingZoneCode(shippingAddress: AccountAddress): String
 
@@ -44,7 +44,7 @@ trait MiraklHandler {
 
 class MiraklHandlerUndef extends MiraklHandler {
 
-  def shippingPrices(cart: Cart, address: AccountAddress): Map[ExternalCode, List[ShippingData]] = Map()
+  def shippingPrices(cart: Cart, address: AccountAddress): List[ExternalShippingDataList] = Nil
 
   def createOrder(cart: StoreCartWithPrice, accountId: Option[Document], locale: Locale, currency: Currency, countryCode: Option[String], stateCode: Option[String], shippingAddr: AccountAddress) = None
 
@@ -62,7 +62,7 @@ class MiraklHandlerUndef extends MiraklHandler {
 }
 
 class MiraklHandlerImpl extends MiraklHandler {
-  def shippingPrices(cart: Cart, address: AccountAddress): Map[ExternalCode, List[ShippingData]] = {
+  def shippingPrices(cart: Cart, address: AccountAddress): List[ExternalShippingDataList] = {
     // get only Mirakl Items
     val offerIdsAndQuantity: List[(Long, Int)] = cart.cartItems.flatMap(cartItem => {
       cartItem.externalCodes.find(_.provider == ExternalProvider.MIRAKL).map { externalOfferId =>
@@ -91,7 +91,9 @@ class MiraklHandlerImpl extends MiraklHandler {
         val shippingPrice = (fee.lineShippingPrice * factor).toLongExact
         (externalCode, createShippingData(address, externalCode, cartItem.id, fee.shippingTypeCode, shippingPrice, fee.shopCurrencyIsoCode))
       }
-    }.groupBy(_._1).mapValues(_.map(_._2))
+    }.groupBy(_._1).mapValues(_.map(_._2)).map { keyValue : (ExternalCode, List[ShippingData]) =>
+      new ExternalShippingDataList(keyValue._1, keyValue._2)
+    }.toList
   }
 
   protected def createShippingData(address: AccountAddress, miraklCode: ExternalCode, cartItemId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {

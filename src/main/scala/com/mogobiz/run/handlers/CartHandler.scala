@@ -465,14 +465,13 @@ class CartHandler extends StrictLogging {
         "amount"           -> rateService.calculateAmount(updatedCartPrice.finalPrice, currency),
         "currencyCode"     -> currency.code,
         "currencyRate"     -> currency.rate.doubleValue(),
-        "transactionExtra" -> renderedCart,
-        "cartProvider"     -> "mogobizRun",
-        "cartKeys"         -> s"$storeCode|||$uuid|||${accountId.getOrElse("")}"
+        "transactionExtra" -> renderedCart
     )
   }
 
-  def getCartForPay(storeCode: String, uuid: String, accountId: Option[String]): CartPay = {
+  def getCartForPay(storeCode: String, uuid: String, accountId: Option[String], currencyCode: String): CartPay = {
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
+    val currency = queryCurrency(storeCode, Some(currencyCode))
 
     // Calcul des données du panier
     val cartWithPrice = computeStoreCart(cart, cart.countryCode, cart.stateCode)
@@ -499,7 +498,7 @@ class CartHandler extends StrictLogging {
 
     val shippingRulePrice = computeShippingRulePrice(cart.storeCode, cart.countryCode, cartWithPrice.finalPrice)
 
-    transformCartForCartPay(companyAddress, cartWithPrice, cart.rate.get, shippingRulePrice)
+    transformCartForCartPay(companyAddress, cartWithPrice, currency, shippingRulePrice)
   }
 
   def shippingPrices(cart: CartPay, accountId: String): ShippingCart = {
@@ -507,7 +506,7 @@ class CartHandler extends StrictLogging {
 
     val externalShippingPrices = addressAndList._1.map { addr =>
       miraklHandler.shippingPrices(cart, addr)
-    }.getOrElse(Map())
+    }.getOrElse(Nil)
     ShippingCart(addressAndList._2.toList, externalShippingPrices)
   }
 
