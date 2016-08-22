@@ -180,18 +180,37 @@ class CartService extends Directives with DefaultComplete {
 
   def paymentPrepare(storeCode: String, uuid: String) = path("prepare") {
     entity(as[PrepareTransactionParameters]) { params =>
-      optionalSession { optSession =>
-        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-        handleCall(cartHandler.queryCartPaymentPrepare(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+      session { session =>
+        session.sessionData.accountId.map(_.toString) match {
+          case None => complete {
+            StatusCodes.Forbidden -> Map('error -> "Not logged in")
+          }
+          case Some(accountId) => {
+              handleCall(cartHandler.queryCartPaymentPrepare(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+          }
+        }
       }
     }
   }
 
   def paymentLinkToTransaction(storeCode: String, uuid: String) = path("linkToTransaction") {
     entity(as[CommitTransactionParameters]) { params =>
-      optionalSession { optSession =>
-        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-        handleCall(cartHandler.queryCartPaymentLinkToTransaction(storeCode, uuid, params, accountId), (res: Unit) => complete(StatusCodes.OK))
+      session { session =>
+        session.sessionData.accountId.map(_.toString) match {
+          case None => complete {
+            StatusCodes.Forbidden -> Map('error -> "Not logged in")
+          }
+          case Some(accountId) => {
+            session.sessionData.selectShippingCart match {
+              case None => complete {
+                StatusCodes.Forbidden -> Map('error -> "No selected shipping price")
+              }
+              case Some(selectShippingCart) => {
+                handleCall(cartHandler.queryCartPaymentLinkToTransaction(storeCode, uuid, params, accountId, selectShippingCart), (res: Unit) => complete(StatusCodes.OK))
+              }
+            }
+          }
+        }
       }
     }
   }
