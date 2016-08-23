@@ -547,13 +547,16 @@ class CartHandler extends StrictLogging {
                 throw new IllegalArgumentException("BOcart must have a shipping address")
               )
 
+              val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid))
+
               // Traitement MIRAKL
-              val miraklOrderId = miraklHandler.createOrder(boCart, currency, accountId, shippingAddress, selectShippingCart)
+              val miraklOrderId = miraklHandler.createOrder(transactionBoCart, currency, accountId, shippingAddress, selectShippingCart)
 
-              val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid), externalOrderId = miraklOrderId)
-              BOCartDao.updateStatusAndExternalCode(transactionBoCart)
+              val transactionBoCartWithExternalOrderId = transactionBoCart.copy(externalOrderId = miraklOrderId)
 
-              val newChanges = CartChanges(boCartChange = Some(transactionBoCart))
+              BOCartDao.updateStatusAndExternalCode(transactionBoCartWithExternalOrderId)
+
+              val newChanges = CartChanges(boCartChange = Some(transactionBoCartWithExternalOrderId))
               CartWithChanges(cart = cart, changes = newChanges)
             }
             .getOrElse(throw new IllegalArgumentException(
@@ -1864,7 +1867,7 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
         .set(
             BOCartDao.column.status          -> boCart.status.toString(),
             BOCartDao.column.transactionUuid -> boCart.transactionUuid,
-            BOCartDao.column.externalOrderId -> boCart.externalOrderId,
+            //BOCartDao.column.externalOrderId -> boCart.externalOrderId,
             BOCartDao.column.lastUpdated     -> DateTime.now
         )
         .where
@@ -2132,7 +2135,8 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
                    rs.get(rn.dateCreated),
                    rs.get(rn.lastUpdated),
                    rs.get(rn.uuid),
-                   rs.get(rn.url))
+                   rs.get(rn.url),
+                   rs.get(rn.externalCode))
 
   def create(sku: Mogobiz.Sku,
              cartItem: StoreCartItemWithPrice,
@@ -2157,7 +2161,8 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
         DateTime.now,
         DateTime.now,
         cartItem.cartItem.id,
-        cartItem.cartItem.productUrl
+        cartItem.cartItem.productUrl,
+        ExternalCode.toString(cartItem.cartItem.externalCodes)
     )
 
     applyUpdate {
@@ -2181,7 +2186,8 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
             BOCartItemDao.column.dateCreated   -> newBOCartItem.dateCreated,
             BOCartItemDao.column.lastUpdated   -> newBOCartItem.lastUpdated,
             BOCartItemDao.column.uuid          -> newBOCartItem.uuid,
-            BOCartItemDao.column.url           -> newBOCartItem.url
+            BOCartItemDao.column.url           -> newBOCartItem.url,
+            BOCartItemDao.column.externalCode  -> newBOCartItem.externalCode
         )
     }
 

@@ -1,5 +1,7 @@
 package com.mogobiz.run.handlers
 
+import java.util.UUID
+
 import com.mogobiz.pay.common._
 import com.mogobiz.pay.exceptions.Exceptions.CountryDoesNotExistException
 import com.mogobiz.pay.model.Mogopay._
@@ -152,7 +154,7 @@ class MiraklHandlerImpl extends MiraklHandler {
         civility = billAddr.civility.map { civ => civ.toString },
         company = billAddr.company, country = billingCountry.name, country_iso_code = billingCountry.isoCode3,
         firstname = billAddr.firstName, lastname = billAddr.lastName.getOrElse(""),
-        phone = billAddr.telephone.map { tel => tel.toString }, phone_secondary = None,
+        phone = billAddr.telephone.map { tel => tel.lphone }, phone_secondary = None,
         state = None, street_1 = billAddr.road, street_2 = billAddr.road2, zip_code = billAddr.zipCode),
       shipping_address = ShippingAddress(
         city = shippingAddr.city,
@@ -162,7 +164,7 @@ class MiraklHandlerImpl extends MiraklHandler {
         country_iso_code = shippingCountry.isoCode3,
         firstname = shippingAddr.firstName,
         lastname = shippingAddr.lastName.getOrElse(""),
-        phone = shippingAddr.telephone.map { tel => tel.toString },
+        phone = shippingAddr.telephone.map { tel => tel.lphone },
         phone_secondary = None,
         state = shippingState,
         street_1 = shippingAddr.road,
@@ -181,16 +183,16 @@ class MiraklHandlerImpl extends MiraklHandler {
 
         val shippingPrice = BigDecimal.exact(selectShippingData.price) / Math.pow(10, selectShippingData.currencyFractionDigits)
 
-        val selectedShippingTypeCode = selectShippingData.rateId
+        val selectedShippingTypeCode = selectShippingData.service
 
         Offer(
           currency_iso_code = currency.code,
           leadtime_to_ship = None,
           offer_id = externalCode.code.toLong,
-          offer_price = (item.price / 100),
+          offer_price = item.endPrice / 100,
           order_line_additional_fields = Array(),
-          order_line_id = Some(item.uuid), // should be unique
-          price = (item.price / 100) * item.quantity,
+          order_line_id = None, //Some(UUID.randomUUID().toString),
+          price = item.totalEndPrice / 100,
           quantity = item.quantity,
           shipping_price = shippingPrice,
           shipping_taxes = Array(),
@@ -198,9 +200,9 @@ class MiraklHandlerImpl extends MiraklHandler {
           taxes = Array()
         )
       }
-    }
+    }.flatten
     val shippingZoneCode = getShippingZoneCode(shippingAddr)
-    val order = new OrderBean(None, boCart.transactionUuid.getOrElse(""), customer, offers.toArray, shippingZoneCode)
+    val order = new OrderBean(boCart.transactionUuid.getOrElse(""), customer, offers.toArray, shippingZoneCode)
     val orderId = MiraklClient.createOrder(order)
     Some(orderId)
   }
