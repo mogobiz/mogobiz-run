@@ -74,30 +74,33 @@ class MiraklHandlerImpl extends MiraklHandler {
       }
     }).toList
 
-    // determine the shippingZoneCode from the shipping address
-    val shippingZoneCode = getShippingZoneCode(address)
+    if (!offerIdsAndQuantity.isEmpty) {
+      // determine the shippingZoneCode from the shipping address
+      val shippingZoneCode = getShippingZoneCode(address)
 
-    // call Mirakl API to get shippingFees for every items in the cart
-    val shippingFees = MiraklClient.getShippingFeesByOffersAndShippingType(shippingZoneCode, offerIdsAndQuantity)
+      // call Mirakl API to get shippingFees for every items in the cart
+      val shippingFees = MiraklClient.getShippingFeesByOffersAndShippingType(shippingZoneCode, offerIdsAndQuantity)
 
-    shippingFees.flatMap { fee =>
-      val externalOfferId = fee.offerId.toString
-      val externalCode = new ExternalCode(ExternalProvider.MIRAKL, externalOfferId)
+      shippingFees.flatMap { fee =>
+        val externalOfferId = fee.offerId.toString
+        val externalCode = new ExternalCode(ExternalProvider.MIRAKL, externalOfferId)
 
-      cart.cartItems.find { cartItem =>
-        cartItem.externalCodes.find { externalCode =>
-          externalCode.provider == ExternalProvider.MIRAKL && externalCode.code == externalOfferId
-        }.isDefined
-      }.map { cartItem =>
-        val rate = rateHandler.findByCurrencyCode(fee.shopCurrencyIsoCode)
-        val multiplyFactorToConvertToCents = rate.get.currencyFractionDigits
-        val factor = 10 ^ multiplyFactorToConvertToCents
-        val shippingPrice = (fee.lineShippingPrice * factor).toLongExact
-        (externalCode, createShippingData(address, externalCode, cartItem.id, fee.shippingTypeCode, shippingPrice, fee.shopCurrencyIsoCode))
-      }
-    }.groupBy(_._1).mapValues(_.map(_._2)).map { keyValue : (ExternalCode, List[ShippingData]) =>
-      new ExternalShippingDataList(keyValue._1, keyValue._2)
-    }.toList
+        cart.cartItems.find { cartItem =>
+          cartItem.externalCodes.find { externalCode =>
+            externalCode.provider == ExternalProvider.MIRAKL && externalCode.code == externalOfferId
+          }.isDefined
+        }.map { cartItem =>
+          val rate = rateHandler.findByCurrencyCode(fee.shopCurrencyIsoCode)
+          val multiplyFactorToConvertToCents = rate.get.currencyFractionDigits
+          val factor = 10 ^ multiplyFactorToConvertToCents
+          val shippingPrice = (fee.lineShippingPrice * factor).toLongExact
+          (externalCode, createShippingData(address, externalCode, cartItem.id, fee.shippingTypeCode, shippingPrice, fee.shopCurrencyIsoCode))
+        }
+      }.groupBy(_._1).mapValues(_.map(_._2)).map { keyValue: (ExternalCode, List[ShippingData]) =>
+        new ExternalShippingDataList(keyValue._1, keyValue._2)
+      }.toList
+    }
+    else Nil
   }
 
   protected def createShippingData(address: AccountAddress, miraklCode: ExternalCode, cartItemId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
@@ -201,10 +204,13 @@ class MiraklHandlerImpl extends MiraklHandler {
         )
       }
     }.flatten
-    val shippingZoneCode = getShippingZoneCode(shippingAddr)
-    val order = new OrderBean(boCart.transactionUuid.getOrElse(""), customer, offers.toArray, shippingZoneCode)
-    val orderId = MiraklClient.createOrder(order)
-    Some(orderId)
+    if (!offers.isEmpty) {
+      val shippingZoneCode = getShippingZoneCode(shippingAddr)
+      val order = new OrderBean(boCart.transactionUuid.getOrElse(""), customer, offers.toArray, shippingZoneCode)
+      val orderId = MiraklClient.createOrder(order)
+      Some(orderId)
+    }
+    else None
   }
 
   /**
