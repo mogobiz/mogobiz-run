@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.mogobiz.pay.common._
 import com.mogobiz.pay.exceptions.Exceptions.CountryDoesNotExistException
-import com.mogobiz.pay.model.Mogopay._
+import com.mogobiz.pay.model._
 import com.mogobiz.run.es._
 import com.mogobiz.run.model._
 import com.mogobiz.pay.config.MogopayHandlers.handlers.accountHandler
@@ -30,7 +30,7 @@ trait MiraklHandler {
 
   //passé privé pour l'instant  def getShippingZoneCode(shippingAddress: AccountAddress): String
 
-  def createOrder(boCart: BOCart, currency: Currency, accountId: Document, shippingAddr: AccountAddress, selectShippingCart: SelectShippingCart): Option[String]
+  def createOrder(boCart: BOCart, currency: Currency, accountId: Mogopay.Document, shippingAddr: AccountAddress, selectShippingCart: SelectShippingCart): Option[String]
 
   /**
    * valide une commande auprès de Mirakl
@@ -50,7 +50,7 @@ class MiraklHandlerUndef extends MiraklHandler {
 
   def shippingPrices(cart: Cart, address: AccountAddress): List[ExternalShippingDataList] = Nil
 
-  def createOrder(boCart: BOCart, currency: Currency, accountId: Document, shippingAddr: AccountAddress, selectShippingCart: SelectShippingCart) = None
+  def createOrder(boCart: BOCart, currency: Currency, accountId: Mogopay.Document, shippingAddr: AccountAddress, selectShippingCart: SelectShippingCart) = None
 
   /**
    * valide une commande auprès de Mirakl
@@ -132,7 +132,7 @@ class MiraklHandlerImpl extends MiraklHandler {
   /**
    * Création d'une commande coté Mirakl
    */
-  def createOrder(boCart: BOCart, currency: Currency, accountId: Document, shippingAddr: AccountAddress, selectShippingCart: SelectShippingCart): Option[String] = {
+  def createOrder(boCart: BOCart, currency: Currency, accountId: Mogopay.Document, shippingAddr: AccountAddress, selectShippingCart: SelectShippingCart): Option[String] = {
     val account: Account = accountHandler.load(accountId).get
 
     val billAddr = account.address.get

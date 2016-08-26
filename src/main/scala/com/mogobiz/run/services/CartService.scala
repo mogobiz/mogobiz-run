@@ -14,7 +14,7 @@ import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
-import com.mogobiz.pay.model.Mogopay.{ ShippingCart, ShippingData }
+import com.mogobiz.pay.model.{ ShippingCart, ShippingData }
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.session.Session
 import spray.http.{ HttpCookie, StatusCodes }

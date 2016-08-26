@@ -10,7 +10,7 @@ import akka.actor.Props
 import com.mogobiz.es.EsClient.{ multiSearchRaw }
 import com.mogobiz.es.{ EsClient, _ }
 import com.mogobiz.json.{ JacksonConverter, JsonUtil }
-import com.mogobiz.pay.model.Mogopay.Account
+import com.mogobiz.pay.model.Account
 import com.mogobiz.run.actors.EsUpdateActor
 import com.mogobiz.run.actors.EsUpdateActor.{ ProductNotationsUpdateRequest, StockUpdateRequest }
 import com.mogobiz.run.config.Settings

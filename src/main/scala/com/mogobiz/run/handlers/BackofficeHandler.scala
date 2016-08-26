@@ -8,11 +8,11 @@ import java.util.UUID
 
 import akka.actor.ActorSystem
 import com.mogobiz.es.{EsClient, _}
-import com.mogobiz.json.{JacksonConverter, JsonUtil}
+import com.mogobiz.json.{JsonUtil}
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.handlers.shipping.EasyPostHandler
-import com.mogobiz.pay.model.Mogopay._
+import com.mogobiz.pay.model.{Account, RoleName}
 import com.mogobiz.run.config
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.es._

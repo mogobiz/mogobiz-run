@@ -13,7 +13,7 @@ import com.mogobiz.json.JacksonConverter
 import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay, _}
 import com.mogobiz.pay.config.MogopayHandlers
 import com.mogobiz.pay.model.Mogopay
-import com.mogobiz.pay.model.Mogopay.{SelectShippingCart, ShippingCart, ShippingData, AccountAddress}
+import com.mogobiz.pay.model.{SelectShippingCart, ShippingCart, ShippingData, AccountAddress}
 import com.mogobiz.run.actors.EsUpdateActor
 import com.mogobiz.run.actors.EsUpdateActor.{StockUpdateRequest, ProductStockAvailabilityUpdateRequest}
 import com.mogobiz.run.config.MogobizHandlers.handlers._

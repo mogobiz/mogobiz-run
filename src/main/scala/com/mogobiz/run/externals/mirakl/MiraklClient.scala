@@ -4,7 +4,7 @@ import java.util.{ Date, Locale, UUID }
 
 import akka.actor.ActorSystem
 import akka.event.Logging
-import com.mogobiz.pay.model.Mogopay.IdGenerator
+import com.mogobiz.pay.model.IdGenerator
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.externals.mirakl.Mirakl._
 import com.mogobiz.run.externals.mirakl.Mirakl.PaymentStatus.PaymentStatus
