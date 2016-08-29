@@ -35,12 +35,12 @@ trait MiraklHandler {
   /**
    * valide une commande auprès de Mirakl
    */
-  def validateOrder(cart: StoreCart, boCart: BOCart)
+  def validateOrder(boCart: BOCart)
 
   /**
    * Annule une commande auprès de Mirakl
    */
-  def cancelOrder(boCart: BOCart, customerId: String)
+  def cancelOrder(boCart: BOCart)
 
   def refundOrder(cart: StoreCart, boCart: BOCart)
 
@@ -55,12 +55,12 @@ class MiraklHandlerUndef extends MiraklHandler {
   /**
    * valide une commande auprès de Mirakl
    */
-  def validateOrder(cart: StoreCart, boCart: BOCart) = {}
+  def validateOrder(boCart: BOCart) = {}
 
   /**
    * Annule une commande auprès de Mirakl
    */
-  def cancelOrder(boCart: BOCart, customerId: String) = {}
+  def cancelOrder(boCart: BOCart) = {}
 
   def refundOrder(cart: StoreCart, boCart: BOCart) = {}
 }
@@ -216,25 +216,18 @@ class MiraklHandlerImpl extends MiraklHandler {
   /**
    * valide une commande auprès de Mirakl
    */
-  def validateOrder(cart: StoreCart, boCart: BOCart) = {
-    val orderId = boCart.externalOrderId
-    if (orderId.isDefined) {
-      //TODO il faut reprendre le prix du BOCart
-      //val externalCartItems = cart.cartItems.filter(item => item.externalOfferId.isDefined)
-      var amount = 0l; //TODO faire un foldLeft ou récup amount depuis boCart ou autre
-      //externalCartItems.foreach(it => amount = amount + computeMiraklPrices(cart, it))
-
-      MiraklClient.validateOrder(amount, boCart.currencyCode, orderId.get, cart.userUuid.get, Some(boCart.lastUpdated.toDate), boCart.transactionUuid)
+  def validateOrder(boCart: BOCart) = {
+    boCart.externalOrderId.map { orderId: String =>
+      MiraklClient.validateOrder(boCart.transactionUuid.getOrElse(""))
     }
   }
 
   /**
    * Annule une commande auprès de Mirakl
    */
-  def cancelOrder(boCart: BOCart, customerId: String) = {
-    val orderId = boCart.externalOrderId
-    if (orderId.isDefined) {
-      MiraklClient.cancelOrder(orderId.get, customerId)
+  def cancelOrder(boCart: BOCart) = {
+    boCart.externalOrderId.map { orderId: String =>
+      MiraklClient.cancelOrder(boCart.transactionUuid.getOrElse(""))
     }
   }
 

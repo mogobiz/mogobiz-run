@@ -598,6 +598,9 @@ class CartHandler extends StrictLogging {
         .load(transactionCart.boCartUuid.get)
         .map {
           boCart =>
+            // Traitement MIRAKL
+            miraklHandler.validateOrder(boCart)
+
             val transactionBoCart =
               boCart.copy(transactionUuid = Some(params.transactionUuid), status = TransactionStatus.COMPLETE)
             BOCartDao.updateStatusAndExternalCode(transactionBoCart)
@@ -935,6 +938,9 @@ class CartHandler extends StrictLogging {
     val cart = cartAndChanges.cart
     cart.boCartUuid.map { boCartUuid =>
       val newBoCart = BOCartDao.load(cart.boCartUuid.get).map { boCart =>
+        // Traitement MIRAKL
+        miraklHandler.cancelOrder(boCart)
+
         // Mise à jour du statut
         val newBoCart = boCart.copy(status = TransactionStatus.FAILED)
         BOCartDao.updateStatusAndExternalCode(newBoCart)
@@ -1845,7 +1851,8 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
            rs.get(rn.price),
            TransactionStatus.withName(rs.get(rn.status)),
            rs.get(rn.transactionUuid),
-           rs.get(rn.uuid))
+           rs.get(rn.uuid),
+           rs.get(rn.externalOrderId))
 
   def load(uuid: String)(implicit session: DBSession): Option[BOCart] = {
     val t = BOCartDao.syntax("t")

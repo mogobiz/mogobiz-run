@@ -1,17 +1,15 @@
 package com.mogobiz.run.externals.mirakl
 
+import java.util.regex.Pattern
 import java.util.{ Date, Locale, UUID }
 
-import akka.actor.ActorSystem
 import akka.event.Logging
-import com.mogobiz.pay.model.IdGenerator
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.externals.mirakl.Mirakl._
 import com.mogobiz.run.externals.mirakl.Mirakl.PaymentStatus.PaymentStatus
-import com.mogobiz.run.externals.mirakl.Mirakl.PaymentWorkflow.PaymentWorkflow
+import com.mogobiz.run.externals.mirakl.MiraklApi.ApiCode
 import com.mogobiz.run.externals.mirakl.MiraklApi.ApiCode.ApiCode
 import com.mogobiz.run.externals.mirakl.exception._
-import com.mogobiz.run.utils.Paging
 import com.mogobiz.system.ActorSystemLocator
 import org.json4s.native.JsonParser
 import org.slf4j.LoggerFactory
@@ -21,7 +19,6 @@ import spray.http.{ HttpRequest, _ }
 import scala.collection.immutable.HashMap
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Future }
-import scala.util.{ Failure, Success }
 
 object MiraklClient {
   import org.json4s.JsonAST.JString
@@ -201,27 +198,21 @@ object MiraklClient {
     fees.flatten.flatten
   }
 
-  def validateOrder(amount: Long, currencyCode: String, orderId: String, customerId: String, transactionDate: Option[Date], transactionNumber: Option[String]): Boolean = {
-    import com.mogobiz.run.implicits.JsonSupport._
+  def validateOrder(commercialId: String): Boolean = {
     val pipeline = basicPipeline
 
-    //val body = TPL_PA01(amount, currencyCode, orderId, customerId, PaymentStatus.OK)
-    val body = OrderPaymentsDto(Array(OrderPayment(orderId, customerId, PaymentStatus.OK, Some(amount), Some(currencyCode), transactionDate, transactionNumber)))
     val responseFuture = pipeline {
-      Put(MiraklApi.paymentDebitUrl, body)
+      Put(MiraklApi.validateOrderUrl(commercialId))
     }
     val response = Await.result(responseFuture, TIMEOUT)
     response.status == StatusCodes.NoContent
   }
 
-  def cancelOrder(orderId: String, customerId: String, amount: Option[BigDecimal] = None, currencyCode: Option[String] = None): Boolean = {
-    import com.mogobiz.run.implicits.JsonSupport._
+  def cancelOrder(commercialId: String): Boolean = {
     val pipeline = basicPipeline
 
-    //val body = TPL_PA01(amount, currencyCode, orderId, customerId, PaymentStatus.REFUSED)
-    val body = OrderPaymentsDto(Array(OrderPayment(orderId, customerId, PaymentStatus.REFUSED, amount, currencyCode)))
     val responseFuture = pipeline {
-      Put(MiraklApi.paymentDebitUrl, body)
+      Put(MiraklApi.cancelOrderUrl(commercialId))
     }
     val response = Await.result(responseFuture, TIMEOUT)
     response.status == StatusCodes.NoContent
@@ -376,6 +367,8 @@ object MiraklApi {
 
   val log = LoggerFactory.getLogger(getClass)
 
+  val PARAM_COMMERCIAL_ID = "{{COMMERCIAL_ID}}"
+
   object ApiCode extends Enumeration {
     type ApiCode = Value
 
@@ -386,6 +379,8 @@ object MiraklApi {
     val SH01 = Value("SH01")
     val SH02 = Value("SH02")
     val OR01 = Value("OR01")
+    val OR02 = Value("OR02")
+    val OR03 = Value("OR03")
     val OR11 = Value("OR11")
     val P11 = Value("P11")
     val PA01 = Value("PA01")
@@ -401,15 +396,28 @@ object MiraklApi {
     (ApiCode.SH01 -> "/api/shipping/fees?shipping_zone_code=SHIP_ZONE_CODE&offers=OFFER_IDS_AND_QUANTITY"),
     (ApiCode.SH02 -> "/api/shipping/rates"),
     (ApiCode.OR01 -> "/api/orders"),
+    (ApiCode.OR02 -> ("/api/orders/valid/" + PARAM_COMMERCIAL_ID)),
+    (ApiCode.OR03 -> ("/api/orders/invalid/" + PARAM_COMMERCIAL_ID)),
     (ApiCode.OR11 -> "/api/orders"),
     (ApiCode.PA01 -> "/api/payment/debit"),
     (ApiCode.PA02 -> "/api/payment/refund")
 
   )
 
-  private def getApiEndpointUrl(apiCode: ApiCode): String = {
-    MiraklClient.url + apiEndpoints(apiCode)
+  private def getApiEndpointUrl(apiCode: ApiCode, params: List[(String, String)] = Nil): String = {
+    def applyParams(url: String, params: List[(String, String)]): String = {
+      if (params.isEmpty) url
+      else {
+        val keyValue = params.head
+        applyParams(url.replaceAll(Pattern.quote(keyValue._1), keyValue._2), params.tail)
+      }
+    }
+
+    applyParams(MiraklClient.url + apiEndpoints(apiCode), params)
   }
+
+  def validateOrderUrl(commercialId: String) = getApiEndpointUrl(ApiCode.OR02, List(PARAM_COMMERCIAL_ID -> commercialId))
+  def cancelOrderUrl(commercialId: String) = getApiEndpointUrl(ApiCode.OR03, List(PARAM_COMMERCIAL_ID -> commercialId))
 
   def listShops() = MiraklApi.getApiEndpointUrl(ApiCode.S20)
 
