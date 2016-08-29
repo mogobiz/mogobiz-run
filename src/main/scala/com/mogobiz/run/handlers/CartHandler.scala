@@ -1867,7 +1867,7 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
         .set(
             BOCartDao.column.status          -> boCart.status.toString(),
             BOCartDao.column.transactionUuid -> boCart.transactionUuid,
-            //BOCartDao.column.externalOrderId -> boCart.externalOrderId,
+            BOCartDao.column.externalOrderId -> boCart.externalOrderId,
             BOCartDao.column.lastUpdated     -> DateTime.now
         )
         .where
