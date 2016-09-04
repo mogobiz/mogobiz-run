@@ -12,7 +12,7 @@ import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.run.config.Settings
-import com.mogobiz.pay.model.Mogopay.Account
+import com.mogobiz.pay.model.Account
 import com.mogobiz.run.json.{JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer}
 import com.mogobiz.run.model.ES.{BOCart, BOCartItem, BOProduct}
 import com.mogobiz.run.model.Mogobiz

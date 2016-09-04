@@ -13,7 +13,7 @@ import com.mogobiz.json.JacksonConverter
 import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay, _}
 import com.mogobiz.pay.config.MogopayHandlers
 import com.mogobiz.pay.model.Mogopay
-import com.mogobiz.pay.model.Mogopay.{ ShippingCart, ShippingData, AccountAddress }
+import com.mogobiz.pay.model.{SelectShippingCart, ShippingCart, ShippingData, AccountAddress}
 import com.mogobiz.run.actors.EsUpdateActor
 import com.mogobiz.run.actors.EsUpdateActor.{StockUpdateRequest, ProductStockAvailabilityUpdateRequest}
 import com.mogobiz.run.config.MogobizHandlers.handlers._
@@ -433,11 +433,11 @@ class CartHandler extends StrictLogging {
   def queryCartPaymentPrepare(storeCode: String,
                               uuid: String,
                               params: PrepareTransactionParameters,
-                              accountId: Option[Mogopay.Document]): Map[String, Any] = {
+                              accountId: Mogopay.Document): Map[String, Any] = {
     val locale   = buildLocal(params.lang, params.country)
     val currency = queryCurrency(storeCode, params.currency)
 
-    val cart = initCart(storeCode, uuid, accountId, true, params.country, params.state)
+    val cart = initCart(storeCode, uuid, Some(accountId), true, params.country, params.state)
 
     val company = CompanyDao.findByCode(cart.storeCode)
 
@@ -449,11 +449,7 @@ class CartHandler extends StrictLogging {
       val cartWithPrice        = computeStoreCart(deleteResult.cart, params.country, params.state)
       val cartPriceWithChanges = CartWithPricesAndChanges(cartWithPrice, deleteResult.changes)
 
-      // Traitement MIRAKL
-      val shippingAddress = JacksonConverter.deserialize[AccountAddress](params.shippingAddress)
-      val miraklOrderId = miraklHandler.createOrder(cartPriceWithChanges.cart, accountId, locale, currency, params.country, params.state, shippingAddress)
-
-      createBOCart(cartPriceWithChanges, currency, params.buyer, company.get, params.shippingAddress, miraklOrderId)
+      createBOCart(cartPriceWithChanges, currency, params.buyer, company.get, params.shippingAddress)
     }
 
     val updatedCartPrice = runInTransaction(transactionalBloc, { cartPrice: StoreCartWithPrice =>
@@ -535,9 +531,10 @@ class CartHandler extends StrictLogging {
   def queryCartPaymentLinkToTransaction(storeCode: String,
                                         uuid: String,
                                         params: CommitTransactionParameters,
-                                        accountId: Option[Mogopay.Document]): Unit = {
+                                        accountId: Mogopay.Document,
+                                        selectShippingCart : SelectShippingCart): Unit = {
 
-    val cart = initCart(storeCode, uuid, accountId, false, None, None)
+    val cart = initCart(storeCode, uuid, Some(accountId), false, None, None)
 
     runInTransaction({ implicit session: DBSession =>
       cart.boCartUuid.map {
@@ -545,9 +542,21 @@ class CartHandler extends StrictLogging {
           BOCartDao
             .load(boCartUuid)
             .map { boCart =>
+              val currency = queryCurrency(storeCode, Some(boCart.currencyCode))
+              val shippingAddress = BOCartDao.getShippingAddress(boCart).getOrElse(
+                throw new IllegalArgumentException("BOcart must have a shipping address")
+              )
+
               val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid))
-              BOCartDao.updateStatus(transactionBoCart)
-              val newChanges = CartChanges(boCartChange = Some(boCart))
+
+              // Traitement MIRAKL
+              val miraklOrderId = miraklHandler.createOrder(transactionBoCart, currency, accountId, shippingAddress, selectShippingCart)
+
+              val transactionBoCartWithExternalOrderId = transactionBoCart.copy(externalOrderId = miraklOrderId)
+
+              BOCartDao.updateStatusAndExternalCode(transactionBoCartWithExternalOrderId)
+
+              val newChanges = CartChanges(boCartChange = Some(transactionBoCartWithExternalOrderId))
               CartWithChanges(cart = cart, changes = newChanges)
             }
             .getOrElse(throw new IllegalArgumentException(
@@ -573,8 +582,6 @@ class CartHandler extends StrictLogging {
                              uuid: String,
                              params: CommitTransactionParameters,
                              accountId: Option[Mogopay.Document]): Unit = {
-    val locale = buildLocal(params.lang, params.country)
-
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
 
     Try {
@@ -591,9 +598,12 @@ class CartHandler extends StrictLogging {
         .load(transactionCart.boCartUuid.get)
         .map {
           boCart =>
+            // Traitement MIRAKL
+            miraklHandler.validateOrder(boCart)
+
             val transactionBoCart =
               boCart.copy(transactionUuid = Some(params.transactionUuid), status = TransactionStatus.COMPLETE)
-            BOCartDao.updateStatus(transactionBoCart)
+            BOCartDao.updateStatusAndExternalCode(transactionBoCart)
 
             val saleChanges = cart.cartItems.map { cartItem =>
               val productAndSku = ProductDao.getProductAndSku(transactionCart.storeCode, cartItem.skuId)
@@ -676,8 +686,7 @@ class CartHandler extends StrictLogging {
                              rate: Currency,
                              buyer: String,
                              company: Company,
-                             shippingAddress: String,
-                             externalOrderId: Option[String])(implicit session: DBSession): CartWithPricesAndChanges = {
+                             shippingAddress: String)(implicit session: DBSession): CartWithPricesAndChanges = {
     val cartWithPrice = cartWithChanges.cart
     val storeCode     = cartWithPrice.storeCart.storeCode
     val boCart        = BOCartDao.create(buyer, company.id, rate, cartWithPrice.finalPrice)
@@ -750,7 +759,7 @@ class CartHandler extends StrictLogging {
       cartItemWithPrice.copy(cartItem = newCartItem)
     }
 
-    val newCart = cartWithPrice.storeCart.copy(boCartUuid = Some(boCart.uuid), externalOrderId = externalOrderId, cartItems = newCartItems.map {
+    val newCart = cartWithPrice.storeCart.copy(boCartUuid = Some(boCart.uuid), cartItems = newCartItems.map {
       _.cartItem
     })
     val newCartWithPrice = cartWithPrice.copy(storeCart = newCart)
@@ -929,9 +938,12 @@ class CartHandler extends StrictLogging {
     val cart = cartAndChanges.cart
     cart.boCartUuid.map { boCartUuid =>
       val newBoCart = BOCartDao.load(cart.boCartUuid.get).map { boCart =>
+        // Traitement MIRAKL
+        miraklHandler.cancelOrder(boCart)
+
         // Mise à jour du statut
         val newBoCart = boCart.copy(status = TransactionStatus.FAILED)
-        BOCartDao.updateStatus(newBoCart)
+        BOCartDao.updateStatusAndExternalCode(newBoCart)
         newBoCart
       }
       val newChanges = cartAndChanges.changes.copy(boCartChange = newBoCart)
@@ -1839,7 +1851,8 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
            rs.get(rn.price),
            TransactionStatus.withName(rs.get(rn.status)),
            rs.get(rn.transactionUuid),
-           rs.get(rn.uuid))
+           rs.get(rn.uuid),
+           rs.get(rn.externalOrderId))
 
   def load(uuid: String)(implicit session: DBSession): Option[BOCart] = {
     val t = BOCartDao.syntax("t")
@@ -1855,12 +1868,13 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
     }.map(BOCartDao(t.resultName)).single().apply()
   }
 
-  def updateStatus(boCart: BOCart)(implicit session: DBSession): Unit = {
+  def updateStatusAndExternalCode(boCart: BOCart)(implicit session: DBSession): Unit = {
     withSQL {
       update(BOCartDao)
         .set(
             BOCartDao.column.status          -> boCart.status.toString(),
             BOCartDao.column.transactionUuid -> boCart.transactionUuid,
+            BOCartDao.column.externalOrderId -> boCart.externalOrderId,
             BOCartDao.column.lastUpdated     -> DateTime.now
         )
         .where
@@ -1913,6 +1927,13 @@ object BOCartDao extends SQLSyntaxSupport[BOCart] with BoService {
     }.update.apply()
   }
 
+  def getShippingAddress(boCart: BOCart)(implicit session: DBSession) : Option[AccountAddress] = {
+    val list = BOCartItemDao.findByBOCart(boCart).flatMap{ boCartItem : BOCartItem =>
+      BODeliveryDao.findByBOCartItem(boCartItem)
+    }.flatMap(_.extra)
+    if (list.isEmpty) None
+    else Some(JacksonConverter.deserialize[AccountAddress](list.head))
+  }
 }
 
 object BODeliveryDao extends SQLSyntaxSupport[BODelivery] with BoService {
@@ -2121,7 +2142,8 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
                    rs.get(rn.dateCreated),
                    rs.get(rn.lastUpdated),
                    rs.get(rn.uuid),
-                   rs.get(rn.url))
+                   rs.get(rn.url),
+                   rs.get(rn.externalCode))
 
   def create(sku: Mogobiz.Sku,
              cartItem: StoreCartItemWithPrice,
@@ -2145,8 +2167,9 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
         if (bODelivery.isDefined) Some(bODelivery.get.id) else None,
         DateTime.now,
         DateTime.now,
-        UUID.randomUUID().toString,
-        cartItem.cartItem.productUrl
+        cartItem.cartItem.id,
+        cartItem.cartItem.productUrl,
+        ExternalCode.toString(cartItem.cartItem.externalCodes)
     )
 
     applyUpdate {
@@ -2170,7 +2193,8 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
             BOCartItemDao.column.dateCreated   -> newBOCartItem.dateCreated,
             BOCartItemDao.column.lastUpdated   -> newBOCartItem.lastUpdated,
             BOCartItemDao.column.uuid          -> newBOCartItem.uuid,
-            BOCartItemDao.column.url           -> newBOCartItem.url
+            BOCartItemDao.column.url           -> newBOCartItem.url,
+            BOCartItemDao.column.externalCode  -> newBOCartItem.externalCode
         )
     }
 

@@ -251,7 +251,7 @@ object RequestParameters {
                                           shippingAddress: String,
                                           lang: String = "_all")
 
-  case class CommitTransactionParameters(country: Option[String], transactionUuid: String, lang: String = "_all")
+  case class CommitTransactionParameters(transactionUuid: String, lang: String = "_all")
 
   case class CancelTransactionParameters(currency: Option[String],
                                          country: Option[String],

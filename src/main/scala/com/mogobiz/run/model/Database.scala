@@ -104,15 +104,7 @@ object Mogobiz {
       coupons: List[InnerCoupon],
       nbSales: Long) {
 
-    val externalCodes: List[ExternalCode] = {
-      externalCode.map { externalCode =>
-        externalCode.split(",").toList.map { ec =>
-          val providerAndCode = ec.split("::")
-          if (providerAndCode.length == 2) Some(ExternalCode(providerAndCode(0), providerAndCode(1)))
-          else None
-        }.flatten
-      }.getOrElse(Nil)
-    }
+    val externalCodes: List[ExternalCode] = ExternalCode.fromString(externalCode)
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -241,7 +233,11 @@ object Mogobiz {
     dateCreated: DateTime,
     lastUpdated: DateTime,
     uuid: String,
-    url: String)
+    url: String,
+    externalCode: Option[String]) {
+
+    val externalCodes: List[ExternalCode] = ExternalCode.fromString(externalCode)
+  }
 
   case class BODelivery(id: Long,
     bOCartFk: Long,
