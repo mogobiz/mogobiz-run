@@ -201,14 +201,7 @@ class CartService extends Directives with DefaultComplete {
             StatusCodes.Forbidden -> Map('error -> "Not logged in")
           }
           case Some(accountId) => {
-            session.sessionData.selectShippingCart match {
-              case None => complete {
-                StatusCodes.Forbidden -> Map('error -> "No selected shipping price")
-              }
-              case Some(selectShippingCart) => {
-                handleCall(cartHandler.queryCartPaymentLinkToTransaction(storeCode, uuid, params, accountId, selectShippingCart), (res: Unit) => complete(StatusCodes.OK))
-              }
-            }
+              handleCall(cartHandler.queryCartPaymentLinkToTransaction(storeCode, uuid, params, accountId), (res: Unit) => complete(StatusCodes.OK))
           }
         }
       }
@@ -217,9 +210,22 @@ class CartService extends Directives with DefaultComplete {
 
   def paymentCommit(storeCode: String, uuid: String) = path("commit") {
     entity(as[CommitTransactionParameters]) { params =>
-      optionalSession { optSession =>
-        val accountId = optSession.flatMap { session: Session => session.sessionData.accountId }
-        handleCall(cartHandler.queryCartPaymentCommit(storeCode, uuid, params, accountId), (res: Unit) => complete(StatusCodes.OK))
+      session { session =>
+        session.sessionData.accountId.map(_.toString) match {
+          case None => complete {
+            StatusCodes.Forbidden -> Map('error -> "Not logged in")
+          }
+          case Some(accountId) => {
+            session.sessionData.selectShippingCart match {
+              case None => complete {
+                StatusCodes.Forbidden -> Map('error -> "No selected shipping price")
+              }
+              case Some(selectShippingCart) => {
+                handleCall(cartHandler.queryCartPaymentCommit(storeCode, uuid, params, accountId, selectShippingCart), (res: Unit) => complete(StatusCodes.OK))
+              }
+            }
+          }
+        }
       }
     }
   }

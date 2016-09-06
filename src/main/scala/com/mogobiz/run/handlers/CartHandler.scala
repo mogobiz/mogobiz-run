@@ -531,8 +531,7 @@ class CartHandler extends StrictLogging {
   def queryCartPaymentLinkToTransaction(storeCode: String,
                                         uuid: String,
                                         params: CommitTransactionParameters,
-                                        accountId: Mogopay.Document,
-                                        selectShippingCart : SelectShippingCart): Unit = {
+                                        accountId: Mogopay.Document): Unit = {
 
     val cart = initCart(storeCode, uuid, Some(accountId), false, None, None)
 
@@ -549,14 +548,9 @@ class CartHandler extends StrictLogging {
 
               val transactionBoCart = boCart.copy(transactionUuid = Some(params.transactionUuid))
 
-              // Traitement MIRAKL
-              val miraklOrderId = miraklHandler.createOrder(transactionBoCart, currency, accountId, shippingAddress, selectShippingCart)
+              BOCartDao.updateStatusAndExternalCode(transactionBoCart)
 
-              val transactionBoCartWithExternalOrderId = transactionBoCart.copy(externalOrderId = miraklOrderId)
-
-              BOCartDao.updateStatusAndExternalCode(transactionBoCartWithExternalOrderId)
-
-              val newChanges = CartChanges(boCartChange = Some(transactionBoCartWithExternalOrderId))
+              val newChanges = CartChanges(boCartChange = Some(transactionBoCart))
               CartWithChanges(cart = cart, changes = newChanges)
             }
             .getOrElse(throw new IllegalArgumentException(
@@ -581,8 +575,9 @@ class CartHandler extends StrictLogging {
   def queryCartPaymentCommit(storeCode: String,
                              uuid: String,
                              params: CommitTransactionParameters,
-                             accountId: Option[Mogopay.Document]): Unit = {
-    val cart = initCart(storeCode, uuid, accountId, false, None, None)
+                             accountId: Mogopay.Document,
+                             selectShippingCart : SelectShippingCart): Unit = {
+    val cart = initCart(storeCode, uuid, Some(accountId), false, None, None)
 
     Try {
       val productIds = cart.cartItems.map { item =>
@@ -598,11 +593,16 @@ class CartHandler extends StrictLogging {
         .load(transactionCart.boCartUuid.get)
         .map {
           boCart =>
+            val currency = queryCurrency(storeCode, Some(boCart.currencyCode))
+            val shippingAddress = BOCartDao.getShippingAddress(boCart).getOrElse(
+              throw new IllegalArgumentException("BOcart must have a shipping address")
+            )
+
             // Traitement MIRAKL
-            miraklHandler.validateOrder(boCart)
+            val miraklOrderId = miraklHandler.createOrder(boCart, currency, accountId, shippingAddress, selectShippingCart)
 
             val transactionBoCart =
-              boCart.copy(transactionUuid = Some(params.transactionUuid), status = TransactionStatus.COMPLETE)
+              boCart.copy(transactionUuid = Some(params.transactionUuid), status = TransactionStatus.COMPLETE, externalOrderId = miraklOrderId)
             BOCartDao.updateStatusAndExternalCode(transactionBoCart)
 
             val saleChanges = cart.cartItems.map { cartItem =>
@@ -611,7 +611,7 @@ class CartHandler extends StrictLogging {
               val sku           = productAndSku.get._2
               salesHandler.incrementSales(transactionCart.storeCode, product, sku, cartItem.quantity)
             }
-            accountId.map(Dashboard.indexCart(storeCode, boCartToESBOCart(storeCode, transactionBoCart), _))
+            Dashboard.indexCart(storeCode, boCartToESBOCart(storeCode, transactionBoCart), accountId)
             val newChanges = CartChanges(boCartChange = Some(transactionBoCart), saleChanges = saleChanges)
             CartWithChanges(cart = transactionCart, changes = newChanges)
         }
@@ -938,9 +938,6 @@ class CartHandler extends StrictLogging {
     val cart = cartAndChanges.cart
     cart.boCartUuid.map { boCartUuid =>
       val newBoCart = BOCartDao.load(cart.boCartUuid.get).map { boCart =>
-        // Traitement MIRAKL
-        miraklHandler.cancelOrder(boCart)
-
         // Mise à jour du statut
         val newBoCart = boCart.copy(status = TransactionStatus.FAILED)
         BOCartDao.updateStatusAndExternalCode(newBoCart)
