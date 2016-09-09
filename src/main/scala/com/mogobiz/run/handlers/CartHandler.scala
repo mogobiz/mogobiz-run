@@ -205,7 +205,7 @@ class CartHandler extends StrictLogging {
                                    product.shipping,
                                    None,
                                    None,
-                                   sku.externalCodes)
+                                   sku.getExternalCode)
 
       val invalidationResult = invalidateCart(cart)
       invalidationResult.copy(cart = addCartItemIntoCart(invalidationResult.cart, cartItem))
@@ -502,8 +502,8 @@ class CartHandler extends StrictLogging {
 
     val externalShippingPrices = addressAndList._1.map { addr =>
       miraklHandler.shippingPrices(cart, addr)
-    }.getOrElse(Nil)
-    ShippingCart(addressAndList._2.toList, externalShippingPrices)
+    }.getOrElse(Map())
+    ShippingCart(addressAndList._2, externalShippingPrices)
   }
 
   protected def computeShippingRulePrice(storeCode: String,
@@ -1392,7 +1392,7 @@ class CartHandler extends StrictLogging {
                       registeredCartItemsPay,
                       shippingPay,
                       cartItem.downloadableLink.getOrElse(""),
-                      cartItem.externalCodes,
+                      cartItem.externalCode,
                       customCartItem)
     }
     val couponsPay = cartWithPrice.coupons.map { couponWithData =>
@@ -2166,7 +2166,7 @@ object BOCartItemDao extends SQLSyntaxSupport[BOCartItem] with BoService {
         DateTime.now,
         cartItem.cartItem.id,
         cartItem.cartItem.productUrl,
-        ExternalCode.toString(cartItem.cartItem.externalCodes)
+        ExternalCode.toString(cartItem.cartItem.externalCode)
     )
 
     applyUpdate {

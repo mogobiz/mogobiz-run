@@ -2,9 +2,9 @@ package com.mogobiz.run.handlers
 
 import java.util.UUID
 
-import com.mogobiz.mirakl.CommonModel
-import com.mogobiz.mirakl.MiraklClient
-import com.mogobiz.mirakl.OrderModel._
+import com.mogobiz.mirakl.{CommonModel, MiraklClient}
+import com.mogobiz.mirakl.ShippingModel._
+import com.mogobiz.mirakl.OrderModel.{Offer => OrderOffer, _}
 import com.mogobiz.pay.common._
 import com.mogobiz.pay.exceptions.Exceptions.CountryDoesNotExistException
 import com.mogobiz.pay.model._
@@ -27,7 +27,7 @@ object MiraklHandler {
 
 trait MiraklHandler {
 
-  def shippingPrices(cart: Cart, address: AccountAddress): List[ExternalShippingDataList]
+  def shippingPrices(cart: Cart, address: AccountAddress): Map[String, ExternalShippingDataList]
 
   //passé privé pour l'instant  def getShippingZoneCode(shippingAddress: AccountAddress): String
 
@@ -37,77 +37,81 @@ trait MiraklHandler {
 
 class MiraklHandlerUndef extends MiraklHandler {
 
-  def shippingPrices(cart: Cart, address: AccountAddress): List[ExternalShippingDataList] = Nil
+  def shippingPrices(cart: Cart, address: AccountAddress): Map[String, ExternalShippingDataList] = Map()
 
   def createOrder(boCart: BOCart, currency: Currency, accountId: Mogopay.Document, shippingAddr: AccountAddress, selectShippingCart: SelectShippingCart) = None
 }
 
 class MiraklHandlerImpl extends MiraklHandler {
-  def shippingPrices(cart: Cart, address: AccountAddress): List[ExternalShippingDataList] = {
+  def shippingPrices(cart: Cart, address: AccountAddress): Map[String, ExternalShippingDataList] = {
     // get only Mirakl Items
-    val offerIdsAndQuantity: List[(Long, Int)] = cart.cartItems.flatMap(cartItem => {
-      cartItem.externalCodes.find(_.provider == ExternalProvider.MIRAKL).map { externalOfferId =>
-        (externalOfferId.code.toLong, cartItem.quantity)
-      }
-    }).toList
+    val miraklCartItems = cart.cartItems.filter{cartItem : CartItem => cartItem.isExternalItemFor(ExternalProvider.MIRAKL)}
 
-    if (!offerIdsAndQuantity.isEmpty) {
+    val offerIdsAndQuantity: List[(Long, Int)] = miraklCartItems.map { cartItem =>
+      (cartItem.externalCode.get.code.toLong, cartItem.quantity)
+    }
+
+    val shopShippingFeesDto = if (!offerIdsAndQuantity.isEmpty) {
       // determine the shippingZoneCode from the shipping address
       val shippingZoneCode = getShippingZoneCode(address)
 
       // call Mirakl API to get shippingFees for every items in the cart
-      MiraklClient.getShopShippingsFees(shippingZoneCode, offerIdsAndQuantity).map { shopShippingFees =>
-        shopShippingFees.shops.map { shop =>
-          shop.offers.map { offer =>
-            val externalOfferId = offer.offer_id.toString
-            val externalCode = new ExternalCode(ExternalProvider.MIRAKL, externalOfferId)
+      MiraklClient.getShopShippingsFees(shippingZoneCode, offerIdsAndQuantity)
+    } else (None, None)
 
-            cart.cartItems.find { cartItem =>
-              cartItem.externalCodes.find { externalCode =>
-                externalCode.provider == ExternalProvider.MIRAKL && externalCode.code == externalOfferId
-              }.isDefined
-            }.map { cartItem =>
-              offer.shipping_types.map { shipping =>
-                val rate = rateHandler.findByCurrencyCode(shop.currency_iso_code)
-                val multiplyFactorToConvertToCents = rate.get.currencyFractionDigits
-                val factor = 10 ^ multiplyFactorToConvertToCents
-                val shippingPrice = (shipping.line_shipping_price * factor).toLongExact
-                (externalCode, createShippingData(address, externalCode, cartItem.id, shipping.code, shippingPrice,shop.currency_iso_code))
-              }
-            }.getOrElse(Nil)
-          }.flatten
-        }.flatten.groupBy(_._1).mapValues(_.map(_._2)).map { keyValue: (ExternalCode, List[ShippingData]) =>
-          new ExternalShippingDataList(keyValue._1, keyValue._2)
-        }.toList
-      }.getOrElse(Nil)
+    val shippingDataById = miraklCartItems.map { cartItem =>
+      val externalCode = cartItem.externalCode.get
+      val externalOfferId = externalCode.code.toLong
+      val shippingPrices = shopShippingFeesDto._1.map { error =>
+        ExternalShippingDataList(Some(convertError(error)), Nil)
+      }.getOrElse {
+        shopShippingFeesDto._2.map { shopShippingFees =>
+          val shopAndOffer = shopShippingFees.shops.map { shop =>
+            val offer = shop.offers.find { offer =>
+              offer.offer_id == externalOfferId
+            }
+            (shop, offer)
+          }.find(_._2.isDefined).map { shopAndOffer => (shopAndOffer._1, shopAndOffer._2.get)}
+
+          shopAndOffer.map { shopAndOffer =>
+            val shop = shopAndOffer._1
+            val error = shop.error_code.map {convertError(_)}
+            val shippingPrices = shopAndOffer._2.shipping_types.map { shipping =>
+              val rate = rateHandler.findByCurrencyCode(shop.currency_iso_code)
+              val multiplyFactorToConvertToCents = rate.get.currencyFractionDigits
+              val factor = 10 ^ multiplyFactorToConvertToCents
+              val shippingPrice = (shipping.line_shipping_price * factor).toLongExact
+              ExternalShippingData(externalCode, createShippingData(address, shipping.code, shippingPrice, shop.currency_iso_code))
+            }
+            ExternalShippingDataList(error, shippingPrices)
+          }.getOrElse(ExternalShippingDataList(Some(ShippingPriceError.UNKNOWN), Nil))
+        }.getOrElse(ExternalShippingDataList(Some(ShippingPriceError.UNKNOWN), Nil))
+      }
+      (cartItem.id, shippingPrices)
     }
-    else Nil
+    Map(shippingDataById : _*)
   }
 
-  protected def createShippingData(address: AccountAddress, miraklCode: ExternalCode, cartItemId: String, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
-    var rate: Option[Rate] = rateHandler.findByCurrencyCode(currencyCode)
-    ShippingData(address, miraklCode.provider, miraklCode.code, shippingCode, shippingCode, shippingCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2, Some(cartItemId))
+  private def convertError(error: ShippingFeeErrorCode.ShippingFeeErrorCode): ShippingPriceError.ShippingPriceError = {
+    error match {
+      case ShippingFeeErrorCode.SHIPPING_ZONE_NOT_ALLOWED => ShippingPriceError.SHIPPING_ZONE_NOT_ALLOWED
+      case ShippingFeeErrorCode.SHIPPING_TYPE_NOT_ALLOWED => ShippingPriceError.SHIPPING_TYPE_NOT_ALLOWED
+      case _ => ShippingPriceError.UNKNOWN
+    }
+  }
+
+  protected def createShippingData(address: AccountAddress, shippingCode: String, price: Long, currencyCode: String): ShippingData = {
+    val rate: Option[Rate] = rateHandler.findByCurrencyCode(currencyCode)
+    val shipmentId = UUID.randomUUID().toString
+    ShippingData(address, shipmentId, shipmentId, shippingCode, shippingCode, shippingCode, price, currencyCode, if (rate.isDefined) rate.get.currencyFractionDigits else 2)
   }
 
   /**
    * Permet de faire la correspondance entre le pays de livraison et la zone de shipping correspondante configuré dans Mirakl
-   * TODO à externaliser pour être surchargé par le client
    */
-  private def getShippingZoneCode(shippingAddress: AccountAddress): String = {
-
-    shippingAddress.country match {
-      case Some(countryCode) => {
-        countryCode match {
-          case "FR" => "FR1"
-          case "IT" => "EUROPE"
-          case "UK" => "EUROPE"
-          case "DE" => "EUROPE"
-          case "ES" => "EUROPE"
-          case _ => "WORLDWIDE"
-        }
-      }
-      case None => "FR1"
-    }
+  protected def getShippingZoneCode(shippingAddress: AccountAddress): String = {
+    // L'implémentation par défaut prendre le code dy pays
+    shippingAddress.country.getOrElse("WORLDWIDE")
   }
 
   /**
@@ -159,18 +163,15 @@ class MiraklHandlerImpl extends MiraklHandler {
     )
 
     val offers = BOCartItemDao.findByBOCart(boCart).map { item : BOCartItem =>
-        item.externalCodes.find { externalCode => externalCode.provider == ExternalProvider.MIRAKL }.map { externalCode =>
+        item.getExternalCode(ExternalProvider.MIRAKL).map { externalCode =>
 
-        val selectShippingData = selectShippingCart.externalShippingPrices.find { externalShippingData: ExternalShippingData =>
-          externalShippingData.externalCode.provider == ExternalProvider.MIRAKL &&
-          externalShippingData.shipping.cartItemId.getOrElse("") == item.uuid
-        }.map {_.shipping }.get
+        val selectShippingData = selectShippingCart.externalShippingPriceByCode.get(externalCode).get
 
         val shippingPrice = BigDecimal.exact(selectShippingData.price) / Math.pow(10, selectShippingData.currencyFractionDigits)
 
         val selectedShippingTypeCode = selectShippingData.service
 
-        Offer(
+        OrderOffer(
           currency_iso_code = currency.code,
           leadtime_to_ship = None,
           offer_id = externalCode.code.toLong,

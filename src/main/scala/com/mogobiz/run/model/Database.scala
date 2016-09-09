@@ -8,10 +8,11 @@ import java.util.Date
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.databind.annotation.{ JsonDeserialize, JsonSerialize }
+import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.pay.common.ExternalCode
-import com.mogobiz.run.json.{ JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer }
+import com.mogobiz.pay.common.ExternalProvider.ExternalProvider
+import com.mogobiz.run.json.{JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer}
 import com.mogobiz.run.model.Mogobiz.DeliveryStatus.DeliveryStatus
 import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnit
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
@@ -104,7 +105,7 @@ object Mogobiz {
       coupons: List[InnerCoupon],
       nbSales: Long) {
 
-    val externalCodes: List[ExternalCode] = ExternalCode.fromString(externalCode)
+    val getExternalCode: Option[ExternalCode] = ExternalCode.fromString(externalCode)
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -236,7 +237,9 @@ object Mogobiz {
     url: String,
     externalCode: Option[String]) {
 
-    val externalCodes: List[ExternalCode] = ExternalCode.fromString(externalCode)
+    def getExternalCode(provider: ExternalProvider): Option[ExternalCode] = {
+      ExternalCode.fromString(externalCode).find{_.provider == provider}
+    }
   }
 
   case class BODelivery(id: Long,

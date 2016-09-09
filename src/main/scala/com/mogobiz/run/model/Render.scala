@@ -50,7 +50,7 @@ object Render {
     endDate: Option[DateTime],
     registeredCartItemVOs: Array[RegisteredCartItem],
     shipping: Option[Shipping],
-    externalCodes: List[ExternalCode],
+    externalCode: Option[ExternalCode],
     downloadableLink: String)
 
   class Coupon(private val elems: List[JField], val active: Boolean, val price: Long, val promotion: Boolean)
