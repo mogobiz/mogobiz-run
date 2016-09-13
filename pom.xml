@@ -9,7 +9,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.mogobiz</groupId>
     <artifactId>mogobiz-run</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>hotfix-1.0.0.3-SNAPSHOT</version>
     <name>mogobiz run</name>
     <dependencies>
 
