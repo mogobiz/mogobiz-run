@@ -2,6 +2,7 @@ package com.mogobiz.run.handlers
 
 import java.util.UUID
 
+import com.mogobiz.mirakl.CommonModel.PaymentWorkflow
 import com.mogobiz.mirakl.{CommonModel, MiraklClient}
 import com.mogobiz.mirakl.ShippingModel._
 import com.mogobiz.mirakl.OrderModel.{Offer => OrderOffer, _}
