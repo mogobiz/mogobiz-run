@@ -163,8 +163,8 @@ class MiraklHandlerImpl extends MiraklHandler {
         internal_additional_info = None)
     )
 
-    val offers = BOCartItemDao.findByBOCart(boCart).map { item : BOCartItem =>
-        item.getExternalCode(ExternalProvider.MIRAKL).map { externalCode =>
+    val offers = BOCartItemDao.findByBOCart(boCart).flatMap { item: BOCartItem =>
+      item.getExternalCode(ExternalProvider.MIRAKL).map { externalCode =>
 
         val selectShippingData = selectShippingCart.externalShippingPriceByCode.get(externalCode).get
 
@@ -187,8 +187,8 @@ class MiraklHandlerImpl extends MiraklHandler {
           taxes = Nil
         )
       }
-    }.flatten
-    if (!offers.isEmpty) {
+    }
+    if (offers.nonEmpty) {
       val shippingZoneCode = getShippingZoneCode(shippingAddr)
       val order = new OrderBean(channel_code = None,
         commercial_id = boCart.transactionUuid.getOrElse(""),
