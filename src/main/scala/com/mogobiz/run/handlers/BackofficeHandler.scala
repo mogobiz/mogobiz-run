@@ -224,21 +224,7 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     if (req.quantity < 1 || req.quantity > boCartItem.quantity) throw new MinMaxQuantityException(1, boCartItem.quantity)
 
-    val transaction = boTransactionHandler.find(transactionUuid).getOrElse(throw BOTransactionNotFoundException(s"$transactionUuid"))
-    var localeOrEn = locale.getOrElse("en");
-    var jsonString = BOTransactionJsonTransform.transform(transaction, LocaleUtils.toLocale(localeOrEn))
-
-    var jsonExtra = parse( transaction.extra.get )
-    var cart: CartWithShipping = jsonExtra.extract[CartWithShipping]
-    var storeCartItem: CartItem = null
-
-    var i = 0
-    while( i < cart.cartItems.size  ){
-      if(cart.cartItems(i).customs.get("skuId").get == boCartItem.ticketTypeFk  ){
-        storeCartItem = cart.cartItems(i)
-      }
-      i+=1
-    }
+    val storeCartItem: CartItem  = getStoreCartItem(transactionUuid,  boCartItem, locale)
 
     val transactionalBlock = { implicit session: DBSession =>
       val boReturnedItem = BOReturnedItemDao.create(new BOReturnedItem(id = newId(),
@@ -265,6 +251,19 @@ class BackofficeHandler extends JsonUtil with BoService {
     }
 
     GlobalUtil.runInTransaction(transactionalBlock, successBlock)
+  }
+
+
+  def getStoreCartItem(transactionUuid: String, boCartItem: BOCartItem , locale: Option[String]): CartItem = {
+
+    val transaction = boTransactionHandler.find(transactionUuid).getOrElse(throw BOTransactionNotFoundException(s"$transactionUuid"))
+    val localeOrEn = locale.getOrElse("en");
+    val jsonString = BOTransactionJsonTransform.transform(transaction, LocaleUtils.toLocale(localeOrEn))
+    val jsonExtra = parse( transaction.extra.get )
+    val cart: CartWithShipping = jsonExtra.extract[CartWithShipping]
+    val storeCartItem: CartItem = cart.cartItems.find(p => p.customs.get("skuId").getOrElse(throw new Exception("Original cart item not found") ) ==  boCartItem.ticketTypeFk).getOrElse(throw new Exception("Original cart item not found"));
+    return storeCartItem;
+
   }
 
   def notifyItemReturnedStatusUpdated(merchant: Account, customer: Account, boCartItem: BOCartItem, beforeUpdate: BOReturn, afterUpdate: BOReturn,storeCartItem :CartItem,locale: Option[String]): Unit = {
@@ -316,22 +315,7 @@ class BackofficeHandler extends JsonUtil with BoService {
         case (_, _) => throw new IllegalStatusException()
       }
 
-      // Recuperation information suivant :
-      val transaction = boTransactionHandler.find(transactionUuid).getOrElse(throw BOTransactionNotFoundException(s"$transactionUuid"))
-      var localeOrEn = locale.getOrElse("en")
-      var jsonString = BOTransactionJsonTransform.transform(transaction, LocaleUtils.toLocale(localeOrEn))
-
-      var jsonExtra = parse( transaction.extra.get )
-      var cart: CartWithShipping = jsonExtra.extract[CartWithShipping]
-      var storeCartItem: CartItem = null
-
-      var i = 0
-      while( i < cart.cartItems.size  ){
-        if(cart.cartItems(i).customs.get("skuId").get == boCartItem.ticketTypeFk  ){
-          storeCartItem = cart.cartItems(i)
-        }
-        i+=1
-      }
+      val storeCartItem: CartItem = getStoreCartItem(transactionUuid,  boCartItem, locale) ;
 
       BOReturnedItemDao.save(boReturnedItem.copy(status = newStatus, refunded = req.refunded, totalRefunded = req.totalRefunded))
 
