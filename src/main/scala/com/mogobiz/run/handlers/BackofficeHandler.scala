@@ -257,8 +257,6 @@ class BackofficeHandler extends JsonUtil with BoService {
   def getStoreCartItem(transactionUuid: String, boCartItem: BOCartItem , locale: Option[String]): CartItem = {
 
     val transaction = boTransactionHandler.find(transactionUuid).getOrElse(throw BOTransactionNotFoundException(s"$transactionUuid"))
-    val localeOrEn = locale.getOrElse("en");
-    val jsonString = BOTransactionJsonTransform.transform(transaction, LocaleUtils.toLocale(localeOrEn))
     val jsonExtra = parse( transaction.extra.get )
     val cart: CartWithShipping = jsonExtra.extract[CartWithShipping]
     cart.cartItems.find(p => p.customs.get("skuId").getOrElse(throw new Exception("Original cart item not found") ) ==  boCartItem.ticketTypeFk).getOrElse(throw new Exception("Original cart item not found"));
