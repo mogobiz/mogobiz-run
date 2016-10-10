@@ -4,13 +4,16 @@
 
 package com.mogobiz.run.handlers
 
-import java.util.UUID
+import java.util.{Locale, UUID}
 
 import akka.actor.ActorSystem
 import com.mogobiz.es.{ EsClient, _ }
 import com.mogobiz.json.{ JacksonConverter, JsonUtil }
+import com.mogobiz.pay.common.CartItem
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.pay.config.Settings
+import com.mogobiz.pay.exceptions.Exceptions.BOTransactionNotFoundException
+import com.mogobiz.pay.handlers.payment.BOTransactionJsonTransform
 import com.mogobiz.pay.handlers.shipping.EasyPostHandler
 import com.mogobiz.pay.model.Mogopay._
 import com.mogobiz.run.config
@@ -24,12 +27,14 @@ import com.mogobiz.run.utils.Paging
 import com.mogobiz.utils.{ GlobalUtil, EmailHandler }
 import com.mogobiz.utils.EmailHandler.Mail
 import com.sksamuel.elastic4s.ElasticDsl._
+import org.apache.commons.lang.LocaleUtils
 import org.elasticsearch.common.joda.time.format.ISODateTimeFormat
 import org.elasticsearch.search.SearchHits
 import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
-import org.json4s.Extraction
-import org.json4s.JsonAST._
+import org.json4s.{JsonInput, Extraction, StringInput}
+import org.json4s.{ DefaultFormats, StringInput }
+import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import scalikejdbc.{ DBSession, DB }
 import spray.client.pipelining._
@@ -179,15 +184,17 @@ class BackofficeHandler extends JsonUtil with BoService {
     ).getOrElse(throw new NotFoundException(s"Transaction UUID $esTransactionUuid"))
   }
 
-  def notifyItemReturned(merchant: Account, customer: Account, boCartItem: BOCartItem, boReturn: BOReturn, locale: Option[String]): Unit = {
+  def notifyItemReturned(merchant: Account, customer: Account, boCartItem: BOCartItem, storeCartItem : CartItem, boReturn: BOReturn, locale: Option[String]): Unit = {
     import com.mogobiz.run.implicits.Json4sProtocol
     val json: JValue = JObject(JField("cartItem", Extraction.decompose(boCartItem))) merge
       JObject(JField("merchant", Extraction.decompose(merchant))) merge
       JObject(JField("customer", Extraction.decompose(customer))) merge
-      JObject(JField("returnStatus", Extraction.decompose(boReturn)))
+      JObject(JField("returnStatus", Extraction.decompose(boReturn))) merge
+      JObject(JField("storeCartItem", Extraction.decompose(storeCartItem)))
     //    val map = Map("cartItem" -> boCartItem, "merchant" -> merchant, "customer" -> customer, "returnStatus" -> boReturn)
 
     val (subject, body) = templateHandler.mustache(Some(merchant), "mail-return-created", locale, compact(render(json)))
+
     EmailHandler.Send(
       Mail(
         merchant.email -> s"""${merchant.firstName.getOrElse("")} ${merchant.lastName.getOrElse("")}""",
@@ -217,6 +224,8 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     if (req.quantity < 1 || req.quantity > boCartItem.quantity) throw new MinMaxQuantityException(1, boCartItem.quantity)
 
+    val storeCartItem: CartItem  = getStoreCartItem(transactionUuid,  boCartItem, locale)
+
     val transactionalBlock = { implicit session: DBSession =>
       val boReturnedItem = BOReturnedItemDao.create(new BOReturnedItem(id = newId(),
         bOCartItemFk = boCartItem.id,
@@ -238,19 +247,31 @@ class BackofficeHandler extends JsonUtil with BoService {
     }
     val successBlock = { boReturn: BOReturn =>
       notifyChangesIntoES(storeCode, boCart)
-      notifyItemReturned(merchant, customer, boCartItem, boReturn, locale)
+      notifyItemReturned(merchant, customer, boCartItem,storeCartItem, boReturn, locale)
     }
 
     GlobalUtil.runInTransaction(transactionalBlock, successBlock)
   }
 
-  def notifyItemReturnedStatusUpdated(merchant: Account, customer: Account, boCartItem: BOCartItem, beforeUpdate: BOReturn, afterUpdate: BOReturn, locale: Option[String]): Unit = {
+
+  def getStoreCartItem(transactionUuid: String, boCartItem: BOCartItem , locale: Option[String]): CartItem = {
+
+    val transaction = boTransactionHandler.find(transactionUuid).getOrElse(throw BOTransactionNotFoundException(s"$transactionUuid"))
+    val jsonExtra = parse( transaction.extra.get )
+    val cart: CartWithShipping = jsonExtra.extract[CartWithShipping]
+    cart.cartItems.find(p => p.customs.get("skuId").getOrElse(throw new Exception("Original cart item not found") ) ==  boCartItem.ticketTypeFk).getOrElse(throw new Exception("Original cart item not found"));
+
+  }
+
+  def notifyItemReturnedStatusUpdated(merchant: Account, customer: Account, boCartItem: BOCartItem, beforeUpdate: BOReturn, afterUpdate: BOReturn,storeCartItem :CartItem,locale: Option[String]): Unit = {
     import com.mogobiz.run.implicits.Json4sProtocol
     val json: JValue = JObject(JField("cartItem", Extraction.decompose(boCartItem))) merge
       JObject(JField("merchant", Extraction.decompose(merchant))) merge
       JObject(JField("customer", Extraction.decompose(customer))) merge
       JObject(JField("beforeUpdate", Extraction.decompose(beforeUpdate))) merge
-      JObject(JField("afterUpdate", Extraction.decompose(afterUpdate)))
+      JObject(JField("afterUpdate", Extraction.decompose(afterUpdate))) merge
+      JObject(JField("storeCartItem", Extraction.decompose(storeCartItem)))
+
     //val map = Map("cartItem" -> boCartItem, "merchant" -> merchant, "customer" -> customer, "oldReturnStatus" -> beforeUpdate, "newReturnStatus" -> afterUpdate)
     val (subject, body) = templateHandler.mustache(Some(merchant), "mail-return-updated", locale, compact(render(json)))
     EmailHandler.Send(
@@ -291,6 +312,8 @@ class BackofficeHandler extends JsonUtil with BoService {
         case (_, _) => throw new IllegalStatusException()
       }
 
+      val storeCartItem: CartItem = getStoreCartItem(transactionUuid,  boCartItem, locale) ;
+
       BOReturnedItemDao.save(boReturnedItem.copy(status = newStatus, refunded = req.refunded, totalRefunded = req.totalRefunded))
 
       val boReturn = BOReturnDao.create(new BOReturn(id = newId(),
@@ -313,12 +336,12 @@ class BackofficeHandler extends JsonUtil with BoService {
           stockChange
         }.flatten
       } else None
-      (merchant, customer, boCart, boCartItem, lastReturn, boReturn, stockChange)
+      (merchant, customer, boCart, boCartItem, lastReturn, boReturn, storeCartItem,  stockChange)
     }
 
-    val successBloc = { result: (Account, Account, BOCart, BOCartItem, BOReturn, BOReturn, Option[StockChange]) =>
-      notifyChangesIntoES(storeCode, result._3, result._7)
-      notifyItemReturnedStatusUpdated(result._1, result._2, result._4, result._5, result._6, locale)
+    val successBloc = { result: (Account, Account, BOCart, BOCartItem, BOReturn, BOReturn, CartItem,  Option[StockChange]) =>
+      notifyChangesIntoES(storeCode, result._3, result._8)
+      notifyItemReturnedStatusUpdated(result._1, result._2, result._4, result._5, result._6,result._7, locale)
     }
 
     GlobalUtil.runInTransaction(transactionalBloc, successBloc)

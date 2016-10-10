@@ -1,4 +1,4 @@
-Your return
+Your return has been registered
 
 <br/>
 {{#customer}}
@@ -9,11 +9,15 @@ Your return
 You just created a return request. <br/>
 <br/>
 
-You returned your item for the following reason(s) : <br/>
+You returned your item <a href="{{storeCartItem.shopUrl}}">{{storeCartItem.name}}</a> for the following reason(s) : <br/>
 {{#returnStatus}}
-    <span style="font-style:italic;"></span>
-    {{motivation}}<br/>
+    <span style="font-style:italic;">{{motivation}}</span><br/>
 {{/returnStatus}}
+{{#cartItem}}
+<img src="${{url}}" alt="{{quantity}}" width="50px" height="50px" /> <br/>
+<br/>
+{{/cartItem}}
+
 
 <br/>
 We will keep you informed about the evolution of your request.

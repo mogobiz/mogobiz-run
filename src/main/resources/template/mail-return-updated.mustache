@@ -1,4 +1,4 @@
-Your return {{uuid}}.
+News about your return {{uuid}}.
 
 <br/>
 {{#customer}}
@@ -7,17 +7,19 @@ Your return {{uuid}}.
 
 <br/>
 Your return request has been updated. <br/>
+Status of your return : {{afterUpdate.status.name}}.<br/>
+Product returned : <a href="{{storeCartItem.shopUrl}}">{{storeCartItem.name}}</a>.<br/>
+<img src="${{cartItem.url}}" alt="{{cartItem.name}}" width="50px" height="50px" /> <br/>
 <br/>
 
-You returned your item for the following reason(s) : <br/>
-{{#returnStatus}}
+The following comment has been added : <br/>
+{{#afterUpdate}}
     <span style="font-style:italic;"></span>
     {{motivation}}<br/>
-{{/returnStatus}}
+{{/afterUpdate}}
 
 <br/>
-We will keep you informed about the evolution of your request.
-<br/>
+We will keep you informed about the evolution of your request. <br/>
 
-Best Regards<br/>
-Our Team<br/>
+Best Regards.<br/>
+Our Team.<br/>
