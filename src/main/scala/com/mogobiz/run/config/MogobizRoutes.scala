@@ -9,6 +9,8 @@ import com.mogobiz.run.exceptions.MogobizException
 import com.mogobiz.run.jobs.CleanCartJob
 import com.mogobiz.run.services._
 import com.mogobiz.system.{ MogobizSystem, RoutedHttpService }
+import org.elasticsearch.indices.IndexMissingException
+import org.elasticsearch.transport.RemoteTransportException
 import spray.http.{ HttpRequest, HttpResponse, StatusCodes }
 import spray.routing.directives.BasicDirectives._
 import spray.routing.directives.LoggingMagnet
@@ -79,6 +81,8 @@ trait DefaultComplete {
     val res = Try(call) match {
       case Failure(t: MogobizException) =>
         t.printStackTrace(); complete(t.code -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+      case Failure(t: RemoteTransportException) if (t.getCause != null && t.getCause.isInstanceOf[IndexMissingException]) =>
+        t.printStackTrace(); complete(StatusCodes.NotFound -> Map('type -> t.getCause.getClass.getSimpleName, 'error -> t.getCause.toString))
       case Failure(t: Throwable) =>
         t.printStackTrace(); complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
       case Success(res) => handler(res)

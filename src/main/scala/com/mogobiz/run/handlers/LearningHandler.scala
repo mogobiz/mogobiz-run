@@ -49,37 +49,40 @@ class LearningHandler extends BootedMogobizSystem with StrictLogging {
     val indices = EsClient.listIndices(esLearningStorePattern(store))
     //s"${store}_learning"
     //val historyReq = esearch4s in "*" types "UserItemAction" limit historyCount from 0 postFilter {
-    val historyReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" limit historyCount from 0 postFilter {
-      and(
-        termFilter("action", action.toString),
-        termFilter("uuid", uuid)
-      )
-    } sort {
-      by field "dateCreated" order SortOrder.DESC
-    }
-
-    val itemids = (EsClient searchAllRaw historyReq).getHits map (_.sourceAsMap().get("itemid").toString)
-
-    if (matchCount > -1) {
-      val targetIndex = action match {
-        case UserAction.View => esViewPredictions _
-        case UserAction.Purchase => esPurchasePredictions _
+    if (indices.isEmpty) Seq()
+    else {
+      val historyReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" limit historyCount from 0 postFilter {
+        and(
+          termFilter("action", action.toString),
+          termFilter("uuid", uuid)
+        )
+      } sort {
+        by field "dateCreated" order SortOrder.DESC
       }
 
-      val req = esearch4s in targetIndex(store, customer) -> "Prediction" limit count query {
-        bool {
-          must(
-            termsQuery(action.toString, itemids: _*)
-              minimumShouldMatch matchCount
-          )
+      val itemids = (EsClient searchAllRaw historyReq).getHits map (_.sourceAsMap().get("itemid").toString)
+
+      if (matchCount > -1) {
+        val targetIndex = action match {
+          case UserAction.View => esViewPredictions _
+          case UserAction.Purchase => esPurchasePredictions _
         }
+
+        val req = esearch4s in targetIndex(store, customer) -> "Prediction" limit count query {
+          bool {
+            must(
+              termsQuery(action.toString, itemids: _*)
+                minimumShouldMatch matchCount
+            )
+          }
+        }
+        logger.debug(req._builder.toString)
+        val predictions = EsClient.searchAll[Prediction](req).map(_.uid)
+        predictions.foreach(p => logger.debug(p))
+        predictions.distinct
+      } else {
+        itemids.distinct
       }
-      logger.debug(req._builder.toString)
-      val predictions = EsClient.searchAll[Prediction](req).map(_.uid)
-      predictions.foreach(p => logger.debug(p))
-      predictions.distinct
-    } else {
-      itemids.distinct
     }
   }
 
@@ -142,29 +145,32 @@ class LearningHandler extends BootedMogobizSystem with StrictLogging {
       )
     ).flatten
 
-    val filterReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" size 0 query {
-      filteredQuery filter {
-        and {
-          filters: _*
+    if (indices.isEmpty) Nil
+    else {
+      val filterReq = esearch4s in (indices.toSeq: _*) types "UserItemAction" size 0 query {
+        filteredQuery filter {
+          and {
+            filters: _*
+          }
         }
       }
-    }
 
-    val popularReq = filterReq aggs {
-      if (!withQuantity)
-        agg terms "top-itemid" field "itemid" size count order Terms.Order.count(false)
-      else {
-        agg terms "top-itemid" field "itemid" aggs {
-          agg sum "total-count" field "count"
-        } size count order Terms.Order.aggregation("total-count", false)
+      val popularReq = filterReq aggs {
+        if (!withQuantity)
+          agg terms "top-itemid" field "itemid" size count order Terms.Order.count(false)
+        else {
+          agg terms "top-itemid" field "itemid" aggs {
+            agg sum "total-count" field "count"
+          } size count order Terms.Order.aggregation("total-count", false)
+        }
       }
-    }
 
-    val terms = EsClient().execute(popularReq).await.getAggregations.get("top-itemid").asInstanceOf[Terms]
-    terms.getBuckets.map { term =>
-      logger.debug(term.getKey + "/" + term.getDocCount)
-      term.getKey
-    } toList
+      val terms = EsClient().execute(popularReq).await.getAggregations.get("top-itemid").asInstanceOf[Terms]
+      terms.getBuckets.map { term =>
+        logger.debug(term.getKey + "/" + term.getDocCount)
+        term.getKey
+      } toList
+    }
   }
 
 }
