@@ -62,10 +62,19 @@ case class StoreCart(
 case class StoreCartWithPrice(storeCart: StoreCart,
                               cartItems: List[StoreCartItemWithPrice] = Nil,
                               coupons: List[CouponWithData] = Nil,
-                              price: Long = 0,
-                              endPrice: Long = 0,
-                              reduction: Long = 0,
-                              finalPrice: Long = 0)
+                              mogobizPrice: Long,
+                              mogobizEndPrice: Long,
+                              mogobizReduction: Long,
+                              mogobizFinalPrice: Long,
+                              externalPrice: Long,
+                              externalEndPrice: Long,
+                              externalReduction: Long,
+                              externalFinalPrice: Long) {
+  val totalPrice = mogobizPrice + externalPrice
+  val totalEndPrice = mogobizEndPrice + externalEndPrice
+  val totalReduction = mogobizReduction + externalReduction
+  val totalFinalPrice = mogobizFinalPrice + externalFinalPrice
+}
 
 case class StoreCartItem(indexEs: String,
                          id: String,
