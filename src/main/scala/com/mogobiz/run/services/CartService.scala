@@ -9,15 +9,16 @@ import java.util.UUID
 import com.mogobiz.pay.common.Cart
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import com.mogobiz.pay.model.ParamRequest.ListShippingPriceParam
+import com.mogobiz.pay.model.ParamRequest.{ListShippingPriceParam, SelectShippingPriceParam}
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
-import com.mogobiz.pay.model.{ ShippingCart, ShippingData }
+import com.mogobiz.pay.config.MogopayHandlers
+import com.mogobiz.pay.model.{SelectShippingCart, ShippingCart, ShippingData}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.session.Session
-import spray.http.{ HttpCookie, StatusCodes }
+import spray.http.{HttpCookie, StatusCodes}
 import spray.routing.Directives
 import com.mogobiz.session.SessionESDirectives._
 import com.mogobiz.run.config.MogobizHandlers.handlers._
@@ -43,7 +44,8 @@ class CartService extends Directives with DefaultComplete {
     cart(storeCode, uuid) ~
       coupon(storeCode, uuid) ~
       payment(storeCode, uuid) ~
-      shippingPrices(storeCode, uuid)
+      shippingPrices(storeCode, uuid) ~
+      selectShipping(storeCode, uuid)
 
   def cart(storeCode: String, uuid: String) = {
     cartInit(storeCode, uuid) ~
@@ -252,7 +254,7 @@ class CartService extends Directives with DefaultComplete {
                 }
                 case Some(id) => {
                   handleCall({
-                    cartHandler.getCartForPay(storeCode, uuid, Some(id), currency)
+                    cartHandler.getCartForPay(storeCode, uuid, Some(id), currency, None)
                   }, (cart: Cart) => {
                     session.sessionData.cart = Some(cart)
                     handleCall(cartHandler.shippingPrices(cart, id),
@@ -272,4 +274,38 @@ class CartService extends Directives with DefaultComplete {
       }
     }
   }
+
+  def selectShipping(storeCode: String, uuid: String) = path("select-shipping") {
+    post {
+      entity(as[SelectShippingPriceParam]) {
+        params =>
+          session {
+            session =>
+              import Implicits._
+              session.sessionData.accountId.map(_.toString) match {
+                case None => complete {
+                  StatusCodes.Forbidden -> Map('error -> "Not logged in")
+                }
+                case Some(id) => {
+                  handleCall({
+                    MogopayHandlers.handlers.transactionHandler.selectShippingPrice(session.sessionData, id, params.shippingDataId, params.externalShippingDataIds)
+                  }, (selectShippingCart: Option[SelectShippingCart]) => {
+                    handleCall({
+                      cartHandler.getCartForPay(storeCode, uuid, Some(id), params.currency, selectShippingCart.map{_.shippingAddress})
+                    }, (cart: Cart) => {
+                      session.sessionData.cart = Some(cart)
+                      setSession(session) {
+                        complete(StatusCodes.OK -> Map("price" -> selectShippingCart.map{_.price}.getOrElse(0)))
+                      }
+                    })
+                  }
+                  )
+                }
+              }
+          }
+      }
+    }
+  }
+
+
 }

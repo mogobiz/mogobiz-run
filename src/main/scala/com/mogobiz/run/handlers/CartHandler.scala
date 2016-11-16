@@ -12,10 +12,10 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.json.JacksonConverter
 import com.mogobiz.pay.common.{Cart => CartPay, CartItem => CartItemPay, Coupon => CouponPay, RegisteredCartItem => RegisteredCartItemPay, Shipping => ShippingPay, _}
 import com.mogobiz.pay.config.MogopayHandlers
-import com.mogobiz.pay.model.Mogopay
-import com.mogobiz.pay.model.{SelectShippingCart, ShippingCart, ShippingData, AccountAddress}
+import com.mogobiz.pay.exceptions.Exceptions.{InvalidContextException, NoActiveShippingAddressFound, NoShippingPriceFound}
+import com.mogobiz.pay.model.{TransactionStatus => _, _}
 import com.mogobiz.run.actors.EsUpdateActor
-import com.mogobiz.run.actors.EsUpdateActor.{StockUpdateRequest, ProductStockAvailabilityUpdateRequest}
+import com.mogobiz.run.actors.EsUpdateActor.{ProductStockAvailabilityUpdateRequest, StockUpdateRequest}
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.dashboard.Dashboard
@@ -46,7 +46,7 @@ import org.json4s._
 import scalikejdbc._
 import scalikejdbc.TxBoundary.Try._
 
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 class CartHandler extends StrictLogging {
   val rateService = RateBoService
@@ -465,12 +465,14 @@ class CartHandler extends StrictLogging {
     )
   }
 
-  def getCartForPay(storeCode: String, uuid: String, accountId: Option[String], currencyCode: String): CartPay = {
+  def getCartForPay(storeCode: String, uuid: String, accountId: Option[String], currencyCode: String, shippingAddress: Option[AccountAddress]): CartPay = {
     val cart = initCart(storeCode, uuid, accountId, false, None, None)
     val currency = queryCurrency(storeCode, Some(currencyCode))
 
     // Calcul des données du panier
-    val cartWithPrice = computeStoreCart(cart, cart.countryCode, cart.stateCode)
+    val countryCode = shippingAddress.map {_.country }.getOrElse(None)
+    val stateCode = shippingAddress.map {_.admin1 }.getOrElse(None)
+    val cartWithPrice = computeStoreCart(cart, countryCode, stateCode)
 
     val compagny = CompanyDao.findByCode(storeCode)
     val shipFromAddressOpt = compagny.map {
