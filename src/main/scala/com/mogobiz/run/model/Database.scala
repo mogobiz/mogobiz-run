@@ -105,7 +105,7 @@ object Mogobiz {
       coupons: List[InnerCoupon],
       nbSales: Long) {
 
-    val getExternalCode: Option[ExternalCode] = ExternalCode.fromString(externalCode)
+    val computedExternalCode: Option[ExternalCode] = ExternalCode.fromString(externalCode)
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

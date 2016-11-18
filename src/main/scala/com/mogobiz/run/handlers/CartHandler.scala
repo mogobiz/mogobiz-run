@@ -205,7 +205,7 @@ class CartHandler extends StrictLogging {
                                    product.shipping,
                                    None,
                                    None,
-                                   sku.getExternalCode)
+                                   sku.computedExternalCode)
 
       val invalidationResult = invalidateCart(cart)
       invalidationResult.copy(cart = addCartItemIntoCart(invalidationResult.cart, cartItem))

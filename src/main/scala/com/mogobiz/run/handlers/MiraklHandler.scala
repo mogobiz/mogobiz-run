@@ -44,12 +44,20 @@ class MiraklHandlerUndef extends MiraklHandler {
 }
 
 class MiraklHandlerImpl extends MiraklHandler {
+
+  def extractOfferId(externalCode: ExternalCode) = {
+    // Le offerId est stocker en 2° position
+    val codes = externalCode.code.split("::")
+    if (codes.length > 1) codes(1).toLong
+    else 0L
+  }
+
   def shippingPrices(cart: Cart, address: AccountAddress): Map[String, ExternalShippingDataList] = {
     // get only Mirakl Items
     val miraklCartItems = cart.cartItems.filter{cartItem : CartItem => cartItem.isExternalItemFor(ExternalProvider.MIRAKL)}
 
     val offerIdsAndQuantity: List[(Long, Int)] = miraklCartItems.map { cartItem =>
-      (cartItem.externalCode.get.code.toLong, cartItem.quantity)
+      (extractOfferId(cartItem.externalCode.get), cartItem.quantity)
     }
 
     val shopShippingFeesDto = if (!offerIdsAndQuantity.isEmpty) {
@@ -62,7 +70,7 @@ class MiraklHandlerImpl extends MiraklHandler {
 
     val shippingDataById = miraklCartItems.map { cartItem =>
       val externalCode = cartItem.externalCode.get
-      val externalOfferId = externalCode.code.toLong
+      val externalOfferId = extractOfferId(externalCode)
       val shippingPrices = shopShippingFeesDto._1.map { error =>
         ExternalShippingDataList(Some(convertError(error)), Nil)
       }.getOrElse {
@@ -175,11 +183,11 @@ class MiraklHandlerImpl extends MiraklHandler {
         OrderOffer(
           currency_iso_code = currency.code,
           leadtime_to_ship = None,
-          offer_id = externalCode.code.toLong,
-          offer_price = item.endPrice / 100,
+          offer_id = extractOfferId(externalCode),
+          offer_price = item.endPrice / BigDecimal.exact(Math.pow(10, selectShippingData.currencyFractionDigits)),
           order_line_additional_fields = Nil,
-          order_line_id = None, //Some(UUID.randomUUID().toString),
-          price = item.totalEndPrice / 100,
+          order_line_id = Some(item.code),
+          price = item.totalEndPrice / BigDecimal.exact(Math.pow(10, selectShippingData.currencyFractionDigits)),
           quantity = item.quantity,
           shipping_price = shippingPrice,
           shipping_taxes = Nil,
@@ -195,7 +203,7 @@ class MiraklHandlerImpl extends MiraklHandler {
         customer = customer,
         offers = offers,
         order_additional_fields = Nil,
-        payment_info = None, //TODO voir comment passer les infos de paiements
+        payment_info = None,
         payment_workflow = Some(PaymentWorkflow.PAY_ON_ACCEPTANCE),
         scored = true,
         shipping_zone_code = shippingZoneCode)
