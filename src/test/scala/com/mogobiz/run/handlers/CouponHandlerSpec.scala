@@ -7,7 +7,7 @@ package com.mogobiz.run.handlers
 import com.mogobiz.MogobizRouteTest
 import com.mogobiz.run.config.MogobizDBsWithEnv
 import scalikejdbc._
-
+/*
 class CouponHandlerSpec extends MogobizRouteTest {
 
   MogobizDBsWithEnv("test").setupAll()
@@ -58,3 +58,4 @@ class CouponHandlerSpec extends MogobizRouteTest {
   }
 
 }
+*/

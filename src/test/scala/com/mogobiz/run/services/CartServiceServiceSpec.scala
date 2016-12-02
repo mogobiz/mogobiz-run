@@ -11,7 +11,7 @@ import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
 
 /**
- */
+ *//*
 class CartServiceServiceSpec extends MogobizRouteMocked  {
 
   override lazy val apiRoutes = (new CartService() with DefaultCompleteMocked).route
@@ -143,3 +143,4 @@ class CartServiceServiceSpec extends MogobizRouteMocked  {
     }
   }
 }
+*/

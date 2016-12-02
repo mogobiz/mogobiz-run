@@ -8,7 +8,8 @@ import java.util.UUID
 
 import akka.actor.ActorSystem
 import com.mogobiz.es.{EsClient, _}
-import com.mogobiz.json.{JsonUtil}
+import com.mogobiz.json.JsonUtil
+import com.mogobiz.pay.codes.MogopayConstant
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.handlers.shipping.EasyPostHandler
@@ -19,9 +20,9 @@ import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions.{IllegalStatusException, MinMaxQuantityException, NotAuthorizedException, NotFoundException}
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest, CreateBOReturnedItemRequest, UpdateBOReturnedItemRequest}
-import com.mogobiz.run.model.{StockChange, CartChanges, WebHookData}
+import com.mogobiz.run.model.{CartChanges, StockChange, WebHookData}
 import com.mogobiz.run.utils.Paging
-import com.mogobiz.utils.{GlobalUtil, EmailHandler}
+import com.mogobiz.utils.{EmailHandler, GlobalUtil}
 import com.mogobiz.utils.EmailHandler.Mail
 import com.sksamuel.elastic4s.ElasticDsl._
 import org.elasticsearch.common.joda.time.format.ISODateTimeFormat
@@ -31,9 +32,10 @@ import org.joda.time.DateTime
 import org.json4s.Extraction
 import org.json4s.JsonAST._
 import org.json4s.jackson.JsonMethods._
-import scalikejdbc.{DBSession, DB}
+import scalikejdbc.{DB, DBSession}
 import spray.client.pipelining._
 import spray.http._
+
 import scala.concurrent.Future
 import com.mogobiz.run.config.Settings.Mail.Smtp.MailSettings
 
@@ -66,8 +68,8 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     val boCartTransactionUuidList = req.deliveryStatus.map { deliveryStatus =>
       (EsClient.searchAllRaw(
-              search in BOCartESDao.buildIndex(storeCode) types "BOCart" sourceInclude "transactionUuid"
-                query matchQuery("cartItems.bODelivery.status", deliveryStatus)
+              search in boCartHandler.buildIndex(storeCode) types "BOCart" sourceInclude "transactionUuid"
+                query matchQuery("shopCarts.cartItems.bODelivery.status", deliveryStatus)
                 size _size
                 sort {
               by field "xdate" order SortOrder.DESC
@@ -195,7 +197,7 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     EsClient
       .searchRaw(
-          search in BOCartESDao.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid",
+          search in boCartHandler.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid",
                                                                                       esTransactionUuid)
       )
       .getOrElse(throw new NotFoundException(s"Transaction UUID $esTransactionUuid"))
@@ -238,43 +240,43 @@ class BackofficeHandler extends JsonUtil with BoService {
                            boCartItemUuid: String,
                            req: CreateBOReturnedItemRequest,
                            locale: Option[String]): Unit = {
-    val customer: Account = accountHandler.getCustomer(accountUuid).getOrElse(throw new NotAuthorizedException(""))
+    val customer: Account = accountHandler.getCustomer(accountUuid).getOrElse(throw NotAuthorizedException(""))
     val merchantUuid = customer.owner.getOrElse(
-        throw new NotAuthorizedException("Merchant Id not present in Customer Data (Should never happen)"))
+        throw NotAuthorizedException("Merchant Id not present in Customer Data (Should never happen)"))
     val merchant =
-      accountHandler.getMerchant(merchantUuid).getOrElse(throw new NotAuthorizedException("Merchant not found"))
+      accountHandler.getMerchant(merchantUuid).getOrElse(throw NotAuthorizedException("Merchant not found"))
 
-    val boCart: BOCart = BOCartDao.findByTransactionUuid(transactionUuid).getOrElse(throw new NotFoundException(""))
-    if (boCart.buyer != customer.email) throw new NotAuthorizedException("")
-    val boCartItem = BOCartItemDao.load(boCartItemUuid).getOrElse(throw new NotFoundException(""))
-    if (boCartItem.bOCartFk != boCart.id) throw new NotFoundException("")
+    val boCart: BOCart = boCartHandler.findByTransactionUuid(storeCode, transactionUuid).getOrElse(throw NotFoundException(""))
+    if (boCart.buyer != customer.email) throw NotAuthorizedException("")
+
+    // On ne traite le retour que pour les produits du shop Mogobiz
+    val boShopCart = boCart.shopCarts.find(_.shopId == MogopayConstant.SHOP_MOGOBIZ).getOrElse(throw NotFoundException(""))
+    val boCartItem = boShopCart.cartItems.find( _.uuid == boCartItemUuid).getOrElse(throw NotFoundException(""))
 
     if (req.quantity < 1 || req.quantity > boCartItem.quantity)
       throw new MinMaxQuantityException(1, boCartItem.quantity)
 
     DB localTx { implicit session =>
-      val boReturnedItem = BOReturnedItemDao.create(
-          new BOReturnedItem(id = newId(),
-                             bOCartItemFk = boCartItem.id,
-                             quantity = req.quantity,
-                             refunded = 0,
-                             totalRefunded = 0,
-                             status = ReturnedItemStatus.UNDEFINED,
-                             dateCreated = DateTime.now,
-                             lastUpdated = DateTime.now,
-                             uuid = UUID.randomUUID().toString))
 
-      val boReturn = BOReturnDao.create(
-          new BOReturn(id = newId(),
-                       bOReturnedItemFk = boReturnedItem.id,
-                       motivation = Some(req.motivation),
-                       status = ReturnStatus.RETURN_SUBMITTED,
-                       dateCreated = DateTime.now,
-                       lastUpdated = DateTime.now,
-                       uuid = UUID.randomUUID().toString))
+      val boReturn = BOReturn(Some(req.motivation),
+        status = ReturnStatus.RETURN_SUBMITTED,
+        uuid = UUID.randomUUID().toString,
+        new DateTime())
 
-      notifyChangesIntoES(storeCode, boCart)
-      notifyItemReturned(merchant, customer, boCartItem, boReturn, locale)
+      val boReturnedItem = BOReturnedItem(req.quantity,
+        refunded = 0,
+        totalRefunded = 0,
+        ReturnedItemStatus.UNDEFINED,
+        List(boReturn),
+        UUID.randomUUID().toString)
+
+      val newBOCartItem = boCartItem.copy(bOReturnedItems = boCartItem.bOReturnedItems :+ boReturnedItem)
+      val newBOShopCart = replaceBOCartItem(boShopCart, newBOCartItem )
+      val newBOCart = replaceBOShopCart(boCart, newBOShopCart)
+      boCartHandler.update(newBOCart)
+
+      notifyChangesIntoES(storeCode, newBOCart)
+      notifyItemReturned(merchant, customer, newBOCartItem, boReturn, locale)
     }
   }
 
@@ -319,15 +321,16 @@ class BackofficeHandler extends JsonUtil with BoService {
     val transactionalBloc = { implicit session: DBSession =>
       val merchant =
         accountHandler.load(accountUuid).getOrElse(throw new Exception("Merchant not found for returned item"))
-      val boCart = BOCartDao.findByTransactionUuid(transactionUuid).getOrElse(throw new NotFoundException(""))
-      val customer = accountHandler
-        .findByEmail(boCart.buyer, Some(accountUuid))
+
+      val boCart: BOCart = boCartHandler.findByTransactionUuid(storeCode, transactionUuid).getOrElse(throw NotFoundException(""))
+      val customer = accountHandler.findByEmail(boCart.buyer, Some(accountUuid))
         .getOrElse(throw new Exception("Customer not found for returned item"))
-      val boCartItem = BOCartItemDao.load(boCartItemUuid).getOrElse(throw new NotFoundException(""))
-      if (boCartItem.bOCartFk != boCart.id) throw new NotFoundException("")
-      val boReturnedItem = BOReturnedItemDao.load(boReturnedItemUuid).getOrElse(throw new NotFoundException(""))
-      if (boReturnedItem.bOCartItemFk != boCartItem.id) throw new NotFoundException("")
-      val lastReturn: BOReturn = BOReturnDao.findByBOReturnedItem(boReturnedItem).head
+
+      // On ne traite le retour que pour les produits du shop Mogobiz
+      val boShopCart = boCart.shopCarts.find(_.shopId == MogopayConstant.SHOP_MOGOBIZ).getOrElse(throw NotFoundException(""))
+      val boCartItem = boShopCart.cartItems.find( _.uuid == boCartItemUuid).getOrElse(throw NotFoundException(""))
+      val boReturnedItem = boCartItem.bOReturnedItems.find(_.uuid == boReturnedItemUuid).getOrElse(throw new NotFoundException(""))
+      val lastReturn: BOReturn = boReturnedItem.boReturns.sortBy(_.dateCreated.toDate.getTime * -1).head // on inverse pour avoir le plus récent en premier
 
       // Calcul du nouveau statut en fonction du statut existant
       val newStatus = ReturnedItemStatus.withName(req.status)
@@ -340,23 +343,26 @@ class BackofficeHandler extends JsonUtil with BoService {
         case (_, _)                                                              => throw new IllegalStatusException()
       }
 
-      BOReturnedItemDao.save(
-          boReturnedItem.copy(status = newStatus, refunded = req.refunded, totalRefunded = req.totalRefunded))
-
-      val boReturn = BOReturnDao.create(
-          new BOReturn(id = newId(),
-                       bOReturnedItemFk = boReturnedItem.id,
-                       motivation = Some(req.motivation),
-                       status = newReturnStatus,
-                       dateCreated = DateTime.now,
-                       lastUpdated = DateTime.now,
-                       uuid = UUID.randomUUID().toString))
+      val newBoReturn = BOReturn(Some(req.motivation),
+        status = ReturnStatus.RETURN_SUBMITTED,
+        uuid = UUID.randomUUID().toString,
+        new DateTime())
+      val newBOReturnedItem = boReturnedItem.copy(
+        status = newStatus,
+        refunded = req.refunded,
+        totalRefunded = req.totalRefunded,
+        boReturns = boReturnedItem.boReturns :+ newBoReturn
+      )
+      val newBOCartItem = replaceBOReturnedItem(boCartItem, newBOReturnedItem)
+      val newBOShopCart = replaceBOCartItem(boShopCart, newBOCartItem)
+      val newBOCart = replaceBOShopCart(boCart, newBOShopCart)
+      boCartHandler.update(newBOCart)
 
       val stockChange =
         if (newReturnStatus == ReturnStatus.RETURN_ACCEPTED && boReturnedItem.status == ReturnedItemStatus.BACK_TO_STOCK) {
           ProductDao
-            .getProductAndSku(storeCode, boCartItem.ticketTypeFk)
-            .map { productAndSku =>
+            .getProductAndSku(storeCode, boCartItem.sku.id)
+            .flatMap { productAndSku =>
               val stockChange = stockHandler.incrementStock(storeCode,
                                                             productAndSku._1,
                                                             productAndSku._2,
@@ -370,9 +376,8 @@ class BackofficeHandler extends JsonUtil with BoService {
               pipeline(Get(config.Settings.jahiaClearCacheUrl + "?productId=" + productAndSku._1.id))
               stockChange
             }
-            .flatten
         } else None
-      (merchant, customer, boCart, boCartItem, lastReturn, boReturn, stockChange)
+      (merchant, customer, boCart, boCartItem, lastReturn, newBoReturn, stockChange)
     }
 
     val successBloc = { result: (Account, Account, BOCart, BOCartItem, BOReturn, BOReturn, Option[StockChange]) =>
@@ -383,29 +388,74 @@ class BackofficeHandler extends JsonUtil with BoService {
     GlobalUtil.runInTransaction(transactionalBloc, successBloc)
   }
 
+  private def replaceBOReturn(boReturnedItem: BOReturnedItem, newBOReturn: BOReturn) : BOReturnedItem = {
+    val newBOReturns = boReturnedItem.boReturns.map { oldBOReturn =>
+      if (oldBOReturn.uuid == newBOReturn.uuid) newBOReturn
+      else oldBOReturn
+    }
+    boReturnedItem.copy(boReturns = newBOReturns)
+  }
+
+  private def replaceBOReturnedItem(boCartItem: BOCartItem, newBOReturnedItem: BOReturnedItem) : BOCartItem = {
+    val newBOReturnedItems = boCartItem.bOReturnedItems.map { oldBOReturnedItem =>
+      if (oldBOReturnedItem.uuid == newBOReturnedItem.uuid) newBOReturnedItem
+      else oldBOReturnedItem
+    }
+    boCartItem.copy(bOReturnedItems = newBOReturnedItems)
+  }
+
+  private def replaceBOCartItem(boShopCart: BOShopCart, newBOCartItem: BOCartItem) : BOShopCart = {
+    val newBOCartItems = boShopCart.cartItems.map { oldBOCartItem =>
+      if (oldBOCartItem.uuid == newBOCartItem.uuid) newBOCartItem
+      else oldBOCartItem
+    }
+    boShopCart.copy(cartItems = newBOCartItems)
+  }
+
+  private def replaceBOShopCart(boCart: BOCart, newBOShopCart: BOShopCart) : BOCart = {
+    val newBOShopCarts = boCart.shopCarts.map { oldBOShopCart =>
+      if (oldBOShopCart.uuid == newBOShopCart.uuid) newBOShopCart
+      else oldBOShopCart
+    }
+    boCart.copy(shopCarts = newBOShopCarts)
+  }
+
   def shippingWebhook(storeCode: String, webhookProvider: String, data: String): Unit = {
     extractWebHookData(webhookProvider, data).map { webHookData =>
       boTransactionHandler.findByShipmentId(EasyPostHandler.EASYPOST_SHIPPING_PREFIX + webHookData.shipmentId).map {
         tx =>
-          BOCartDao.findByTransactionUuid(tx.transactionUUID).map { boCart =>
-            CompanyDao.findByCode(storeCode).map { company =>
+          boCartHandler.findByTransactionUuid(storeCode, tx.transactionUUID).map { boCart =>
+            CompanyDao.findByCode(storeCode).foreach { company =>
               if (boCart.companyFk == company.id) {
                 DB localTx { implicit session =>
-                  BOCartItemDao.findByBOCart(boCart).map { boCartItem =>
-                    BODeliveryDao.findByBOCartItem(boCartItem).map { boDelivery =>
-                      BODeliveryDao.save(boDelivery.copy(status = webHookData.newDeliveryStatus))
+                  // On ne traite le retour que pour les produits du shop Mogobiz
+                  val newBOShopCarts = boCart.shopCarts.map { boShopCart =>
+                    if (boShopCart.shopId == MogopayConstant.SHOP_MOGOBIZ) {
+                      val newCartItems = boShopCart.cartItems.map { boCartItem =>
+                        val newBODelivery = boCartItem.bODelivery.map { boDelivery =>
+                          boDelivery.copy(status = webHookData.newDeliveryStatus)
+                        }
+                        boCartItem.copy(bODelivery = newBODelivery)
+                      }
+                      boShopCart.copy(cartItems = newCartItems)
                     }
+                    else boShopCart
                   }
+
+                  val newBOCart = boCart.copy(shopCarts = newBOShopCarts)
+                  boCartHandler.update(newBOCart)
+
                   notifyChangesIntoES(storeCode, boCart)
                 }
               }
             }
           }
           val newShippingData = tx.shippingData.map { shippingData =>
-            shippingData.copy(trackingHistory = (data :: shippingData.trackingHistory))
+            shippingData.copy(trackingHistory = data :: shippingData.trackingHistory)
           }
           val newTx = tx.copy(shippingData = newShippingData)
-          boTransactionHandler.save(newTx, false)
+          val refresh = false
+          boTransactionHandler.save(newTx, refresh)
       }
     }
   }
@@ -445,7 +495,7 @@ class BackofficeHandler extends JsonUtil with BoService {
     case obj: JObject => {
       obj \ "transactionUUID" match {
         case (JString(transactionUuid)) => {
-          val req = search in BOCartESDao.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid",
+          val req = search in boCartHandler.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid",
                                                                                                 transactionUuid)
           println(req._builder.toString)
           val statusList = (EsClient.searchAllRaw(req) hits () map { hit =>

@@ -9,13 +9,13 @@ import java.util.UUID
 import com.mogobiz.pay.common.Cart
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import com.mogobiz.pay.model.ParamRequest.{ListShippingPriceParam, SelectShippingPriceParam}
+import com.mogobiz.pay.model.ParamRequest.SelectShippingPriceParam
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.Settings._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
 import com.mogobiz.pay.config.MogopayHandlers
-import com.mogobiz.pay.model.{SelectShippingCart, ShippingCart, ShippingData}
+import com.mogobiz.pay.model.{SelectShippingCart, ShippingCart}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.session.Session
 import spray.http.{HttpCookie, StatusCodes}
@@ -187,9 +187,8 @@ class CartService extends Directives with DefaultComplete {
           case None => complete {
             StatusCodes.Forbidden -> Map('error -> "Not logged in")
           }
-          case Some(accountId) => {
+          case Some(accountId) =>
               handleCall(cartHandler.queryCartPaymentPrepare(storeCode, uuid, params, accountId), (res: Map[String, Any]) => complete(StatusCodes.OK, res))
-          }
         }
       }
     }
@@ -202,9 +201,8 @@ class CartService extends Directives with DefaultComplete {
           case None => complete {
             StatusCodes.Forbidden -> Map('error -> "Not logged in")
           }
-          case Some(accountId) => {
+          case Some(accountId) =>
               handleCall(cartHandler.queryCartPaymentLinkToTransaction(storeCode, uuid, params, accountId), (res: Unit) => complete(StatusCodes.OK))
-          }
         }
       }
     }
@@ -217,16 +215,14 @@ class CartService extends Directives with DefaultComplete {
           case None => complete {
             StatusCodes.Forbidden -> Map('error -> "Not logged in")
           }
-          case Some(accountId) => {
+          case Some(accountId) =>
             session.sessionData.selectShippingCart match {
               case None => complete {
                 StatusCodes.Forbidden -> Map('error -> "No selected shipping price")
               }
-              case Some(selectShippingCart) => {
+              case Some(selectShippingCart) =>
                 handleCall(cartHandler.queryCartPaymentCommit(storeCode, uuid, params, accountId, selectShippingCart), (res: Unit) => complete(StatusCodes.OK))
-              }
             }
-          }
         }
       }
     }
@@ -252,7 +248,7 @@ class CartService extends Directives with DefaultComplete {
                 case None => complete {
                   StatusCodes.Forbidden -> Map('error -> "Not logged in")
                 }
-                case Some(id) => {
+                case Some(id) =>
                   handleCall({
                     cartHandler.getCartForPay(storeCode, uuid, Some(id), currency, None)
                   }, (cart: Cart) => {
@@ -267,7 +263,6 @@ class CartService extends Directives with DefaultComplete {
                     )
                   }
                   )
-                }
               }
           }
         }
@@ -286,9 +281,13 @@ class CartService extends Directives with DefaultComplete {
                 case None => complete {
                   StatusCodes.Forbidden -> Map('error -> "Not logged in")
                 }
-                case Some(id) => {
+                case Some(id) =>
                   handleCall({
-                    MogopayHandlers.handlers.transactionHandler.selectShippingPrice(session.sessionData, id, params.shippingDataId, params.externalShippingDataIds)
+                    val map = params.shopsAndshippingDataIds.map{ shopAndId =>
+                      val s = shopAndId.split("|")
+                      s(0) -> s(1)
+                    }.toMap
+                    MogopayHandlers.handlers.transactionHandler.selectShippingPrice(session.sessionData, id, map)
                   }, (selectShippingCart: Option[SelectShippingCart]) => {
                     handleCall({
                       cartHandler.getCartForPay(storeCode, uuid, Some(id), params.currency, selectShippingCart.map{_.shippingAddress})
@@ -300,7 +299,6 @@ class CartService extends Directives with DefaultComplete {
                     })
                   }
                   )
-                }
               }
           }
       }

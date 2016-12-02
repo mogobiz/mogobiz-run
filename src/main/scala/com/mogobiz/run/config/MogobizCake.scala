@@ -57,6 +57,8 @@ trait MogobizCake {
 
   def miraklHandler: MiraklHandler
 
+  def boCartHandler: BOCartHandler
+
 }
 
 class DefaultMogobizCake extends MogobizCake {
@@ -89,6 +91,8 @@ class DefaultMogobizCake extends MogobizCake {
   val logoHandler = new LogoHandler
 
   val miraklHandler = if (Settings.Externals.mirakl) new MiraklHandlerImpl else new MiraklHandlerUndef
+  val boCartHandler = new BOCartHandler
+
   val accountHandler = new AccountHandler
 
 }

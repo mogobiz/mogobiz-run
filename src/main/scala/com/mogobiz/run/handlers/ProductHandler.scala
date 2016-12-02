@@ -7,7 +7,7 @@ package com.mogobiz.run.handlers
 import java.util.{ Calendar, Date, Locale, UUID }
 
 import akka.actor.Props
-import com.mogobiz.es.EsClient.{ multiSearchRaw }
+import com.mogobiz.es.EsClient.multiSearchRaw
 import com.mogobiz.es.{ EsClient, _ }
 import com.mogobiz.json.{ JacksonConverter, JsonUtil }
 import com.mogobiz.pay.model.Account
@@ -19,7 +19,7 @@ import com.mogobiz.run.exceptions.{ CommentAlreadyExistsException, NotAuthorized
 import com.mogobiz.run.handlers.BOCartDao._
 import com.mogobiz.run.learning.UserActionRegistration
 import com.mogobiz.run.model.Learning.UserAction
-import com.mogobiz.run.model.Mogobiz.{ TransactionStatus, BOCart, Suggestion }
+import com.mogobiz.run.model.Mogobiz.{ TransactionStatus, Suggestion }
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.run.services.RateBoService
@@ -957,10 +957,9 @@ object ProductDao extends JsonUtil {
     }
     result match {
       case Success(ps) => ps
-      case Failure(e) => {
+      case Failure(e) =>
         logger.error("Unabled to load product and sku  " + skuId + " from index " + indexEs, e)
         None
-      }
     }
   }
 

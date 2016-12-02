@@ -13,9 +13,8 @@ import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.run.config.Settings
 import com.mogobiz.pay.model.Account
+import com.mogobiz.run.handlers.BOCart
 import com.mogobiz.run.json.{JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer}
-import com.mogobiz.run.model.ES.{BOCart, BOCartItem, BOProduct}
-import com.mogobiz.run.model.Mogobiz
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz._
 import com.sksamuel.elastic4s.CreateIndexDefinition
@@ -209,11 +208,12 @@ object Dashboard {
     linearizedCart.foreach(cart => EsClient.index(targetIndex, cart, refresh = false))
   }
 
-  private def linearize(cart: BOCart, buyerUUID: String): Seq[LinearCart] = cart.cartItems.map { item =>
-    val buyer: Account = accountHandler.find(buyerUUID).get
+  private def linearize(cart: BOCart, buyerUUID: String): Seq[LinearCart] = cart.shopCarts.flatMap { shopCart =>
+    shopCart.cartItems.map { item =>
+      val buyer: Account = accountHandler.find(buyerUUID).get
 
-    LinearCart(
-        itemCode = item.code,
+      LinearCart(
+        itemCode = item.uuid,
         price = item.price,
         tax = item.tax,
         endPrice = item.endPrice,
@@ -258,7 +258,7 @@ object Dashboard {
         productCategoryParentId = item.principal.product.category.parentId,
         deliveryStatus = item.bODelivery.map(_.status.toString),
         deliveryTracking = item.bODelivery.flatMap(_.tracking),
-        deliveryExtra = item.bODelivery.flatMap(_.extra),
+        deliveryExtra = item.bODelivery.map(_.extra),
         deliveryUUID = item.bODelivery.map(_.uuid),
         uuid = item.uuid,
         url = item.url,
@@ -280,202 +280,8 @@ object Dashboard {
         buyerZipCode = buyer.address.map(_.zipCode.getOrElse("")),
         buyerCountry = buyer.address.flatMap(_.country),
         buyerGeoCoordinates = buyer.address.flatMap(_.geoCoordinates)
-    )
-  }
-
-  def main(args: Array[String]) = {
-
-    val sku00: Sku = Sku(id = 0L,
-                         uuid = "00000000-0000-0000-0000-000000000000",
-                         sku = "sku00",
-                         name = "sku00",
-                         externalCode = None,
-                         price = 500,
-                         salePrice = 500,
-                         coupons = Nil,
-                         nbSales = 0)
-    val sku01: Sku = Sku(id = 1L,
-                         uuid = "11111111-1111-1111-1111-111111111111",
-                         sku = "sku11",
-                         name = "sku11",
-                         externalCode = None,
-                         price = 2000,
-                         salePrice = 2000,
-                         coupons = Nil,
-                         nbSales = 0)
-
-    val productA: BOProduct = BOProduct(
-        acquittement = true,
-        principal = true,
-        price = 500,
-        registeredCartItem = Nil,
-        uuid = "00000000-0000-0000-0000-000000000000",
-        product = Product(id = 0L,
-                          uuid = "00000000-0000-0000-0000-000000000000",
-                          name = "A",
-                          "",
-                          ProductType.PRODUCT,
-                          ProductCalendar.NO_DATE,
-                          None,
-                          None,
-                          true,
-                          None,
-                          None,
-                          None,
-                          Nil,
-                          None,
-                          None,
-                          None,
-                          0,
-                          0,
-                          0,
-                          null,
-                          new Date,
-                          new Date)
-    )
-    val productB: BOProduct = BOProduct(
-        acquittement = true,
-        principal = true,
-        price = 2000,
-        registeredCartItem = Nil,
-        uuid = "00000000-0000-0000-0000-000000000000",
-        product = Product(id = 1L,
-                          uuid = "11111111-1111-1111-1111-111111111111",
-                          name = "B",
-                          "",
-                          ProductType.PRODUCT,
-                          ProductCalendar.NO_DATE,
-                          None,
-                          None,
-                          true,
-                          None,
-                          None,
-                          None,
-                          Nil,
-                          None,
-                          None,
-                          None,
-                          0,
-                          0,
-                          0,
-                          null,
-                          new Date,
-                          new Date)
-    )
-
-    val item00 = BOCartItem( // 1 A
-                            code = "00",
-                            price = 500,
-                            tax = 0.0,
-                            endPrice = 500,
-                            totalPrice = 1000,
-                            totalEndPrice = 1000,
-                            hidden = false,
-                            quantity = 2,
-                            startDate = None,
-                            endDate = None,
-                            sku = sku00,
-                            secondary = Nil,
-                            principal = productA,
-                            bOReturnedItems = Nil,
-                            bODelivery = None,
-                            uuid = "00000000-0000-0000-0000-000000000000",
-                            url = "http://url00/")
-    val item01 = BOCartItem( // 2 B
-                            code = "01",
-                            price = 4000,
-                            tax = 0.0,
-                            endPrice = 4000,
-                            totalPrice = 4000,
-                            totalEndPrice = 4000,
-                            hidden = false,
-                            quantity = 2,
-                            startDate = None,
-                            endDate = None,
-                            sku = sku01,
-                            secondary = Nil,
-                            principal = productB,
-                            bOReturnedItems = Nil,
-                            bODelivery = None,
-                            uuid = "11111111-1111-1111-1111-111111111111",
-                            url = "http://url01/")
-    val item10 = BOCartItem( // 1 A
-                            code = "10",
-                            price = 500,
-                            tax = 0.0,
-                            endPrice = 500,
-                            totalPrice = 500,
-                            totalEndPrice = 500,
-                            hidden = false,
-                            quantity = 1,
-                            startDate = None,
-                            endDate = None,
-                            sku = sku00,
-                            secondary = Nil,
-                            principal = productA,
-                            bOReturnedItems = Nil,
-                            bODelivery = None,
-                            uuid = "22222222-2222-2222-2222-222222222222",
-                            url = "http://url10/")
-    val item20 = BOCartItem( // 2 B
-                            code = "01",
-                            price = 4000,
-                            tax = 0.0,
-                            endPrice = 4000,
-                            totalPrice = 4000,
-                            totalEndPrice = 4000,
-                            hidden = false,
-                            quantity = 2,
-                            startDate = None,
-                            endDate = None,
-                            sku = sku01,
-                            secondary = Nil,
-                            principal = productB,
-                            bOReturnedItems = Nil,
-                            bODelivery = None,
-                            uuid = "33333333-3333-3333-3333-333333333333",
-                            url = "http://url20/")
-
-    val c0 = linearize(BOCart(transactionUuid = Some("00000000-0000-0000-0000-000000000000"),
-                              buyer = "buyer0",
-                              xdate = DateTime.parse("2015-04-01T12:00"),
-                              price = 45000,
-                              status = Mogobiz.TransactionStatus.COMPLETE,
-                              currencyCode = "EUR",
-                              currencyRate = 1.0,
-                              dateCreated = new Date,
-                              lastUpdated = new Date,
-                              uuid = "00000000-0000-0000-0000-000000000000",
-                              cartItems = List(item00, item01)),
-                       "eeeeeeee-29b4-465a-aedd-1784ee6e3929")
-    val c1 = linearize(BOCart(transactionUuid = Some("11111111-1111-1111-1111-111111111111"),
-                              buyer = "buyer1",
-                              xdate = DateTime.parse("2015-04-01T14:00"),
-                              price = 500,
-                              status = Mogobiz.TransactionStatus.COMPLETE,
-                              currencyCode = "EUR",
-                              currencyRate = 1.0,
-                              dateCreated = new Date,
-                              lastUpdated = new Date,
-                              uuid = "11111111-1111-1111-1111-111111111111",
-                              cartItems = List(item10)),
-                       "ffffffff-29b4-465a-aedd-1784ee6e3929")
-    val c2 = linearize(BOCart(transactionUuid = Some("22222222-2222-2222-2222-222222222222"),
-                              buyer = "buyer2",
-                              xdate = DateTime.parse("2015-04-03T12:00"),
-                              price = 4000,
-                              status = Mogobiz.TransactionStatus.COMPLETE,
-                              currencyCode = "EUR",
-                              currencyRate = 1.0,
-                              dateCreated = new Date,
-                              lastUpdated = new Date,
-                              uuid = "22222222-2222-2222-2222-222222222222",
-                              cartItems = List(item20)),
-                       "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
-
-    c0.foreach(cart => EsClient.index("mogodashboard", cart, refresh = true))
-    c1.foreach(cart => EsClient.index("mogodashboard", cart, refresh = true))
-    c2.foreach(cart => EsClient.index("mogodashboard", cart, refresh = true))
+      )
+    }
   }
 
   val esIndexRotate = Settings.Dashboard.Rotate
@@ -492,7 +298,7 @@ object Dashboard {
       case "YEARLY"  => Some("yyyy")
       case _         => None
     }
-    val suffix = format map ("_" + dateFormat(Calendar.getInstance(), _)) getOrElse ("")
+    val suffix = format map ("_" + dateFormat(Calendar.getInstance(), _)) getOrElse ""
     esIndex + suffix
   }
 }

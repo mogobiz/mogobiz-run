@@ -5,7 +5,7 @@
 package com.mogobiz.run.handlers
 
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.model.Mogobiz.{ReductionRuleType, ReductionRule}
+import com.mogobiz.run.model.Mogobiz.{ReductionRule, ReductionRuleType}
 import com.mogobiz.run.model._
 import com.sksamuel.elastic4s.ElasticDsl._
 import org.json4s.JsonAST.{JNothing, JObject, JValue}
@@ -16,13 +16,13 @@ import com.mogobiz.es._
   */
 class CouponHandler {
 
-  def releaseCoupon(storeCode: String, coupon: Mogobiz.Coupon)(implicit session: DBSession): Unit = {
+  def releaseCoupon(storeCode: String, coupon: Coupon)(implicit session: DBSession): Unit = {
     sql""" update coupon set consumed=consumed-1 where code=${coupon.code} and consumed > 0 and company_fk in (select c.id from company c where c.code = ${storeCode}) """
       .update()
       .apply()
   }
 
-  def consumeCoupon(storeCode: String, coupon: Mogobiz.Coupon)(implicit session: DBSession): Boolean = {
+  def consumeCoupon(storeCode: String, coupon: Coupon)(implicit session: DBSession): Boolean = {
     val numberModifyLine =
       sql""" update coupon set consumed=consumed+1 where code=${coupon.code} and (number_of_uses is null or number_of_uses > consumed) and company_fk in (select c.id from company c where c.code = ${storeCode}) """
         .update()
@@ -32,15 +32,15 @@ class CouponHandler {
 
   def computeCouponPriceForCartItem(storeCode: String,
                                     coupon: CouponWithData,
-                                    cartItem: StoreCartItemWithPrice,
-                                    cartItems: List[StoreCartItemWithPrice]): Long = {
+                                    cartItem: StoreCartItemWithPrices,
+                                    cartItems: List[StoreCartItemWithPrices]): Long = {
     if (coupon.active) {
-      val skusIdList = ProductDao.getSkusIdByCoupon(storeCode, coupon.coupon.id)
+      val skusIdList = ProductDao.getSkusIdByCoupon(storeCode, coupon.id)
 
-      if (skusIdList.nonEmpty && skusIdList.contains(cartItem.cartItem.skuId)) {
+      if (skusIdList.nonEmpty && skusIdList.contains(cartItem.skuId)) {
         val price      = cartItem.saleEndPrice.getOrElse(cartItem.salePrice)
         val totalPrice = cartItem.saleTotalEndPrice.getOrElse(cartItem.saleTotalPrice)
-        applyReductionRules(coupon.coupon.rules, cartItem, price, totalPrice, cartItems)
+        applyReductionRules(coupon.rules, cartItem, price, totalPrice, cartItems)
       } else {
         // Le coupon ne s'applique sur aucun SKU, donc prix = 0
         0
@@ -51,18 +51,20 @@ class CouponHandler {
     }
   }
 
-  def getWithData(storeCode: String, storeCoupon: StoreCoupon): Option[CouponWithData] = {
-    CouponDao.findByCode(storeCode, storeCoupon.code).map { coupon =>
-      CouponWithData(coupon, isCouponActive(coupon), 0, promotion = false)
+  def getWithData(storeCode: String, cartCoupon: CartCoupon): Option[CouponWithData] = {
+    val promotion = false
+    CouponDao.findByCode(storeCode, cartCoupon.code).map { coupon =>
+      new CouponWithData(coupon, isCouponActive(coupon), promotion)
     }
   }
 
-  def getWithData(coupon: Mogobiz.Coupon): CouponWithData = {
-    CouponWithData(coupon, isCouponActive(coupon), 0, promotion = true)
+  def getWithData(coupon: Coupon): CouponWithData = {
+    val promotion = true
+    new CouponWithData(coupon, isCouponActive(coupon), promotion)
   }
 
-  def transformAsRender(storeCode: String, coupon: CouponWithData): Option[Render.Coupon] = {
-    CouponDao.findByCodeAsJSon(storeCode, coupon.coupon.code) match {
+  def transformAsRender(storeCode: String, coupon: CouponWithPrices): Option[Render.Coupon] = {
+    CouponDao.findByCodeAsJSon(storeCode, coupon.code) match {
       case jobject: JObject => {
         Some(new Render.Coupon(jobject.obj, coupon.active, coupon.reduction, coupon.promotion))
       }
@@ -70,7 +72,7 @@ class CouponHandler {
     }
   }
 
-  protected def isCouponActive(coupon: Mogobiz.Coupon): Boolean = {
+  protected def isCouponActive(coupon: Coupon): Boolean = {
     if (coupon.startDate.isEmpty && coupon.endDate.isEmpty) true
     else if (coupon.startDate.isDefined && coupon.endDate.isEmpty)
       coupon.startDate.get.isBeforeNow || coupon.startDate.get.isEqualNow
@@ -92,11 +94,11 @@ class CouponHandler {
     * @return
     */
   protected def applyReductionRule(rule: ReductionRule,
-                                   cartItem: StoreCartItemWithPrice,
+                                   cartItem: StoreCartItemWithPrices,
                                    quantity: Long,
                                    price: Long,
                                    totalPrice: Long,
-                                   cartItems: List[StoreCartItemWithPrice]): Long = {
+                                   cartItems: List[StoreCartItemWithPrices]): Long = {
     rule.xtype match {
       case ReductionRuleType.DISCOUNT =>
         computeDiscount(rule.discount, totalPrice)
@@ -108,10 +110,10 @@ class CouponHandler {
   }
 
   protected def applyReductionRules(rules: Seq[ReductionRule],
-                                    cartItem: StoreCartItemWithPrice,
+                                    cartItem: StoreCartItemWithPrices,
                                     price: Long,
                                     totalPrice: Long,
-                                    cartItems: List[StoreCartItemWithPrice]): Long = {
+                                    cartItems: List[StoreCartItemWithPrices]): Long = {
     if (rules.isEmpty)
       0
     else
@@ -159,15 +161,15 @@ object CouponDao {
     coupon
   }
 
-  def findByCode(storeCode: String, couponCode: String): Option[Mogobiz.Coupon] = {
+  def findByCode(storeCode: String, couponCode: String): Option[Coupon] = {
     // Création de la requête
     val req = search in storeCode -> "coupon" postFilter termFilter("coupon.code.raw", couponCode)
 
     // Lancement de la requête
-    EsClient.search[Mogobiz.Coupon](req);
+    EsClient.search[Coupon](req);
   }
 
-  def findPromotionsThatOnlyApplyOnCart(storeCode: String): List[Mogobiz.Coupon] = {
+  def findPromotionsThatOnlyApplyOnCart(storeCode: String): List[Coupon] = {
     // Création de la requête
     val req = search in storeCode -> "coupon" postFilter
         and(
@@ -179,6 +181,6 @@ object CouponDao {
             )
         ) from 0 size EsClient.MAX_SIZE
 
-    EsClient.searchAll[Mogobiz.Coupon](req).toList
+    EsClient.searchAll[Coupon](req).toList
   }
 }

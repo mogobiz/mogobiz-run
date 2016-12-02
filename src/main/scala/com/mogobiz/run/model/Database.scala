@@ -132,6 +132,7 @@ object Mogobiz {
     downloadMaxTimes: Long,
     downloadMaxDelay: Long,
     category: Category,
+    shopId: Option[String],
     var lastUpdated: Date,
     var dateCreated: Date)
 
@@ -143,21 +144,6 @@ object Mogobiz {
     discount: Option[String], //discount (or percent) if type is DISCOUNT (example : -1000 or 10%)
     @JsonDeserialize(contentAs = classOf[java.lang.Long]) xPurchased: Option[Long],
     @JsonDeserialize(contentAs = classOf[java.lang.Long]) yOffered: Option[Long])
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  case class Coupon(id: Long,
-    name: String,
-    code: String,
-    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) startDate: Option[DateTime],
-    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) endDate: Option[DateTime],
-    @JsonDeserialize(contentAs = classOf[java.lang.Long]) numberOfUses: Option[Long],
-    @JsonDeserialize(contentAs = classOf[java.lang.Long]) sold: Option[Long],
-    rules: List[ReductionRule],
-    active: Boolean,
-    anonymous: Boolean = false,
-    catalogWise: Boolean = false,
-    description: String,
-    pastille: String)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Category(id: Long,
@@ -173,101 +159,6 @@ object Mogobiz {
     discount: String,
     var lastUpdated: Date,
     var dateCreated: Date)
-
-  case class BOCart(id: Long,
-    buyer: String, // This is an email
-    companyFk: Long,
-    currencyCode: String,
-    currencyRate: Double,
-    xdate: DateTime,
-    dateCreated: DateTime,
-    lastUpdated: DateTime,
-    price: Long,
-    status: TransactionStatus,
-    transactionUuid: Option[String],
-    uuid: String,
-    externalOrderId: Option[String] = None)
-
-  case class BOProduct(id: Long,
-    acquittement: Boolean,
-    price: Long,
-    principal: Boolean,
-    productFk: Long,
-    dateCreated: DateTime,
-    lastUpdated: DateTime,
-    uuid: String)
-
-  case class BOTicketType(id: Long,
-    quantity: Int,
-    price: Long,
-    shortCode: Option[String],
-    ticketType: Option[String],
-    firstname: Option[String],
-    lastname: Option[String],
-    email: Option[String],
-    phone: Option[String],
-    age: Int,
-    birthdate: Option[DateTime],
-    startDate: Option[DateTime],
-    endDate: Option[DateTime],
-    qrcode: Option[String],
-    qrcodeContent: Option[String],
-    bOProductFk: Long,
-    dateCreated: DateTime,
-    lastUpdated: DateTime,
-    uuid: String)
-
-  case class BOCartItem(id: Long,
-    code: String,
-    price: Long, // unit price excluding VAT
-    tax: Double, // VAT
-    endPrice: Long, // unit price including VAT
-    totalPrice: Long, // unit price excluding VAT * quantity
-    totalEndPrice: Long, // unit price including VAT * quantity
-    hidden: Boolean,
-    quantity: Int,
-    startDate: Option[DateTime],
-    endDate: Option[DateTime],
-    ticketTypeFk: Long,
-    bOCartFk: Long,
-    @JsonDeserialize(contentAs = classOf[java.lang.Long]) bODeliveryFk: Option[Long],
-    dateCreated: DateTime,
-    lastUpdated: DateTime,
-    uuid: String,
-    url: String,
-    externalCode: Option[String]) {
-
-    def getExternalCode(provider: ExternalProvider): Option[ExternalCode] = {
-      ExternalCode.fromString(externalCode).find{_.provider == provider}
-    }
-  }
-
-  case class BODelivery(id: Long,
-    bOCartFk: Long,
-    @JsonScalaEnumeration(classOf[DeliveryStatusRef]) status: DeliveryStatus,
-    tracking: Option[String] = None,
-    extra: Option[String] = None,
-    dateCreated: DateTime = DateTime.now,
-    lastUpdated: DateTime = DateTime.now,
-    uuid: String)
-
-  case class BOReturn(id: Long,
-    bOReturnedItemFk: Long,
-    motivation: Option[String],
-    @JsonScalaEnumeration(classOf[ReturnStatusRef]) status: ReturnStatus,
-    dateCreated: DateTime = DateTime.now,
-    lastUpdated: DateTime = DateTime.now,
-    uuid: String)
-
-  case class BOReturnedItem(id: Long,
-    bOCartItemFk: Long,
-    quantity: Int,
-    refunded: Long,
-    totalRefunded: Long,
-    @JsonScalaEnumeration(classOf[ReturnedItemStatusRef]) status: ReturnedItemStatus,
-    dateCreated: DateTime = DateTime.now,
-    lastUpdated: DateTime = DateTime.now,
-    uuid: String)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Company(id: Long,
@@ -292,11 +183,12 @@ object Mogobiz {
     country: Country)
 
   case class Consumption(id: Long,
-    @JsonDeserialize(contentAs = classOf[java.lang.Long]) bOTicketTypeFk: Option[Long],
-    xdate: DateTime,
-    dateCreated: DateTime = DateTime.now,
-    lastUpdated: DateTime = DateTime.now,
-    uuid: String)
+                         boCartItemUuid: Option[String],
+                         boProductUuid: String,
+                         xdate: DateTime,
+                         dateCreated: DateTime = DateTime.now,
+                         lastUpdated: DateTime = DateTime.now,
+                         uuid: String)
 
   case class BOProductConsumption(consumptionsFk: Long,
     consumptionId: Long)
@@ -318,7 +210,6 @@ object Mogobiz {
     val FAILED = Value("FAILED")
     val COMPLETE = Value("COMPLETE")
   }
-
   class TransactionStatusRef extends TypeReference[TransactionStatus.type]
 
   object ProductType extends Enumeration {
