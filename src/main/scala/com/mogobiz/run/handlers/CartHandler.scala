@@ -193,8 +193,10 @@ class CartHandler extends StrictLogging {
 
       val invalidationResult = invalidateCart(cart)
       val shopId = product.shopId.getOrElse(MogopayConstant.SHOP_MOGOBIZ)
-      val shopCart = cart.findShopCart(shopId).getOrElse(StoreShopCart(shopId))
-      invalidationResult.copy(cart = addShopCartIntoCart(cart, addCartItemIntoShopCart(shopCart, cartItem)))
+      val shopCart = invalidationResult.cart.findShopCart(shopId).getOrElse(StoreShopCart(shopId))
+      val newShopCart = shopCart.copy(cartItems = addOrMergeCartItem(shopCart.cartItems, cartItem))
+      val newCart = invalidationResult.cart.copy(shopCarts = addOrReplaceShopCart(invalidationResult.cart.shopCarts, newShopCart))
+      invalidationResult.copy(cart = newCart)
     }
     val updatedCart = runInTransaction(transactionalBloc, { cart: StoreCart =>
       StoreCartDao.save(cart)
@@ -330,7 +332,9 @@ class CartHandler extends StrictLogging {
               val invalidationResult = invalidateCart(cart)
               val shopCart = invalidationResult.cart.findShopCart(shopId).getOrElse(StoreShopCart(shopId))
               val newCoupons = StoreCartCoupon(coupon.id, coupon.code) :: shopCart.coupons
-              invalidationResult.copy(cart = addShopCartIntoCart(cart, shopCart.copy(coupons = newCoupons)))
+              val newShopCart = shopCart.copy(coupons = newCoupons)
+              val newCart = invalidationResult.cart.copy(shopCarts = addOrReplaceShopCart(invalidationResult.cart.shopCarts, newShopCart))
+              invalidationResult.copy(cart = newCart)
             }
           }, { cart: StoreCart =>
             StoreCartDao.save(cart)
@@ -371,9 +375,12 @@ class CartHandler extends StrictLogging {
           val updatedCart = runInTransaction({ implicit session: DBSession =>
             couponHandler.releaseCoupon(cart.storeCode, coupon)
             val invalidationResult = invalidateCart(cart)
+
             val shopCart = invalidationResult.cart.findShopCart(shopId).getOrElse(StoreShopCart(shopId))
             val newCoupons = shopCart.coupons.filterNot { c => c.code == existCoupon.code }
-            invalidationResult.copy(cart = addShopCartIntoCart(cart, shopCart.copy(coupons = newCoupons)))
+            val newShopCart = shopCart.copy(coupons = newCoupons)
+            val newCart = invalidationResult.cart.copy(shopCarts = addOrReplaceShopCart(invalidationResult.cart.shopCarts, newShopCart))
+            invalidationResult.copy(cart = newCart)
           }, { cart: StoreCart =>
             StoreCartDao.save(cart)
             cart
@@ -972,60 +979,68 @@ class CartHandler extends StrictLogging {
     * de la fusion
     */
   protected def mergeCarts(source: StoreCart, target: StoreCart): StoreCart = {
-    def mergeShopCart(source: List[StoreShopCart], target: StoreCart): StoreCart = {
+    // Ajoute les coupons de la source dans la target si les coupons n'existe pas déjà
+    def mergeCoupons(source: List[StoreCartCoupon], target: List[StoreCartCoupon]): List[StoreCartCoupon] = {
       if (source.isEmpty) target
-      else mergeShopCart(source.tail, addShopCartIntoCart(target, source.head))
-    }
-    mergeShopCart(source.shopCarts, target)
-  }
-
-  /**
-    * Ajoute un shopCart au panier. Si un item existe déjà (sauf pour le SERVICE), la quantité
-    * de l'item existant est modifié
-    */
-  protected def addShopCartIntoCart(cart: StoreCart, shopCart: StoreShopCart): StoreCart = {
-    def mergeCoupon(source: List[StoreCartCoupon], target: StoreShopCart): StoreShopCart = {
-      if (source.isEmpty) target
-      else mergeCoupon(source.tail, addCouponIntoShopCart(target, source.head))
-    }
-    def mergeCartItem(source: List[StoreCartItem], target: StoreShopCart): StoreShopCart = {
-      if (source.isEmpty) target
-      else mergeCartItem(source.tail, addCartItemIntoShopCart(target, source.head))
-    }
-
-    val newShopCarts = cart.findShopCart(shopCart.shopId).map { existShopCart =>
-      cart.shopCarts.map { item =>
-        if (item == existShopCart) mergeCartItem(shopCart.cartItems, mergeCoupon(shopCart.coupons, item)) else item
+      else {
+        val coupon = source.head
+        if (target.exists { c => c.code == coupon.code }) mergeCoupons(source.tail, target)
+        else mergeCoupons(source.tail, coupon :: target)
       }
-    }.getOrElse(shopCart :: cart.shopCarts)
-    cart.copy(shopCarts = newShopCarts)
+    }
+    // Ajoute les items de la source dans la target en fusionnant les quantités si nécessaire
+    def mergeCartItems(source: List[StoreCartItem], target: List[StoreCartItem]): List[StoreCartItem] = {
+      if (source.isEmpty) target
+      else mergeCartItems(source.tail, addOrMergeCartItem(target, source.head))
+    }
+    // Ajoute les shops de la source dans la target en les fusionnant si nésessaire
+    def mergeShopCarts(source: List[StoreShopCart], target: List[StoreShopCart]): List[StoreShopCart] = {
+      if (source.isEmpty) target
+      else {
+        val shopCart = source.head
+        val existShopCart = target.find(_.shopId == shopCart.shopId)
+        val newTarget = existShopCart.map { existShopCart =>
+          val newShopCart = existShopCart.copy(coupons = mergeCoupons(shopCart.coupons, existShopCart.coupons),
+            cartItems = mergeCartItems(shopCart.cartItems, existShopCart.cartItems))
+          addOrReplaceShopCart(target, newShopCart)
+        }.getOrElse(shopCart :: target)
+        mergeShopCarts(source.tail, newTarget)
+      }
+    }
+    target.copy(shopCarts = mergeShopCarts(source.shopCarts, target.shopCarts))
   }
 
   /**
-    * Ajoute un item au panier. Si un item existe déjà (sauf pour le SERVICE), la quantité
+    * Ajoute le ShopCar s'il n'existe pas déjà ou remplace le ShopCart existant
+    * @return
+    */
+  protected def addOrReplaceShopCart(source: List[StoreShopCart], newShopCart: StoreShopCart) : List[StoreShopCart] = {
+    val existShopCart = source.find(_.shopId == newShopCart.shopId)
+
+    existShopCart.map { existShopCart =>
+      source.map { shopCart =>
+        if (shopCart == existShopCart) newShopCart else shopCart
+      }
+    }.getOrElse(newShopCart :: source)
+  }
+
+  /**
+    * Ajoute un CartItem à une liste. Si un item existe déjà (sauf pour le SERVICE), la quantité
     * de l'item existant est modifié
     */
-  protected def addCartItemIntoShopCart(shopCart: StoreShopCart, cartItem: StoreCartItem): StoreShopCart = {
-    val newCartItems = findCartItem(shopCart, cartItem).map { existCartItem =>
-      shopCart.cartItems.map { item =>
+  protected def addOrMergeCartItem(source: List[StoreCartItem], cartItem: StoreCartItem): List[StoreCartItem] = {
+    val existCartItem = if (cartItem.xtype == ProductType.SERVICE) None
+    else source.find { ci: StoreCartItem =>
+        ci.productId == cartItem.productId &&
+          ci.skuId == cartItem.skuId &&
+          isSameDateTime(ci, cartItem)
+      }
+
+    existCartItem.map { existCartItem =>
+      source.map { item =>
         if (item == existCartItem) item.copy(quantity = item.quantity + cartItem.quantity) else item
       }
-    }.getOrElse(cartItem :: shopCart.cartItems)
-    shopCart.copy(cartItems = newCartItems)
-  }
-
-  /**
-    * Retrouve un item parmi la liste des items du panier. L'item est recherche si le type
-    * n'est pas SERVICE et si l'id du produit et du sku sont identiques
-    */
-  protected def findCartItem(shopCart: StoreShopCart, cartItem: StoreCartItem): Option[StoreCartItem] = {
-    if (cartItem.xtype == ProductType.SERVICE) None
-    else
-      shopCart.cartItems.find { ci: StoreCartItem =>
-        ci.productId == cartItem.productId &&
-        ci.skuId == cartItem.skuId &&
-        isSameDateTime(ci, cartItem)
-      }
+    }.getOrElse(cartItem :: source)
   }
 
   protected def isSameDateTime(cartItem1: StoreCartItem, cartItem2: StoreCartItem): Boolean = {
@@ -1040,18 +1055,6 @@ class CartHandler extends StrictLogging {
       .withMillisOfSecond(0)
       .withSecondOfMinute(0)
       .isEqual(cartItem2.endDate.getOrElse(now).withMillisOfSecond(0).withSecondOfMinute(0))
-  }
-
-  /**
-    * Ajoute un coupon au panier s'il n'existe pas déjà (en comparant les codes des coupons)
-    */
-  protected def addCouponIntoShopCart(cart: StoreShopCart, coupon: StoreCartCoupon): StoreShopCart = {
-    val existCoupon = cart.coupons.find { c => c.code == coupon.code }
-    if (existCoupon.isDefined) cart
-    else {
-      val newCoupons = coupon :: cart.coupons
-      cart.copy(coupons = newCoupons)
-    }
   }
 
   /**
@@ -1293,6 +1296,7 @@ class CartHandler extends StrictLogging {
     val formatedFinalPrice = rateService.formatLongPrice(shopCart.totalFinalPrice, currency, locale)
 
     Map(
+      "shopId"             -> shopCart.shopId,
       "cartItems"          -> shopCart.cartItems.map(item => renderCartItem(item, currency, locale)),
       "coupons"            -> shopCart.coupons.map(c => renderCoupon(storeCode, c, currency, locale)).flatten,
       "price"              -> shopCart.totalPrice,
@@ -1609,30 +1613,33 @@ object StoreCartDao {
 
   import com.sksamuel.elastic4s.ElasticDsl._
 
+  protected val ES_DOCUMENT = "StoreCart"
+
   protected def buildIndex(storeCode: String) = s"${storeCode}_cart"
 
   def findByDataUuidAndUserUuid(storeCode: String,
                                 dataUuid: String,
                                 userUuid: Option[Mogopay.Document]): Option[StoreCart] = {
     val uuid = dataUuid + "--" + userUuid.getOrElse("None")
-    EsClient.load[StoreCart](buildIndex(storeCode), uuid)
+    EsClient.load[StoreCart](buildIndex(storeCode), uuid, ES_DOCUMENT)
   }
 
   def save(entity: RunCart): Boolean = {
     val upsert = true
     val refresh = false
     EsClient.update[RunCart](buildIndex(entity.storeCode),
-                               entity.updateExpireDate(DateTime.now.plusSeconds(60 * Settings.Cart.Lifetime)),
-                                upsert,
-                                refresh)
+      entity.updateExpireDate(DateTime.now.plusSeconds(60 * Settings.Cart.Lifetime)),
+      ES_DOCUMENT,
+      upsert,
+      refresh)
   }
 
   def delete(cart: RunCart): Unit = {
-    EsClient.delete[RunCart](buildIndex(cart.storeCode), cart.uuid, false)
+    EsClient.delete[RunCart](buildIndex(cart.storeCode), cart.uuid, ES_DOCUMENT, false)
   }
 
   def getExpired(index: String, querySize: Int): List[StoreCart] = {
-    val req = search in index -> "StoreCart" postFilter (rangeFilter("expireDate") lt "now") from 0 size querySize
+    val req = search in index -> ES_DOCUMENT postFilter (rangeFilter("expireDate") lt "now") from 0 size querySize
     EsClient.searchAll[StoreCart](req).toList
   }
 }

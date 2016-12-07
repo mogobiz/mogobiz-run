@@ -17,13 +17,53 @@
         "type": "string",
         "index": "no"
       },
+      "boCartUuid": {
+        "type": "string",
+        "index": "no"
+      },
       "transactionUuid": {
+        "type": "string",
+        "index": "no"
+      },
+      "externalOrderId": {
         "type": "string",
         "index": "no"
       },
       "validate": {
         "type": "boolean",
         "index": "no"
+      },
+      "validateUuid": {
+        "type": "string",
+        "index": "no"
+      },
+      "countryCode": {
+        "type": "string",
+        "index": "no"
+      },
+      "stateCode": {
+        "type": "string",
+        "index": "no"
+      },
+      "rate" : {
+        "properties": {
+          "currencyFractionDigits" : {
+            "type": "long",
+            "index": "no"
+          },
+          "rate" : {
+            "type": "double",
+            "index": "no"
+          },
+          "name": {
+            "type": "string",
+            "index": "no"
+          },
+          "code": {
+            "type": "string",
+            "index": "no"
+          }
+        }
       },
       "expireDate": {
         "type": "date",
@@ -38,57 +78,19 @@
         "type": "date",
         "format": "dateOptionalTime"
       },
-      "cartItems": {
-        "properties": {
-          "id": {
+      "shopCarts" : {
+        "properties" : {
+          "shopId": {
             "type": "string",
             "index": "no"
           },
-          "productId": {
-            "type": "long",
-            "index": "no"
-          },
-          "productName": {
+          "shopTransactionUuid": {
             "type": "string",
             "index": "no"
           },
-          "xtype": {
-            "type": "string",
-            "index": "no"
-          },
-          "calendarType": {
-            "type": "string",
-            "index": "no"
-          },
-          "skuId": {
-            "type": "long",
-            "index": "no"
-          },
-          "skuName": {
-            "type": "string",
-            "index": "no"
-          },
-          "quantity": {
-            "type": "long",
-            "index": "no"
-          },
-          "price": {
-            "type": "long",
-            "index": "no"
-          },
-          "startDate": {
-            "type": "date",
-            "format": "dateOptionalTime",
-            "index": "no"
-          },
-          "endDate": {
-            "type": "date",
-            "format": "dateOptionalTime",
-            "index": "no"
-          },
-          "registeredCartItems": {
+          "cartItems": {
             "properties": {
-              "cartItemId": {
+              "indexEs": {
                 "type": "string",
                 "index": "no"
               },
@@ -96,84 +98,166 @@
                 "type": "string",
                 "index": "no"
               },
-              "email": {
+              "productId": {
+                "type": "long",
+                "index": "no"
+              },
+              "productName": {
                 "type": "string",
                 "index": "no"
               },
-              "firstname": {
+              "productPicture": {
                 "type": "string",
                 "index": "no"
               },
-              "lastname": {
+              "productUrl": {
                 "type": "string",
                 "index": "no"
               },
-              "phone": {
+              "xtype": {
                 "type": "string",
                 "index": "no"
               },
-              "birthdate": {
+              "calendarType": {
+                "type": "string",
+                "index": "no"
+              },
+              "skuId": {
+                "type": "long",
+                "index": "no"
+              },
+              "skuName": {
+                "type": "string",
+                "index": "no"
+              },
+              "quantity": {
+                "type": "long",
+                "index": "no"
+              },
+              "initPrice": {
+                "type": "long",
+                "index": "no"
+              },
+              "initSalePrice": {
+                "type": "long",
+                "index": "no"
+              },
+              "startDate": {
                 "type": "date",
                 "format": "dateOptionalTime",
                 "index": "no"
+              },
+              "endDate": {
+                "type": "date",
+                "format": "dateOptionalTime",
+                "index": "no"
+              },
+              "downloadableLink": {
+                "type": "string",
+                "index": "no"
+              },
+              "externalCode": {
+                "properties": {
+                  "provider" : {
+                    "type": "string",
+                    "index": "no"
+                  },
+                  "code" : {
+                    "type": "string",
+                    "index": "no"
+                  }
+                }
+              },
+              "registeredCartItems": {
+                "properties": {
+                  "cartItemId": {
+                    "type": "string",
+                    "index": "no"
+                  },
+                  "id": {
+                    "type": "string",
+                    "index": "no"
+                  },
+                  "email": {
+                    "type": "string",
+                    "index": "no"
+                  },
+                  "firstname": {
+                    "type": "string",
+                    "index": "no"
+                  },
+                  "lastname": {
+                    "type": "string",
+                    "index": "no"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "index": "no"
+                  },
+                  "birthdate": {
+                    "type": "date",
+                    "format": "dateOptionalTime",
+                    "index": "no"
+                  },
+                  "qrCodeContent": {
+                    "type": "string",
+                    "index": "no"
+                  }
+                }
+              },
+              "shipping": {
+                "properties": {
+                  "id": {
+                    "type": "long",
+                    "index": "no"
+                  },
+                  "weight": {
+                    "type": "long",
+                    "index": "no"
+                  },
+                  "weightUnit": {
+                    "type": "string",
+                    "index": "no"
+                  },
+                  "width": {
+                    "type": "long",
+                    "index": "no"
+                  },
+                  "height": {
+                    "type": "long",
+                    "index": "no"
+                  },
+                  "depth": {
+                    "type": "long",
+                    "index": "no"
+                  },
+                  "linearUnit": {
+                    "type": "string",
+                    "index": "no"
+                  },
+                  "amount": {
+                    "type": "long",
+                    "index": "no"
+                  },
+                  "free": {
+                    "type": "boolean",
+                    "index": "no"
+                  }
+                }
               }
             }
           },
-          "shipping": {
+          "coupons": {
             "properties": {
               "id": {
                 "type": "long",
                 "index": "no"
               },
-              "weight": {
-                "type": "long",
-                "index": "no"
-              },
-              "weightUnit": {
+              "code": {
                 "type": "string",
-                "index": "no"
-              },
-              "width": {
-                "type": "long",
-                "index": "no"
-              },
-              "height": {
-                "type": "long",
-                "index": "no"
-              },
-              "depth": {
-                "type": "long",
-                "index": "no"
-              },
-              "linearUnit": {
-                "type": "string",
-                "index": "no"
-              },
-              "amount": {
-                "type": "long",
-                "index": "no"
-              },
-              "free": {
-                "type": "boolean",
                 "index": "no"
               }
             }
-          }
-        }
-      },
-      "coupons": {
-        "properties": {
-          "id": {
-            "type": "long",
-            "index": "no"
-          },
-          "code": {
-            "type": "string",
-            "index": "no"
-          },
-          "companyCode": {
-            "type": "string",
-            "index": "no"
           }
         }
       }

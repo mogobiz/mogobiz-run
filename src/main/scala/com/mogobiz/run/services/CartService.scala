@@ -284,7 +284,7 @@ class CartService extends Directives with DefaultComplete {
                 case Some(id) =>
                   handleCall({
                     val map = params.shopsAndshippingDataIds.map{ shopAndId =>
-                      val s = shopAndId.split("|")
+                      val s = shopAndId.split("\\|")
                       s(0) -> s(1)
                     }.toMap
                     MogopayHandlers.handlers.transactionHandler.selectShippingPrice(session.sessionData, id, map)

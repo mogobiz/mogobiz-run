@@ -151,7 +151,7 @@ object CouponDao {
 
   def findByCodeAsJSon(storeCode: String, couponCode: String): JValue = {
     // Création de la requête
-    val req = search in storeCode -> "coupon" postFilter termFilter("coupon.code.raw", couponCode)
+    val req = search in storeCode -> "coupon" postFilter termFilter("coupon.code", couponCode)
 
     // Lancement de la requête
     val coupon: JValue = EsClient.searchRaw(req) match {
@@ -163,7 +163,7 @@ object CouponDao {
 
   def findByCode(storeCode: String, couponCode: String): Option[Coupon] = {
     // Création de la requête
-    val req = search in storeCode -> "coupon" postFilter termFilter("coupon.code.raw", couponCode)
+    val req = search in storeCode -> "coupon" postFilter termFilter("coupon.code", couponCode)
 
     // Lancement de la requête
     EsClient.search[Coupon](req);

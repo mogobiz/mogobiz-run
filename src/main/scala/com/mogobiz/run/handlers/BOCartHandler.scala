@@ -203,16 +203,15 @@ case class BOCartItem(price: Long,
                       @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
                       @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                       startDate: Option[DateTime],
-                      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer]) @JsonDeserialize(
-                        using = classOf[JodaDateTimeOptionDeserializer]) endDate: Option[DateTime],
+                      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
+                      @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                      endDate: Option[DateTime],
                       sku: Mogobiz.Sku,
                       principal: BOProduct,
                       secondary: List[BOProduct],
                       bODelivery: Option[BODelivery],
                       bOReturnedItems: List[BOReturnedItem],
                       externalCode : Option[ExternalCode],
-                      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                      @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                       uuid: String,
                       url: String,
                       dateCreated: DateTime)

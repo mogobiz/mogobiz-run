@@ -212,10 +212,10 @@ case class StoreShopCartWithPrices(shopId: String,
     shopCart.shopTransactionUuid,
     cartItems,
     coupons,
-    0,
-    0,
-    0,
-    0)
+    totalPrice,
+    totalEndPrice,
+    totalReduction,
+    totalFinalPrice)
 
   def this(shopCart: StoreShopCartWithPrices,
            boShopCartUuid: String,
