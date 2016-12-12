@@ -54,8 +54,6 @@ trait RunCart {
   def countryCode: Option[String]
   def stateCode: Option[String]
   def rate: Option[Currency]
-
-  def updateExpireDate(newDate: DateTime) : RunCart
 }
 
 trait RunShopCart {
@@ -109,8 +107,6 @@ case class StoreCart(storeCode: String,
   def findShopCart(shopId: String) = {
     shopCarts.find(_.shopId == shopId)
   }
-
-  override def updateExpireDate(newDate: DateTime): RunCart = this.copy(expireDate = newDate)
 }
 
 case class StoreCartWithPrices(storeCode: String,
@@ -183,15 +179,12 @@ case class StoreCartWithPrices(storeCode: String,
   def findShopCart(shopId: String) = {
     shopCarts.find(_.shopId == shopId)
   }
-
-  override def updateExpireDate(newDate: DateTime): RunCart = this.copy(expireDate = newDate)
 }
 
 case class StoreShopCart(shopId: String,
                          shopTransactionUuid: Option[String] = None,
                          cartItems: List[StoreCartItem] = Nil,
                          coupons: List[StoreCartCoupon] = Nil) extends RunShopCart
-
 
 case class StoreShopCartWithPrices(shopId: String,
                                    shopTransactionUuid: Option[String] = None,

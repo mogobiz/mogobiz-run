@@ -113,28 +113,40 @@ object Mogobiz {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Product(id: Long,
-    uuid: String,
-    name: String,
-    picture: String,
-    @JsonScalaEnumeration(classOf[ProductTypeRef]) xtype: ProductType,
-    @JsonScalaEnumeration(classOf[ProductCalendarRef]) calendarType: ProductCalendar,
-    taxRate: Option[TaxRate],
-    shipping: Option[Shipping],
-    stockDisplay: Boolean,
-    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) startDate: Option[DateTime],
-    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) stopDate: Option[DateTime],
-    @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) availabilityDate: Option[DateTime],
-    skus: List[Sku],
-    intraDayPeriods: Option[List[IntraDayPeriod]],
-    datePeriods: Option[List[DatePeriod]],
-    poi: Option[Poi],
-    nbSales: Long,
-    downloadMaxTimes: Long,
-    downloadMaxDelay: Long,
-    category: Category,
-    shopId: Option[String],
-    var lastUpdated: Date,
-    var dateCreated: Date)
+                     uuid: String,
+                     name: String,
+                     picture: String,
+                     @JsonScalaEnumeration(classOf[ProductTypeRef]) xtype: ProductType,
+                     @JsonScalaEnumeration(classOf[ProductCalendarRef]) calendarType: ProductCalendar,
+                     taxRate: Option[TaxRate],
+                     shipping: Option[Shipping],
+                     stockDisplay: Boolean,
+                     @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
+                     @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                     startDate: Option[DateTime],
+                     @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
+                     @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                     stopDate: Option[DateTime],
+                     @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
+                     @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
+                     availabilityDate: Option[DateTime],
+                     skus: List[Sku],
+                     intraDayPeriods: Option[List[IntraDayPeriod]],
+                     datePeriods: Option[List[DatePeriod]],
+                     poi: Option[Poi],
+                     nbSales: Long,
+                     downloadMaxTimes: Long,
+                     downloadMaxDelay: Long,
+                     category: Category,
+                     externalCode: Option[String],
+                     var lastUpdated: Date,
+                     var dateCreated: Date) {
+    val shopId = externalCode.flatMap { externalCode =>
+      val splitCode = externalCode.split("::")
+      if (splitCode.length >= 3) Some(splitCode(0).toUpperCase + "::" + splitCode(2))
+      else None
+    }
+  }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class ReductionRule(id: Long,

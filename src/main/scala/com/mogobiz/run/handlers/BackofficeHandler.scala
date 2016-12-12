@@ -454,8 +454,7 @@ class BackofficeHandler extends JsonUtil with BoService {
             shippingData.copy(trackingHistory = data :: shippingData.trackingHistory)
           }
           val newTx = tx.copy(shippingData = newShippingData)
-          val refresh = false
-          boTransactionHandler.save(newTx, refresh)
+          boTransactionHandler.update(newTx)
       }
     }
   }

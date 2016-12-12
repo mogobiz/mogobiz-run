@@ -379,7 +379,7 @@ class CartHandler extends StrictLogging {
             val shopCart = invalidationResult.cart.findShopCart(shopId).getOrElse(StoreShopCart(shopId))
             val newCoupons = shopCart.coupons.filterNot { c => c.code == existCoupon.code }
             val newShopCart = shopCart.copy(coupons = newCoupons)
-            val newCart = invalidationResult.cart.copy(shopCarts = addOrReplaceShopCart(invalidationResult.cart.shopCarts, newShopCart))
+            val newCart = invalidationResult.cart.copy(shopCarts = deleteEmptyShopCarts(addOrReplaceShopCart(invalidationResult.cart.shopCarts, newShopCart)))
             invalidationResult.copy(cart = newCart)
           }, { cart: StoreCart =>
             StoreCartDao.save(cart)
@@ -799,7 +799,7 @@ class CartHandler extends StrictLogging {
     val newShopCarts = cart.shopCarts.map { newShopCart =>
       if (shopCart.shopId == newShopCart.shopId) newShopCart.copy(cartItems = newCartItems) else newShopCart
     }
-    cart.copy(shopCarts = newShopCarts)
+    cart.copy(shopCarts = deleteEmptyShopCarts(newShopCarts))
   }
 
   protected def removeAllUnsellableItemsFromCart(cart: StoreCart, country: Option[String], state: Option[String]): StoreCart = {
@@ -1022,6 +1022,12 @@ class CartHandler extends StrictLogging {
         if (shopCart == existShopCart) newShopCart else shopCart
       }
     }.getOrElse(newShopCart :: source)
+  }
+
+  protected def deleteEmptyShopCarts(source : List[StoreShopCart]) : List[StoreShopCart] = {
+    source.filterNot { shopCart =>
+      shopCart.cartItems.isEmpty && shopCart.coupons.isEmpty
+    }
   }
 
   /**
@@ -1625,10 +1631,13 @@ object StoreCartDao {
   }
 
   def save(entity: RunCart): Boolean = {
+    val newEntity = if (entity.isInstanceOf[StoreCart]) entity.asInstanceOf[StoreCart]
+    else createStoreCart(entity)
+
     val upsert = true
     val refresh = false
-    EsClient.update[RunCart](buildIndex(entity.storeCode),
-      entity.updateExpireDate(DateTime.now.plusSeconds(60 * Settings.Cart.Lifetime)),
+    EsClient.update[RunCart](buildIndex(newEntity.storeCode),
+      newEntity.copy(expireDate = DateTime.now.plusSeconds(60 * Settings.Cart.Lifetime)),
       ES_DOCUMENT,
       upsert,
       refresh)
@@ -1642,6 +1651,53 @@ object StoreCartDao {
     val req = search in index -> ES_DOCUMENT postFilter (rangeFilter("expireDate") lt "now") from 0 size querySize
     EsClient.searchAll[StoreCart](req).toList
   }
+
+  private def createStoreCart(source: RunCart) : StoreCart =
+    StoreCart(source.storeCode,
+      source.dataUuid,
+      source.userUuid,
+      source.boCartUuid,
+      source.transactionUuid,
+      source.externalOrderId,
+      source.validate,
+      source.validateUuid,
+      source.shopCarts.map {createStoreShopCart(_)},
+      source.expireDate,
+      source.dateCreated,
+      source.lastUpdated,
+      source.countryCode,
+      source.stateCode,
+      source.rate)
+
+  private def createStoreShopCart(source: RunShopCart) : StoreShopCart =
+    StoreShopCart(source.shopId,
+      source.shopTransactionUuid,
+      source.cartItems.map {createStoreCartItem(_)},
+      source.coupons.map {createCartCoupon(_)})
+
+  private def createStoreCartItem(source: RunCartItem) : StoreCartItem =
+    StoreCartItem(source.indexEs,
+      source.id,
+      source.productId,
+      source.productName,
+      source.productPicture,
+      source.productUrl,
+      source.xtype,
+      source.calendarType,
+      source.skuId,
+      source.skuName,
+      source.quantity,
+      source.initPrice,
+      source.initSalePrice,
+      source.startDate,
+      source.endDate,
+      source.registeredCartItems,
+      source.shipping,
+      source.downloadableLink,
+      source.externalCode)
+
+  private def createCartCoupon(source: CartCoupon) : StoreCartCoupon =
+    StoreCartCoupon(source.id, source.code)
 }
 
 object DownloadableDao {

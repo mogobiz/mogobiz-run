@@ -214,6 +214,8 @@ case class BOCartItem(price: Long,
                       externalCode : Option[ExternalCode],
                       uuid: String,
                       url: String,
+                      @JsonSerialize(using = classOf[JodaDateTimeSerializer])
+                      @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
                       dateCreated: DateTime)
 
 case class BODelivery(@JsonScalaEnumeration(classOf[DeliveryStatusRef])
@@ -285,6 +287,7 @@ object BOCartDao extends SQLSyntaxSupport[BOCartSql] with BoService {
           BOCartDao.column.id               -> newBoCart.id,
           BOCartDao.column.uuid             -> newBoCart.uuid,
           BOCartDao.column.transactionUuid  -> newBoCart.transactionUuid,
+          BOCartDao.column.companyFk        -> newBoCart.companyFk,
           BOCartDao.column.extra            -> newBoCart.extra,
           BOCartDao.column.dateCreated      -> newBoCart.dateCreated,
           BOCartDao.column.lastUpdated      -> newBoCart.lastUpdated
