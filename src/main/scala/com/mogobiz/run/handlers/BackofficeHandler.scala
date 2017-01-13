@@ -39,6 +39,8 @@ import spray.http._
 import scala.concurrent.Future
 import com.mogobiz.run.config.Settings.Mail.Smtp.MailSettings
 
+import scala.util.{Failure, Success, Try}
+
 /**
   */
 class BackofficeHandler extends JsonUtil with BoService {
@@ -83,6 +85,12 @@ class BackofficeHandler extends JsonUtil with BoService {
           }).toList.flatten.distinct.mkString("|")
     }
 
+    val queries = List(
+      createMatchQuery("vendor.uuid", merchant.map { m =>
+        m.uuid
+      })
+    ).flatten
+
     val filters = List(
         req.lastName.map { lastName =>
           or(createTermFilter("customer.lastName", Some(lastName)).get,
@@ -93,29 +101,30 @@ class BackofficeHandler extends JsonUtil with BoService {
         createTermFilter("customer.uuid", customer.map { c =>
           c.uuid
         }),
-        createTermFilter("vendor.uuid", merchant.map { m =>
-          m.uuid
-        }),
         createRangeFilter("transactionDate", req.startDate, req.endDate),
         createTermFilter("amount", req.price),
         createOrFilterBySplitValues(boCartTransactionUuidList, v => createTermFilter("transactionUUID", Some(v)))
     ).flatten
 
-    val response = try {
+    val response = Try{
       EsClient.searchAllRaw(
-          search in mogopayIndex types "BOTransaction" postFilter and(filters: _*)
+          search in mogopayIndex types "BOTransaction" query createQuery(queries) postFilter and(filters: _*)
             from _from
             size _size
             sort {
           by field "transactionDate" order SortOrder.DESC
         })
-    } catch {
-      case e: Throwable => e.printStackTrace()
     }
-    val transformer: PartialFunction[JValue, JValue] = completeBOTransactionWithDeliveryStatus(storeCode)
-    Paging.build(_size, _from, response.asInstanceOf[SearchHits], { hit =>
-      hit.transform(transformer).transformField(filterBOTransactionField)
-    })
+    response match {
+      case Success(r) =>
+        val transformer: PartialFunction[JValue, JValue] = completeBOTransactionWithDeliveryStatus(storeCode)
+        Paging.build(_size, _from, r, { hit =>
+          hit.transform(transformer).transformField(filterBOTransactionField)
+        })
+      case Failure(ex) =>
+        ex.printStackTrace()
+        Paging.buildEmpty(_size, _from)
+    }
   }
 
   @throws[NotAuthorizedException]
@@ -497,20 +506,31 @@ class BackofficeHandler extends JsonUtil with BoService {
           val req = search in boCartHandler.buildIndex(storeCode) types "BOCart" query matchQuery("transactionUuid",
                                                                                                 transactionUuid)
           println(req._builder.toString)
-          val statusList = (EsClient.searchAllRaw(req) hits () map { hit =>
-                hit2JValue(hit) \ "cartItems" match {
-                  case JArray(cartItems) => {
-                    cartItems.flatMap { cartItem =>
-                      cartItem \ "bODelivery" \ "status" match {
-                        case JString(status) => Some(JString(status))
-                        case _               => None
+          val statusList = EsClient.searchAllRaw(req).hits().toList.flatMap { hit =>
+            hit2JValue(hit) \ "shopCarts" match {
+              case JArray(shopCarts) => {
+                shopCarts.flatMap { shopCart =>
+                  shopCart \ "shopId" match {
+                    case JString(MogopayConstant.SHOP_MOGOBIZ) => {
+                      shopCart \ "cartItems" match {
+                        case JArray(cartItems) => {
+                          cartItems.flatMap { cartItem =>
+                            cartItem \ "bODelivery" \ "status" match {
+                              case JString(status) => Some(JString(status))
+                              case _               => None
+                            }
+                          }
+                        }
+                        case _ => Nil
                       }
                     }
+                    case _ => Nil
                   }
-                  case _ => List()
                 }
-              }).toList.flatten
-
+              }
+              case _ => Nil
+            }
+          }
           JObject(JField("deliveryStatus", JArray(statusList)) :: obj.obj)
         }
         case _ => obj

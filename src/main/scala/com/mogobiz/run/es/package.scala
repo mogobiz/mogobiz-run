@@ -228,6 +228,11 @@ package object es {
       } else List(s"$lang.$field")
   }
 
+  def createQuery(queries: List[QueryDefinition]) : QueryDefinition = {
+    if (queries.isEmpty) all
+    else must(queries: _*)
+  }
+
   def filterRequest(req: SearchDefinition,
                     filters: List[FilterDefinition],
                     _query: QueryDefinition = matchall): SearchDefinition =
@@ -288,6 +293,16 @@ package object es {
               Some(termFilter(field, v))
             }
           case _ => Some(termFilter(field, s))
+        }
+      case None => None
+    }
+  }
+
+  def createMatchQuery(field: String, value: Option[Any]): Option[QueryDefinition] = {
+    value match {
+      case Some(s) =>
+        s match {
+          case _ => Some(matchQuery(field, s))
         }
       case None => None
     }

@@ -15,6 +15,10 @@ import com.mogobiz.es._
   */
 object Paging {
 
+  def buildEmpty[T](size: Int, from: Int): Paging[T] = {
+    new Paging[T](Nil, 0, 0, size, from, 0, false, false)
+  }
+
   def build[T](size: Int, from: Int, response: SearchHits, transformFct: (JValue => T)): Paging[T] = {
     val total       = response.getTotalHits.toInt
     val pageCount   = total / size + (if (total % size > 0) 1 else 0)
