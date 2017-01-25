@@ -353,7 +353,7 @@ class BackofficeHandler extends JsonUtil with BoService {
       }
 
       val newBoReturn = BOReturn(Some(req.motivation),
-        status = ReturnStatus.RETURN_SUBMITTED,
+        status = newReturnStatus,
         uuid = UUID.randomUUID().toString,
         new DateTime())
       val newBOReturnedItem = boReturnedItem.copy(
@@ -386,7 +386,7 @@ class BackofficeHandler extends JsonUtil with BoService {
               stockChange
             }
         } else None
-      (merchant, customer, boCart, boCartItem, lastReturn, newBoReturn, stockChange)
+      (merchant, customer, newBOCart, newBOCartItem, lastReturn, newBoReturn, stockChange)
     }
 
     val successBloc = { result: (Account, Account, BOCart, BOCartItem, BOReturn, BOReturn, Option[StockChange]) =>
@@ -442,7 +442,7 @@ class BackofficeHandler extends JsonUtil with BoService {
                     if (boShopCart.shopId == MogopayConstant.SHOP_MOGOBIZ) {
                       val newCartItems = boShopCart.cartItems.map { boCartItem =>
                         val newBODelivery = boCartItem.bODelivery.map { boDelivery =>
-                          boDelivery.copy(status = webHookData.newDeliveryStatus)
+                          boDelivery.copy(status = webHookData.newDeliveryStatus, tracking = tx.shippingData.flatMap{_.trackingCode})
                         }
                         boCartItem.copy(bODelivery = newBODelivery)
                       }
@@ -452,9 +452,8 @@ class BackofficeHandler extends JsonUtil with BoService {
                   }
 
                   val newBOCart = boCart.copy(shopCarts = newBOShopCarts)
-                  boCartHandler.update(newBOCart)
 
-                  notifyChangesIntoES(storeCode, boCart)
+                  notifyChangesIntoES(storeCode, boCartHandler.update(newBOCart))
                 }
               }
             }

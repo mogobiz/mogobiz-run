@@ -31,7 +31,7 @@ class BOCartHandler extends BoService {
   }
 
   def findByTransactionUuid(storeCode: String, transactionUuid: String): Option[BOCart] = {
-    val query = essearch in buildIndex(storeCode) types "BOTransaction" postFilter termsFilter("transactionUuid", transactionUuid)
+    val query = essearch in buildIndex(storeCode) types "BOCart" query must(matchQuery("transactionUuid", transactionUuid))
     EsClient.search[BOCart](query)
   }
 
@@ -236,6 +236,8 @@ case class BOReturn(motivation: Option[String],
                     @JsonScalaEnumeration(classOf[ReturnStatusRef])
                     status: ReturnStatus.ReturnStatus,
                     uuid: String,
+                    @JsonSerialize(using = classOf[JodaDateTimeSerializer])
+                    @JsonDeserialize(using = classOf[JodaDateTimeDeserializer])
                     dateCreated: DateTime)
 
 case class BOProduct(acquittement: Boolean,
