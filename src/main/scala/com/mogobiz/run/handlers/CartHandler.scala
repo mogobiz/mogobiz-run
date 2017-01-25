@@ -52,7 +52,7 @@ class CartHandler extends StrictLogging {
   def runInTransaction[U](call: DBSession => CartWithChanges, success: StoreCart => U): U = {
     com.mogobiz.utils.GlobalUtil.runInTransaction(call, { cartAndChanges: CartWithChanges =>
       val cart = cartAndChanges.cart
-      notifyChangesIntoES(cart.storeCode, cartAndChanges.changes)
+      notifyChangesIntoES(cart.storeCode, cartAndChanges.changes, true)
       success(cart)
     })
   }
@@ -60,7 +60,7 @@ class CartHandler extends StrictLogging {
   def runInTransaction[U](call: => DBSession => CartWithPricesAndChanges, success: StoreCartWithPrices => U): U = {
     com.mogobiz.utils.GlobalUtil.runInTransaction(call, { cartAndChanges: CartWithPricesAndChanges =>
       val cart = cartAndChanges.cart
-      notifyChangesIntoES(cart.storeCode, cartAndChanges.changes)
+      notifyChangesIntoES(cart.storeCode, cartAndChanges.changes, true)
       success(cart)
     })
   }
