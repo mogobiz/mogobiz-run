@@ -27,8 +27,7 @@ object Learning {
 
   class UserActionRef extends TypeReference[UserAction.type]
 
-  import java.util.Calendar
-  import java.util.Date
+  import java.util.{Calendar, Date}
 
   import UserAction._
 

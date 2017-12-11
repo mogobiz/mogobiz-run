@@ -4,10 +4,9 @@
 
 package com.mogobiz.run.utils
 
-import org.elasticsearch.search.SearchHits
-import org.json4s.JsonAST.JValue
+import com.sksamuel.elastic4s.http.search.SearchHits
+import org.json4s.JValue
 import org.json4s._
-import com.mogobiz.run.es._
 import com.mogobiz.es._
 
 /**
@@ -20,12 +19,12 @@ object Paging {
   }
 
   def build[T](size: Int, from: Int, response: SearchHits, transformFct: (JValue => T)): Paging[T] = {
-    val total       = response.getTotalHits.toInt
+    val total       = response.total
     val pageCount   = total / size + (if (total % size > 0) 1 else 0)
     val hasPrevious = from > size
     val hasNext     = (from + size) < total
 
-    val l = response.getHits
+    val l = response.hits
       .map(hit => {
         val json: JValue = hit
         transformFct(json)
@@ -34,7 +33,7 @@ object Paging {
     new Paging[T](l, l.size, total, size, from, pageCount, hasPrevious, hasNext)
   }
 
-  def add[T](total: Int, results: List[T], pagingParams: PagingParams): Paging[T] = {
+  def add[T](total: Int, results: Seq[T], pagingParams: PagingParams): Paging[T] = {
     val paging = get(total, pagingParams)
     val pagedResults = new Paging(results,
                                   results.size,
@@ -119,7 +118,7 @@ object Paging {
   * @param hasNext : does a next page exist
   * @tparam T type of results
   */
-class Paging[T](val list: List[T],
+class Paging[T](val list: Seq[T],
                 val pageSize: Int,
                 val totalCount: Int,
                 val maxItemsPerPage: Int,

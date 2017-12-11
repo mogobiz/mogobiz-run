@@ -5,142 +5,107 @@
 package com.mogobiz.services
 
 import com.mogobiz.MogobizRouteTest
-import org.specs2.matcher._
-import org.json4s.native.JsonParser
 import org.json4s.JsonAST._
+import org.json4s.native.JsonParser
 import spray.http._
 
 class ProductServiceSpec extends MogobizRouteTest {
 
-  val cookies = Seq(new HttpCookie("mogobiz_uuid", "UNIT_TEST"), new HttpCookie("Path","/store/"+STORE))
+  val cookies = Seq(new HttpCookie("mogobiz_uuid", "UNIT_TEST"), new HttpCookie("Path", "/store/" + STORE))
   val request_headers = List(HttpHeaders.Cookie(cookies))
 
-  "The products route of Product service" should {
-
-    "returns suggestion for product" in {
-      Get("/store/" + STORE_ACMESPORT + "/products/32531/suggestions") ~> sealRoute(routes) ~> check {
-        val res: JValue = JsonParser.parse(responseAs[String])
-        val array = checkJArray(res)
-        array must size(1)
-      }
+  "The products route of Product service" should "returns suggestion for product" in {
+    Get("/store/" + STORE_ACMESPORT + "/products/32531/suggestions") ~> sealRoute(routes) ~> check {
+      val res: JValue = JsonParser.parse(responseAs[String])
+      val array = checkJArray(res)
+      array should have size (1)
     }
+  }
 
-    "return products on default criteria" in {
-      Get("/store/" + STORE + "/products") ~> sealRoute(routes) ~> check {
+  it should "return products on default criteria" in {
+    Get("/store/" + STORE + "/products") ~> sealRoute(routes) ~> check {
 
-        val res: JValue = JsonParser.parse(responseAs[String])
-        println(res)
-        //JObject(
-        // List((list,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:20Z)), (id,JInt(70)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-hd)), (hide,JBool(false)), (description,JString(HD Ready 100" Television)), (name,JString(TV 100" HD)), (xtype,JString(PRODUCT)), (availabilityDate,JNull), (fr,JObject(List((keywords,JString()), (description,JString(HD Ready 100" Television)), (name,JString(TV 100" HD)), (descriptionAsText,JString(HD Ready 100" Television))))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(HD Ready 100" Television)), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_2)), (calendarType,JString(NO_DATE)), (nbSales,JInt(0)), (category,JObject(List((id,JInt(21)), (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((keywords,JString(TV télé télévision HD)), (description,JString()), (name,JString(Télévisions))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(35000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((website,JString(http://www.samsung.com/fr)), (name,JString(Samsung))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))), (uuid,JString(97eb0f5a-9038-48d4-b4bb-14382270a8d6)))), JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)), (availabilityDate,JNull), (fr,JObject(List((keywords,JString()), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (descriptionAsText,JString(Full HD 100" Television))))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (calendarType,JString(NO_DATE)), (nbSales,JInt(0)), (category,JObject(List((id,JInt(21)), (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((keywords,JString(TV télé télévision HD)), (description,JString()), (name,JString(Télévisions))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((website,JString(http://www.samsung.com/fr)), (name,JString(Samsung))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)))), JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:20Z)), (id,JInt(79)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(100)), (weight,JInt(25)), (width,JInt(105)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-90)), (hide,JBool(false)), (description,JString(90" Television)), (name,JString(TV 90")), (xtype,JString(PRODUCT)), (availabilityDate,JNull), (fr,JObject(List((keywords,JString()), (description,JString(90" Television)), (name,JString(TV 90")), (descriptionAsText,JString(90" Television))))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(90" Television)), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_PL)), (calendarType,JString(NO_DATE)), (nbSales,JInt(0)), (category,JObject(List((id,JInt(21)), (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((keywords,JString(TV télé télévision HD)), (description,JString()), (name,JString(Télévisions))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(25000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((id,JInt(40)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.philips.com)), (description,JString()), (name,JString(Philips)), (fr,JObject(List((website,JString(http://www.philips.com)), (name,JString(Philips))))), (increments,JInt(0))))), (uuid,JString(ce6c6492-c7ce-4c40-9868-21c7e012d6d5)))), JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:21Z)), (id,JInt(135)), (sanitizedName,JString(le-pere-noel-est-une-ordure)), (hide,JBool(false)), (description,JString(Pièce de théatre)), (name,JString(Le père noël est une ordure)), (xtype,JString(SERVICE)), (availabilityDate,JNull), (fr,JObject(List((keywords,JString(theatre)), (description,JString(Pièce de théatre)), (name,JString(Le père noël est une ordure)), (descriptionAsText,JString(Pièce de théatre))))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Pièce de théatre)), (tags,JArray(List(JObject(List((name,JString(THEATER))))))), (keywords,JString(theatre)), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:53Z)), (stockDisplay,JBool(true)), (code,JString(LePereNoelEstUneOrdure)), (nbSales,JInt(0)), (calendarType,JString(DATE_ONLY)), (category,JObject(List((id,JInt(22)), (coupons,JArray(List())), (parentId,JNull), (keywords,JString()), (hide,JBool(false)), (description,JString()), (name,JString(Cinéma)), (path,JString(cinema)), (fr,JObject(List((keywords,JString()), (description,JString()), (name,JString(Cinéma))))), (increments,JInt(0)), (uuid,JString(3702efb9-602f-4114-97bc-6d8856b610ee))))), (price,JInt(7500)), (dateCreated,JString(2014-09-26T07:31:53Z)), (uuid,JString(35e9db01-aa8a-4ac4-8053-902b2abbe698)))), JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:22Z)), (id,JInt(142)), (sanitizedName,JString(les-tontons-flingeurs)), (hide,JBool(false)), (description,JString(Séance de cinéma)), (name,JString(Les tontons flingeurs)), (xtype,JString(SERVICE)), (availabilityDate,JNull), (fr,JObject(List((keywords,JString(film action)), (description,JString(Séance de cinéma)), (name,JString(Les tontons flingeurs)), (descriptionAsText,JString(Séance de cinéma))))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Séance de cinéma)), (tags,JArray(List(JObject(List((name,JString(CINEMA))))))), (keywords,JString(film action)), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:53Z)), (stockDisplay,JBool(true)), (code,JString(LesTontonsFlingeurs)), (nbSales,JInt(0)), (calendarType,JString(DATE_TIME)), (category,JObject(List((id,JInt(22)), (coupons,JArray(List())), (parentId,JNull), (keywords,JString()), (hide,JBool(false)), (description,JString()), (name,JString(Cinéma)), (path,JString(cinema)), (fr,JObject(List((keywords,JString()), (description,JString()), (name,JString(Cinéma))))), (increments,JInt(0)), (uuid,JString(3702efb9-602f-4114-97bc-6d8856b610ee))))), (price,JInt(800)), (dateCreated,JString(2014-09-26T07:31:53Z)), (uuid,JString(7376a429-43be-45e1-9a48-1663dd5644df)))), JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (promotion,JObject(List((description,JString(Promotion exceptionnelle de -10% sur tout l'habillement)), (name,JString(-10%)), (reduction,JInt(100))))), (ibeacon,JObject(List((startDate,JString(2014-09-01T00:00:00Z)), (minor,JString(00000)), (name,JString(Ibeacon)), (active,JBool(true)), (endDate,JString(2014-09-30T00:00:00Z)), (uuid,JString(7e81e491-bd71-4734-b601-4c49605d1200)), (major,JString(0))))), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:22Z)), (id,JInt(91)), (coupons,JArray(List(JObject(List((id,JInt(161)))), JObject(List((id,JInt(157))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(2)), (weight,JInt(2)), (width,JInt(30)), (fr,JObject(List((name,JNull)))), (depth,JInt(20))))), (sanitizedName,JString(pull-nike)), (hide,JBool(false)), (description,JString(Pull Nike de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.)), (name,JString(Pull Nike)), (xtype,JString(PRODUCT)), (availabilityDate,JNull), (fr,JObject(List((keywords,JString()), (description,JString(Pull Nike de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.)), (name,JString(Pull Nike)), (descriptionAsText,JString(Pull Nike de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.))))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Pull Nike de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.)), (tags,JArray(List(JObject(List((name,JString(PULL))))))), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:53Z)), (stockDisplay,JBool(true)), (code,JString(Pull_Nike)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(19)), (coupons,JArray(List(JArray(List(JInt(161)))))), (parentId,JNull), (keywords,JString(vetements homme femme enfant)), (hide,JBool(false)), (description,JString()), (name,JString(Habillement)), (path,JString(habillement)), (fr,JObject(List((keywords,JString(vetements homme femme enfant)), (description,JString()), (name,JString(Habillement))))), (increments,JInt(0)), (uuid,JString(05b65855-edce-4aff-8e92-2f62ea906671))))), (price,JInt(1000)), (brand,JObject(List((de,JObject(List((website,JString(http://www.nike.com/de/de_de/))))), (id,JInt(41)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.nike.com/fr/fr_fr/)), (description,JString()), (name,JString(Nike)), (fr,JObject(List((website,JString(http://www.nike.com/fr/fr_fr/)), (name,JString(Nike))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.nike.com))))), (es,JObject(List((website,JString(http://www.nike.com/es/es_es/)))))))), (dateCreated,JString(2014-09-26T07:31:52Z)), (salePrice,JInt(900)), (en,JObject(List((name,JString(Pull Nike Anglais))))), (uuid,JString(36340d75-8282-405a-bb39-2f1719f5cdd7)))), JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (promotion,JObject(List((description,JString(Promotion exceptionnelle de -10% sur tout l'habillement)), (name,JString(-10%)), (reduction,JInt(100))))), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:21Z)), (id,JInt(114)), (coupons,JArray(List(JObject(List((id,JInt(161)))), JObject(List((id,JInt(157)))), JObject(List((id,JInt(162))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(2)), (weight,JInt(2)), (width,JInt(30)), (fr,JObject(List((name,JNull)))), (depth,JInt(20))))), (sanitizedName,JString(tshirt-puma)), (hide,JBool(false)), (description,JString(TShirt de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.)), (name,JString(TShirt Puma)), (xtype,JString(PRODUCT)), (availabilityDate,JNull), (fr,JObject(List((keywords,JString()), (description,JString(TShirt de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.)), (name,JString(TShirt Puma)), (descriptionAsText,JString(TShirt de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.))))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(TShirt de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.)), (tags,JArray(List(JObject(List((name,JString(TSHIRT))))))), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TShirt_Puma)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(19)), (coupons,JArray(List(JArray(List(JInt(161)))))), (parentId,JNull), (keywords,JString(vetements homme femme enfant)), (hide,JBool(false)), (description,JString()), (name,JString(Habillement)), (path,JString(habillement)), (fr,JObject(List((keywords,JString(vetements homme femme enfant)), (description,JString()), (name,JString(Habillement))))), (increments,JInt(0)), (uuid,JString(05b65855-edce-4aff-8e92-2f62ea906671))))), (price,JInt(1000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((de,JObject(List((website,JString(http://www.shop.puma.de))))), (id,JInt(46)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.shop.puma.fr)), (description,JString()), (name,JString(Puma)), (fr,JObject(List((website,JString(http://www.shop.puma.fr)), (name,JString(Puma))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.puma.com))))), (es,JObject(List((website,JString(http://www.puma.com)))))))), (salePrice,JInt(900)), (uuid,JString(56725221-1443-49ba-8b9b-6b1c2060c9ac))))))),
-        // (pageSize,JInt(7)), (totalCount,JInt(7)), (maxItemsPerPage,JInt(100)), (pageOffset,JInt(0)), (pageCount,JInt(1)), (hasPrevious,JBool(false)), (hasNext,JBool(false))))
-
-        res \ "totalCount" must be_==(JInt(7))
-      }
+      val res: JValue = JsonParser.parse(responseAs[String])
+      println(res)
+     res \ "totalCount" should be(JInt(7))
     }
   }
 
 
-  "The 'find' route of Product service" should {
-    "return products via fulltext search" in {
-      Get("/store/" + STORE + "/products/find?query=puma") ~> sealRoute(routes) ~> check {
-        //val res = response
-        val res: JValue = JsonParser.parse(responseAs[String])
-        println(res)
-        //JObject(List(
-        // (product,JArray(List(JObject(List((id,JInt(114)), (category,JObject(List((path,JString(habillement))))), (keywords,JString()), (description,JString(TShirt de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.)), (name,JString(TShirt Puma)), (fr,JObject(List((keywords,JString()), (description,JString(TShirt de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.)), (name,JString(TShirt Puma)), (descriptionAsText,JString(TShirt de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.))))), (descriptionAsText,JString(TShirt de très bonne qualité. Pull tricotté main dans des usines respectant l'environnement et le droit de travail. Ce pull est issu du commerce équitable et n'utilise aucun produit toxique. Il est fabriqué en France. Le reste de la description est juste là pour avoir une longue description pour vérifier que l'affichage s'effectue correctement.))))))),
-        // (brand,JArray(List(JObject(List((id,JInt(46)), (description,JString()), (name,JString(Puma)), (fr,JObject(List((name,JString(Puma))))))))))))
+  "The 'find' route of Product service" should "return products via fulltext search" in {
+    Get("/store/" + STORE + "/products/find?query=puma") ~> sealRoute(routes) ~> check {
+      //val res = response
+      val res: JValue = JsonParser.parse(responseAs[String])
+      println(res)
+      val products: List[JValue] = checkJArray(res \ "product")
+      val brands: List[JValue] = checkJArray(res \ "brand")
 
-        val products: List[JValue] = checkJArray(res \ "product")
-        val brands: List[JValue] = checkJArray(res \ "brand")
-
-        products(0) \ "id" must be_==(JInt(114))
-        products(0) \ "name" must be_==(JString("TShirt Puma"))
-        brands(0) \ "id" must be_==(JInt(46))
-        brands(0) \ "name" must be_==(JString("Puma"))
-      }
+      products(0) \ "id" should be(JInt(114))
+      products(0) \ "name" should be(JString("TShirt Puma"))
+      brands(0) \ "id" should be(JInt(46))
+      brands(0) \ "name" should be(JString("Puma"))
     }
-    //TODO tests with parameters: highlight, size, categoryPath (lang, currency, country)
   }
+  //TODO tests with parameters: highlight, size, categoryPath (lang, currency, country)
 
-  "The 'compare' route of Product service" should {
-    "return array comparison of 2 product" in {
+
+  "The 'compare' route of Product service" should "return array comparison of 2 product" in {
       Get("/store/" + STORE + "/products/compare?ids=61,70") ~> sealRoute(routes) ~> check {
-        response.status.intValue must be_==(200)
+        response.status.intValue should be(200)
         val res: JValue = JsonParser.parse(responseAs[String])
         println(res)
-        //JObject(
-        // List(
-        // (ids,JArray(List(JString(61), JString(70)))),
-        // (result,JArray(List(JObject(List((en,JString(Made in)), (fr,JString(Fabriqué en)), (es,JString(Made in)), (label,JString(Fabriqué en)), (values,JArray(List(JObject(List((en,JString(China)), (fr,JString(Chine)), (es,JString(China)), (value,JString(Chine)))), JObject(List((en,JString(China)), (fr,JString(Chine)), (es,JString(China)), (value,JString(Chine))))))), (indicator,JString(0)))), JObject(List((fr,JString(Size)), (label,JString(Size)), (values,JArray(List(JObject(List((fr,JString(100")), (value,JString(100")))), JObject(List((fr,JString(100")), (value,JString(100"))))))), (indicator,JString(0)))), JObject(List((fr,JString(Resulution)), (label,JString(Resulution)), (values,JArray(List(JObject(List((fr,JString(Full HD)), (value,JString(Full HD)))), JObject(List((fr,JString(HD Ready)), (value,JString(HD Ready))))))), (indicator,JString(1)))))))))
-
         val ids = checkJArray(res \ "ids")
         val result = checkJArray(res \ "result")
-        ids(0) must be_==(JString("61"))
-        ids(1) must be_==(JString("70"))
+        ids(0) should be(JString("61"))
+        ids(1) should be(JString("70"))
         //TODO result assertions
       }
     }
-  }
 
-  "The 'notation' route of Product service" should {
-    "return all notations" in {
+
+  "The 'notation' route of Product service" should "return all notations" in {
       Get("/store/" + STORE + "/products/notation") ~> sealRoute(routes) ~> check {
         val res: JValue = JsonParser.parse(responseAs[String])
         println("notation result: ", res)
-        response.status.intValue must be_==(200)
+        response.status.intValue should be(200)
       }
+    }
+
+  "The 'product' route of Product service" should "return product detail with default parameters (historize=false)" in {
+    Get("/store/" + STORE + "/products/61") ~> sealRoute(routes) ~> check {
+      val res: JValue = JsonParser.parse(responseAs[String])
+      println("product detail(61): ", res)
+     response.status.intValue should be(200)
+
+      res \ "id" should be(JInt(61))
+      res \ "name" should be(JString("""TV 100" Full HD"""))
+      res \ "description" should be(JString("""Full HD 100" Television"""))
     }
   }
 
-  "The 'product' route of Product service" should {
-    "return product detail with default parameters (historize=false)" in {
-      Get("/store/" + STORE + "/products/61") ~> sealRoute(routes) ~> check {
-        val res: JValue = JsonParser.parse(responseAs[String])
-        println("product detail(61): ", res)
-        //JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)),
-        // (features,JArray(List(JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Fabriqué en)), (domain,JString()), (value,JString(Chine)), (fr,JObject(List((name,JString(Fabriqué en)), (value,JString(Chine))))), (en,JObject(List((name,JString(Made in)), (value,JString(China))))), (uuid,JString(4aaddee3-bd1d-4e5b-84fd-2f8bc7412dd1)), (es,JObject(List((name,JString(Made in)), (value,JString(China))))))), JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Size)), (domain,JString()), (value,JString(100")), (fr,JObject(List((name,JString(Size)), (value,JString(100"))))), (uuid,JString(f2dbd97f-d5ff-49bf-a4dc-eba217a82e70)))), JObject(List((position,JInt(1)), (hide,JBool(false)), (name,JString(Resulution)), (domain,JString()), (value,JString(Full HD)), (fr,JObject(List((name,JString(Resulution)), (value,JString(Full HD))))), (uuid,JString(e0b85911-809f-4908-a7ce-3c0f72171b6e))))))), (availabilityDate,JNull), (fr,JObject(List((name,JString(TV 100" Full HD)), (description,JString(Full HD 100" Television)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString())))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()),
-        // (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(21)),
-        // (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((name,JString(Télévisions)), (description,JString()), (keywords,JString(TV télé télévision HD))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)),
-        // (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((name,JString(Samsung)), (website,JString(http://www.samsung.com/fr))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))),
-        // (skus,JArray(List(JObject(List((position,JNull), (startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (xprivate,JNull), (variation3,JObject(List())), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (id,JInt(63)), (picture,JNull), (nbSales,JInt(0)),
-        // (coupons,JArray(List(JObject(List((id,JInt(159))))))), (price,JInt(30000)), (minOrder,JInt(1)), (description,JString()), (name,JString(Standard)), (fr,JObject(List((name,JString(Standard)), (description,JString())))), (maxOrder,JInt(10)), (variation2,JObject(List())), (variation1,JObject(List())), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)),
-        // (stocks,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (initialStock,JInt(100)), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (stockOutSelling,JBool(false)), (imported,JString(2014-09-26T07:32:22Z)), (productId,JInt(61)), (productUuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (id,JInt(63)), (calendarType,JString(NO_DATE)), (stock,JInt(100)), (stockUnlimited,JBool(false)), (availabilityDate,JNull), (dateCreated,JString(2014-09-26T07:31:52Z)),
-        // (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))))))
-        response.status.intValue must be_==(200)
-
-        res \ "id" must be_==(JInt(61))
-        res \ "name" must be_==(JString("""TV 100" Full HD"""))
-        res \ "description" must be_==(JString("""Full HD 100" Television"""))
-      }
-    }
     //TODO tests with parameters: historize, visitorId (lang, currency, country)
 
 
-
-    "return dates for product 61" in {
+    it should "return dates for product 61" in {
       Get("/store/" + STORE + "/products/61/dates") ~> sealRoute(routes) ~> check {
         val res: JValue = JsonParser.parse(responseAs[String])
         println("product dates(61): ", res)
-        //JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)), (features,JArray(List(JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Fabriqué en)), (domain,JString()), (value,JString(Chine)), (fr,JObject(List((name,JString(Fabriqué en)), (value,JString(Chine))))), (en,JObject(List((name,JString(Made in)), (value,JString(China))))), (uuid,JString(4aaddee3-bd1d-4e5b-84fd-2f8bc7412dd1)), (es,JObject(List((name,JString(Made in)), (value,JString(China))))))), JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Size)), (domain,JString()), (value,JString(100")), (fr,JObject(List((name,JString(Size)), (value,JString(100"))))), (uuid,JString(f2dbd97f-d5ff-49bf-a4dc-eba217a82e70)))), JObject(List((position,JInt(1)), (hide,JBool(false)), (name,JString(Resulution)), (domain,JString()), (value,JString(Full HD)), (fr,JObject(List((name,JString(Resulution)), (value,JString(Full HD))))), (uuid,JString(e0b85911-809f-4908-a7ce-3c0f72171b6e))))))), (availabilityDate,JNull), (fr,JObject(List((name,JString(TV 100" Full HD)), (description,JString(Full HD 100" Television)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString())))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(21)), (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((name,JString(Télévisions)), (description,JString()), (keywords,JString(TV télé télévision HD))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((name,JString(Samsung)), (website,JString(http://www.samsung.com/fr))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))), (skus,JArray(List(JObject(List((position,JNull), (startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (xprivate,JNull), (variation3,JObject(List())), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (id,JInt(63)), (picture,JNull), (nbSales,JInt(0)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (price,JInt(30000)), (minOrder,JInt(1)), (description,JString()), (name,JString(Standard)), (fr,JObject(List((name,JString(Standard)), (description,JString())))), (maxOrder,JInt(10)), (variation2,JObject(List())), (variation1,JObject(List())), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (stocks,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (initialStock,JInt(100)), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (stockOutSelling,JBool(false)), (imported,JString(2014-09-26T07:32:22Z)), (productId,JInt(61)), (productUuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (id,JInt(63)), (calendarType,JString(NO_DATE)), (stock,JInt(100)), (stockUnlimited,JBool(false)), (availabilityDate,JNull), (dateCreated,JString(2014-09-26T07:31:52Z)), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))))))
-        response.status.intValue must be_==(200)
+        response.status.intValue should be(200)
 
         //TODO complete assertion
       }
     }
-    "return times for product 61" in {
+    it should "return times for product 61" in {
       Get("/store/" + STORE + "/products/61/times") ~> sealRoute(routes) ~> check {
         val res: JValue = JsonParser.parse(responseAs[String])
         println("product times(61): ", res)
-        //JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (stopFeatureDate,JString(2014-09-30T00:00:00Z)), (increments,JInt(0)), (imported,JString(2014-09-26T07:32:19Z)), (id,JInt(61)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (shipping,JObject(List((amount,JInt(0)), (free,JBool(false)), (height,JInt(110)), (weight,JInt(25)), (width,JInt(120)), (fr,JObject(List((name,JNull)))), (depth,JInt(15))))), (sanitizedName,JString(tv-100-full-hd)), (hide,JBool(false)), (description,JString(Full HD 100" Television)), (name,JString(TV 100" Full HD)), (xtype,JString(PRODUCT)), (features,JArray(List(JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Fabriqué en)), (domain,JString()), (value,JString(Chine)), (fr,JObject(List((name,JString(Fabriqué en)), (value,JString(Chine))))), (en,JObject(List((name,JString(Made in)), (value,JString(China))))), (uuid,JString(4aaddee3-bd1d-4e5b-84fd-2f8bc7412dd1)), (es,JObject(List((name,JString(Made in)), (value,JString(China))))))), JObject(List((position,JInt(0)), (hide,JBool(false)), (name,JString(Size)), (domain,JString()), (value,JString(100")), (fr,JObject(List((name,JString(Size)), (value,JString(100"))))), (uuid,JString(f2dbd97f-d5ff-49bf-a4dc-eba217a82e70)))), JObject(List((position,JInt(1)), (hide,JBool(false)), (name,JString(Resulution)), (domain,JString()), (value,JString(Full HD)), (fr,JObject(List((name,JString(Resulution)), (value,JString(Full HD))))), (uuid,JString(e0b85911-809f-4908-a7ce-3c0f72171b6e))))))), (availabilityDate,JNull), (fr,JObject(List((name,JString(TV 100" Full HD)), (description,JString(Full HD 100" Television)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString())))), (startFeatureDate,JString(2014-09-01T00:00:00Z)), (descriptionAsText,JString(Full HD 100" Television)), (keywords,JString()), (taxRate,JObject(List((id,JInt(13)), (name,JString(TaxRate)), (localTaxRates,JArray(List(JObject(List((id,JInt(11)), (rate,JDouble(19.6)), (countryCode,JString(FR)), (stateCode,JString()))), JObject(List((id,JInt(12)), (rate,JDouble(9.0)), (countryCode,JString(USA)), (stateCode,JString(USA.AL)))))))))), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (code,JString(TV_SS_1)), (nbSales,JInt(0)), (calendarType,JString(NO_DATE)), (category,JObject(List((id,JInt(21)), (coupons,JArray(List(JArray(List(JInt(159)))))), (parentId,JInt(20)), (keywords,JString(TV télé télévision HD)), (hide,JBool(false)), (description,JString()), (name,JString(Télévisions)), (path,JString(hightech/televisions)), (fr,JObject(List((name,JString(Télévisions)), (description,JString()), (keywords,JString(TV télé télévision HD))))), (increments,JInt(0)), (en,JObject(List((name,JString(Televisions))))), (uuid,JString(59bcb084-090f-4686-b1fd-1596865cb4ac))))), (price,JInt(30000)), (dateCreated,JString(2014-09-26T07:31:52Z)), (brand,JObject(List((de,JObject(List((website,JString(http://www.samsung.com/de))))), (id,JInt(35)), (twitter,JString()), (hide,JBool(false)), (website,JString(http://www.samsung.com/fr)), (description,JString()), (name,JString(Samsung)), (fr,JObject(List((name,JString(Samsung)), (website,JString(http://www.samsung.com/fr))))), (increments,JInt(0)), (en,JObject(List((website,JString(http://www.samsung.com))))), (es,JObject(List((website,JString(http://www.samsung.com/es)))))))), (skus,JArray(List(JObject(List((position,JNull), (startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (xprivate,JNull), (variation3,JObject(List())), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (id,JInt(63)), (picture,JNull), (nbSales,JInt(0)), (coupons,JArray(List(JObject(List((id,JInt(159))))))), (price,JInt(30000)), (minOrder,JInt(1)), (description,JString()), (name,JString(Standard)), (fr,JObject(List((name,JString(Standard)), (description,JString())))), (maxOrder,JInt(10)), (variation2,JObject(List())), (variation1,JObject(List())), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))), (uuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (stocks,JArray(List(JObject(List((startDate,JString(2014-01-01T00:00:00Z)), (stopDate,JString(2014-12-31T23:59:00Z)), (lastUpdated,JString(2014-09-26T07:31:52Z)), (stockDisplay,JBool(true)), (initialStock,JInt(100)), (sku,JString(683b87a8-a6d3-47f1-8bf8-b08ec1a05a04)), (stockOutSelling,JBool(false)), (imported,JString(2014-09-26T07:32:22Z)), (productId,JInt(61)), (productUuid,JString(3dd44e13-ad83-43ef-b703-c906157587b5)), (id,JInt(63)), (calendarType,JString(NO_DATE)), (stock,JInt(100)), (stockUnlimited,JBool(false)), (availabilityDate,JNull), (dateCreated,JString(2014-09-26T07:31:52Z)), (uuid,JString(a1ca7908-be8d-4972-8874-2baf85d9b66f))))))))))
-        response.status.intValue must be_==(200)
+        response.status.intValue should be(200)
 
         //TODO complete assertion
       }
     }
-  }
 
-  "The 'product comment' route in Product service" should {
-    "return new comment created for product 61" in {
+  "The product comment' route in Product service" should "return new comment created for product 61" in {
       val entity = HttpEntity(contenTypeJson,
         """
           |{
@@ -154,40 +119,27 @@ class ProductServiceSpec extends MogobizRouteTest {
       Post("/store/" + STORE + "/products/61/comments").withEntity(entity) ~> sealRoute(routes) ~> check {
         val res: JValue = JsonParser.parse(responseAs[String])
         println(res)
-        response.status.intValue must be_==(200)
+        response.status.intValue should be(200)
       }
     }
 
 
-    "return comments for product 61" in {
+    it should "return comments for product 61" in {
       Get("/store/" + STORE + "/products/61/comments") ~> sealRoute(routes) ~> check {
         val res: JValue = JsonParser.parse(responseAs[String])
         println("GET product comment: ", res)
-        response.status.intValue must be_==(200)
+        response.status.intValue should be(200)
       }
     }
 
-    /*
-    "return updated comment for product 61" in {
-      val entity = 0
-      Post("/store/" + STORE + "/products/61/comments/").withEntity(entity) ~> sealRoute(routes) ~> check {
-        val res: JValue = JsonParser.parse(responseAs[String])
-        println(res)
-        response.status.intValue must be_==(200)
-      }
-    }*/
-  }
 
-
-  "The 'history' route in Product service" should {
-    "return products visited by the user from its history" in {
+  "The 'history' route in Product service" should "return products visited by the user from its history" in {
       Get("/store/" + STORE + "/history").withHeaders(request_headers) ~> sealRoute(routes) ~> check {
         val res: JValue = JsonParser.parse(responseAs[String])
         println("product history: ", res)
-        response.status.intValue must be_==(200)
+        response.status.intValue should be(200)
 
         //TODO complete test with detail?historize=true
-      }
     }
   }
 }

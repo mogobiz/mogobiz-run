@@ -1,24 +1,14 @@
 package com.mogobiz.run.model
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
-import com.mogobiz.run.json.{JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer}
 import com.mogobiz.run.model.Mogobiz.ReductionRule
 import org.joda.time.DateTime
 
-@JsonIgnoreProperties(ignoreUnknown = true)
 case class Coupon(id: Long,
                   name: String,
                   code: String,
-                  @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                  @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                   startDate: Option[DateTime],
-                  @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                  @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                   endDate: Option[DateTime],
-                  @JsonDeserialize(contentAs = classOf[java.lang.Long])
                   numberOfUses: Option[Long],
-                  @JsonDeserialize(contentAs = classOf[java.lang.Long])
                   sold: Option[Long],
                   rules: List[ReductionRule],
                   active: Boolean,
@@ -58,55 +48,47 @@ case class StoreCartCoupon(id: Long, code: String) extends CartCoupon
 case class CouponWithData(id: Long,
                           name: String,
                           code: String,
-                          @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                          @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                           startDate: Option[DateTime],
-                          @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                          @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                           endDate: Option[DateTime],
-                          @JsonDeserialize(contentAs = classOf[java.lang.Long])
+                          //@JsonDeserialize(contentAs = classOf[java.lang.Long])
                           numberOfUses: Option[Long],
-                          @JsonDeserialize(contentAs = classOf[java.lang.Long])
+                          //@JsonDeserialize(contentAs = classOf[java.lang.Long])
                           sold: Option[Long],
                           rules: List[ReductionRule],
                           active: Boolean,
                           anonymous: Boolean,
-                          catalogWise: Boolean ,
+                          catalogWise: Boolean,
                           description: String,
                           pastille: String,
-                          promotion: Boolean) extends CartCouponWithData {
+                          promotion: Boolean)
+    extends CartCouponWithData {
 
-  def this(coupon: Coupon,
-           active: Boolean,
-           promotion: Boolean) = this(coupon.id,
-    coupon.name,
-    coupon.code,
-    coupon.startDate,
-    coupon.endDate,
-    coupon.numberOfUses,
-    coupon.sold,
-    coupon.rules,
-    active,
-    coupon.anonymous,
-    coupon.catalogWise,
-    coupon.description,
-    coupon.pastille,
-    promotion)
+  def this(coupon: Coupon, active: Boolean, promotion: Boolean) =
+    this(
+      coupon.id,
+      coupon.name,
+      coupon.code,
+      coupon.startDate,
+      coupon.endDate,
+      coupon.numberOfUses,
+      coupon.sold,
+      coupon.rules,
+      active,
+      coupon.anonymous,
+      coupon.catalogWise,
+      coupon.description,
+      coupon.pastille,
+      promotion
+    )
 
 }
 
 case class CouponWithPrices(id: Long,
                             name: String,
                             code: String,
-                            @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                            @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                             startDate: Option[DateTime],
-                            @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                            @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
                             endDate: Option[DateTime],
-                            @JsonDeserialize(contentAs = classOf[java.lang.Long])
                             numberOfUses: Option[Long],
-                            @JsonDeserialize(contentAs = classOf[java.lang.Long])
                             sold: Option[Long],
                             rules: List[ReductionRule],
                             active: Boolean,
@@ -115,22 +97,26 @@ case class CouponWithPrices(id: Long,
                             description: String,
                             pastille: String,
                             promotion: Boolean,
-                            reduction: Long) extends CartCouponWithPrice {
+                            reduction: Long)
+    extends CartCouponWithPrice {
 
-  def this(coupon: CartCouponWithData, reduction: Long) = this(coupon.id,
-    coupon.name,
-    coupon.code,
-    coupon.startDate,
-    coupon.endDate,
-    coupon.numberOfUses,
-    coupon.sold,
-    coupon.rules,
-    coupon.active,
-    coupon.anonymous,
-    coupon.catalogWise,
-    coupon.description,
-    coupon.pastille,
-    coupon.promotion,
-    reduction)
+  def this(coupon: CartCouponWithData, reduction: Long) =
+    this(
+      coupon.id,
+      coupon.name,
+      coupon.code,
+      coupon.startDate,
+      coupon.endDate,
+      coupon.numberOfUses,
+      coupon.sold,
+      coupon.rules,
+      coupon.active,
+      coupon.anonymous,
+      coupon.catalogWise,
+      coupon.description,
+      coupon.pastille,
+      coupon.promotion,
+      reduction
+    )
 
 }

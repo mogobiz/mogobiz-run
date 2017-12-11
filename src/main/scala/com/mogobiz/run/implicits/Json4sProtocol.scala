@@ -23,158 +23,149 @@ import spray.httpx.Json4sSupport
   */
 object Json4sProtocol extends Json4sSupport {
 
-  /*
-  class JodaDateTimeSerializer extends CustomSerializer[DateTime](format => (
-    // deserialisation
-    { case x: JString => ISODateTimeFormat.dateOptionalTimeParser().parseDateTime(x.values) },
-    // serialisation
-    { case x: DateTime => JString(ISODateTimeFormat.dateOptionalTimeParser().print(x)) }
-    ))
-   */
-
   class ProductTypeSerializer
       extends CustomSerializer[ProductType](
-          format =>
-            (
-                // deserialisation
-                {
+        format =>
+          (
+            // deserialisation
+            {
               case x: JString =>
                 ProductType.withName(x.values)
             },
-                // serialisation
-                {
+            // serialisation
+            {
               case x: ProductType =>
                 JString(x.toString)
             }
-          ))
+        ))
 
   class ProductCalendarSerializer
       extends CustomSerializer[ProductCalendar](
-          format =>
-            (
-                // deserialisation
-                {
+        format =>
+          (
+            // deserialisation
+            {
               case x: JString =>
                 ProductCalendar.withName(x.values)
             },
-                // serialisation
-                {
+            // serialisation
+            {
               case x: ProductCalendar =>
                 JString(x.toString)
             }
-          ))
+        ))
 
   class WeightUnitSerializer
       extends CustomSerializer[WeightUnit](
-          format =>
-            (
-                // deserialisation
-                {
+        format =>
+          (
+            // deserialisation
+            {
               case x: JString =>
                 WeightUnit.withName(x.values)
             },
-                // serialisation
-                {
+            // serialisation
+            {
               case x: WeightUnit =>
                 JString(x.toString)
             }
-          ))
+        ))
 
   class LinearUnitSerializer
       extends CustomSerializer[LinearUnit](
-          format =>
-            (
-                // deserialisation
-                {
+        format =>
+          (
+            // deserialisation
+            {
               case x: JString =>
                 LinearUnit.withName(x.values)
             },
-                // serialisation
-                {
+            // serialisation
+            {
               case x: LinearUnit =>
                 JString(x.toString)
             }
-          ))
+        ))
 
   class ReductionRuleTypeSerializer
       extends CustomSerializer[ReductionRuleType](
-          format =>
-            (
-                // deserialisation
-                {
+        format =>
+          (
+            // deserialisation
+            {
               case x: JString =>
                 ReductionRuleType.withName(x.values)
             },
-                // serialisation
-                {
+            // serialisation
+            {
               case x: ReductionRuleType =>
                 JString(x.toString)
             }
-          ))
+        ))
 
   class TransactionStatusSerializer
       extends CustomSerializer[TransactionStatus](
-          format =>
-            (
-                // deserialisation
-                {
+        format =>
+          (
+            // deserialisation
+            {
               case x: JString =>
                 TransactionStatus.withName(x.values)
             },
-                // serialisation
-                {
+            // serialisation
+            {
               case x: TransactionStatus =>
                 JString(x.toString)
             }
-          ))
+        ))
 
   class DeliveryStatusSerializer
       extends CustomSerializer[DeliveryStatus](
-          format =>
-            (
-                // deserialisation
-                {
+        format =>
+          (
+            // deserialisation
+            {
               case x: JString =>
                 DeliveryStatus.withName(x.values)
             },
-                // serialisation
-                {
+            // serialisation
+            {
               case x: DeliveryStatus =>
                 JString(x.toString)
             }
-          ))
+        ))
 
   class ReturnedItemStatusSerializer
       extends CustomSerializer[ReturnedItemStatus](
-          format =>
-            (
-                // deserialisation
-                {
+        format =>
+          (
+            // deserialisation
+            {
               case x: JString =>
                 ReturnedItemStatus.withName(x.values)
             },
-                // serialisation
-                {
+            // serialisation
+            {
               case x: ReturnedItemStatus =>
                 JString(x.toString)
             }
-          ))
+        ))
 
   class ReturnStatusSerializer
       extends CustomSerializer[ReturnStatus](
-          format =>
-            (
-                // deserialisation
-                {
+        format =>
+          (
+            // deserialisation
+            {
               case x: JString =>
                 ReturnStatus.withName(x.values)
             },
-                // serialisation
-                {
+            // serialisation
+            {
               case x: ReturnStatus =>
                 JString(x.toString)
             }
-          ))
+        ))
 
   implicit def json4sFormats: Formats =
     DefaultFormats ++ JodaTimeSerializers.all +

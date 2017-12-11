@@ -6,8 +6,6 @@ package com.mogobiz.run.model
 
 import java.util.Date
 
-import com.mogobiz.run.utils.PagingParams
-
 class DatePeriod(val startDate: Date, val endDate: Date)
 case class EndPeriod(start: Date, end: Date) extends DatePeriod(start, end)
 case class IntraDayPeriod(override val startDate: Date,

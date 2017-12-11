@@ -6,18 +6,19 @@ package com.mogobiz.run.handlers
 
 import java.util.Date
 
+import com.mogobiz.es._
 import com.mogobiz.run.es._
 import com.mogobiz.run.exceptions.NotFoundException
 import com.mogobiz.run.model.RequestParameters.PromotionRequest
 import com.mogobiz.run.utils.Paging
-import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
-import com.sksamuel.elastic4s.FilterDefinition
-import org.elasticsearch.search.SearchHits
+import com.sksamuel.elastic4s.http.ElasticDsl.{search => esearch4s, _}
+import com.sksamuel.elastic4s.http.search.SearchHits
+import com.sksamuel.elastic4s.searches.queries.QueryDefinition
+import com.sksamuel.elastic4s.searches.sort.FieldSortDefinition
 import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.format.DateTimeFormat
 import org.json4s.JsonAST.{JArray, JValue}
 import org.json4s._
-import com.mogobiz.es._
 
 class PromotionHandler {
 
@@ -31,7 +32,7 @@ class PromotionHandler {
     val _query = if (req.categoryPath.isDefined) {
       val categories: JValue = EsClient.searchRaw(
           filterRequest(
-              esearch4s in storeCode -> "category",
+              esearch4s(storeCode -> "category"),
               List(
                   createRegexFilter("path", req.categoryPath)
               ).flatten
@@ -40,55 +41,50 @@ class PromotionHandler {
         case Some(s) => s
         case None    => JNothing
       }
+
       implicit def json4sFormats: Formats = DefaultFormats
-      ids(
+
+      idsQuery(
           (categories \ "coupons")
             .extract[JArray]
             .values
             .asInstanceOf[List[List[BigInt]]]
             .flatten
-            .map(coupon => coupon.toString()): _*
+            .map(coupon => coupon.toString())
       )
     } else {
-      matchall
+      matchAllQuery()
     }
     val now = DateTimeFormat.forPattern("yyyy-MM-dd").print(new Date().getTime)
-    val filters: List[FilterDefinition] = List(
-        termFilter("anonymous", true),
-        or(rangeFilter("startDate") lte now, missingFilter("startDate")),
-        or(rangeFilter("endDate") gte now, missingFilter("endDate"))
+    val filters: List[QueryDefinition] = List(
+        termQuery("anonymous", true),
+        should(rangeQuery("startDate") lte now, not(existsQuery("startDate"))),
+        should(rangeQuery("endDate") gte now, not(existsQuery("endDate")))
     )
 
     EsClient.searchAllRaw(
-        filterRequest(esearch4s in storeCode -> "coupon", filters, _query)
+        filterRequest(esearch4s(storeCode -> "coupon"), filters, _query)
           from _from
           size _size
-          sort {
-            by field _sort order SortOrder.valueOf(_sortOrder.toUpperCase)
+          sortBy {
+            FieldSortDefinition(_sort).sortOrder(SortOrder.fromString(_sortOrder))
           } fetchSource includeSource
     )
   }
 
   def getPromotions(storeCode: String, req: PromotionRequest): JValue = {
-    val response = this.queryPromotion(storeCode, req)
-    Paging.wrap(response.getTotalHits.toInt, response.getHits, response.getHits.children.size, req)
+    val response: SearchHits = this.queryPromotion(storeCode, req)
+    Paging.wrap(response.total, response.hits, response.hits.children.size, req)
   }
 
   def getPromotionById(storeCode: String, promotionId: String): JValue = {
-    var filters: List[FilterDefinition] = List(termFilter("id", promotionId))
-    val req = esearch4s in storeCode -> "coupon"
-    EsClient
-      .searchRaw(filterRequest(req, filters) sourceExclude ("imported"))
-      .map { hit =>
-        hit2JValue(hit)
-      }
-      .getOrElse(throw new NotFoundException(""))
+    var filters: List[QueryDefinition] = List(termQuery("id", promotionId))
+    val req = esearch4s(storeCode -> "coupon")
+    EsClient.searchRaw(filterRequest(req, filters) sourceExclude "imported").getOrElse(throw new NotFoundException(""))
   }
 
   def getPromotionIds(storeCode: String): Array[String] = {
-    val response = this.queryPromotion(storeCode, new PromotionRequest(None, None, None, None, None, ""), false)
-    response.hits().map { h =>
-      h.getId
-    }
+    val response = this.queryPromotion(storeCode, PromotionRequest(None, None, None, None, None, ""), false)
+    response.hits.map(_.id)
   }
 }

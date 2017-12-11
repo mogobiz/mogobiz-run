@@ -5,14 +5,14 @@
 package com.mogobiz
 
 import com.mogobiz.run.config.DefaultComplete
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.LazyLogging
 import spray.routing.{Directives, Route}
 
 import scala.util.Try
 
 /**
  */
-trait DefaultCompleteMocked extends DefaultComplete with StrictLogging {
+trait DefaultCompleteMocked extends DefaultComplete with LazyLogging {
   this : Directives =>
   override def handleCall[T](call: => T, handler: T => Route): Route = {
     import com.mogobiz.run.implicits.JsonSupport._

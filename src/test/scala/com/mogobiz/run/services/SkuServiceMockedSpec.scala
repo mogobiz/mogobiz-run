@@ -4,23 +4,20 @@
 
 package com.mogobiz.run.services
 
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
+import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 
-class SkuServiceMockedSpec extends MogobizRouteMocked  {
+class SkuServiceMockedSpec extends MogobizRouteTest  {
 
   override lazy val apiRoutes = (new SkuService() with DefaultCompleteMocked).route
+  val rootPath = "/store/" + STORE + "/skus"
 
-  " sku route " should {
-
-    val rootPath = "/store/" + STORE + "/skus"
-    " be successful when looking for skus " in {
+  " sku route " should " be successful when looking for skus " in {
       //val productUuid = UUID.randomUUID().toString
       //val productId = 1234
       val path = rootPath //+ "/" + productId
       Get(path) ~> sealRoute(routes) ~> check {
-        status.intValue must_== 200
-        status.isSuccess must beTrue
-      }
+        status.intValue should be(200)
+        status.isSuccess should be(true)
     }
   }
 }

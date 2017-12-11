@@ -4,19 +4,17 @@
 
 package com.mogobiz.run.services
 
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
+import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 
 /**
  */
-class TagServiceMockedSpec extends MogobizRouteMocked  {
+class TagServiceMockedSpec extends MogobizRouteTest  {
 
   override lazy val apiRoutes = (new TagService() with DefaultCompleteMocked).route
 
-  " tag route " should {
-    " respond and be successful " in {
+  " tag route " should " respond and be successful " in {
       Get("/store/" + STORE + "/tags") ~> sealRoute(routes) ~> check {
-        status.isSuccess must beTrue
+        status.isSuccess should be(true)
       }
     }
   }
-}

@@ -4,19 +4,17 @@
 
 package com.mogobiz.run.services
 
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
+import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 
 /**
  */
-class PromotionServiceMockedSpec extends MogobizRouteMocked  {
+class PromotionServiceMockedSpec extends MogobizRouteTest  {
 
   override lazy val apiRoutes = (new PromotionService() with DefaultCompleteMocked).route
 
-  " promotion route " should {
-    " respond and be successful with default parameters" in {
+  " promotion route " should " respond and be successful with default parameters" in {
       Get("/store/" + STORE + "/promotions") ~> sealRoute(routes) ~> check {
-        status.isSuccess must beTrue
+        status.isSuccess should be(true)
       }
     }
   }
-}

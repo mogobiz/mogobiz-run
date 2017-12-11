@@ -9,21 +9,20 @@ import java.util.{Date, UUID}
 import akka.actor.Props
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.actors.EsUpdateActor
-import com.mogobiz.run.actors.EsUpdateActor.{ProductStockAvailabilityUpdateRequest, StockUpdateRequest}
+import com.mogobiz.run.actors.EsUpdateActor.ProductStockAvailabilityUpdateRequest
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.{Stock => EsStock, StockChange, StockByDateTime, StockCalendar}
+import com.mogobiz.run.model.{StockByDateTime, StockCalendar, StockChange, Stock => EsStock}
 import com.mogobiz.system.ActorSystemLocator
 import com.mogobiz.utils.GlobalUtil._
-import com.sksamuel.elastic4s.ElasticDsl.{insert => esinsert, update => esupdate, _}
-import com.sksamuel.elastic4s.IndexesTypesDsl
+import com.sksamuel.elastic4s.http.ElasticDsl.{update => esupdate, _}
 import org.joda.time.DateTime
 import scalikejdbc._
 
 /**
   * Handle the stock update in es
   */
-class StockHandler extends IndexesTypesDsl {
+class StockHandler {
 
   def checkStock(indexEs: String, product: Product, sku: Sku, quantity: Long, date: Option[DateTime])(
       implicit session: DBSession): Boolean = {
@@ -104,9 +103,8 @@ class StockHandler extends IndexesTypesDsl {
     if (stockCalendar.startDate.isEmpty) {
       // Stock produit (sans date)
       val script = s"ctx._source.stock = ctx._source.initialStock - ${stockCalendar.sold}"
-      val req    = esupdate id stock.uuid in s"$indexEs/stock" script script retryOnConflict 4
-      import EsClient.secureRequest
-      EsClient().execute(secureRequest(req)).await.getGetResult
+      val req    = esupdate(stock.uuid) in s"$indexEs/stock" script script retryOnConflict 4
+      EsClient().execute(req).await.result
     } else {
       val esStockCalendarOpt = stock.stockByDateTime.getOrElse(Seq()).find(_.uuid == stockCalendar.uuid)
       esStockCalendarOpt match {
@@ -139,8 +137,7 @@ class StockHandler extends IndexesTypesDsl {
       skuHandler.updateStockAvailability(indexEs, sku, stock, stockCalendar)
     }
 
-    val system = ActorSystemLocator()
-    import system.dispatcher
+    val system     = ActorSystemLocator()
     val stockActor = system.actorOf(Props[EsUpdateActor])
     stockActor ! ProductStockAvailabilityUpdateRequest(indexEs, product.id)
   }
@@ -150,9 +147,9 @@ object StockDao {
 
   def findByProductAndSku(indexEs: String, product: Product, sku: Sku): Option[EsStock] = {
     // Création de la requête
-    val req = search in indexEs -> "stock" postFilter and(
-          termFilter("stock.productId", product.id),
-          termFilter("stock.id", sku.id)
+    val req = search(indexEs -> "stock") query boolQuery().must(
+          termQuery("stock.productId", product.id),
+          termQuery("stock.id", sku.id)
       )
 
     // Lancement de la requête

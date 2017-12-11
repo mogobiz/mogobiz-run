@@ -4,19 +4,17 @@
 
 package com.mogobiz.run.services
 
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
+import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 
 /**
  */
-class CurrencyServiceMockedSpec extends MogobizRouteMocked  {
+class CurrencyServiceMockedSpec extends MogobizRouteTest  {
 
   override lazy val apiRoutes = (new CurrencyService() with DefaultCompleteMocked).route
 
-  " currency route " should {
-    " respond and be successful " in {
+  " currency route " should " respond and be successful " in {
       Get("/store/" + STORE + "/currencies") ~> sealRoute(routes) ~> check {
-        status.isSuccess must beTrue
+        status.isSuccess should be(true)
       }
     }
   }
-}

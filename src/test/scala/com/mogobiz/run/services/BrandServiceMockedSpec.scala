@@ -4,19 +4,15 @@
 
 package com.mogobiz.run.services
 
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
+import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 
 /**
- */
-class BrandServiceMockedSpec extends MogobizRouteMocked  {
+  */
+class BrandServiceMockedSpec extends MogobizRouteTest {
 
   override lazy val apiRoutes = (new BrandService() with DefaultCompleteMocked).route
 
-  " brand route " should {
-    " respond and be successful " in {
-      Get("/store/" + STORE + "/brands") ~> sealRoute(routes) ~> check {
-        status.isSuccess must beTrue
-      }
-    }
+  "brand route " should "respond and be successful" in {
+    Get("/store/" + STORE + "/brands") ~> sealRoute(routes) ~> check { status.isSuccess should be(true) }
   }
 }

@@ -4,47 +4,41 @@
 
 package com.mogobiz.run.services
 
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
+import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 
 /**
  */
-class PreferenceServiceServiceSpec extends MogobizRouteMocked  {
+class PreferenceServiceServiceSpec extends MogobizRouteTest {
 
   override lazy val apiRoutes = (new PreferenceService() with DefaultCompleteMocked).route
 
-  " preference route " should {
-
-    val rootPath = "/store/" + STORE + "/prefs"
-    " be successful when getting user preferences " in {
+  val rootPath = "/store/" + STORE + "/prefs"
+  " preference route " should " be successful when getting user preferences " in {
       Get(rootPath) ~> sealRoute(routes) ~> check {
-        status.intValue must_== 200
-        status.isSuccess must beTrue
+        status.intValue should be(200)
+        status.isSuccess should be(true)
       }
     }
-    " be successful when setting user preferences " in {
+    it should " be successful when setting user preferences " in {
       Post(rootPath) ~> sealRoute(routes) ~> check {
-        status.intValue must_== 200
-        status.isSuccess must beTrue
+        status.intValue should be(200)
+        status.isSuccess should be(true)
       }
     }
 
-    " reject on wrong path " in {
+  it should " reject on wrong path " in {
       val wrongPath = "/store/" + STORE + "/anythingOtherThanTheRightRoute"
       Get(wrongPath) ~> sealRoute(routes) ~> check {
-        status.intValue must_== 404
-        status.isSuccess must beFalse
+        status.intValue should be(404)
+        status.isSuccess should be(false)
       }
     }
 
-    " reject on wrong path even with prefs prefix" in {
-      skipped("because this one fails")
+  it should " reject on wrong path even with prefs prefix" in {
       val wrongPath = "/store/" + STORE + "/prefsAndAnythingOtherThanTheRightRoute"
       Get(wrongPath) ~> sealRoute(routes) ~> check {
-        status.intValue must_== 404
-        status.isSuccess must beFalse
+        status.intValue should be(404)
+        status.isSuccess should be(false)
       }
     }
-
-  }
-
 }

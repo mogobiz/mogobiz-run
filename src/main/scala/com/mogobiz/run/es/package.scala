@@ -4,20 +4,15 @@
 
 package com.mogobiz.run
 
-import com.mogobiz.es._
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.run.model.Currency
-import com.sksamuel.elastic4s.ElasticDsl.{search => esearch4s, _}
-import com.sksamuel.elastic4s.source.DocumentSource
-import com.sksamuel.elastic4s.{SearchDefinition, FilterDefinition, QueryDefinition}
+import com.sksamuel.elastic4s.http.ElasticDsl._
+import com.sksamuel.elastic4s.searches.SearchDefinition
+import com.sksamuel.elastic4s.searches.queries.QueryDefinition
 import com.typesafe.scalalogging.Logger
-import org.elasticsearch.action.get.{MultiGetItemResponse, GetResponse}
-import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory}
-import org.elasticsearch.search.{SearchHit, SearchHits}
-import org.json4s.JsonAST.{JArray, JValue, JNothing}
+import org.json4s.JsonAST.{JNothing, JValue}
 import org.json4s._
-import org.json4s.jackson.JsonMethods._
 import org.slf4j.LoggerFactory
 
 /**
@@ -35,9 +30,9 @@ package object es {
       case Some(s) =>
         EsClient.search[Currency](
             filterRequest(
-                esearch4s in Settings.Mogopay.EsIndex -> "Rate",
+                search(Settings.Mogopay.EsIndex -> "Rate"),
                 List(
-                    createTermFilter("code", Some(s))
+                    createtermQuery("code", Some(s))
                 ).flatten
             )
         ) getOrElse defaultCurrency
@@ -54,7 +49,7 @@ package object es {
     * @return store languages
     */
   def queryStoreLanguages(store: String): JValue = {
-    val languages: JValue = EsClient.searchRaw(esearch4s in store -> "i18n" sourceInclude "languages") match {
+    val languages: JValue = EsClient.searchRaw(search(store -> "i18n") sourceInclude "languages") match {
       case Some(s) => s
       case None    => JNothing
     }
@@ -63,14 +58,16 @@ package object es {
 
   def getStoreLanguagesAsList(store: String): List[String] = {
     implicit def json4sFormats: Formats = DefaultFormats
+
     queryStoreLanguages(store).extract[List[String]]
   }
 
   /**
     * if lang == "_all" returns an empty list
     * else returns the list of all languages except the given language
+    *
     * @param store - store
-    * @param lang - language
+    * @param lang  - language
     * @return excluded languages
     */
   def createExcludeLang(store: String, lang: String): List[String] = {
@@ -87,25 +84,25 @@ package object es {
     * k1:::v1_1|v1_2|||k2:::v2_1|v2_2 etc...
     * Le filtre généré est le suivant (optimisé si possible):
     * and {
-    *     or {
-    *          filter pour tester k1 et v1_1,
-    *          filter pour tester k1 et v1_2
+    * or {
+    * filter pour tester k1 et v1_1,
+    * filter pour tester k1 et v1_2
     *          etc...
-    *     },
-    *     or {
-    *          filter pour tester k2 et v2_1,
-    *          filter pour tester k2 et v2_2
+    * },
+    * or {
+    * filter pour tester k2 et v2_1,
+    * filter pour tester k2 et v2_2
     *          etc...
-    *     }
+    * }
     *     etc...
     * }
+    *
     * @param optQuery - query
-    * @param fct - function
+    * @param fct      - function
     * @return
     */
   def createAndOrFilterBySplitKeyValues(optQuery: Option[String],
-                                        fct: (String,
-                                              String) => Option[FilterDefinition]): Option[FilterDefinition] = {
+                                        fct: (String, String) => Option[QueryDefinition]): Option[QueryDefinition] = {
     optQuery match {
       case Some(query) =>
         val andFilters = (for (keyValues <- query.split("""\|\|\|""")) yield {
@@ -114,14 +111,12 @@ package object es {
             val orFilters = (for (v <- kv(1).split("""\|""")) yield {
               fct(kv(0), v)
             }).toList.flatten
-            if (orFilters.length > 1) Some(or(orFilters: _*))
-            else if (orFilters.length == 1) Some(orFilters.head)
-            else None
+            if (orFilters.length > 1) Some(should(orFilters))
+            else orFilters.headOption
           } else None
         }).toList.flatten
-        if (andFilters.length > 1) Some(and(andFilters: _*))
-        else if (andFilters.length == 1) Some(andFilters.head)
-        else None
+        if (andFilters.length > 1) Some(must(andFilters))
+        else andFilters.headOption
       case _ => None
     }
   }
@@ -131,16 +126,17 @@ package object es {
     * k1:::v1|||k2:::v2 etc...
     * Le filtre généré est le suivant (optimisé si possible):
     * or {
-    *     filter pour tester k1 et v1,
-    *     filter pour tester k2 et v2
+    * filter pour tester k1 et v1,
+    * filter pour tester k2 et v2
     *     etc...
     * }
+    *
     * @param optQuery - query
-    * @param fct - function
+    * @param fct      - function
     * @return
     */
   def createOrFilterBySplitKeyValues(optQuery: Option[String],
-                                     fct: (String, String) => Option[FilterDefinition]): Option[FilterDefinition] = {
+                                     fct: (String, String) => Option[QueryDefinition]): Option[QueryDefinition] = {
     optQuery match {
       case Some(query) => {
         val orFilters = (for (keyValues <- query.split("""\|\|\|""")) yield {
@@ -149,7 +145,7 @@ package object es {
             fct(kv(0), kv(1))
           } else None
         }).toList.flatten
-        if (orFilters.length > 1) Some(or(orFilters: _*)) else if (orFilters.length == 1) Some(orFilters(0)) else None
+        if (orFilters.length > 1) Some(should(orFilters)) else orFilters.headOption
       }
       case _ => None
     }
@@ -170,22 +166,23 @@ package object es {
     * v1|v2 etc...
     * Le filtre généré est le suivant (optimisé si possible):
     * or {
-    *     filter pour tester v1,
-    *     filter pour tester v2
+    * filter pour tester v1,
+    * filter pour tester v2
     *     etc...
     * }
+    *
     * @param optQuery - query
-    * @param fct - function
+    * @param fct      - function
     * @return
     */
   def createOrFilterBySplitValues(optQuery: Option[String],
-                                  fct: (String) => Option[FilterDefinition]): Option[FilterDefinition] = {
+                                  fct: (String) => Option[QueryDefinition]): Option[QueryDefinition] = {
     optQuery match {
       case Some(query) => {
         val orFilters = (for (v <- query.split("""\|""")) yield {
           fct(v)
         }).toList.flatten
-        if (orFilters.length > 1) Some(or(orFilters: _*)) else if (orFilters.length == 1) Some(orFilters(0)) else None
+        if (orFilters.length > 1) Some(should(orFilters)) else orFilters.headOption
       }
       case _ => None
     }
@@ -228,71 +225,79 @@ package object es {
       } else List(s"$lang.$field")
   }
 
-  def createQuery(queries: List[QueryDefinition]) : QueryDefinition = {
-    if (queries.isEmpty) all
-    else must(queries: _*)
+  def createQuery(queries: List[QueryDefinition]): QueryDefinition = {
+    if (queries.isEmpty) matchAllQuery()
+    else boolQuery().must(queries: _*)
   }
 
   def filterRequest(req: SearchDefinition,
-                    filters: List[FilterDefinition],
-                    _query: QueryDefinition = matchall): SearchDefinition =
+                    filters: List[QueryDefinition],
+                    _query: QueryDefinition = matchAllQuery()): SearchDefinition =
     if (filters.nonEmpty) {
       if (filters.size > 1)
-        req query { filteredQuery query _query filter { and(filters: _*) } } else
-        req query { filteredQuery query _query filter filters(0) }
+        req query {
+          boolQuery().must(filters)
+        } else
+        req query {
+          must(filters.head)
+        }
     } else req query _query
 
   def filterOrRequest(req: SearchDefinition,
-                      filters: List[FilterDefinition],
-                      _query: QueryDefinition = matchall): SearchDefinition =
+                      filters: List[QueryDefinition],
+                      _query: QueryDefinition = matchAllQuery()): SearchDefinition =
     if (filters.nonEmpty) {
       if (filters.size > 1)
-        req query { filteredQuery query _query filter { or(filters: _*) } } else
-        req query { filteredQuery query _query filter filters(0) }
-    } else req
+        req query {
+          boolQuery().should(filters)
+        } else
+        req query {
+          boolQuery().must(filters.head)
+        }
+    } else req query _query
 
-  def createOrRegexAndTypeFilter(typeFields: List[TypeField], value: Option[String]): Option[FilterDefinition] = {
+  def createOrRegexAndTypeFilter(typeFields: List[TypeField], value: Option[String]): Option[QueryDefinition] = {
     value match {
       case Some(s) =>
         Some(
-            or(
+            should(
                 typeFields.map(typeField =>
-                      and(typeFilter(typeField.`type`), regexFilter(typeField.field, s".*${s.toLowerCase}.*"))): _*
+                      must(typeQuery(typeField.`type`), regexQuery(typeField.field, s".*${s.toLowerCase}.*"))): _*
             )
         )
       case None => None
     }
   }
 
-  def createNestedTermFilter(path: String, field: String, value: Option[Any]): Option[FilterDefinition] = {
+  def createNestedtermQuery(path: String, field: String, value: Option[Any]): Option[QueryDefinition] = {
     value match {
       case Some(s) =>
         s match {
           case v: String =>
             val values = v.split("""\|""")
             if (values.size > 1) {
-              Some(nestedFilter(path) filter termsFilter(field, values: _*))
+              Some(nestedQuery(path) query termsQuery(field, values))
             } else {
-              Some(nestedFilter(path) filter termFilter(field, v))
+              Some(nestedQuery(path) query termsQuery(field, v))
             }
-          case _ => Some(nestedFilter(path) filter termFilter(field, s))
+          case _ => Some(nestedQuery(path) query termsQuery(field, s))
         }
       case None => None
     }
   }
 
-  def createTermFilter(field: String, value: Option[Any]): Option[FilterDefinition] = {
+  def createtermQuery(field: String, value: Option[Any]): Option[QueryDefinition] = {
     value match {
       case Some(s) =>
         s match {
           case v: String =>
             val values = v.split("""\|""")
             if (values.size > 1) {
-              Some(termsFilter(field, values: _*))
+              Some(termsQuery(field, values))
             } else {
-              Some(termFilter(field, v))
+              Some(termQuery(field, v))
             }
-          case _ => Some(termFilter(field, s))
+          case _ => Some(termQuery(field, s))
         }
       case None => None
     }
@@ -308,47 +313,47 @@ package object es {
     }
   }
 
-  def createRegexFilter(field: String, value: Option[String], addStars: Boolean = true): Option[FilterDefinition] = {
+  def createRegexFilter(field: String, value: Option[String], addStars: Boolean = true): Option[QueryDefinition] = {
     value match {
       case Some(s) =>
         val star = if (addStars) ".*" else ""
-        Some(regexFilter(field, s"$star${s.toLowerCase}$star"))
+        Some(regexQuery(field, s"$star${s.toLowerCase}$star"))
       case None => None
     }
   }
 
-  def createExistsFilter(field: Option[String]): Option[FilterDefinition] = {
+  def createExistsFilter(field: Option[String]): Option[QueryDefinition] = {
     field match {
-      case Some(s) => Some(existsFilter(s))
+      case Some(s) => Some(existsQuery(s))
       case None    => None
     }
   }
 
-  def createRangeFilter(field: String, _gte: Option[String], _lte: Option[String]): Option[FilterDefinition] = {
+  def createRangeFilter(field: String, _gte: Option[String], _lte: Option[String]): Option[QueryDefinition] = {
     val req = _gte match {
       case Some(g) =>
         _lte match {
-          case Some(l) => Some(rangeFilter(field) gte g lte l)
-          case _       => Some(rangeFilter(field) gte g)
+          case Some(l) => Some(rangeQuery(field) gte g lte l)
+          case _       => Some(rangeQuery(field) gte g)
         }
       case _ =>
         _lte match {
-          case Some(l) => Some(rangeFilter(field) lte l)
+          case Some(l) => Some(rangeQuery(field) lte l)
           case _       => None
         }
     }
     req
   }
 
-  def createNumericRangeFilter(field: String, _gte: String, _lte: String): Option[FilterDefinition] = {
+  def createNumericRangeFilter(field: String, _gte: String, _lte: String): Option[QueryDefinition] = {
     createNumericRangeFilter(field, convertAsLongOption(_gte), convertAsLongOption(_lte))
   }
 
-  def createNumericRangeFilter(field: String, _gte: Option[Long], _lte: Option[Long]): Option[FilterDefinition] = {
+  def createNumericRangeFilter(field: String, _gte: Option[Long], _lte: Option[Long]): Option[QueryDefinition] = {
     (_gte, _lte) match {
-      case (Some(gte_v), Some(lte_v)) => Some(numericRangeFilter(field) gte gte_v lte lte_v)
-      case (Some(gte_v), None)        => Some(numericRangeFilter(field) gte gte_v)
-      case (None, Some(lte_v))        => Some(numericRangeFilter(field) lte lte_v)
+      case (Some(gte_v), Some(lte_v)) => Some(rangeQuery(field) gte gte_v lte lte_v)
+      case (Some(gte_v), None)        => Some(rangeQuery(field) gte gte_v)
+      case (None, Some(lte_v))        => Some(rangeQuery(field) lte lte_v)
       case _                          => None
     }
   }

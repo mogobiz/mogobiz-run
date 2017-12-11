@@ -6,7 +6,7 @@ package com.mogobiz.run.handlers
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Mogobiz.{Company, ShippingRule}
-import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.http.ElasticDsl._
 
 /**
   */
@@ -23,7 +23,7 @@ object ShippingRuleDao {
 
   def findByCompany(storeCode: String): List[ShippingRule] = {
     // Création de la requête
-    val req = search in storeCode -> "shipping_rule" from 0 size EsClient.MAX_SIZE
+    val req = search(storeCode -> "shipping_rule") from 0 size EsClient.MaxSize
 
     // Lancement de la requête
     EsClient.searchAll[ShippingRule](req).toList;

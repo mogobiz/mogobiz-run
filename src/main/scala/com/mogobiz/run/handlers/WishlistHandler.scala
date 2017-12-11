@@ -5,17 +5,14 @@
 package com.mogobiz.run.handlers
 
 import java.util.Calendar
+
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.exceptions.{NotFoundException, NotAuthorizedException, DuplicateException}
+import com.mogobiz.run.exceptions.{DuplicateException, NotAuthorizedException, NotFoundException}
 import com.mogobiz.run.model._
 import com.mogobiz.utils.GlobalUtil
-
 import com.mogobiz.utils.GlobalUtil.newUUID
-import com.mogobiz.run.exceptions.NotFoundException
-import com.sksamuel.elastic4s.ElasticDsl._
-import scalikejdbc.{DB, DBSession}
-
-import scala.util.{Failure, Try, Success}
+import com.sksamuel.elastic4s.http.ElasticDsl._
+import scalikejdbc.DBSession
 
 object WishlistHandler {
   def esStore(store: String) = s"${store}_wishlist"
@@ -285,6 +282,7 @@ class WishlistHandler {
               list // List vide ou la liste supprimée n'était pas celle par défaut => aucune changement
             else list.tail :+ list.head.copy(default = true)
           }
+
           val now = Calendar.getInstance().getTime
           val newWishList = wishlistList.copy(wishlists =
                                                 setFirstAsDefault(wishlistList.wishlists.filter(_.uuid != wishlistId)),
@@ -320,18 +318,18 @@ class WishlistHandler {
   }
 
   def getWishlistList(store: String, owner_email: String, wishlistUuid: Option[String] = None): WishlistList = {
-    val existingWishlistUuid = wishlistUuid.map { Some(_) }.getOrElse {
-      val req = search in esStore(store) types "wishlistlist" query {
-        filteredQuery query {
-          matchAllQuery
-        } filter {
-          nestedFilter("owner") filter {
-            termFilter("email", owner_email)
-          }
+    val existingWishlistUuid = wishlistUuid.map {
+      Some(_)
+    }.getOrElse {
+      val req = search(esStore(store) -> "wishlistlist") query boolQuery().must {
+        nestedQuery("owner") query {
+          termQuery("email", owner_email)
         }
       }
 
-      EsClient.search[WishlistList](req).map { _.uuid }
+      EsClient.search[WishlistList](req).map {
+        _.uuid
+      }
     }
 
     existingWishlistUuid.map { wishlistListId =>
@@ -375,7 +373,12 @@ class WishlistHandler {
 
     val successBloc = { newWishList: WishlistList =>
       EsClient.update[WishlistList](esStore(store), newWishList, "wishlistlist", true, false)
-      val token = newWishList.wishlists.find(_.uuid == wishlistId).map { _.token }.getOrElse("")
+      val token = newWishList.wishlists
+        .find(_.uuid == wishlistId)
+        .map {
+          _.token
+        }
+        .getOrElse("")
       s"$store--${token}"
     }
     runInTransaction(store, wishlistListId, ownerEmail, transactionalBloc, successBloc)
@@ -384,13 +387,9 @@ class WishlistHandler {
   def getWishlistByToken(token: String): Option[Wishlist] = {
     val tokens            = token.split("--")
     val (store, wishlist) = (tokens(0), tokens(1))
-    val req = search in esStore(store) types "wishlistlist" query {
-      filteredQuery query {
-        matchAllQuery
-      } filter {
-        nestedFilter("wishlists") filter {
-          termFilter("token", wishlist)
-        }
+    val req = search(esStore(store) -> "wishlistlist") query boolQuery().must {
+      nestedQuery("wishlists") query {
+        termQuery("token", wishlist)
       }
     }
     EsClient.search[WishlistList](req) flatMap {

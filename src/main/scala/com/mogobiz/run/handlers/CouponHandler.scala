@@ -7,7 +7,7 @@ package com.mogobiz.run.handlers
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Mogobiz.{ReductionRule, ReductionRuleType}
 import com.mogobiz.run.model._
-import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.http.ElasticDsl._
 import org.json4s.JsonAST.{JNothing, JObject, JValue}
 import scalikejdbc._
 import com.mogobiz.es._
@@ -151,7 +151,7 @@ object CouponDao {
 
   def findByCodeAsJSon(storeCode: String, couponCode: String): JValue = {
     // Création de la requête
-    val req = search in storeCode -> "coupon" postFilter termFilter("coupon.code", couponCode)
+    val req = search(storeCode -> "coupon") query boolQuery().must(termQuery("coupon.code", couponCode))
 
     // Lancement de la requête
     val coupon: JValue = EsClient.searchRaw(req) match {
@@ -163,7 +163,7 @@ object CouponDao {
 
   def findByCode(storeCode: String, couponCode: String): Option[Coupon] = {
     // Création de la requête
-    val req = search in storeCode -> "coupon" postFilter termFilter("coupon.code", couponCode)
+    val req = search(storeCode -> "coupon") query boolQuery().must(termQuery("coupon.code", couponCode))
 
     // Lancement de la requête
     EsClient.search[Coupon](req);
@@ -171,15 +171,15 @@ object CouponDao {
 
   def findPromotionsThatOnlyApplyOnCart(storeCode: String): List[Coupon] = {
     // Création de la requête
-    val req = search in storeCode -> "coupon" postFilter
-        and(
-            termFilter("coupon.anonymous", true),
-            termFilter("coupon.rules.xtype", "X_PURCHASED_Y_OFFERED"),
-            or(
-                and(missingFilter("coupon.start_date"), missingFilter("coupon.end_date")),
-                and(rangeFilter("coupon.start_date").lte("now"), rangeFilter("coupon.end_date").gte("now"))
+    val req = search(storeCode -> "coupon") postFilter
+        must(
+            termQuery("coupon.anonymous", true),
+            termQuery("coupon.rules.xtype", "X_PURCHASED_Y_OFFERED"),
+            should(
+                must(not(existsQuery(("coupon.start_date")), not(existsQuery("coupon.end_date")))),
+                must(rangeQuery("coupon.start_date").lte("now"), rangeQuery("coupon.end_date").gte("now"))
             )
-        ) from 0 size EsClient.MAX_SIZE
+        ) from 0 size EsClient.MaxSize
 
     EsClient.searchAll[Coupon](req).toList
   }

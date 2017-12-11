@@ -4,54 +4,53 @@
 
 package com.mogobiz.run.services
 
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
+import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 import java.util.UUID
 /**
  */
-class WishlistServiceMockedSpec extends MogobizRouteMocked  {
+class WishlistServiceMockedSpec extends MogobizRouteTest {
 
   override lazy val apiRoutes = (new WishlistService() with DefaultCompleteMocked).route
 
   val wishlistListUuid = UUID.randomUUID().toString
   val wishlistUuid = UUID.randomUUID().toString
 
-  " wishlist route " should {
-    " respond and be successful with default parameters" in {
+  " wishlist route " should " respond and be successful with default parameters" in {
       Get("/store/" + STORE + "/wishlists?owner_email=somestrval") ~> sealRoute(routes) ~> check {
-        status.intValue must_== 200
-        status.isSuccess must beTrue
+        status.intValue should be(200)
+        status.isSuccess should be(true)
       }
     }
 
-    " answer for the wishlist token " in {
+    it should " answer for the wishlist token " in {
       val path = "/store/" + STORE + "/wishlists/" + wishlistListUuid + "/wishlist/" + wishlistUuid + "/token?owner_email=somestrval"
       Get(path) ~> sealRoute(routes) ~> check {
-        status.intValue must_== 200
-        status.isSuccess must beTrue
+        status.intValue should be(200)
+        status.isSuccess should be(true)
       }
     }
 
-    " answer for the wishlist by token" in {
+    it should " answer for the wishlist by token" in {
       val path = "/store/" + STORE + "/wishlists/wishlist/" + wishlistUuid
       Get(path) ~> sealRoute(routes) ~> check {
-        status.intValue must_== 200
-        status.isSuccess must beTrue
+        status.intValue should be(200)
+        status.isSuccess should be(true)
       }
     }
 
-    " set default wishlist " in {
+    it should " set default wishlist " in {
       val path = "/store/" + STORE + "/wishlists/" + wishlistListUuid + "/wishlist/" + wishlistUuid + "/default?owner_email=somestrval"
       Post(path) ~> sealRoute(routes) ~> check {
-        status.intValue must_== 200
-        status.isSuccess must beTrue
+        status.intValue should be(200)
+        status.isSuccess should be(true)
       }
     }
 
-    " set owner info " in {
+    it should " set owner info " in {
       val path = "/store/" + STORE + "/wishlists/" + wishlistListUuid + "/owner?owner_email=somestrval"
       Post(path) ~> sealRoute(routes) ~> check {
-        status.intValue must_== 200
-        status.isSuccess must beTrue
+        status.intValue should be(200)
+        status.isSuccess should be(true)
       }
     }
 
@@ -65,5 +64,3 @@ Post("/store/" + STORE + "/wishlists/" + wishlistUuid + "/wishlist" + wishlistLi
 
 
   }
-
-}

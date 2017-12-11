@@ -4,30 +4,28 @@
 
 package com.mogobiz.run.services
 
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
+import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 
 /**
- */
-class CategoryServiceMockedSpec extends MogobizRouteMocked  {
+  */
+class CategoryServiceMockedSpec extends MogobizRouteTest {
 
   override lazy val apiRoutes = (new CategoryService() with DefaultCompleteMocked).route
 
-  " category route " should {
-    " respond and be successful with default parameters" in {
-      Get("/store/" + STORE + "/categories") ~> sealRoute(routes) ~> check {
-        status.isSuccess must beTrue
-      }
+  " category route " should " respond and be successful with default parameters" in {
+    Get("/store/" + STORE + "/categories") ~> sealRoute(routes) ~> check {
+      status.isSuccess should be(true)
     }
-    " accept true for hidden parameter" in {
-      Get("/store/" + STORE + "/categories?hidden=true") ~> sealRoute(routes) ~> check {
-        status.isSuccess must beTrue
-      }
+  }
+  it should " accept true for hidden parameter" in {
+    Get("/store/" + STORE + "/categories?hidden=true") ~> sealRoute(routes) ~> check {
+      status.isSuccess should be(true)
     }
-    " accept size parameter " in {
-      Get("/store/" + STORE + "/categories?size=10") ~> sealRoute(routes) ~> check {
-        status.isSuccess must beTrue
-      }
-      //parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang ? "_all", 'promotionId.?, 'size.as[Option[Int]]) {
+  }
+  it should " accept size parameter " in {
+    Get("/store/" + STORE + "/categories?size=10") ~> sealRoute(routes) ~> check {
+      status.isSuccess should be(true)
     }
+    //parameters('hidden ? false, 'parentId.?, 'brandId.?, 'categoryPath.?, 'lang ? "_all", 'promotionId.?, 'size.as[Option[Int]]) {
   }
 }

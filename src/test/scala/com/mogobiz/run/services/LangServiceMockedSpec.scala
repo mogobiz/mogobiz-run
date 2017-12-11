@@ -4,19 +4,17 @@
 
 package com.mogobiz.run.services
 
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
+import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 
 /**
  */
-class LangServiceMockedSpec extends MogobizRouteMocked  {
+class LangServiceMockedSpec extends MogobizRouteTest  {
 
   override lazy val apiRoutes = (new LangService() with DefaultCompleteMocked).route
 
-  " lang route " should {
-    " respond and be successful " in {
+  " lang route " should " respond and be successful " in {
       Get("/store/" + STORE + "/langs") ~> sealRoute(routes) ~> check {
-        status.isSuccess must beTrue
+        status.isSuccess should be(true)
       }
     }
   }
-}

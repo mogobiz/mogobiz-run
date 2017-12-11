@@ -4,15 +4,9 @@
 
 package com.mogobiz.run.services
 
-import java.util.UUID
-
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.run.model.RequestParameters._
-import com.mogobiz.{DefaultCompleteMocked, MogobizRouteMocked}
-
 /**
  *//*
-class CartServiceServiceSpec extends MogobizRouteMocked  {
+class CartServiceServiceSpec extends MogobizRouteTest  {
 
   override lazy val apiRoutes = (new CartService() with DefaultCompleteMocked).route
 

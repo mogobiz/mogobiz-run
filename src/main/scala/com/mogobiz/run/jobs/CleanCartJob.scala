@@ -6,8 +6,9 @@ package com.mogobiz.run.jobs
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.mogobiz.es.EsClient
-import com.mogobiz.run.config.{Settings, MogobizHandlers}
-import MogobizHandlers.handlers._
+import com.mogobiz.run.config.MogobizHandlers.handlers._
+import com.mogobiz.run.config.{MogobizHandlers, Settings}
+
 import scala.concurrent.duration._
 import scala.util.Try
 

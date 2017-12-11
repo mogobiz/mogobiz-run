@@ -7,19 +7,21 @@ package com.mogobiz.run.learning
 import java.util.{Calendar, Date}
 
 import akka.stream.ActorFlowMaterializer
-import com.mogobiz.es.EsClient
+import akka.stream.scaladsl._
+import com.mogobiz.es.EsClient._
 import com.mogobiz.run.model.Learning._
 import com.mogobiz.system.BootedMogobizSystem
-import com.sksamuel.elastic4s.BulkCompatibleDefinition
-import com.typesafe.scalalogging.{StrictLogging, Logger}
-import org.elasticsearch.action.bulk.BulkResponse
-import akka.stream.scaladsl._
+import com.sksamuel.elastic4s.bulk.BulkCompatibleDefinition
+import com.sksamuel.elastic4s.http.bulk.BulkResponse
+import com.sksamuel.elastic4s.script.ScriptDefinition
+import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{Await, Future}
 
 object CartRegistration extends BootedMogobizSystem {
   val logger = Logger(LoggerFactory.getLogger("com.mogobiz.run.learning.CartRegistration"))
+
   def computeFIS(store: String, itemids: Seq[String], segment: Option[String]): Unit = {
     val sorted: Seq[String] = itemids.distinct.sorted
 
@@ -39,18 +41,16 @@ object CartRegistration extends BootedMogobizSystem {
           update(uuid)
             .in(s"${esFISStore(store, segment)}/CartCombination")
             .upsert("uuid" -> uuid, "combinations" -> seq, "counter" -> 1, "dateCreated" -> now, "lastUpdated" -> now)
-            .script("ctx._source.counter += count;ctx._source.lastUpdated = now")
-            .params("count" -> 1, "now" -> now)
+            .script(ScriptDefinition("ctx._source.counter += count;ctx._source.lastUpdated = now",
+                                     params = Map("count" -> 1, "now" -> now)))
         }))
         val flatten = Flow[List[BulkCompatibleDefinition]].mapConcat[BulkCompatibleDefinition](identity)
 
         val count = Flow[BulkResponse].map[Int]((resp) => {
-          val nb = resp.getItems.length
-          logger.debug(s"index $nb combinations within ${resp.getTookInMillis} ms")
+          val nb = resp.items.length
+          logger.debug(s"index $nb combinations within ${resp.took} ms")
           nb
         })
-
-        import EsClient._
 
         source ~> combinationsFlow ~> transform ~> flatten ~> bulkBalancedFlow() ~> count ~> sumSink
       }
@@ -69,9 +69,7 @@ object CartRegistration extends BootedMogobizSystem {
   }
 
   def register(store: String, trackingid: String, itemids: Seq[String]): Unit = {
-
-    EsClient.index(esPurchasePredictions(store, None), CartAction(trackingid, itemids.mkString(" ")), false)
-
+    index(esPurchasePredictions(store, None), CartAction(trackingid, itemids.mkString(" ")), refresh = false)
     computeFIS(store, itemids, None)
   }
 

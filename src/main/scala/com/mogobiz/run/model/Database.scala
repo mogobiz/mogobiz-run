@@ -8,191 +8,187 @@ import java.util.Date
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
+import com.fasterxml.jackson.databind.annotation.{
+  JsonDeserialize,
+  JsonSerialize
+}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.pay.common.ExternalCode
-import com.mogobiz.pay.common.ExternalProvider.ExternalProvider
-import com.mogobiz.run.json.{JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer, JodaDateTimeSerializer}
-import com.mogobiz.run.model.Mogobiz.DeliveryStatus.DeliveryStatus
 import com.mogobiz.run.model.Mogobiz.LinearUnit.LinearUnit
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductType.ProductType
 import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
-import com.mogobiz.run.model.Mogobiz.ReturnStatus.ReturnStatus
-import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus.ReturnedItemStatus
-import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus
 import com.mogobiz.run.model.Mogobiz.WeightUnit.WeightUnit
 import org.joda.time.DateTime
 
 /**
- */
+  */
 object Mogobiz {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  case class Country(code: String,
-    name: String)
+  case class Country(code: String, name: String)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Location(latitude: Double,
-    longitude: Double,
-    postalCode: Option[String],
-    road1: Option[String],
-    road2: Option[String],
-    road3: Option[String],
-    roadNum: Option[String],
-    city: Option[String],
-    country: Option[Country],
-    state: Option[String])
+                      longitude: Double,
+                      postalCode: Option[String],
+                      road1: Option[String],
+                      road2: Option[String],
+                      road3: Option[String],
+                      roadNum: Option[String],
+                      city: Option[String],
+                      country: Option[Country],
+                      state: Option[String])
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Poi(description: String,
-    name: String,
-    picture: String,
-    xtype: String,
-    location: Location)
+                 name: String,
+                 picture: String,
+                 xtype: String,
+                 location: Location)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class LocalTaxRate(id: Long,
-    rate: Float,
-    countryCode: String,
-    stateCode: String)
+                          rate: Float,
+                          countryCode: String,
+                          stateCode: String)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  case class TaxRate(id: Long,
-    name: String,
-    localTaxRates: List[LocalTaxRate])
+  case class TaxRate(id: Long, name: String, localTaxRates: List[LocalTaxRate])
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  case class Shipping(id: Long,
-    weight: Long,
-    @JsonScalaEnumeration(classOf[WeightUnitRef]) weightUnit: WeightUnit,
-    width: Long,
-    height: Long,
-    depth: Long,
-    @JsonScalaEnumeration(classOf[LinearUnitRef]) linearUnit: LinearUnit,
-    amount: Long,
-    free: Boolean)
+  case class Shipping(
+      id: Long,
+      weight: Long,
+      @JsonScalaEnumeration(classOf[WeightUnitRef]) weightUnit: WeightUnit,
+      width: Long,
+      height: Long,
+      depth: Long,
+      @JsonScalaEnumeration(classOf[LinearUnitRef]) linearUnit: LinearUnit,
+      amount: Long,
+      free: Boolean)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  case class DatePeriod(@JsonSerialize(using = classOf[JodaDateTimeSerializer])@JsonDeserialize(using = classOf[JodaDateTimeDeserializer]) startDate: DateTime,
-    @JsonSerialize(using = classOf[JodaDateTimeSerializer])@JsonDeserialize(using = classOf[JodaDateTimeDeserializer]) endDate: DateTime)
+  case class DatePeriod(startDate: DateTime, endDate: DateTime)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class IntraDayPeriod(id: Long,
-    @JsonSerialize(using = classOf[JodaDateTimeSerializer])@JsonDeserialize(using = classOf[JodaDateTimeDeserializer]) startDate: DateTime,
-    @JsonSerialize(using = classOf[JodaDateTimeSerializer])@JsonDeserialize(using = classOf[JodaDateTimeDeserializer]) endDate: DateTime,
-    weekday1: Boolean,
-    weekday2: Boolean,
-    weekday3: Boolean,
-    weekday4: Boolean,
-    weekday5: Boolean,
-    weekday6: Boolean,
-    weekday7: Boolean)
+                            startDate: DateTime,
+                            endDate: DateTime,
+                            weekday1: Boolean,
+                            weekday2: Boolean,
+                            weekday3: Boolean,
+                            weekday4: Boolean,
+                            weekday5: Boolean,
+                            weekday6: Boolean,
+                            weekday7: Boolean)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Sku(id: Long,
-      uuid: String,
-      sku: String,
-      name: String,
-      externalCode: Option[String],
-      price: Long,
-      salePrice: Long,
-      minOrder: Long = 0,
-      maxOrder: Long = 0,
-      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) availabilityDate: Option[DateTime] = None,
-      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) startDate: Option[DateTime] = None,
-      @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])@JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer]) stopDate: Option[DateTime] = None,
-      coupons: List[InnerCoupon],
-      nbSales: Long) {
+                 uuid: String,
+                 sku: String,
+                 name: String,
+                 externalCode: Option[String],
+                 price: Long,
+                 salePrice: Long,
+                 minOrder: Long = 0,
+                 maxOrder: Long = 0,
+                 availabilityDate: Option[DateTime] = None,
+                 startDate: Option[DateTime] = None,
+                 stopDate: Option[DateTime] = None,
+                 coupons: List[InnerCoupon],
+                 nbSales: Long) {
 
-    val computedExternalCode: Option[ExternalCode] = ExternalCode.fromString(externalCode)
+    val computedExternalCode: Option[ExternalCode] =
+      ExternalCode.fromString(externalCode)
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class InnerCoupon(id: Long)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  case class Product(id: Long,
-                     uuid: String,
-                     name: String,
-                     picture: String,
-                     @JsonScalaEnumeration(classOf[ProductTypeRef]) xtype: ProductType,
-                     @JsonScalaEnumeration(classOf[ProductCalendarRef]) calendarType: ProductCalendar,
-                     taxRate: Option[TaxRate],
-                     shipping: Option[Shipping],
-                     stockDisplay: Boolean,
-                     @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                     @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                     startDate: Option[DateTime],
-                     @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                     @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                     stopDate: Option[DateTime],
-                     @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer])
-                     @JsonDeserialize(using = classOf[JodaDateTimeOptionDeserializer])
-                     availabilityDate: Option[DateTime],
-                     skus: List[Sku],
-                     intraDayPeriods: Option[List[IntraDayPeriod]],
-                     datePeriods: Option[List[DatePeriod]],
-                     poi: Option[Poi],
-                     nbSales: Long,
-                     downloadMaxTimes: Long,
-                     downloadMaxDelay: Long,
-                     category: Category,
-                     externalCode: Option[String],
-                     var lastUpdated: Date,
-                     var dateCreated: Date) {
+  case class Product(
+      id: Long,
+      uuid: String,
+      name: String,
+      picture: String,
+      @JsonScalaEnumeration(classOf[ProductTypeRef]) xtype: ProductType,
+      @JsonScalaEnumeration(classOf[ProductCalendarRef]) calendarType: ProductCalendar,
+      taxRate: Option[TaxRate],
+      shipping: Option[Shipping],
+      stockDisplay: Boolean,
+      startDate: Option[DateTime],
+      stopDate: Option[DateTime],
+      availabilityDate: Option[DateTime],
+      skus: List[Sku],
+      intraDayPeriods: Option[List[IntraDayPeriod]],
+      datePeriods: Option[List[DatePeriod]],
+      poi: Option[Poi],
+      nbSales: Long,
+      downloadMaxTimes: Long,
+      downloadMaxDelay: Long,
+      category: Category,
+      externalCode: Option[String],
+      var lastUpdated: Date,
+      var dateCreated: Date) {
     val shopId = externalCode.flatMap { externalCode =>
       val splitCode = externalCode.split("::")
-      if (splitCode.length >= 3) Some(splitCode(0).toUpperCase + "::" + splitCode(2))
+      if (splitCode.length >= 3)
+        Some(splitCode(0).toUpperCase + "::" + splitCode(2))
       else None
     }
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)
-  case class ReductionRule(id: Long,
-    @JsonScalaEnumeration(classOf[ReductionRuleRef]) xtype: ReductionRuleType,
-    @JsonDeserialize(contentAs = classOf[java.lang.Long]) quantityMin: Option[Long],
-    @JsonDeserialize(contentAs = classOf[java.lang.Long]) quantityMax: Option[Long],
-    discount: Option[String], //discount (or percent) if type is DISCOUNT (example : -1000 or 10%)
-    @JsonDeserialize(contentAs = classOf[java.lang.Long]) xPurchased: Option[Long],
-    @JsonDeserialize(contentAs = classOf[java.lang.Long]) yOffered: Option[Long])
+  case class ReductionRule(
+      id: Long,
+      @JsonScalaEnumeration(classOf[ReductionRuleRef]) xtype: ReductionRuleType,
+      @JsonDeserialize(contentAs = classOf[java.lang.Long]) quantityMin: Option[
+        Long],
+      @JsonDeserialize(contentAs = classOf[java.lang.Long]) quantityMax: Option[
+        Long],
+      discount: Option[String], //discount (or percent) if type is DISCOUNT (example : -1000 or 10%)
+      @JsonDeserialize(contentAs = classOf[java.lang.Long]) xPurchased: Option[
+        Long],
+      @JsonDeserialize(contentAs = classOf[java.lang.Long]) yOffered: Option[
+        Long])
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Category(id: Long,
-    parentId: Option[Long],
-    path: String,
-    name: String,
-    uuid: String)
+                      parentId: Option[Long],
+                      path: String,
+                      name: String,
+                      uuid: String)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Suggestion(id: Long,
-    parentId: Long,
-    productId: Long,
-    discount: String,
-    var lastUpdated: Date,
-    var dateCreated: Date)
+                        parentId: Long,
+                        productId: Long,
+                        discount: String,
+                        var lastUpdated: Date,
+                        var dateCreated: Date)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class Company(id: Long,
-    aesPassword: String,
-    name: String,
-    uuid: String,
-    code: String,
-    shipFrom: Option[ShipFromAddress],
-    phone: Option[String],
-    shippingInternational: Boolean)
+                     aesPassword: String,
+                     name: String,
+                     uuid: String,
+                     code: String,
+                     shipFrom: Option[ShipFromAddress],
+                     phone: Option[String],
+                     shippingInternational: Boolean)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class ShipFromAddress(longitude: String,
-    latitude: String,
-    road1: String,
-    road2: String,
-    road3: String,
-    roadNum: String,
-    postalCode: String,
-    city: String,
-    state: String,
-    country: Country)
+                             latitude: String,
+                             road1: String,
+                             road2: String,
+                             road3: String,
+                             roadNum: String,
+                             postalCode: String,
+                             city: String,
+                             state: String,
+                             country: Country)
 
   case class Consumption(id: Long,
                          boCartItemUuid: Option[String],
@@ -202,18 +198,17 @@ object Mogobiz {
                          lastUpdated: DateTime = DateTime.now,
                          uuid: String)
 
-  case class BOProductConsumption(consumptionsFk: Long,
-    consumptionId: Long)
+  case class BOProductConsumption(consumptionsFk: Long, consumptionId: Long)
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   case class ShippingRule(id: Long,
-    uuid: String,
-    countryCode: String,
-    minAmount: Long,
-    maxAmount: Long,
-    price: Long,
-    var lastUpdated: Date,
-    var dateCreated: Date)
+                          uuid: String,
+                          countryCode: String,
+                          minAmount: Long,
+                          maxAmount: Long,
+                          price: Long,
+                          var lastUpdated: Date,
+                          var dateCreated: Date)
 
   object TransactionStatus extends Enumeration {
     type TransactionStatus = Value
@@ -270,9 +265,13 @@ object Mogobiz {
 
   class LinearUnitRef extends TypeReference[LinearUnit.type]
 
-  class InsufficientStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
+  class InsufficientStockException(message: String = null,
+                                   cause: Throwable = null)
+      extends java.lang.Exception
 
-  class ConcurrentUpdateStockException(message: String = null, cause: Throwable = null) extends java.lang.Exception
+  class ConcurrentUpdateStockException(message: String = null,
+                                       cause: Throwable = null)
+      extends java.lang.Exception
 
   object DeliveryStatus extends Enumeration {
     type DeliveryStatus = Value

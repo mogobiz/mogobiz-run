@@ -6,7 +6,7 @@ package com.mogobiz.run.handlers
 
 import com.mogobiz.es.EsClient
 import com.mogobiz.run.model.Prefs
-import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate4s, _}
+import com.sksamuel.elastic4s.http.ElasticDsl.{update => esupdate4s, _}
 
 class PreferenceHandler {
 
@@ -18,7 +18,7 @@ class PreferenceHandler {
   }
 
   def savePreference(storeCode: String, uuid: String, params: Prefs): Boolean = {
-    EsClient.updateRaw(esupdate4s id uuid in s"${prefsIndex(storeCode)}/prefs" docAsUpsert true docAsUpsert {
+    EsClient.updateRaw(esupdate4s(uuid) in s"${prefsIndex(storeCode)}/prefs" docAsUpsert true docAsUpsert {
       "productsNumber" -> params.productsNumber
     } retryOnConflict 4)
     true

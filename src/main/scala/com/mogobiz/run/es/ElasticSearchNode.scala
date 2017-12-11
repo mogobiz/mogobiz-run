@@ -4,7 +4,7 @@
 
 package com.mogobiz.run.es
 
-import java.io.{File, IOException}
+import java.io.File
 import java.nio.file.FileVisitResult._
 import java.nio.file.Files._
 import java.nio.file.Paths.get
@@ -12,16 +12,10 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{FileVisitResult, Files, Path, SimpleFileVisitor}
 
 import com.mogobiz.run.config.Settings._
+import com.sksamuel.elastic4s.embedded.LocalNode
 import com.typesafe.scalalogging.Logger
-import org.elasticsearch.common.collect.Tuple
-import org.elasticsearch.common.io.FileSystemUtils
-import org.elasticsearch.common.settings.ImmutableSettings.Builder.EMPTY_SETTINGS
-import org.elasticsearch.common.settings.{ImmutableSettings, Settings}
-import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.env.Environment
-import org.elasticsearch.node.internal.InternalSettingsPreparer
-import org.elasticsearch.node.{Node, NodeBuilder}
-import org.elasticsearch.plugins.PluginManager
+import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.node.Node
 import org.slf4j.LoggerFactory
 
 /**
@@ -49,23 +43,6 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
 
   def startES(esPath: String = EsEmbedded): Node = {
     logger.info(s"ES is starting using source path '$esPath'...")
-    // Prépare les plugins
-    val initialSettings: Tuple[Settings, Environment] = InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true)
-    if (!initialSettings.v2().pluginsFile().exists()) {
-      FileSystemUtils.mkdirs(initialSettings.v2().pluginsFile())
-      val pluginManager: PluginManager =
-        new PluginManager(initialSettings.v2(), null, PluginManager.OutputMode.VERBOSE, TimeValue.timeValueMillis(0))
-      plugins.foreach(plugin => {
-        pluginManager.removePlugin(plugin)
-        try {
-          pluginManager.downloadAndExtract(plugin)
-        } catch {
-          case e: IOException =>
-            logger.error(e.getMessage)
-        }
-      })
-    }
-
     // Copie le jeu de données dans un répertoire temporaire
     val tmpdir: String = s"${System.getProperty("java.io.tmpdir")}${System.currentTimeMillis()}/data"
     new File(tmpdir).mkdirs()
@@ -89,19 +66,17 @@ trait EmbeddedElasticSearchNode extends ElasticSearchNode {
         CONTINUE
       }
     })
+    val settings = Settings
+      .builder()
+      .put("cluster.name", EsCluster)
+      .put("path.data", tmpdir)
+      .put("script.disable_dynamic", false)
+      .build()
 
-    val esNode: Node = NodeBuilder
-      .nodeBuilder()
-      .local(false)
-      .clusterName(EsCluster)
-      .settings(
-          ImmutableSettings.settingsBuilder().put("path.data", tmpdir).put("script.disable_dynamic", false)
-      )
-      .node()
+    val esNode: Node = LocalNode(settings)
 
     // On attend que ES ait bien démarré
-    esNode.client().admin().cluster().prepareHealth().setWaitForYellowStatus().execute().actionGet();
-
+    esNode.client().admin().cluster().prepareHealth().setWaitForYellowStatus().execute().actionGet()
     logger.info(s"ES is started using '$tmpdir'.")
     esNode
   }

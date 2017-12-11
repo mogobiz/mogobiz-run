@@ -12,8 +12,7 @@ import com.mogobiz.run.actors.EsUpdateActor.SalesUpdateRequest
 import com.mogobiz.run.model.Mogobiz.{Product, Sku}
 import com.mogobiz.run.model.SaleChange
 import com.mogobiz.system.ActorSystemLocator
-import com.sksamuel.elastic4s.ElasticDsl.{update => esupdate, _}
-import com.sksamuel.elastic4s.source.DocumentSource
+import com.sksamuel.elastic4s.http.ElasticDsl.{update => esupdate, _}
 import org.joda.time.DateTime
 import scalikejdbc._
 
@@ -51,11 +50,8 @@ class SalesHandler {
     val newSkus    = product.skus.map(s => if (s.id == sku.id) sku.copy(nbSales = newNbSkuSales) else s)
     val newProduct = product.copy(nbSales = newNbProductSales, skus = newSkus)
     val js         = JacksonConverter.serialize(newProduct)
-    val req = esupdate id product.id in indexEs -> "product" doc new DocumentSource {
-      override def json: String = js
-    }
-    import EsClient.secureRequest
-    EsClient().execute(secureRequest(req))
+    val req        = esupdate(product.id).in(indexEs -> "product").doc(js)
+    EsClient().execute(req)
   }
 
 }

@@ -7,8 +7,6 @@ package com.mogobiz.run.model
 import java.util.Date
 
 import com.mogobiz.run.exceptions.CommentException
-import com.mogobiz.run.model.Mogobiz.ReturnStatus._
-import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus._
 import com.mogobiz.run.utils.PagingParams
 import org.joda.time.DateTime
 

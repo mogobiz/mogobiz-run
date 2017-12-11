@@ -5,11 +5,12 @@
 package com.mogobiz
 
 import org.json4s.JsonDSL._
+import org.scalatest.{FlatSpec, Matchers}
 
 /**
  *
  */
-class JsonParsingSpec /*extends Specification*/ {
+class JsonParsingSpec extends FlatSpec with Matchers {
 
   val product1 = ("id" -> 1) ~
     ("price" -> 1000000) ~

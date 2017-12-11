@@ -4,14 +4,12 @@
 
 package com.mogobiz.run.model
 
-import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonSerialize}
+import java.util.Date
+
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import com.mogobiz.run.json.{JodaDateTimeSerializer, JodaDateTimeDeserializer, JodaDateTimeOptionDeserializer, JodaDateTimeOptionSerializer}
 import com.mogobiz.run.model.Mogobiz.ProductCalendar.ProductCalendar
 import com.mogobiz.run.model.Mogobiz.ProductCalendarRef
 import com.mogobiz.utils.GlobalUtil._
-import java.util.Date
-
 import org.joda.time.DateTime
 
 /**
@@ -35,35 +33,31 @@ import org.joda.time.DateTime
   * @param stock - stock value
   * @param stockByDateTime -
   */
-case class Stock(id: Long,
-                 uuid: String = newUUID,
-                 sku: String,
-                 productId: Long,
-                 productUuid: String,
-                 @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer]) @JsonDeserialize(
-                     using = classOf[JodaDateTimeOptionDeserializer]) startDate: Option[DateTime],
-                 @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer]) @JsonDeserialize(
-                     using = classOf[JodaDateTimeOptionDeserializer]) stopDate: Option[DateTime],
-                 @JsonSerialize(using = classOf[JodaDateTimeOptionSerializer]) @JsonDeserialize(
-                     using = classOf[JodaDateTimeOptionDeserializer]) availabilityDate: Option[DateTime],
-                 @JsonSerialize(using = classOf[JodaDateTimeSerializer]) @JsonDeserialize(
-                     using = classOf[JodaDateTimeDeserializer]) imported: DateTime,
-                 initialStock: Long,
-                 stockUnlimited: Boolean,
-                 stockOutSelling: Boolean,
-                 stockDisplay: Boolean,
-                 @JsonScalaEnumeration(classOf[ProductCalendarRef]) calendarType: ProductCalendar,
-                 stock: Option[Long],
-                 stockByDateTime: Option[Seq[StockByDateTime]],
-                 var lastUpdated: Date,
-                 var dateCreated: Date)
+case class Stock(
+    id: Long,
+    uuid: String = newUUID,
+    sku: String,
+    productId: Long,
+    productUuid: String,
+    startDate: Option[DateTime],
+    stopDate: Option[DateTime],
+    availabilityDate: Option[DateTime],
+    imported: DateTime,
+    initialStock: Long,
+    stockUnlimited: Boolean,
+    stockOutSelling: Boolean,
+    stockDisplay: Boolean,
+    @JsonScalaEnumeration(classOf[ProductCalendarRef]) calendarType: ProductCalendar,
+    stock: Option[Long],
+    stockByDateTime: Option[Seq[StockByDateTime]],
+    var lastUpdated: Date,
+    var dateCreated: Date)
 
 case class StockByDateTime(id: Long,
                            uuid: String,
                            var lastUpdated: Date,
                            var dateCreated: Date,
-                           @JsonSerialize(using = classOf[JodaDateTimeSerializer]) @JsonDeserialize(
-                               using = classOf[JodaDateTimeDeserializer]) startDate: DateTime,
+                           startDate: DateTime,
                            stock: Long)
 
 /**

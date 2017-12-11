@@ -20,8 +20,16 @@ import sqls.count
   */
 class ValidatorHandler {
 
-  def buildDownloadLink(storeCode: String, boCartUuid: String, boShopCartUuid: String, boCartItemUuid: String, boProductUuid: String, product: Product, sku: Sku, company: Company) = {
-    val params = s"boCartUuid:$boCartUuid;boShopCartUuid:$boShopCartUuid;boCartItemUuid:$boCartItemUuid;boProductUuid:$boProductUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
+  def buildDownloadLink(storeCode: String,
+                        boCartUuid: String,
+                        boShopCartUuid: String,
+                        boCartItemUuid: String,
+                        boProductUuid: String,
+                        product: Product,
+                        sku: Sku,
+                        company: Company) = {
+    val params =
+      s"boCartUuid:$boCartUuid;boShopCartUuid:$boShopCartUuid;boCartItemUuid:$boCartItemUuid;boProductUuid:$boProductUuid;skuId:${sku.id};storeCode:$storeCode;maxDelay:${product.downloadMaxDelay};maxTimes:${product.downloadMaxTimes}"
     val encryptedParams = SymmetricCrypt.encrypt(params, company.aesPassword, "AES", hexSecret = true)
     s"${Settings.AccessUrl}/$storeCode/download/$encryptedParams"
   }
@@ -64,42 +72,41 @@ class ValidatorHandler {
 
     if (storeCode == paramStoreCode) {
       DB localTx { implicit session =>
-        boCartHandler.find(paramStoreCode, paramBOCartUuid).map { boCart =>
-          boCart.shopCarts.find(_.uuid == paramBOShopCartUuid).map { boShopCart =>
-            boShopCart.cartItems.find(_.uuid == paramBOCartItemUuid).map { boCartItem =>
-              val boProduct = if (boCartItem.principal.uuid == paramBOProductUuid) Some(boCartItem.principal)
-              else boCartItem.secondary.find(_.uuid == paramBOProductUuid)
+        boCartHandler
+          .find(paramStoreCode, paramBOCartUuid)
+          .map { boCart =>
+            boCart.shopCarts
+              .find(_.uuid == paramBOShopCartUuid)
+              .map { boShopCart =>
+                boShopCart.cartItems
+                  .find(_.uuid == paramBOCartItemUuid)
+                  .map { boCartItem =>
+                    val boProduct =
+                      if (boCartItem.principal.uuid == paramBOProductUuid) Some(boCartItem.principal)
+                      else boCartItem.secondary.find(_.uuid == paramBOProductUuid)
 
-              boProduct.map { boProduct =>
-                val expiredDate = boCartItem.dateCreated.plusDays(paramMaxDelay).toLocalDate
+                    boProduct.map { boProduct =>
+                      val expiredDate = boCartItem.dateCreated.plusDays(paramMaxDelay).toLocalDate
 
-                if ((paramMaxDelay == 0 || !expiredDate.isBefore(DateTime.now().toLocalDate)) &&
-                  (paramMaxTimes == 0 || ConsumptionDao.countByBOProducts(boProduct) < paramMaxTimes)) {
+                      if ((paramMaxDelay == 0 || !expiredDate.isBefore(DateTime.now().toLocalDate)) &&
+                          (paramMaxTimes == 0 || ConsumptionDao.countByBOProducts(boProduct) < paramMaxTimes)) {
 
-                  if (ConsumptionDao.createConsumption(boProduct)) {
-                    val file = new File(s"${Settings.ResourcesRootPath}/download/$paramSkuId")
-                    if (!file.exists()) {
-                      val parentFile = file.getParentFile
-                      if (!parentFile.exists()) {
-                        parentFile.mkdirs()
-                      }
-                      DownloadableDao.load(storeCode, paramSkuId).foreach { content =>
-                        content.writeTo(new FileOutputStream(file))
-                      }
-                    }
-
-                    if (file.exists())
-                      (boProduct.product.name, file)
-                    else throw NotFoundException("")
-                  } else throw NotFoundException("")
-                } else throw NotFoundException("")
-              }.getOrElse(throw NotFoundException(""))
-            }.getOrElse(throw NotFoundException(""))
-          }.getOrElse(throw NotFoundException(""))
-        }.getOrElse(throw NotFoundException(""))
+                        if (ConsumptionDao.createConsumption(boProduct)) {
+                          val file = new File(s"${Settings.ResourcesRootPath}/download/$paramSkuId")
+                          if (file.exists())
+                            (boProduct.product.name, file)
+                          else throw NotFoundException("")
+                        } else throw NotFoundException("")
+                      } else throw NotFoundException("")
+                    }.getOrElse(throw NotFoundException(""))
+                  }
+                  .getOrElse(throw NotFoundException(""))
+              }
+              .getOrElse(throw NotFoundException(""))
+          }
+          .getOrElse(throw NotFoundException(""))
       }
-    }
-    else throw NotFoundException("")
+    } else throw NotFoundException("")
   }
 }
 
@@ -116,24 +123,24 @@ object ConsumptionDao extends SQLSyntaxSupport[Consumption] with BoService {
 
   def createConsumption(boProduct: BOProduct)(implicit session: DBSession): Boolean = {
     val consumption = Consumption(id = newId(),
-      None,
-      boProduct.uuid,
-      xdate = DateTime.now(),
-      dateCreated = DateTime.now(),
-      lastUpdated = DateTime.now(),
-      uuid = UUID.randomUUID().toString)
+                                  None,
+                                  boProduct.uuid,
+                                  xdate = DateTime.now(),
+                                  dateCreated = DateTime.now(),
+                                  lastUpdated = DateTime.now(),
+                                  uuid = UUID.randomUUID().toString)
 
     applyUpdate {
       insert
         .into(ConsumptionDao)
         .namedValues(
-          ConsumptionDao.column.id             -> consumption.id,
-          ConsumptionDao.column.boCartItemUuid -> consumption.boCartItemUuid,
-          ConsumptionDao.column.boProductUuid   -> consumption.boProductUuid,
-          ConsumptionDao.column.xdate          -> consumption.xdate,
-          ConsumptionDao.column.dateCreated    -> consumption.dateCreated,
-          ConsumptionDao.column.lastUpdated    -> consumption.lastUpdated,
-          ConsumptionDao.column.uuid           -> consumption.uuid
+            ConsumptionDao.column.id             -> consumption.id,
+            ConsumptionDao.column.boCartItemUuid -> consumption.boCartItemUuid,
+            ConsumptionDao.column.boProductUuid  -> consumption.boProductUuid,
+            ConsumptionDao.column.xdate          -> consumption.xdate,
+            ConsumptionDao.column.dateCreated    -> consumption.dateCreated,
+            ConsumptionDao.column.lastUpdated    -> consumption.lastUpdated,
+            ConsumptionDao.column.uuid           -> consumption.uuid
         )
     } == 1
   }
