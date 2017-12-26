@@ -9,13 +9,15 @@ import java.util.UUID
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.config.Settings._
-import com.mogobiz.run.implicits.JsonSupport
-import JsonSupport._
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.HttpCookie
+import akka.http.scaladsl.server.Directives
 import com.mogobiz.run.model.Prefs
-import spray.http.{HttpCookie, StatusCodes}
-import spray.routing.Directives
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+import com.mogobiz.run.implicits.Json4sProtocol
+import com.mogobiz.json.JacksonConverter._
 
-import scala.util.{Try, Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 class PreferenceService extends Directives with DefaultComplete {
 
@@ -23,25 +25,30 @@ class PreferenceService extends Directives with DefaultComplete {
     pathPrefix(Segment / "prefs") { implicit storeCode =>
       optionalCookie(CookieTracking) {
         case Some(mogoCookie) =>
-          preferencesRoutes(mogoCookie.content)
+          preferencesRoutes(mogoCookie.value)
         case None =>
           val id = UUID.randomUUID.toString
-          setCookie(HttpCookie(CookieTracking, content = id, path = Some("/api/store/" + storeCode))) {
+          setCookie(
+            HttpCookie(CookieTracking,
+                       value = id,
+                       path = Some("/api/store/" + storeCode))) {
             preferencesRoutes(id)
           }
       }
     }
   }
 
-  def preferencesRoutes(uuid: String)(implicit storeCode: String) = getPrefs(uuid) ~ savePrefs(uuid)
+  def preferencesRoutes(uuid: String)(implicit storeCode: String) =
+    getPrefs(uuid) ~ savePrefs(uuid)
 
   def getPrefs(uuid: String)(implicit storeCode: String) = get {
-    handleCall(preferenceHandler.getPreferences(storeCode, uuid), (prefs: Prefs) => complete(StatusCodes.OK, prefs))
+    handleCall(preferenceHandler.getPreferences(storeCode, uuid),
+               (prefs: Prefs) => complete(StatusCodes.OK, prefs))
   }
 
   def savePrefs(uuid: String)(implicit storeCode: String) = post {
-    parameters('productsNumber ? 10).as(Prefs) { params =>
-      Try(preferenceHandler.savePreference(storeCode, uuid, params)) match {
+    parameters('productsNumber ? 10) { params =>
+      Try(preferenceHandler.savePreference(storeCode, uuid, Prefs(params))) match {
         case Success(result) => complete(StatusCodes.OK -> Map("code" -> true))
         case Failure(result) => complete(StatusCodes.OK -> Map("code" -> false))
       }

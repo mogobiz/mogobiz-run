@@ -7,13 +7,13 @@ package com.mogobiz.run.services
 import java.net.URLDecoder
 
 import com.mogobiz.run.config.DefaultComplete
-import com.mogobiz.run.implicits.Json4sProtocol
-import Json4sProtocol._
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives
 import org.json4s._
-import spray.http.StatusCodes
-import spray.routing._
-
 import com.mogobiz.run.config.MogobizHandlers.handlers._
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+import com.mogobiz.run.implicits.Json4sProtocol
+import com.mogobiz.json.JacksonConverter._
 
 class BrandService extends Directives with DefaultComplete {
 
@@ -27,24 +27,36 @@ class BrandService extends Directives with DefaultComplete {
     pathPrefix(Segment / "brands") { storeCode =>
       pathEnd {
         get {
-          parameters('hidden ? false, 'categoryPath.?, 'lang ? "_all", 'promotionId.?, 'size.as[Option[Int]]) {
+          parameters('hidden ? false,
+                     'categoryPath.?,
+                     'lang ? "_all",
+                     'promotionId.?,
+                     'size.as[Option[Int]]) {
             (hidden, categoryPath, lang, promotionId, size) =>
-              handleCall(brandHandler.queryBrands(storeCode, hidden, categoryPath, lang, promotionId, size),
+              handleCall(brandHandler.queryBrands(storeCode,
+                                                  hidden,
+                                                  categoryPath,
+                                                  lang,
+                                                  promotionId,
+                                                  size),
                          (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
       } ~
-      pathPrefix("id" / Segment) { brandId =>
-        get {
-          handleCall(brandHandler.queryBrandId(storeCode, brandId), (json: JValue) => complete(StatusCodes.OK, json))
+        pathPrefix("id" / Segment) { brandId =>
+          get {
+            handleCall(brandHandler.queryBrandId(storeCode, brandId),
+                       (json: JValue) => complete(StatusCodes.OK, json))
+          }
+        } ~
+        pathPrefix("name" / Segment) { brandName =>
+          get {
+            handleCall(brandHandler.queryBrandName(storeCode,
+                                                   URLDecoder.decode(brandName,
+                                                                     "UTF-8")),
+                       (json: JValue) => complete(StatusCodes.OK, json))
+          }
         }
-      } ~
-      pathPrefix("name" / Segment) { brandName =>
-        get {
-          handleCall(brandHandler.queryBrandName(storeCode, URLDecoder.decode(brandName, "UTF-8")),
-                     (json: JValue) => complete(StatusCodes.OK, json))
-        }
-      }
     }
   }
   /*

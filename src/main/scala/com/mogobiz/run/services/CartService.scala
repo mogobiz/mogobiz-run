@@ -12,16 +12,18 @@ import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import com.mogobiz.pay.model.ParamRequest.SelectShippingPriceParam
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.Settings._
-import com.mogobiz.run.implicits.Json4sProtocol
-import Json4sProtocol._
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.HttpCookie
+import akka.http.scaladsl.server.Directives
 import com.mogobiz.pay.config.MogopayHandlers
 import com.mogobiz.pay.model.{SelectShippingCart, ShippingCart}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.session.Session
-import spray.http.{HttpCookie, StatusCodes}
-import spray.routing.Directives
 import com.mogobiz.session.SessionESDirectives._
 import com.mogobiz.run.config.MogobizHandlers.handlers._
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+import com.mogobiz.run.implicits.Json4sProtocol
+import com.mogobiz.json.JacksonConverter._
 
 class CartService extends Directives with DefaultComplete {
 
@@ -29,10 +31,13 @@ class CartService extends Directives with DefaultComplete {
     pathPrefix(Segment / "cart") { implicit storeCode =>
       optionalCookie(CookieTracking) {
         case Some(mogoCookie) =>
-          transacRoutes(mogoCookie.content)
+          transacRoutes(mogoCookie.value)
         case None =>
           val id = UUID.randomUUID.toString
-          setCookie(HttpCookie(CookieTracking, content = id, path = Some("/api/store/" + storeCode))) {
+          setCookie(
+            HttpCookie(name = CookieTracking,
+                       value = id,
+                       path = Some("/api/store/" + storeCode))) {
             transacRoutes(id)
           }
       }
@@ -49,143 +54,179 @@ class CartService extends Directives with DefaultComplete {
 
   def cart(storeCode: String, uuid: String) = {
     cartInit(storeCode, uuid) ~
-    cartClear(storeCode, uuid) ~
-    cartAdd(storeCode, uuid) ~
-    cartUpdateRemove(storeCode, uuid)
+      cartClear(storeCode, uuid) ~
+      cartAdd(storeCode, uuid) ~
+      cartUpdateRemove(storeCode, uuid)
   }
 
   def cartInit(storeCode: String, uuid: String) = pathEnd {
     get {
-      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) { params =>
-        {
-          optionalSession { optSession =>
-            val accountId = optSession.flatMap { session: Session =>
-              session.sessionData.accountId
+      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all")
+        .as(CartParameters) { params =>
+          {
+            optionalSession { optSession =>
+              val accountId = optSession.flatMap { session: Session =>
+                session.sessionData.accountId
+              }
+              handleCall(
+                cartHandler.queryCartInit(storeCode, uuid, params, accountId),
+                (res: Map[String, Any]) => complete(StatusCodes.OK, res))
             }
-            handleCall(cartHandler.queryCartInit(storeCode, uuid, params, accountId),
-                       (res: Map[String, Any]) => complete(StatusCodes.OK, res))
           }
         }
-      }
     }
   }
 
   def cartClear(storeCode: String, uuid: String) = pathEnd {
     delete {
-      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) { params =>
-        {
-          optionalSession { optSession =>
-            val accountId = optSession.flatMap { session: Session =>
-              session.sessionData.accountId
+      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all")
+        .as(CartParameters) { params =>
+          {
+            optionalSession { optSession =>
+              val accountId = optSession.flatMap { session: Session =>
+                session.sessionData.accountId
+              }
+              handleCall(
+                cartHandler.queryCartClear(storeCode, uuid, params, accountId),
+                (res: Map[String, Any]) => complete(StatusCodes.OK, res))
             }
-            handleCall(cartHandler.queryCartClear(storeCode, uuid, params, accountId),
-                       (res: Map[String, Any]) => complete(StatusCodes.OK, res))
           }
         }
-      }
     }
   }
 
   def cartAdd(storeCode: String, uuid: String) = path("items") {
     post {
-      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) { params =>
-        entity(as[AddCartItemRequest]) { cmd =>
-          {
-            optionalSession { optSession =>
-              val accountId = optSession.flatMap { session: Session =>
-                session.sessionData.accountId
+      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all")
+        .as(CartParameters) { params =>
+          entity(as[AddCartItemRequest]) { cmd =>
+            {
+              optionalSession { optSession =>
+                val accountId = optSession.flatMap { session: Session =>
+                  session.sessionData.accountId
+                }
+                handleCall(
+                  cartHandler.queryCartItemAdd(storeCode,
+                                               uuid,
+                                               params,
+                                               cmd,
+                                               accountId),
+                  (res: Map[String, Any]) => complete(StatusCodes.OK, res))
               }
-              handleCall(cartHandler.queryCartItemAdd(storeCode, uuid, params, cmd, accountId),
-                         (res: Map[String, Any]) => complete(StatusCodes.OK, res))
             }
           }
         }
-      }
     }
   }
 
-  def cartUpdateRemove(storeCode: String, uuid: String) = path("item" / Segment) { cartItemId =>
-    pathEnd {
-      cartUpdate(storeCode, uuid, cartItemId) ~
-      cartRemove(storeCode, uuid, cartItemId)
+  def cartUpdateRemove(storeCode: String, uuid: String) =
+    path("item" / Segment) { cartItemId =>
+      pathEnd {
+        cartUpdate(storeCode, uuid, cartItemId) ~
+          cartRemove(storeCode, uuid, cartItemId)
+      }
     }
-  }
 
   def cartUpdate(storeCode: String, uuid: String, cartItemId: String) = put {
-    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) { params =>
-      {
-        entity(as[UpdateCartItemRequest]) { cmd =>
-          {
-            optionalSession { optSession =>
-              val accountId = optSession.flatMap { session: Session =>
-                session.sessionData.accountId
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all")
+      .as(CartParameters) { params =>
+        {
+          entity(as[UpdateCartItemRequest]) { cmd =>
+            {
+              optionalSession { optSession =>
+                val accountId = optSession.flatMap { session: Session =>
+                  session.sessionData.accountId
+                }
+                handleCall(
+                  cartHandler.queryCartItemUpdate(storeCode,
+                                                  uuid,
+                                                  cartItemId,
+                                                  params,
+                                                  cmd,
+                                                  accountId),
+                  (res: Map[String, Any]) => complete(StatusCodes.OK, res))
               }
-              handleCall(cartHandler.queryCartItemUpdate(storeCode, uuid, cartItemId, params, cmd, accountId),
-                         (res: Map[String, Any]) => complete(StatusCodes.OK, res))
             }
           }
         }
       }
-    }
   }
 
   def cartRemove(storeCode: String, uuid: String, cartItemId: String) = delete {
-    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CartParameters) { params =>
-      {
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session =>
-            session.sessionData.accountId
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all")
+      .as(CartParameters) { params =>
+        {
+          optionalSession { optSession =>
+            val accountId = optSession.flatMap { session: Session =>
+              session.sessionData.accountId
+            }
+            handleCall(cartHandler.queryCartItemRemove(storeCode,
+                                                       uuid,
+                                                       cartItemId,
+                                                       params,
+                                                       accountId),
+                       (res: Map[String, Any]) => complete(StatusCodes.OK, res))
           }
-          handleCall(cartHandler.queryCartItemRemove(storeCode, uuid, cartItemId, params, accountId),
-                     (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
       }
-    }
   }
 
-  def coupon(storeCode: String, uuid: String) = path("coupons" / Segment) { couponCode =>
-    {
-      pathEnd {
-        couponAdd(storeCode, uuid, couponCode) ~
-        couponRemove(storeCode, uuid, couponCode)
+  def coupon(storeCode: String, uuid: String) = path("coupons" / Segment) {
+    couponCode =>
+      {
+        pathEnd {
+          couponAdd(storeCode, uuid, couponCode) ~
+            couponRemove(storeCode, uuid, couponCode)
+        }
       }
-    }
   }
 
   def couponAdd(storeCode: String, uuid: String, couponCode: String) = post {
-    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CouponParameters) { params =>
-      {
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session =>
-            session.sessionData.accountId
+    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all")
+      .as(CouponParameters) { params =>
+        {
+          optionalSession { optSession =>
+            val accountId = optSession.flatMap { session: Session =>
+              session.sessionData.accountId
+            }
+            handleCall(cartHandler.queryCartCouponAdd(storeCode,
+                                                      uuid,
+                                                      couponCode,
+                                                      params,
+                                                      accountId),
+                       (res: Map[String, Any]) => complete(StatusCodes.OK, res))
           }
-          handleCall(cartHandler.queryCartCouponAdd(storeCode, uuid, couponCode, params, accountId),
-                     (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
       }
-    }
   }
 
-  def couponRemove(storeCode: String, uuid: String, couponCode: String) = delete {
-    parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all").as(CouponParameters) { params =>
-      {
-        optionalSession { optSession =>
-          val accountId = optSession.flatMap { session: Session =>
-            session.sessionData.accountId
+  def couponRemove(storeCode: String, uuid: String, couponCode: String) =
+    delete {
+      parameters('currency.?, 'country.?, 'state.?, 'lang ? "_all")
+        .as(CouponParameters) { params =>
+          {
+            optionalSession { optSession =>
+              val accountId = optSession.flatMap { session: Session =>
+                session.sessionData.accountId
+              }
+              handleCall(
+                cartHandler.queryCartCouponDelete(storeCode,
+                                                  uuid,
+                                                  couponCode,
+                                                  params,
+                                                  accountId),
+                (res: Map[String, Any]) => complete(StatusCodes.OK, res))
+            }
           }
-          handleCall(cartHandler.queryCartCouponDelete(storeCode, uuid, couponCode, params, accountId),
-                     (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
-      }
     }
-  }
 
   def payment(storeCode: String, uuid: String) = pathPrefix("payment") {
     post {
       paymentPrepare(storeCode, uuid) ~
-      paymentLinkToTransaction(storeCode, uuid) ~
-      paymentCommit(storeCode, uuid) ~
-      paymentCancel(storeCode, uuid)
+        paymentLinkToTransaction(storeCode, uuid) ~
+        paymentCommit(storeCode, uuid) ~
+        paymentCancel(storeCode, uuid)
     }
   }
 
@@ -198,28 +239,36 @@ class CartService extends Directives with DefaultComplete {
               StatusCodes.Forbidden -> Map('error -> "Not logged in")
             }
           case Some(accountId) =>
-            handleCall(cartHandler.queryCartPaymentPrepare(storeCode, uuid, params, accountId),
+            handleCall(cartHandler.queryCartPaymentPrepare(storeCode,
+                                                           uuid,
+                                                           params,
+                                                           accountId),
                        (res: Map[String, Any]) => complete(StatusCodes.OK, res))
         }
       }
     }
   }
 
-  def paymentLinkToTransaction(storeCode: String, uuid: String) = path("linkToTransaction") {
-    entity(as[CommitTransactionParameters]) { params =>
-      session { session =>
-        session.sessionData.accountId.map(_.toString) match {
-          case None =>
-            complete {
-              StatusCodes.Forbidden -> Map('error -> "Not logged in")
-            }
-          case Some(accountId) =>
-            handleCall(cartHandler.queryCartPaymentLinkToTransaction(storeCode, uuid, params, accountId),
-                       (res: Unit) => complete(StatusCodes.OK))
+  def paymentLinkToTransaction(storeCode: String, uuid: String) =
+    path("linkToTransaction") {
+      entity(as[CommitTransactionParameters]) { params =>
+        session { session =>
+          session.sessionData.accountId.map(_.toString) match {
+            case None =>
+              complete {
+                StatusCodes.Forbidden -> Map('error -> "Not logged in")
+              }
+            case Some(accountId) =>
+              handleCall(
+                cartHandler.queryCartPaymentLinkToTransaction(storeCode,
+                                                              uuid,
+                                                              params,
+                                                              accountId),
+                (res: Unit) => complete(StatusCodes.OK))
+          }
         }
       }
     }
-  }
 
   def paymentCommit(storeCode: String, uuid: String) = path("commit") {
     entity(as[CommitTransactionParameters]) { params =>
@@ -233,11 +282,17 @@ class CartService extends Directives with DefaultComplete {
             session.sessionData.selectShippingCart match {
               case None =>
                 complete {
-                  StatusCodes.Forbidden -> Map('error -> "No selected shipping price")
+                  StatusCodes.Forbidden -> Map(
+                    'error -> "No selected shipping price")
                 }
               case Some(selectShippingCart) =>
-                handleCall(cartHandler.queryCartPaymentCommit(storeCode, uuid, params, accountId, selectShippingCart),
-                           (res: Unit) => complete(StatusCodes.OK))
+                handleCall(
+                  cartHandler.queryCartPaymentCommit(storeCode,
+                                                     uuid,
+                                                     params,
+                                                     accountId,
+                                                     selectShippingCart),
+                  (res: Unit) => complete(StatusCodes.OK))
             }
         }
       }
@@ -250,16 +305,60 @@ class CartService extends Directives with DefaultComplete {
         val accountId = optSession.flatMap { session: Session =>
           session.sessionData.accountId
         }
-        handleCall(cartHandler.queryCartPaymentCancel(storeCode, uuid, params, accountId),
+        handleCall(cartHandler.queryCartPaymentCancel(storeCode,
+                                                      uuid,
+                                                      params,
+                                                      accountId),
                    (res: Map[String, Any]) => complete(StatusCodes.OK, res))
       }
     }
   }
 
-  def shippingPrices(storeCode: String, uuid: String) = path("list-shipping-prices") {
-    get {
-      parameters('currency) { currency =>
-        {
+  def shippingPrices(storeCode: String, uuid: String) =
+    path("list-shipping-prices") {
+      get {
+        parameters('currency) { currency =>
+          {
+            session { session =>
+              import Implicits._
+              session.sessionData.accountId.map(_.toString) match {
+                case None =>
+                  complete {
+                    StatusCodes.Forbidden -> Map('error -> "Not logged in")
+                  }
+                case Some(id) =>
+                  handleCall(
+                    {
+                      cartHandler.getCartForPay(storeCode,
+                                                uuid,
+                                                Some(id),
+                                                currency,
+                                                None)
+                    },
+                    (cart: Cart) => {
+                      session.sessionData.cart = Some(cart)
+                      handleCall(
+                        cartHandler.shippingPrices(cart, id),
+                        (shippingCart: ShippingCart) => {
+                          session.sessionData.shippingCart = Some(shippingCart)
+                          setSession(session) {
+                            complete(StatusCodes.OK -> shippingCart)
+                          }
+                        }
+                      )
+                    }
+                  )
+              }
+            }
+          }
+        }
+      }
+    }
+
+  def selectShipping(storeCode: String, uuid: String) =
+    path("select-shipping") {
+      post {
+        entity(as[SelectShippingPriceParam]) { params =>
           session { session =>
             import Implicits._
             session.sessionData.accountId.map(_.toString) match {
@@ -268,57 +367,42 @@ class CartService extends Directives with DefaultComplete {
                   StatusCodes.Forbidden -> Map('error -> "Not logged in")
                 }
               case Some(id) =>
-                handleCall({
-                  cartHandler.getCartForPay(storeCode, uuid, Some(id), currency, None)
-                }, (cart: Cart) => {
-                  session.sessionData.cart = Some(cart)
-                  handleCall(cartHandler.shippingPrices(cart, id), (shippingCart: ShippingCart) => {
-                    session.sessionData.shippingCart = Some(shippingCart)
-                    setSession(session) {
-                      complete(StatusCodes.OK -> shippingCart)
-                    }
-                  })
-                })
+                handleCall(
+                  {
+                    val map = params.shopsAndshippingDataIds.map { shopAndId =>
+                      val s = shopAndId.split("\\|")
+                      s(0) -> s(1)
+                    }.toMap
+                    MogopayHandlers.handlers.transactionHandler
+                      .selectShippingPrice(session.sessionData, id, map)
+                  },
+                  (selectShippingCart: Option[SelectShippingCart]) => {
+                    handleCall(
+                      {
+                        cartHandler.getCartForPay(storeCode,
+                                                  uuid,
+                                                  Some(id),
+                                                  params.currency,
+                                                  selectShippingCart.map {
+                                                    _.shippingAddress
+                                                  })
+                      },
+                      (cart: Cart) => {
+                        session.sessionData.cart = Some(cart)
+                        setSession(session) {
+                          complete(
+                            StatusCodes.OK -> Map("price" -> selectShippingCart
+                              .map { _.price }
+                              .getOrElse(0)))
+                        }
+                      }
+                    )
+                  }
+                )
             }
           }
         }
       }
     }
-  }
-
-  def selectShipping(storeCode: String, uuid: String) = path("select-shipping") {
-    post {
-      entity(as[SelectShippingPriceParam]) { params =>
-        session { session =>
-          import Implicits._
-          session.sessionData.accountId.map(_.toString) match {
-            case None =>
-              complete {
-                StatusCodes.Forbidden -> Map('error -> "Not logged in")
-              }
-            case Some(id) =>
-              handleCall({
-                val map = params.shopsAndshippingDataIds.map { shopAndId =>
-                  val s = shopAndId.split("\\|")
-                  s(0) -> s(1)
-                }.toMap
-                MogopayHandlers.handlers.transactionHandler.selectShippingPrice(session.sessionData, id, map)
-              }, (selectShippingCart: Option[SelectShippingCart]) => {
-                handleCall({
-                  cartHandler.getCartForPay(storeCode, uuid, Some(id), params.currency, selectShippingCart.map {
-                    _.shippingAddress
-                  })
-                }, (cart: Cart) => {
-                  session.sessionData.cart = Some(cart)
-                  setSession(session) {
-                    complete(StatusCodes.OK -> Map("price" -> selectShippingCart.map { _.price }.getOrElse(0)))
-                  }
-                })
-              })
-          }
-        }
-      }
-    }
-  }
 
 }

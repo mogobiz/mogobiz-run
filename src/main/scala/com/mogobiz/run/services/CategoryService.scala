@@ -4,15 +4,14 @@
 
 package com.mogobiz.run.services
 
-import java.net.URLDecoder
-
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import com.mogobiz.run.implicits.Json4sProtocol
-import Json4sProtocol._
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives
 import org.json4s._
-import spray.http.StatusCodes
-import spray.routing.Directives
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+import com.mogobiz.run.implicits.Json4sProtocol
+import com.mogobiz.json.JacksonConverter._
 
 class CategoryService extends Directives with DefaultComplete {
 
@@ -26,19 +25,33 @@ class CategoryService extends Directives with DefaultComplete {
                      'categoryPath.?,
                      'lang ? "_all",
                      'promotionId.?,
-                     'size.as[Option[Int]]) { (hidden, parentId, brandId, categoryPath, lang, promotionId, size) =>
-            handleCall(categoryHandler
-                         .queryCategories(storeCode, hidden, parentId, brandId, categoryPath, lang, promotionId, size),
-                       (json: JValue) => complete(StatusCodes.OK, json))
+                     'size.as[Option[Int]]) {
+            (hidden,
+             parentId,
+             brandId,
+             categoryPath,
+             lang,
+             promotionId,
+             size) =>
+              handleCall(categoryHandler
+                           .queryCategories(storeCode,
+                                            hidden,
+                                            parentId,
+                                            brandId,
+                                            categoryPath,
+                                            lang,
+                                            promotionId,
+                                            size),
+                         (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
       } ~
-      pathPrefix(Segment) { categoryId =>
-        get {
-          handleCall(categoryHandler.queryCategory(storeCode, categoryId),
-                     (json: JValue) => complete(StatusCodes.OK, json))
+        pathPrefix(Segment) { categoryId =>
+          get {
+            handleCall(categoryHandler.queryCategory(storeCode, categoryId),
+                       (json: JValue) => complete(StatusCodes.OK, json))
+          }
         }
-      }
     }
   }
 

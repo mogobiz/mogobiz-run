@@ -4,13 +4,14 @@
 
 package com.mogobiz.run.services
 
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import com.mogobiz.run.implicits.Json4sProtocol
-import Json4sProtocol._
 import org.json4s._
-import spray.http.StatusCodes
-import spray.routing.Directives
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+import com.mogobiz.run.implicits.Json4sProtocol
+import com.mogobiz.json.JacksonConverter._
 
 class CurrencyService extends Directives with DefaultComplete {
 
@@ -24,12 +25,13 @@ class CurrencyService extends Directives with DefaultComplete {
           }
         }
       } ~
-      pathPrefix(Segment) { currencyCde =>
-        get {
-          handleCall(currencyHandler.queryCurrencyByCode(storeCode, currencyCde),
-                     (json: JValue) => complete(StatusCodes.OK, json))
+        pathPrefix(Segment) { currencyCde =>
+          get {
+            handleCall(currencyHandler.queryCurrencyByCode(storeCode,
+                                                           currencyCde),
+                       (json: JValue) => complete(StatusCodes.OK, json))
+          }
         }
-      }
     }
   }
 

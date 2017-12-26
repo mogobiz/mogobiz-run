@@ -14,15 +14,15 @@ import com.mogobiz.run.model.Mogobiz.{DeliveryStatus, _}
 import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
 import com.mogobiz.run.model.Mogobiz.ReturnStatus.ReturnStatus
 import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus.ReturnedItemStatus
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s._
 import org.json4s.ext.JodaTimeSerializers
-import spray.httpx.Json4sSupport
 
 /**
   *
   */
-object Json4sProtocol extends Json4sSupport {
-
+object Json4sProtocol {
+  import Json4sSupport._
   class ProductTypeSerializer
       extends CustomSerializer[ProductType](
         format =>

@@ -4,75 +4,91 @@
 
 package com.mogobiz.run.services
 
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.{Directive1, Directives}
+import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest, CreateBOReturnedItemRequest, UpdateBOReturnedItemRequest}
-import com.mogobiz.run.utils.{Paging, PagingParams}
-import com.mogobiz.session.Session
+import com.mogobiz.run.exceptions.SomeParameterIsMissingException
+import com.mogobiz.run.model.RequestParameters.{
+  BOListCustomersRequest,
+  BOListOrdersRequest,
+  CreateBOReturnedItemRequest,
+  UpdateBOReturnedItemRequest
+}
+import com.mogobiz.run.utils.Paging
 import com.mogobiz.session.SessionESDirectives._
 import org.json4s.JsonAST.JValue
-import spray.http.StatusCodes
-import spray.routing._
-import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import Json4sProtocol._
-import com.mogobiz.run.exceptions.{MogobizException, SomeParameterIsMissingException}
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
 
 class BackofficeService extends Directives with DefaultComplete {
 
   val route = {
     optionalSession { optSession =>
       val accountUuid = optSession.flatMap(_.sessionData.accountId)
-      val locale      = optSession.flatMap(_.sessionData.locale)
+      val locale = optSession.flatMap(_.sessionData.locale)
       pathPrefix(Segment / "backoffice") { implicit storeCode =>
         path("shipping-webhook" / Segment) { webhookProvider =>
           post {
             def rawData: Directive1[String] = extract {
               _.request.entity.asString
             }
+
             rawData { postData =>
-              handleCall(backofficeHandler.shippingWebhook(storeCode, webhookProvider, postData), (_: Unit) => {
-                complete(StatusCodes.OK)
-              })
+              handleCall(backofficeHandler.shippingWebhook(storeCode,
+                                                           webhookProvider,
+                                                           postData),
+                         (_: Unit) => {
+                           complete(StatusCodes.OK)
+                         })
             }
           }
         } ~
-        path("listOrders") {
-          get {
-            listOrders(storeCode, accountUuid)
-          }
-        } ~
-        path("listCustomers") {
-          get {
-            listCustomers(storeCode, accountUuid)
-          }
-        } ~
-        pathPrefix("cartDetails" / Segment) { transactionUuid =>
-          pathEnd {
+          path("listOrders") {
             get {
-              cartDetails(storeCode, accountUuid, transactionUuid)
+              listOrders(storeCode, accountUuid)
             }
           } ~
-          pathPrefix(Segment) { boCartItemUuid =>
+          path("listCustomers") {
+            get {
+              listCustomers(storeCode, accountUuid)
+            }
+          } ~
+          pathPrefix("cartDetails" / Segment) { transactionUuid =>
             pathEnd {
-              post {
-                createBoReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, locale)
+              get {
+                cartDetails(storeCode, accountUuid, transactionUuid)
               }
             } ~
-            path(Segment) { boReturnedUuid =>
-              put {
-                updateBoReturnedItem(storeCode, accountUuid, transactionUuid, boCartItemUuid, boReturnedUuid, locale)
+              pathPrefix(Segment) { boCartItemUuid =>
+                pathEnd {
+                  post {
+                    createBoReturnedItem(storeCode,
+                                         accountUuid,
+                                         transactionUuid,
+                                         boCartItemUuid,
+                                         locale)
+                  }
+                } ~
+                  path(Segment) { boReturnedUuid =>
+                    put {
+                      updateBoReturnedItem(storeCode,
+                                           accountUuid,
+                                           transactionUuid,
+                                           boCartItemUuid,
+                                           boReturnedUuid,
+                                           locale)
+                    }
+                  }
               }
-            }
           }
-        }
       }
     }
   }
 
   def listOrders(storeCode: String, accountUuid: Option[String]) =
-    parameters('maxItemPerPage.?,
-               'pageOffset ?,
+    parameters('maxItemPerPage.as[Int].?,
+               'pageOffset.as[Int].?,
                'lastName.?,
                'email.?,
                'startDate.?,
@@ -80,19 +96,26 @@ class BackofficeService extends Directives with DefaultComplete {
                'price.?,
                'transactionStatus.?,
                'deliveryStatus.?).as(BOListOrdersRequest) { req =>
-      handleCall(backofficeHandler.listOrders(storeCode, accountUuid, req), (res: Paging[JValue]) =>
-            complete(StatusCodes.OK, res))
+      handleCall(backofficeHandler.listOrders(storeCode, accountUuid, req),
+                 (res: Paging[JValue]) => complete(StatusCodes.OK, res))
     }
 
   def listCustomers(storeCode: String, accountUuid: Option[String]) =
-    parameters('maxItemPerPage.?, 'pageOffset.?, 'lastName.?, 'email.?).as(BOListCustomersRequest) { req =>
-      handleCall(backofficeHandler.listCustomers(storeCode, accountUuid, req), (res: Paging[JValue]) =>
-            complete(StatusCodes.OK, res))
-    }
+    parameters('maxItemPerPage.as[Int].?,
+               'pageOffset.as[Int].?,
+               'lastName.?,
+               'email.?)
+      .as(BOListCustomersRequest) { req =>
+        handleCall(backofficeHandler.listCustomers(storeCode, accountUuid, req),
+                   (res: Paging[JValue]) => complete(StatusCodes.OK, res))
+      }
 
-  def cartDetails(storeCode: String, accountUuid: Option[String], transactionUuid: String) =
-    handleCall(backofficeHandler.cartDetails(storeCode, accountUuid, transactionUuid), (res: JValue) =>
-          complete(StatusCodes.OK, res))
+  def cartDetails(storeCode: String,
+                  accountUuid: Option[String],
+                  transactionUuid: String) =
+    handleCall(
+      backofficeHandler.cartDetails(storeCode, accountUuid, transactionUuid),
+      (res: JValue) => complete(StatusCodes.OK, res))
 
   def createBoReturnedItem(storeCode: String,
                            accountUuid: Option[String],
@@ -100,14 +123,17 @@ class BackofficeService extends Directives with DefaultComplete {
                            boCartItemUuid: String,
                            locale: Option[String]) =
     entity(as[CreateBOReturnedItemRequest]) { req =>
-      handleCall(backofficeHandler.createBOReturnedItem(
-                     storeCode,
-                     accountUuid.getOrElse(throw new SomeParameterIsMissingException("accountUuid not found")),
-                     transactionUuid,
-                     boCartItemUuid,
-                     req,
-                     locale),
-                 (res: Unit) => complete(StatusCodes.OK))
+      handleCall(
+        backofficeHandler.createBOReturnedItem(
+          storeCode,
+          accountUuid.getOrElse(
+            throw new SomeParameterIsMissingException("accountUuid not found")),
+          transactionUuid,
+          boCartItemUuid,
+          req,
+          locale),
+        (res: Unit) => complete(StatusCodes.OK)
+      )
     }
 
   def updateBoReturnedItem(storeCode: String,
@@ -117,15 +143,19 @@ class BackofficeService extends Directives with DefaultComplete {
                            boReturnedUuid: String,
                            locale: Option[String]) =
     entity(as[UpdateBOReturnedItemRequest]) { req =>
-      handleCall(backofficeHandler.updateBOReturnedItem(
-                     storeCode,
-                     accountUuid.getOrElse(throw new SomeParameterIsMissingException("accountUuid not found")),
-                     transactionUuid,
-                     boCartItemUuid,
-                     boReturnedUuid,
-                     req,
-                     locale),
-                 (res: Unit) => complete(StatusCodes.OK))
+      handleCall(
+        backofficeHandler.updateBOReturnedItem(
+          storeCode,
+          accountUuid.getOrElse(
+            throw new SomeParameterIsMissingException("accountUuid not found")),
+          transactionUuid,
+          boCartItemUuid,
+          boReturnedUuid,
+          req,
+          locale
+        ),
+        (res: Unit) => complete(StatusCodes.OK)
+      )
     }
 
 }

@@ -10,17 +10,19 @@ import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.implicits.Json4sProtocol
 import Json4sProtocol._
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.run.model._
 import com.mogobiz.session.Session
 import com.mogobiz.session.SessionESDirectives._
 import com.mogobiz.pay.implicits.Implicits
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import spray.http.{HttpCookie, StatusCodes}
-import spray.routing.Directives
-//import com.mogobiz.pay.config.MogopayHandlers.accountHandler
-
 import com.mogobiz.run.config.Settings._
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+import com.mogobiz.run.implicits.Json4sProtocol
+import com.mogobiz.json.JacksonConverter._
+
 class SkuService extends Directives with DefaultComplete {
   import org.json4s._
 
@@ -49,36 +51,34 @@ class SkuService extends Directives with DefaultComplete {
 
   def skuRoutes(implicit storeCode: String) = skus ~ skuSearchRoute
 
-  import shapeless._
-
   def skuSearchRoute(implicit storeCode: String) = pathEnd {
     get {
       val productsParams = parameters(
-          'maxItemPerPage.?.as[Option[Int]] ::
-            'pageOffset.?.as[Option[Int]] ::
-              'id.? ::
-                'productId.? ::
-                  'xtype.? ::
-                    'name.? ::
-                      'code.? ::
-                        'categoryPath.? ::
-                          'brandId.? ::
-                            'tagName.? ::
-                              'notations.? ::
-                                'priceRange.? ::
-                                  'creationDateMin.? ::
-                                    'featured.?.as[Option[Boolean]] ::
-                                      'orderBy.? ::
-                                        'orderDirection.? ::
-                                          'lang ? "_all" ::
-                                            'currency.? ::
-                                              'country.? ::
-                                                'promotionId.? ::
-                                                  'hasPromotion.?.as[Option[Boolean]] ::
-                                                    'inStockOnly.?.as[Option[Boolean]] ::
-                                                      'property.? ::
-                                                        'feature.? ::
-                                                          'variations.? :: HNil
+        'maxItemPerPage.?.as[Option[Int]] ::
+          'pageOffset.?.as[Option[Int]] ::
+          'id.? ::
+          'productId.? ::
+          'xtype.? ::
+          'name.? ::
+          'code.? ::
+          'categoryPath.? ::
+          'brandId.? ::
+          'tagName.? ::
+          'notations.? ::
+          'priceRange.? ::
+          'creationDateMin.? ::
+          'featured.?.as[Option[Boolean]] ::
+          'orderBy.? ::
+          'orderDirection.? ::
+          'lang ? "_all" ::
+          'currency.? ::
+          'country.? ::
+          'promotionId.? ::
+          'hasPromotion.?.as[Option[Boolean]] ::
+          'inStockOnly.?.as[Option[Boolean]] ::
+          'property.? ::
+          'feature.? ::
+          'variations.? :: HNil
       )
 
       productsParams.happly {
@@ -95,31 +95,31 @@ class SkuService extends Directives with DefaultComplete {
           }
 
           val params = new SkuRequest(
-              maxItemPerPage,
-              pageOffset,
-              id,
-              productId,
-              xtype,
-              name,
-              code,
-              categoryPath,
-              brandId,
-              tagName,
-              notations,
-              priceRange,
-              creationDateMin,
-              featured,
-              orderBy,
-              orderDirection,
-              lang,
-              currencyCode,
-              countryCode,
-              promotionIds,
-              hasPromotion,
-              inStockOnly,
-              property,
-              feature,
-              variations
+            maxItemPerPage,
+            pageOffset,
+            id,
+            productId,
+            xtype,
+            name,
+            code,
+            categoryPath,
+            brandId,
+            tagName,
+            notations,
+            priceRange,
+            creationDateMin,
+            featured,
+            orderBy,
+            orderDirection,
+            lang,
+            currencyCode,
+            countryCode,
+            promotionIds,
+            hasPromotion,
+            inStockOnly,
+            property,
+            feature,
+            variations
           )
           handleCall(skuHandler.querySkusByCriteria(storeCode, params),
                      (json: JValue) => complete(StatusCodes.OK, json))
@@ -129,9 +129,10 @@ class SkuService extends Directives with DefaultComplete {
 
   def skus(implicit storeCode: String) = pathPrefix(Segment) { skuId =>
     get {
-      parameters('update ? false, 'stock ? false, 'date ?) { (update, stock, date) =>
-        handleCall(skuHandler.getSku(storeCode, skuId, update, stock, date),
-                   (json: JValue) => complete(StatusCodes.OK, json))
+      parameters('update ? false, 'stock ? false, 'date ?) {
+        (update, stock, date) =>
+          handleCall(skuHandler.getSku(storeCode, skuId, update, stock, date),
+                     (json: JValue) => complete(StatusCodes.OK, json))
       }
     }
   }

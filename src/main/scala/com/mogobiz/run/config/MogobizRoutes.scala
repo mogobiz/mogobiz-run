@@ -5,14 +5,12 @@
 package com.mogobiz.run.config
 
 import akka.actor.Props
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.{Directives, Route}
 import com.mogobiz.run.exceptions.MogobizException
 import com.mogobiz.run.jobs.CleanCartJob
 import com.mogobiz.run.services._
-import com.mogobiz.system.{MogobizSystem, RoutedHttpService}
-import spray.http.{HttpRequest, HttpResponse, StatusCodes}
-import spray.routing.directives.BasicDirectives._
-import spray.routing.directives.LoggingMagnet
-import spray.routing.{Directives, _}
+import com.mogobiz.system.MogobizSystem
 
 import scala.util.{Failure, Success, Try}
 
@@ -47,41 +45,30 @@ trait MogobizRoutes extends Directives {
       new PreferenceService().route ~
       new CartService().route
 
-  def timeRequest(magnet: LoggingMagnet[HttpRequest ⇒ Any ⇒ Unit]): Directive0 =
-    mapRequestContext { ctx ⇒
-      val timeStamp   = System.currentTimeMillis
-      val logResponse = magnet.f(ctx.request)
-      ctx.withRouteResponseMapped { response =>
-        val duration = System.currentTimeMillis - timeStamp
-        println(duration + ":" + ctx.request.uri.toString())
-        logResponse(response)
-        response
-      }
-    }
-
   def routes =
-    logRequestResponse(showRequest _) {
-      pathPrefix(("api" / "store") | "store") {
-        pathEnd {
-          complete("this is the root of all things")
-        } ~ apiRoutes
-      }
+    pathPrefix(("api" / "store") | "store") {
+      pathEnd {
+        complete("this is the root of all things")
+      } ~ apiRoutes
     }
-
-  def routesServices = system.actorOf(Props(new RoutedHttpService(routes)))
 }
 
 trait DefaultComplete {
   this: Directives =>
   def handleCall[T](call: => T, handler: T => Route): Route = {
-    import com.mogobiz.run.implicits.JsonSupport._
     val start = System.currentTimeMillis()
     val res = Try(call) match {
       case Failure(t: MogobizException) =>
-        t.printStackTrace(); complete(t.code -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+        t.printStackTrace();
+        complete(
+          t.code -> Map('type -> t.getClass.getSimpleName,
+                        'error -> t.toString))
       case Failure(t: Throwable) =>
         t.printStackTrace();
-        complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+        complete(
+          StatusCodes.InternalServerError -> Map(
+            'type -> t.getClass.getSimpleName,
+            'error -> t.toString))
       case Success(res) => handler(res)
     }
     val duration = System.currentTimeMillis() - start
@@ -89,20 +76,28 @@ trait DefaultComplete {
   }
 
   def handleComplete[T](call: Try[Try[T]], handler: T => Route): Route = {
-    import com.mogobiz.run.implicits.JsonSupport._
     val start = System.currentTimeMillis()
     val ret = call match {
       case Failure(t) =>
         t.printStackTrace();
-        complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+        complete(
+          StatusCodes.InternalServerError -> Map(
+            'type -> t.getClass.getSimpleName,
+            'error -> t.toString))
       case Success(res) =>
         res match {
           case Success(id) => handler(id)
           case Failure(t: MogobizException) =>
-            t.printStackTrace(); complete(t.code -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+            t.printStackTrace();
+            complete(
+              t.code -> Map('type -> t.getClass.getSimpleName,
+                            'error -> t.toString))
           case Failure(t) =>
             t.printStackTrace();
-            complete(StatusCodes.InternalServerError -> Map('type -> t.getClass.getSimpleName, 'error -> t.toString))
+            complete(
+              StatusCodes.InternalServerError -> Map(
+                'type -> t.getClass.getSimpleName,
+                'error -> t.toString))
         }
     }
     val duration = System.currentTimeMillis() - start

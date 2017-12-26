@@ -6,11 +6,12 @@ package com.mogobiz.run.services
 
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import com.mogobiz.run.implicits.Json4sProtocol
-import Json4sProtocol._
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives
 import org.json4s._
-import spray.http.StatusCodes
-import spray.routing.Directives
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+import com.mogobiz.run.implicits.Json4sProtocol
+import com.mogobiz.json.JacksonConverter._
 
 class LangService extends Directives with DefaultComplete {
 
@@ -18,7 +19,8 @@ class LangService extends Directives with DefaultComplete {
     pathPrefix(Segment / "langs") { storeCode =>
       pathEnd {
         get {
-          handleCall(langHandler.queryLang(storeCode), (json: JValue) => complete(StatusCodes.OK, json))
+          handleCall(langHandler.queryLang(storeCode),
+                     (json: JValue) => complete(StatusCodes.OK, json))
         }
       }
     }
