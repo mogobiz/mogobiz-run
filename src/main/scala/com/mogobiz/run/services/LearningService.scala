@@ -7,16 +7,14 @@ package com.mogobiz.run.services
 import java.util.UUID
 
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.HttpCookie
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.config.Settings._
-import com.mogobiz.run.implicits.Json4sProtocol
 import com.mogobiz.run.model.Learning.UserAction
 import org.joda.time.format.DateTimeFormat
 import akka.http.scaladsl.server.Directives
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.json.JacksonConverter._
 
 import scala.concurrent.ExecutionContext
 
@@ -123,12 +121,12 @@ class LearningService(implicit executionContext: ExecutionContext)
   def commit(implicit storeCode: String) = path("commit") {
     optionalCookie(CookieTracking) {
       case Some(mogoCookie) =>
-        register(mogoCookie.content)
+        register(mogoCookie.value)
       case None =>
         val id = UUID.randomUUID.toString
         setCookie(
           HttpCookie(CookieTracking,
-                     content = id,
+                     value = id,
                      path = Some("/api/store/" + storeCode))) {
           register(id)
         }

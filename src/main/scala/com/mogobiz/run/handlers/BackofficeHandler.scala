@@ -7,20 +7,31 @@ package com.mogobiz.run.handlers
 import java.util.UUID
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import com.mogobiz.es.{EsClient, _}
 import com.mogobiz.json.{JacksonConverter, JsonUtil}
 import com.mogobiz.pay.codes.MogopayConstant
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
 import com.mogobiz.pay.config.Settings
 import com.mogobiz.pay.handlers.shipping.EasyPostHandler
-import com.mogobiz.pay.model.{Account, RoleName}
+import com.mogobiz.pay.model.Mogopay.{Account, RoleName}
 import com.mogobiz.run.config
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.config.Settings.Mail.Smtp.MailSettings
 import com.mogobiz.run.es._
-import com.mogobiz.run.exceptions.{IllegalStatusException, MinMaxQuantityException, NotAuthorizedException, NotFoundException}
+import com.mogobiz.run.exceptions.{
+  IllegalStatusException,
+  MinMaxQuantityException,
+  NotAuthorizedException,
+  NotFoundException
+}
 import com.mogobiz.run.model.Mogobiz._
-import com.mogobiz.run.model.RequestParameters.{BOListCustomersRequest, BOListOrdersRequest, CreateBOReturnedItemRequest, UpdateBOReturnedItemRequest}
+import com.mogobiz.run.model.RequestParameters.{
+  BOListCustomersRequest,
+  BOListOrdersRequest,
+  CreateBOReturnedItemRequest,
+  UpdateBOReturnedItemRequest
+}
 import com.mogobiz.run.model.{CartChanges, StockChange, WebHookData}
 import com.mogobiz.run.utils.Paging
 import com.mogobiz.utils.EmailHandler.Mail
@@ -33,8 +44,6 @@ import org.json4s.Extraction
 import org.json4s.JsonAST._
 import org.json4s.jackson.JsonMethods._
 import scalikejdbc.{DB, DBSession}
-import spray.client.pipelining._
-import spray.http._
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -50,20 +59,26 @@ class BackofficeHandler extends JsonUtil with BoService {
   private val mogopayIndex = Settings.Mogopay.EsIndex
 
   @throws[NotAuthorizedException]
-  def listOrders(storeCode: String, accountUuid: Option[String], req: BOListOrdersRequest): Paging[JValue] = {
+  def listOrders(storeCode: String,
+                 accountUuid: Option[String],
+                 req: BOListOrdersRequest): Paging[JValue] = {
     val account = accountUuid.flatMap { uuid =>
       accountHandler.load(uuid)
     } getOrElse (throw new NotAuthorizedException(""))
-    val customer = account.roles.find { role =>
-      role == RoleName.CUSTOMER
-    }.map { r =>
-      account
-    }
-    val merchant = account.roles.find { role =>
-      role == RoleName.MERCHANT
-    }.map { r =>
-      account
-    }
+    val customer = account.roles
+      .find { role =>
+        role == RoleName.CUSTOMER
+      }
+      .map { r =>
+        account
+      }
+    val merchant = account.roles
+      .find { role =>
+        role == RoleName.MERCHANT
+      }
+      .map { r =>
+        account
+      }
 
     val _size: Int = req.maxItemPerPage.getOrElse(100)
     val _from: Int = req.pageOffset.getOrElse(0) * _size
@@ -71,10 +86,11 @@ class BackofficeHandler extends JsonUtil with BoService {
     val boCartTransactionUuidList = req.deliveryStatus.map { deliveryStatus =>
       EsClient
         .searchAllRaw(
-            search(boCartHandler.buildIndex(storeCode) -> "BOCart") sourceInclude "transactionUuid"
-              query matchQuery("shopCarts.cartItems.bODelivery.status", deliveryStatus)
-              size _size
-              sortByFieldDesc "xdate")
+          search(boCartHandler.buildIndex(storeCode) -> "BOCart") sourceInclude "transactionUuid"
+            query matchQuery("shopCarts.cartItems.bODelivery.status",
+                             deliveryStatus)
+            size _size
+            sortByFieldDesc "xdate")
         .hits
         .map { hit =>
           hit2JValue(hit) \ "transactionUuid" match {
@@ -90,37 +106,41 @@ class BackofficeHandler extends JsonUtil with BoService {
     }
 
     val queries = List(
-        createMatchQuery("vendor.uuid", merchant.map { m =>
-          m.uuid
-        })
+      createMatchQuery("vendor.uuid", merchant.map { m =>
+        m.uuid
+      })
     ).flatten
 
     val filters = List(
-        req.lastName.map { lastName =>
-          should(createtermQuery("customer.lastName", Some(lastName)).get,
-                 createtermQuery("customer.firstName", Some(lastName)).get)
-        },
-        createtermQuery("status", req.transactionStatus),
-        createtermQuery("email", req.email.map(_.toLowerCase)),
-        createtermQuery("customer.uuid", customer.map { c =>
-          c.uuid
-        }),
-        createRangeFilter("transactionDate", req.startDate, req.endDate),
-        createtermQuery("amount", req.price),
-        createOrFilterBySplitValues(boCartTransactionUuidList, v => createtermQuery("transactionUUID", Some(v)))
+      req.lastName.map { lastName =>
+        should(createtermQuery("customer.lastName", Some(lastName)).get,
+               createtermQuery("customer.firstName", Some(lastName)).get)
+      },
+      createtermQuery("status", req.transactionStatus),
+      createtermQuery("email", req.email.map(_.toLowerCase)),
+      createtermQuery("customer.uuid", customer.map { c =>
+        c.uuid
+      }),
+      createRangeFilter("transactionDate", req.startDate, req.endDate),
+      createtermQuery("amount", req.price),
+      createOrFilterBySplitValues(
+        boCartTransactionUuidList,
+        v => createtermQuery("transactionUUID", Some(v)))
     ).flatten
 
     val response: Try[SearchHits] = Try {
       EsClient.searchAllRaw(
-          search(mogopayIndex -> "BOTransaction") query createQuery(queries) postFilter must(filters)
-            from _from
-            size _size
-            sortByFieldDesc "transactionDate"
+        search(mogopayIndex -> "BOTransaction") query createQuery(queries) postFilter must(
+          filters)
+          from _from
+          size _size
+          sortByFieldDesc "transactionDate"
       )
     }
     response match {
       case Success(r) =>
-        val transformer: PartialFunction[JValue, JValue] = completeBOTransactionWithDeliveryStatus(storeCode)
+        val transformer: PartialFunction[JValue, JValue] =
+          completeBOTransactionWithDeliveryStatus(storeCode)
         Paging.build(_size, _from, r, { hit =>
           hit.transform(transformer).transformField(filterBOTransactionField)
         })
@@ -131,14 +151,18 @@ class BackofficeHandler extends JsonUtil with BoService {
   }
 
   @throws[NotAuthorizedException]
-  def listCustomers(storeCode: String, accountUuid: Option[String], req: BOListCustomersRequest): Paging[JValue] = {
+  def listCustomers(storeCode: String,
+                    accountUuid: Option[String],
+                    req: BOListCustomersRequest): Paging[JValue] = {
     val merchant = accountUuid.flatMap { uuid =>
       accountHandler.load(uuid).flatMap { account =>
-        account.roles.find { role =>
-          role == RoleName.MERCHANT
-        }.map { r =>
-          account
-        }
+        account.roles
+          .find { role =>
+            role == RoleName.MERCHANT
+          }
+          .map { r =>
+            account
+          }
       }
     } getOrElse (throw new NotAuthorizedException(""))
 
@@ -146,18 +170,18 @@ class BackofficeHandler extends JsonUtil with BoService {
     val _from: Int = req.pageOffset.getOrElse(0) * _size
 
     val accountFilters = List(
-        req.lastName.flatMap { lastName =>
-          createtermQuery("lastName", Some(lastName.toLowerCase))
-        },
-        createtermQuery("email", req.email.map(_.toLowerCase)),
-        createtermQuery("owner", Some(merchant.uuid))
+      req.lastName.flatMap { lastName =>
+        createtermQuery("lastName", Some(lastName.toLowerCase))
+      },
+      createtermQuery("email", req.email.map(_.toLowerCase)),
+      createtermQuery("owner", Some(merchant.uuid))
     ).flatten
 
     val response: SearchHits = EsClient.searchAllRaw(
-        search(mogopayIndex -> "Account") query must(accountFilters)
-          from _from
-          size _size
-          sortByFieldDesc "lastName"
+      search(mogopayIndex -> "Account") query must(accountFilters)
+        from _from
+        size _size
+        sortByFieldDesc "lastName"
     )
 
     Paging.build(_size, _from, response, { hit =>
@@ -166,34 +190,40 @@ class BackofficeHandler extends JsonUtil with BoService {
   }
 
   @throws[NotFoundException]
-  def cartDetails(storeCode: String, accountUuid: Option[String], transactionUuid: String): JValue = {
+  def cartDetails(storeCode: String,
+                  accountUuid: Option[String],
+                  transactionUuid: String): JValue = {
     val account = accountUuid.flatMap { uuid =>
       accountHandler.load(uuid)
     } getOrElse (throw new NotAuthorizedException(""))
-    val customer = account.roles.find { role =>
-      role == RoleName.CUSTOMER
-    }.map { r =>
-      account
-    }
-    val merchant = account.roles.find { role =>
-      role == RoleName.MERCHANT
-    }.map { r =>
-      account
-    }
+    val customer = account.roles
+      .find { role =>
+        role == RoleName.CUSTOMER
+      }
+      .map { r =>
+        account
+      }
+    val merchant = account.roles
+      .find { role =>
+        role == RoleName.MERCHANT
+      }
+      .map { r =>
+        account
+      }
 
     val transactionFilters = List(
-        createtermQuery("customer.uuid", customer.map { c =>
-          c.uuid
-        }),
-        createtermQuery("vendor.uuid", merchant.map { m =>
-          m.uuid
-        }),
-        createtermQuery("transactionUUID", Some(transactionUuid))
+      createtermQuery("customer.uuid", customer.map { c =>
+        c.uuid
+      }),
+      createtermQuery("vendor.uuid", merchant.map { m =>
+        m.uuid
+      }),
+      createtermQuery("transactionUUID", Some(transactionUuid))
     ).flatten
 
     // Make sure the customer accesses his own transactions
     val transactionRequest = search(mogopayIndex -> "BOTransaction") sourceInclude "transactionUUID" query must(
-          transactionFilters)
+      transactionFilters)
     val esTransactionUuid = EsClient
       .searchRaw(transactionRequest)
       .map { hit =>
@@ -208,10 +238,12 @@ class BackofficeHandler extends JsonUtil with BoService {
 
     EsClient
       .searchRaw(
-          search(boCartHandler.buildIndex(storeCode) -> "BOCart") query matchQuery("transactionUuid",
-                                                                                   esTransactionUuid)
+        search(boCartHandler.buildIndex(storeCode) -> "BOCart") query matchQuery(
+          "transactionUuid",
+          esTransactionUuid)
       )
-      .getOrElse(throw new NotFoundException(s"Transaction UUID $esTransactionUuid"))
+      .getOrElse(
+        throw new NotFoundException(s"Transaction UUID $esTransactionUuid"))
   }
 
   def notifyItemReturned(merchant: Account,
@@ -219,25 +251,30 @@ class BackofficeHandler extends JsonUtil with BoService {
                          boCartItem: BOCartItem,
                          boReturn: BOReturn,
                          locale: Option[String]): Unit = {
-    val json: JValue = JObject(JField("cartItem", Extraction.decompose(boCartItem))) merge
-        JObject(JField("merchant", Extraction.decompose(merchant))) merge
-        JObject(JField("customer", Extraction.decompose(customer))) merge
-        JObject(JField("returnStatus", Extraction.decompose(boReturn)))
+    val json: JValue = JObject(
+      JField("cartItem", Extraction.decompose(boCartItem))) merge
+      JObject(JField("merchant", Extraction.decompose(merchant))) merge
+      JObject(JField("customer", Extraction.decompose(customer))) merge
+      JObject(JField("returnStatus", Extraction.decompose(boReturn)))
     //    val map = Map("cartItem" -> boCartItem, "merchant" -> merchant, "customer" -> customer, "returnStatus" -> boReturn)
 
     val (subject, body) =
-      templateHandler.mustache(Some(merchant), "mail-return-created", locale, JacksonConverter.asString(json))
+      templateHandler.mustache(Some(merchant),
+                               "mail-return-created",
+                               locale,
+                               JacksonConverter.asString(json))
     EmailHandler.Send(
-        Mail(
-            merchant.email -> s"""${merchant.firstName.getOrElse("")} ${merchant.lastName.getOrElse("")}""",
-            List(customer.email),
-            Nil,
-            Nil,
-            subject,
-            body,
-            Some(body),
-            None
-        ))
+      Mail(
+        merchant.email -> s"""${merchant.firstName
+          .getOrElse("")} ${merchant.lastName.getOrElse("")}""",
+        List(customer.email),
+        Nil,
+        Nil,
+        subject,
+        body,
+        Some(body),
+        None
+      ))
 
   }
 
@@ -250,20 +287,31 @@ class BackofficeHandler extends JsonUtil with BoService {
                            boCartItemUuid: String,
                            req: CreateBOReturnedItemRequest,
                            locale: Option[String]): Unit = {
-    val customer: Account = accountHandler.getCustomer(accountUuid).getOrElse(throw NotAuthorizedException(""))
+    val customer: Account = accountHandler
+      .getCustomer(accountUuid)
+      .getOrElse(throw NotAuthorizedException(""))
     val merchantUuid = customer.owner.getOrElse(
-        throw NotAuthorizedException("Merchant Id not present in Customer Data (Should never happen)"))
+      throw NotAuthorizedException(
+        "Merchant Id not present in Customer Data (Should never happen)"))
     val merchant =
-      accountHandler.getMerchant(merchantUuid).getOrElse(throw NotAuthorizedException("Merchant not found"))
+      accountHandler
+        .getMerchant(merchantUuid)
+        .getOrElse(throw NotAuthorizedException("Merchant not found"))
 
     val boCart: BOCart =
-      boCartHandler.findByTransactionUuid(storeCode, transactionUuid).getOrElse(throw NotFoundException(""))
+      boCartHandler
+        .findByTransactionUuid(storeCode, transactionUuid)
+        .getOrElse(throw NotFoundException(""))
     if (boCart.buyer != customer.email) throw NotAuthorizedException("")
 
     // On ne traite le retour que pour les produits du shop Mogobiz
     val boShopCart =
-      boCart.shopCarts.find(_.shopId == MogopayConstant.SHOP_MOGOBIZ).getOrElse(throw NotFoundException(""))
-    val boCartItem = boShopCart.cartItems.find(_.uuid == boCartItemUuid).getOrElse(throw NotFoundException(""))
+      boCart.shopCarts
+        .find(_.shopId == MogopayConstant.SHOP_MOGOBIZ)
+        .getOrElse(throw NotFoundException(""))
+    val boCartItem = boShopCart.cartItems
+      .find(_.uuid == boCartItemUuid)
+      .getOrElse(throw NotFoundException(""))
 
     if (req.quantity < 1 || req.quantity > boCartItem.quantity)
       throw new MinMaxQuantityException(1, boCartItem.quantity)
@@ -281,9 +329,10 @@ class BackofficeHandler extends JsonUtil with BoService {
                                           List(boReturn),
                                           UUID.randomUUID().toString)
 
-      val newBOCartItem = boCartItem.copy(bOReturnedItems = boCartItem.bOReturnedItems :+ boReturnedItem)
+      val newBOCartItem = boCartItem.copy(
+        bOReturnedItems = boCartItem.bOReturnedItems :+ boReturnedItem)
       val newBOShopCart = replaceBOCartItem(boShopCart, newBOCartItem)
-      val newBOCart     = replaceBOShopCart(boCart, newBOShopCart)
+      val newBOCart = replaceBOShopCart(boCart, newBOShopCart)
       boCartHandler.update(newBOCart)
 
       notifyChangesIntoES(storeCode, newBOCart)
@@ -297,25 +346,30 @@ class BackofficeHandler extends JsonUtil with BoService {
                                       beforeUpdate: BOReturn,
                                       afterUpdate: BOReturn,
                                       locale: Option[String]): Unit = {
-    val json: JValue = JObject(JField("cartItem", Extraction.decompose(boCartItem))) merge
-        JObject(JField("merchant", Extraction.decompose(merchant))) merge
-        JObject(JField("customer", Extraction.decompose(customer))) merge
-        JObject(JField("beforeUpdate", Extraction.decompose(beforeUpdate))) merge
-        JObject(JField("afterUpdate", Extraction.decompose(afterUpdate)))
+    val json: JValue = JObject(
+      JField("cartItem", Extraction.decompose(boCartItem))) merge
+      JObject(JField("merchant", Extraction.decompose(merchant))) merge
+      JObject(JField("customer", Extraction.decompose(customer))) merge
+      JObject(JField("beforeUpdate", Extraction.decompose(beforeUpdate))) merge
+      JObject(JField("afterUpdate", Extraction.decompose(afterUpdate)))
     //val map = Map("cartItem" -> boCartItem, "merchant" -> merchant, "customer" -> customer, "oldReturnStatus" -> beforeUpdate, "newReturnStatus" -> afterUpdate)
     val (subject, body) =
-      templateHandler.mustache(Some(merchant), "mail-return-updated", locale, JacksonConverter.asString(json))
+      templateHandler.mustache(Some(merchant),
+                               "mail-return-updated",
+                               locale,
+                               JacksonConverter.asString(json))
     EmailHandler.Send(
-        Mail(
-            merchant.email -> s"""${merchant.firstName.getOrElse("")} ${merchant.lastName.getOrElse("")}""",
-            List(customer.email),
-            Nil,
-            Nil,
-            subject,
-            body,
-            Some(body),
-            None
-        ))
+      Mail(
+        merchant.email -> s"""${merchant.firstName
+          .getOrElse("")} ${merchant.lastName.getOrElse("")}""",
+        List(customer.email),
+        Nil,
+        Nil,
+        subject,
+        body,
+        Some(body),
+        None
+      ))
   }
 
   @throws[NotAuthorizedException]
@@ -330,75 +384,123 @@ class BackofficeHandler extends JsonUtil with BoService {
                            locale: Option[String]): Unit = {
     val transactionalBloc = { implicit session: DBSession =>
       val merchant =
-        accountHandler.load(accountUuid).getOrElse(throw new Exception("Merchant not found for returned item"))
+        accountHandler
+          .load(accountUuid)
+          .getOrElse(
+            throw new Exception("Merchant not found for returned item"))
 
       val boCart: BOCart =
-        boCartHandler.findByTransactionUuid(storeCode, transactionUuid).getOrElse(throw NotFoundException(""))
+        boCartHandler
+          .findByTransactionUuid(storeCode, transactionUuid)
+          .getOrElse(throw NotFoundException(""))
       val customer = accountHandler
         .findByEmail(boCart.buyer, Some(accountUuid))
         .getOrElse(throw new Exception("Customer not found for returned item"))
 
       // On ne traite le retour que pour les produits du shop Mogobiz
       val boShopCart =
-        boCart.shopCarts.find(_.shopId == MogopayConstant.SHOP_MOGOBIZ).getOrElse(throw NotFoundException(""))
-      val boCartItem = boShopCart.cartItems.find(_.uuid == boCartItemUuid).getOrElse(throw NotFoundException(""))
+        boCart.shopCarts
+          .find(_.shopId == MogopayConstant.SHOP_MOGOBIZ)
+          .getOrElse(throw NotFoundException(""))
+      val boCartItem = boShopCart.cartItems
+        .find(_.uuid == boCartItemUuid)
+        .getOrElse(throw NotFoundException(""))
       val boReturnedItem: BOReturnedItem =
-        boCartItem.bOReturnedItems.find(_.uuid == boReturnedItemUuid).getOrElse(throw new NotFoundException(""))
-      val lastReturn: BOReturn = boReturnedItem.boReturns.sortBy(_.dateCreated.toDate.getTime * -1).head // on inverse pour avoir le plus récent en premier
+        boCartItem.bOReturnedItems
+          .find(_.uuid == boReturnedItemUuid)
+          .getOrElse(throw new NotFoundException(""))
+      val lastReturn: BOReturn = boReturnedItem.boReturns
+        .sortBy(_.dateCreated.toDate.getTime * -1)
+        .head // on inverse pour avoir le plus récent en premier
 
       // Calcul du nouveau statut en fonction du statut existant
       val newStatus = ReturnedItemStatus.withName(req.status)
-      val newReturnStatus = (lastReturn.status, ReturnStatus.withName(req.returnStatus)) match {
-        case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_TO_BE_RECEIVED) => ReturnStatus.RETURN_TO_BE_RECEIVED
-        case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_REFUSED)        => ReturnStatus.RETURN_REFUSED
-        case (ReturnStatus.RETURN_TO_BE_RECEIVED, ReturnStatus.RETURN_RECEIVED)  => ReturnStatus.RETURN_RECEIVED
-        case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_ACCEPTED)        => ReturnStatus.RETURN_ACCEPTED
-        case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_REFUSED)         => ReturnStatus.RETURN_REFUSED
-        case (_, _)                                                              => throw new IllegalStatusException()
-      }
+      val newReturnStatus =
+        (lastReturn.status, ReturnStatus.withName(req.returnStatus)) match {
+          case (ReturnStatus.RETURN_SUBMITTED,
+                ReturnStatus.RETURN_TO_BE_RECEIVED) =>
+            ReturnStatus.RETURN_TO_BE_RECEIVED
+          case (ReturnStatus.RETURN_SUBMITTED, ReturnStatus.RETURN_REFUSED) =>
+            ReturnStatus.RETURN_REFUSED
+          case (ReturnStatus.RETURN_TO_BE_RECEIVED,
+                ReturnStatus.RETURN_RECEIVED) =>
+            ReturnStatus.RETURN_RECEIVED
+          case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_ACCEPTED) =>
+            ReturnStatus.RETURN_ACCEPTED
+          case (ReturnStatus.RETURN_RECEIVED, ReturnStatus.RETURN_REFUSED) =>
+            ReturnStatus.RETURN_REFUSED
+          case (_, _) => throw new IllegalStatusException()
+        }
 
       val newBoReturn =
-        BOReturn(Some(req.motivation), status = newReturnStatus, uuid = UUID.randomUUID().toString, new DateTime())
+        BOReturn(Some(req.motivation),
+                 status = newReturnStatus,
+                 uuid = UUID.randomUUID().toString,
+                 new DateTime())
       val newBOReturnedItem = boReturnedItem.copy(
-          status = newStatus,
-          refunded = req.refunded,
-          totalRefunded = req.totalRefunded,
-          boReturns = boReturnedItem.boReturns :+ newBoReturn
+        status = newStatus,
+        refunded = req.refunded,
+        totalRefunded = req.totalRefunded,
+        boReturns = boReturnedItem.boReturns :+ newBoReturn
       )
       val newBOCartItem = replaceBOReturnedItem(boCartItem, newBOReturnedItem)
       val newBOShopCart = replaceBOCartItem(boShopCart, newBOCartItem)
-      val newBOCart     = replaceBOShopCart(boCart, newBOShopCart)
+      val newBOCart = replaceBOShopCart(boCart, newBOShopCart)
       boCartHandler.update(newBOCart)
 
       val stockChange =
         if (newReturnStatus == ReturnStatus.RETURN_ACCEPTED && boReturnedItem.status == ReturnedItemStatus.BACK_TO_STOCK) {
-          ProductDao.getProductAndSku(storeCode, boCartItem.sku.id).flatMap { productAndSku =>
-            val stockChange = stockHandler.incrementStock(storeCode,
-                                                          productAndSku._1,
-                                                          productAndSku._2,
-                                                          boReturnedItem.quantity,
-                                                          boCartItem.startDate)
-            implicit val system = ActorSystem()
-            import system.dispatcher
-            val pipeline: HttpRequest => Future[HttpResponse] = (addHeader("accept", "application/json")
-                    ~> sendReceive)
+          ProductDao.getProductAndSku(storeCode, boCartItem.sku.id).flatMap {
+            productAndSku =>
+              val stockChange =
+                stockHandler.incrementStock(storeCode,
+                                            productAndSku._1,
+                                            productAndSku._2,
+                                            boReturnedItem.quantity,
+                                            boCartItem.startDate)
+              implicit val system = ActorSystem()
+              import system.dispatcher
+              val pipeline: HttpRequest => Future[HttpResponse] = (addHeader(
+                "accept",
+                "application/json")
+                ~> sendReceive)
 
-            pipeline(Get(config.Settings.jahiaClearCacheUrl + "?productId=" + productAndSku._1.id))
-            stockChange
+              pipeline(Get(
+                config.Settings.jahiaClearCacheUrl + "?productId=" + productAndSku._1.id))
+              stockChange
           }
         } else None
-      (merchant, customer, newBOCart, newBOCartItem, lastReturn, newBoReturn, stockChange)
+      (merchant,
+       customer,
+       newBOCart,
+       newBOCartItem,
+       lastReturn,
+       newBoReturn,
+       stockChange)
     }
 
-    val successBloc = { result: (Account, Account, BOCart, BOCartItem, BOReturn, BOReturn, Option[StockChange]) =>
-      notifyChangesIntoES(storeCode, result._3, result._7)
-      notifyItemReturnedStatusUpdated(result._1, result._2, result._4, result._5, result._6, locale)
+    val successBloc = {
+      result: (Account,
+               Account,
+               BOCart,
+               BOCartItem,
+               BOReturn,
+               BOReturn,
+               Option[StockChange]) =>
+        notifyChangesIntoES(storeCode, result._3, result._7)
+        notifyItemReturnedStatusUpdated(result._1,
+                                        result._2,
+                                        result._4,
+                                        result._5,
+                                        result._6,
+                                        locale)
     }
 
     GlobalUtil.runInTransaction(transactionalBloc, successBloc)
   }
 
-  private def replaceBOReturn(boReturnedItem: BOReturnedItem, newBOReturn: BOReturn): BOReturnedItem = {
+  private def replaceBOReturn(boReturnedItem: BOReturnedItem,
+                              newBOReturn: BOReturn): BOReturnedItem = {
     val newBOReturns = boReturnedItem.boReturns.map { oldBOReturn =>
       if (oldBOReturn.uuid == newBOReturn.uuid) newBOReturn
       else oldBOReturn
@@ -406,15 +508,19 @@ class BackofficeHandler extends JsonUtil with BoService {
     boReturnedItem.copy(boReturns = newBOReturns)
   }
 
-  private def replaceBOReturnedItem(boCartItem: BOCartItem, newBOReturnedItem: BOReturnedItem): BOCartItem = {
-    val newBOReturnedItems = boCartItem.bOReturnedItems.map { oldBOReturnedItem =>
-      if (oldBOReturnedItem.uuid == newBOReturnedItem.uuid) newBOReturnedItem
-      else oldBOReturnedItem
+  private def replaceBOReturnedItem(
+      boCartItem: BOCartItem,
+      newBOReturnedItem: BOReturnedItem): BOCartItem = {
+    val newBOReturnedItems = boCartItem.bOReturnedItems.map {
+      oldBOReturnedItem =>
+        if (oldBOReturnedItem.uuid == newBOReturnedItem.uuid) newBOReturnedItem
+        else oldBOReturnedItem
     }
     boCartItem.copy(bOReturnedItems = newBOReturnedItems)
   }
 
-  private def replaceBOCartItem(boShopCart: BOShopCart, newBOCartItem: BOCartItem): BOShopCart = {
+  private def replaceBOCartItem(boShopCart: BOShopCart,
+                                newBOCartItem: BOCartItem): BOShopCart = {
     val newBOCartItems = boShopCart.cartItems.map { oldBOCartItem =>
       if (oldBOCartItem.uuid == newBOCartItem.uuid) newBOCartItem
       else oldBOCartItem
@@ -422,7 +528,8 @@ class BackofficeHandler extends JsonUtil with BoService {
     boShopCart.copy(cartItems = newBOCartItems)
   }
 
-  private def replaceBOShopCart(boCart: BOCart, newBOShopCart: BOShopCart): BOCart = {
+  private def replaceBOShopCart(boCart: BOCart,
+                                newBOShopCart: BOShopCart): BOCart = {
     val newBOShopCarts = boCart.shopCarts.map { oldBOShopCart =>
       if (oldBOShopCart.uuid == newBOShopCart.uuid) newBOShopCart
       else oldBOShopCart
@@ -430,53 +537,68 @@ class BackofficeHandler extends JsonUtil with BoService {
     boCart.copy(shopCarts = newBOShopCarts)
   }
 
-  def shippingWebhook(storeCode: String, webhookProvider: String, data: String): Unit = {
+  def shippingWebhook(storeCode: String,
+                      webhookProvider: String,
+                      data: String): Unit = {
     extractWebHookData(webhookProvider, data).map { webHookData =>
-      boTransactionHandler.findByShipmentId(EasyPostHandler.EASYPOST_SHIPPING_PREFIX + webHookData.shipmentId).map {
-        tx =>
-          boCartHandler.findByTransactionUuid(storeCode, tx.transactionUUID).foreach { boCart =>
-            CompanyDao.findByCode(storeCode).foreach { company =>
-              if (boCart.companyFk == company.id) {
-                DB localTx { implicit session =>
-                  // On ne traite le retour que pour les produits du shop Mogobiz
-                  val newBOShopCarts = boCart.shopCarts.map { boShopCart =>
-                    if (boShopCart.shopId == MogopayConstant.SHOP_MOGOBIZ) {
-                      val newCartItems = boShopCart.cartItems.map { boCartItem =>
-                        val newBODelivery = boCartItem.bODelivery.map { boDelivery =>
-                          boDelivery.copy(status = webHookData.newDeliveryStatus, tracking = tx.shippingData.flatMap {
-                            _.trackingCode
-                          })
+      boTransactionHandler
+        .findByShipmentId(
+          EasyPostHandler.EASYPOST_SHIPPING_PREFIX + webHookData.shipmentId)
+        .map { tx =>
+          boCartHandler
+            .findByTransactionUuid(storeCode, tx.transactionUUID)
+            .foreach { boCart =>
+              CompanyDao.findByCode(storeCode).foreach { company =>
+                if (boCart.companyFk == company.id) {
+                  DB localTx { implicit session =>
+                    // On ne traite le retour que pour les produits du shop Mogobiz
+                    val newBOShopCarts = boCart.shopCarts.map { boShopCart =>
+                      if (boShopCart.shopId == MogopayConstant.SHOP_MOGOBIZ) {
+                        val newCartItems = boShopCart.cartItems.map {
+                          boCartItem =>
+                            val newBODelivery = boCartItem.bODelivery.map {
+                              boDelivery =>
+                                boDelivery.copy(status =
+                                                  webHookData.newDeliveryStatus,
+                                                tracking =
+                                                  tx.shippingData.flatMap {
+                                                    _.trackingCode
+                                                  })
+                            }
+                            boCartItem.copy(bODelivery = newBODelivery)
                         }
-                        boCartItem.copy(bODelivery = newBODelivery)
-                      }
-                      boShopCart.copy(cartItems = newCartItems)
-                    } else boShopCart
+                        boShopCart.copy(cartItems = newCartItems)
+                      } else boShopCart
+                    }
+
+                    val newBOCart = boCart.copy(shopCarts = newBOShopCarts)
+
+                    notifyChangesIntoES(storeCode,
+                                        boCartHandler.update(newBOCart))
                   }
-
-                  val newBOCart = boCart.copy(shopCarts = newBOShopCarts)
-
-                  notifyChangesIntoES(storeCode, boCartHandler.update(newBOCart))
                 }
               }
             }
-          }
           val newShippingData = tx.shippingData.map { shippingData =>
-            shippingData.copy(trackingHistory = data :: shippingData.trackingHistory)
+            shippingData.copy(
+              trackingHistory = data :: shippingData.trackingHistory)
           }
           val newTx = tx.copy(shippingData = newShippingData)
           boTransactionHandler.update(newTx)
-      }
+        }
     }
   }
 
-  protected def extractWebHookData(webhookProvider: String, data: String): Option[WebHookData] = {
+  protected def extractWebHookData(webhookProvider: String,
+                                   data: String): Option[WebHookData] = {
     webhookProvider match {
       case "esay-post" => extractEasypostWebHookData(data)
       case _           => None
     }
   }
 
-  protected def extractEasypostWebHookData(data: String): Option[WebHookData] = {
+  protected def extractEasypostWebHookData(
+      data: String): Option[WebHookData] = {
     val result = parse(data) \ "result"
     (result \ "object", result \ "shipment_id") match {
       case (JString("Tracker"), JString(shipmentId)) => {
@@ -489,8 +611,9 @@ class BackofficeHandler extends JsonUtil with BoService {
           case JString("cancelled")            => Some(DeliveryStatus.CANCELED)
           case JString("error")                => Some(DeliveryStatus.ERROR)
           case JString("failure")              => Some(DeliveryStatus.ERROR)
-          case JString("unknown")              => None // On en connait pas le statut, on le laisse donc en l'état
-          case _                               => None
+          case JString("unknown") =>
+            None // On en connait pas le statut, on le laisse donc en l'état
+          case _ => None
         }
         newStatus.map { status =>
           WebHookData(shipmentId, status)
@@ -500,12 +623,14 @@ class BackofficeHandler extends JsonUtil with BoService {
     }
   }
 
-  private def completeBOTransactionWithDeliveryStatus(storeCode: String): PartialFunction[JValue, JValue] = {
+  private def completeBOTransactionWithDeliveryStatus(
+      storeCode: String): PartialFunction[JValue, JValue] = {
     case obj: JObject => {
       obj \ "transactionUUID" match {
         case (JString(transactionUuid)) => {
-          val req = search(boCartHandler.buildIndex(storeCode) -> "BOCart") query matchQuery("transactionUuid",
-                                                                                             transactionUuid)
+          val req = search(boCartHandler.buildIndex(storeCode) -> "BOCart") query matchQuery(
+            "transactionUuid",
+            transactionUuid)
           val statusList = EsClient.searchAllRaw(req).hits.flatMap { hit =>
             hit2JValue(hit) \ "shopCarts" match {
               case JArray(shopCarts) => {
@@ -531,32 +656,49 @@ class BackofficeHandler extends JsonUtil with BoService {
               case _ => Nil
             }
           }
-          JObject(JField("deliveryStatus", JArray(statusList.toList)) :: obj.obj)
+          JObject(
+            JField("deliveryStatus", JArray(statusList.toList)) :: obj.obj)
         }
         case _ => obj
       }
     }
   }
 
-  def notifyChangesIntoES(storeCode: String, boCart: BOCart, stockChange: Option[StockChange] = None): Unit = {
+  def notifyChangesIntoES(storeCode: String,
+                          boCart: BOCart,
+                          stockChange: Option[StockChange] = None): Unit = {
     cartHandler
-      .notifyChangesIntoES(storeCode, CartChanges(boCartChange = Some(boCart), stockChanges = stockChange.map {
-        List(_)
-      }.getOrElse(Nil)), true)
+      .notifyChangesIntoES(storeCode,
+                           CartChanges(boCartChange = Some(boCart),
+                                       stockChanges = stockChange
+                                         .map {
+                                           List(_)
+                                         }
+                                         .getOrElse(Nil)),
+                           true)
   }
 
   private val filterBOTransactionField: PartialFunction[JField, JField] = {
-    case JField("extra", v: JValue)         => JField("extra", JNothing)
-    case JField("vendor", v: JValue)        => JField("vendor", JNothing)
-    case JField("transactionDate", JInt(v)) => JField("transactionDate", JString(formatDateTime(v)))
-    case JField("creationDate", JInt(v))    => JField("creationDate", JString(formatDateTime(v)))
-    case JField("dateCreated", JInt(v))     => JField("dateCreated", JString(formatDateTime(v)))
-    case JField("lastUpdated", JInt(v))     => JField("lastUpdated", JString(formatDateTime(v)))
-    case JField("startDate", JInt(v))       => JField("startDate", JString(formatDateTime(v)))
-    case JField("endDate", JInt(v))         => JField("endDate", JString(formatDateTime(v)))
-    case JField("orderDate", JInt(v))       => JField("orderDate", JString(formatDateTime(v)))
-    case JField("expiryDate", JInt(v))      => JField("expiryDate", JString(formatDateTime(v)))
-    case JField("birthDate", JInt(v))       => JField("birthDate", JString(formatDateTime(v)))
+    case JField("extra", v: JValue)  => JField("extra", JNothing)
+    case JField("vendor", v: JValue) => JField("vendor", JNothing)
+    case JField("transactionDate", JInt(v)) =>
+      JField("transactionDate", JString(formatDateTime(v)))
+    case JField("creationDate", JInt(v)) =>
+      JField("creationDate", JString(formatDateTime(v)))
+    case JField("dateCreated", JInt(v)) =>
+      JField("dateCreated", JString(formatDateTime(v)))
+    case JField("lastUpdated", JInt(v)) =>
+      JField("lastUpdated", JString(formatDateTime(v)))
+    case JField("startDate", JInt(v)) =>
+      JField("startDate", JString(formatDateTime(v)))
+    case JField("endDate", JInt(v)) =>
+      JField("endDate", JString(formatDateTime(v)))
+    case JField("orderDate", JInt(v)) =>
+      JField("orderDate", JString(formatDateTime(v)))
+    case JField("expiryDate", JInt(v)) =>
+      JField("expiryDate", JString(formatDateTime(v)))
+    case JField("birthDate", JInt(v)) =>
+      JField("birthDate", JString(formatDateTime(v)))
   }
 
   private def formatDateTime(value: BigInt): String = {

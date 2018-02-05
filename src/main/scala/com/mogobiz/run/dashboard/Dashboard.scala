@@ -7,14 +7,15 @@ package com.mogobiz.run.dashboard
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date}
 
-import com.fasterxml.jackson.databind.annotation.{
-  JsonDeserialize,
-  JsonSerialize
-}
+import com.mogobiz.pay.model.Mogopay.Account
+
+//import com.fasterxml.jackson.databind.annotation.{
+//  JsonDeserialize,
+//  JsonSerialize
+//}
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.es.EsClient
 import com.mogobiz.pay.config.MogopayHandlers.handlers._
-import com.mogobiz.pay.model.Account
 import com.mogobiz.run.config.Settings
 import com.mogobiz.run.handlers.BOCart
 import com.mogobiz.run.model.Mogobiz.TransactionStatus.TransactionStatus

@@ -9,7 +9,6 @@ import java.util.UUID
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.HttpCookie
 import akka.http.scaladsl.server.Directives
-import com.mogobiz.json.JacksonConverter._
 import com.mogobiz.pay.config.MogopayHandlers.handlers.accountHandler
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import com.mogobiz.run.config.DefaultComplete
@@ -81,76 +80,74 @@ class ProductService extends Directives with DefaultComplete {
 
   def products(implicit storeCode: String) = pathEnd {
     get {
-      val productsParams = parameters(
-        'maxItemPerPage.?.as[Option[Int]] ::
-          'pageOffset.?.as[Option[Int]] ::
-          'id.? ::
-          'xtype.? ::
-          'name.? ::
-          'fullText.? ::
-          'code.? ::
-          'categoryPath.? ::
-          'brandId.? ::
-          'tagName.? ::
-          'notations.? ::
-          'priceRange.? ::
-          'creationDateMin.? ::
-          'featured.?.as[Option[Boolean]] ::
-          'orderBy.? ::
-          'orderDirection.? ::
-          'lang ? "_all" ::
-          'currency.? ::
-          'country.? ::
-          'promotionId.? ::
-          'hasPromotion.?.as[Option[Boolean]] ::
-          'inStockOnly.?.as[Option[Boolean]] ::
-          'property.? ::
-          'feature.? ::
-          'variations.? :: HNil
-      )
+      parameterMap { params =>
+        val maxItemPerPage = params.get("maxItemPerPage").map(_.toInt)
+        val pageOffset = params.get("pageOffset").map(_.toInt)
+        val id = params.get("id")
+        val xtype = params.get("xtype")
+        val name = params.get("name")
+        val fullText = params.get("fullText")
+        val code = params.get("code")
+        val categoryPath = params.get("categoryPath")
+        val brandId = params.get("brandId")
+        val notations = params.get("notations")
+        val tagName = params.get("tagName")
+        val priceRange = params.get("priceRange")
+        val creationDateMin = params.get("creationDateMin")
+        val featured = params.get("featured").map(_.toBoolean)
+        val orderBy = params.get("orderBy")
+        val orderDirection = params.get("orderDirection")
+        val lang = params.getOrElse("lang", "_all")
+        val currency = params.get("currency")
+        val country = params.get("country")
+        val promotionId = params.get("promotionId")
+        val hasPromotion = params.get("hasPromotion").map(_.toBoolean)
+        val inStockOnly = params.get("inStockOnly").map(_.toBoolean)
+        val property = params.get("property")
+        val feature = params.get("feature")
+        val variations = params.get("variations")
 
-      productsParams.happly {
-        case (maxItemPerPage :: pageOffset :: id :: xtype :: name :: fullText :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: inStock :: property :: feature :: variations :: HNil) =>
-          val promotionIds = hasPromotion.map(v => {
-            if (v) {
-              val ids = promotionHandler.getPromotionIds(storeCode)
-              if (ids.isEmpty) None
-              else Some(ids.mkString("|"))
-            } else None
-          }) match {
-            case Some(s) => s
-            case _       => promotionId
-          }
+        val promotionIds = hasPromotion.map(v => {
+          if (v) {
+            val ids = promotionHandler.getPromotionIds(storeCode)
+            if (ids.isEmpty) None
+            else Some(ids.mkString("|"))
+          } else None
+        }) match {
+          case Some(s) => s
+          case _       => promotionId
+        }
 
-          val params = new ProductRequest(
-            maxItemPerPage,
-            pageOffset,
-            id,
-            xtype,
-            name,
-            fullText,
-            code,
-            categoryPath,
-            brandId,
-            tagName,
-            notations,
-            priceRange,
-            creationDateMin,
-            featured,
-            orderBy,
-            orderDirection,
-            lang,
-            currencyCode,
-            countryCode,
-            promotionIds,
-            hasPromotion,
-            inStock,
-            property,
-            feature,
-            variations
-          )
-          handleCall(productHandler.queryProductsByCriteria(storeCode, params),
-                     (json: JValue) => complete(StatusCodes.OK, json))
+        val productRequest = ProductRequest(
+          maxItemPerPage,
+          pageOffset,
+          id,
+          xtype,
+          name,
+          fullText,
+          code,
+          categoryPath,
+          brandId,
+          tagName,
+          notations,
+          priceRange,
+          creationDateMin,
+          featured,
+          orderBy,
+          orderDirection,
+          lang,
+          currency,
+          country,
+          promotionIds,
+          hasPromotion,
+          inStockOnly,
+          property,
+          feature,
+          variations
+        )
+        handleCall(productHandler.queryProductsByCriteria(storeCode,
+                                                          productRequest),
+                   (json: JValue) => complete(StatusCodes.OK, json))
       }
     }
   }

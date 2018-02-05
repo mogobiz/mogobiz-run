@@ -12,8 +12,6 @@ import akka.http.scaladsl.server.Directives
 import org.json4s._
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.json.JacksonConverter._
 
 class BrandService extends Directives with DefaultComplete {
 

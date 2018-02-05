@@ -55,42 +55,42 @@ trait MogobizCake {
 
   def logoHandler: LogoHandler
 
-  def miraklHandler: MiraklHandler
-
   def boCartHandler: BOCartHandler
 
 }
 
 class DefaultMogobizCake extends MogobizCake {
-  val tagHandler        = new TagHandler
-  val brandHandler      = new BrandHandler
-  val langHandler       = new LangHandler
-  val countryHandler    = new CountryHandler
-  val currencyHandler   = new CurrencyHandler
-  val categoryHandler   = new CategoryHandler
-  val productHandler    = new ProductHandler
-  val skuHandler        = new SkuHandler
+  val tagHandler = new TagHandler
+  val brandHandler = new BrandHandler
+  val langHandler = new LangHandler
+  val countryHandler = new CountryHandler
+  val currencyHandler = new CurrencyHandler
+  val categoryHandler = new CategoryHandler
+  val productHandler = new ProductHandler
+  val skuHandler = new SkuHandler
   val preferenceHandler = new PreferenceHandler
-  val cartHandler       = new CartHandler
-  val wishlistHandler   = new WishlistHandler
-  val promotionHandler  = new PromotionHandler
-  val facetHandler      = new FacetHandler
-  val stockHandler      = new StockHandler
-  val salesHandler      = new SalesHandler
+  val cartHandler = new CartHandler
+  val wishlistHandler = new WishlistHandler
+  val promotionHandler = new PromotionHandler
+  val facetHandler = new FacetHandler
+  val stockHandler = new StockHandler
+  val salesHandler = new SalesHandler
 
-  val resourceHandler   = new ResourceHandler
-  val taxRateHandler    = new TaxRateHandler
-  val couponHandler     = new CouponHandler
-  val forUpdateHandler  = new ForUpdateHandler
+  val resourceHandler = new ResourceHandler
+  val taxRateHandler = new TaxRateHandler
+  val couponHandler = new CouponHandler
+  val forUpdateHandler = new ForUpdateHandler
   val backofficeHandler = new BackofficeHandler
 
-  val learningHandler  = new LearningHandler
+  val learningHandler = new LearningHandler
   val validatorHandler = new ValidatorHandler
-  val easyPostHandler  = new EasyPostHandler
+  val easyPostHandler = new EasyPostHandler
 
   val logoHandler = new LogoHandler
 
-  val miraklHandler = if (Settings.Externals.mirakl) new MiraklHandlerImpl else new MiraklHandlerUndef
+  val miraklHandler =
+    if (Settings.Externals.mirakl) new MiraklHandlerImpl
+    else new MiraklHandlerUndef
   val boCartHandler = new BOCartHandler
 
   val accountHandler = new AccountHandler

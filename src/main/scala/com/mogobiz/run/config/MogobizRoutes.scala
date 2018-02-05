@@ -7,10 +7,15 @@ package com.mogobiz.run.config
 import akka.actor.Props
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.{Directives, Route}
+import com.mogobiz.pay.exceptions.Exceptions.{
+  MogopayException,
+  MogopayMessagelessException
+}
 import com.mogobiz.run.exceptions.MogobizException
 import com.mogobiz.run.jobs.CleanCartJob
 import com.mogobiz.run.services._
 import com.mogobiz.system.MogobizSystem
+import com.mogobiz.utils.HttpComplete
 
 import scala.util.{Failure, Success, Try}
 
@@ -53,55 +58,19 @@ trait MogobizRoutes extends Directives {
     }
 }
 
-trait DefaultComplete {
+trait DefaultComplete extends HttpComplete {
   this: Directives =>
-  def handleCall[T](call: => T, handler: T => Route): Route = {
-    val start = System.currentTimeMillis()
-    val res = Try(call) match {
-      case Failure(t: MogobizException) =>
-        t.printStackTrace();
+  override def completeException(t: Throwable): Route = {
+    t match {
+      case (ex: MogobizException) =>
+        if (ex.printTrace) ex.printStackTrace()
         complete(
-          t.code -> Map('type -> t.getClass.getSimpleName,
-                        'error -> t.toString))
-      case Failure(t: Throwable) =>
-        t.printStackTrace();
-        complete(
-          StatusCodes.InternalServerError -> Map(
-            'type -> t.getClass.getSimpleName,
-            'error -> t.toString))
-      case Success(res) => handler(res)
-    }
-    val duration = System.currentTimeMillis() - start
-    res
-  }
+          ex.code -> Map('type -> ex.getClass.getSimpleName,
+                         'error -> ex.getMessage))
 
-  def handleComplete[T](call: Try[Try[T]], handler: T => Route): Route = {
-    val start = System.currentTimeMillis()
-    val ret = call match {
-      case Failure(t) =>
-        t.printStackTrace();
-        complete(
-          StatusCodes.InternalServerError -> Map(
-            'type -> t.getClass.getSimpleName,
-            'error -> t.toString))
-      case Success(res) =>
-        res match {
-          case Success(id) => handler(id)
-          case Failure(t: MogobizException) =>
-            t.printStackTrace();
-            complete(
-              t.code -> Map('type -> t.getClass.getSimpleName,
-                            'error -> t.toString))
-          case Failure(t) =>
-            t.printStackTrace();
-            complete(
-              StatusCodes.InternalServerError -> Map(
-                'type -> t.getClass.getSimpleName,
-                'error -> t.toString))
-        }
+      case (_) =>
+        super.completeException(t)
     }
-    val duration = System.currentTimeMillis() - start
-    ret
   }
 }
 

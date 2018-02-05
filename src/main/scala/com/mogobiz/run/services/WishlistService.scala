@@ -10,9 +10,7 @@ import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.model._
 import com.mogobiz.utils.GlobalUtil
-import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.json.JacksonConverter._
+import com.mogobiz.run.implicits.JacksonSupport._
 
 class WishlistService extends Directives with DefaultComplete {
 

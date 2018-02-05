@@ -16,14 +16,12 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.HttpCookie
 import akka.http.scaladsl.server.Directives
 import com.mogobiz.pay.config.MogopayHandlers
-import com.mogobiz.pay.model.{SelectShippingCart, ShippingCart}
+import com.mogobiz.pay.model.Mogopay.{SelectShippingCart, ShippingCart}
 import com.mogobiz.run.model.RequestParameters._
 import com.mogobiz.session.Session
 import com.mogobiz.session.SessionESDirectives._
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.json.JacksonConverter._
+import com.mogobiz.run.implicits.JacksonSupport._
 
 class CartService extends Directives with DefaultComplete {
 
@@ -404,5 +402,4 @@ class CartService extends Directives with DefaultComplete {
         }
       }
     }
-
 }

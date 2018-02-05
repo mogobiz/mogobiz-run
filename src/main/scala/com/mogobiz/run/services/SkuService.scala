@@ -4,24 +4,12 @@
 
 package com.mogobiz.run.services
 
-import java.util.UUID
-
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.{Directives, Route}
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
-import com.mogobiz.run.implicits.Json4sProtocol
-import Json4sProtocol._
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Directives
 import com.mogobiz.run.model.RequestParameters._
-import com.mogobiz.run.model._
-import com.mogobiz.session.Session
-import com.mogobiz.session.SessionESDirectives._
-import com.mogobiz.pay.implicits.Implicits
-import com.mogobiz.pay.implicits.Implicits.MogopaySession
-import com.mogobiz.run.config.Settings._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.json.JacksonConverter._
 
 class SkuService extends Directives with DefaultComplete {
   import org.json4s._
@@ -51,78 +39,75 @@ class SkuService extends Directives with DefaultComplete {
 
   def skuRoutes(implicit storeCode: String) = skus ~ skuSearchRoute
 
-  def skuSearchRoute(implicit storeCode: String) = pathEnd {
+  def skuSearchRoute(implicit storeCode: String): Route = pathEnd {
     get {
-      val productsParams = parameters(
-        'maxItemPerPage.?.as[Option[Int]] ::
-          'pageOffset.?.as[Option[Int]] ::
-          'id.? ::
-          'productId.? ::
-          'xtype.? ::
-          'name.? ::
-          'code.? ::
-          'categoryPath.? ::
-          'brandId.? ::
-          'tagName.? ::
-          'notations.? ::
-          'priceRange.? ::
-          'creationDateMin.? ::
-          'featured.?.as[Option[Boolean]] ::
-          'orderBy.? ::
-          'orderDirection.? ::
-          'lang ? "_all" ::
-          'currency.? ::
-          'country.? ::
-          'promotionId.? ::
-          'hasPromotion.?.as[Option[Boolean]] ::
-          'inStockOnly.?.as[Option[Boolean]] ::
-          'property.? ::
-          'feature.? ::
-          'variations.? :: HNil
-      )
+      parameterMap { params =>
+        val maxItemPerPage = params.get("maxItemPerPage").map(_.toInt)
+        val pageOffset = params.get("pageOffset").map(_.toInt)
+        val id = params.get("id")
+        val productId = params.get("productId")
+        val xtype = params.get("xtype")
+        val name = params.get("name")
+        val code = params.get("code")
+        val categoryPath = params.get("categoryPath")
+        val brandId = params.get("brandId")
+        val notations = params.get("notations")
+        val tagName = params.get("tagName")
+        val priceRange = params.get("priceRange")
+        val creationDateMin = params.get("creationDateMin")
+        val featured = params.get("featured").map(_.toBoolean)
+        val orderBy = params.get("orderBy")
+        val orderDirection = params.get("orderDirection")
+        val lang = params.getOrElse("lang", "_all")
+        val currency = params.get("currency")
+        val country = params.get("country")
+        val promotionId = params.get("promotionId")
+        val hasPromotion = params.get("hasPromotion").map(_.toBoolean)
+        val inStockOnly = params.get("inStockOnly").map(_.toBoolean)
+        val property = params.get("property")
+        val feature = params.get("feature")
+        val variations = params.get("variations")
 
-      productsParams.happly {
-        case (maxItemPerPage :: pageOffset :: id :: productId :: xtype :: name :: code :: categoryPath :: brandId :: tagName :: notations :: priceRange :: creationDateMin :: featured :: orderBy :: orderDirection :: lang :: currencyCode :: countryCode :: promotionId :: hasPromotion :: inStockOnly :: property :: feature :: variations :: HNil) =>
-          val promotionIds = hasPromotion.map(v => {
-            if (v) {
-              val ids = promotionHandler.getPromotionIds(storeCode)
-              if (ids.isEmpty) None
-              else Some(ids.mkString("|"))
-            } else None
-          }) match {
-            case Some(s) => s
-            case _       => promotionId
-          }
+        val promotionIds = hasPromotion.map(v => {
+          if (v) {
+            val ids = promotionHandler.getPromotionIds(storeCode)
+            if (ids.isEmpty) None
+            else Some(ids.mkString("|"))
+          } else None
+        }) match {
+          case Some(s) => s
+          case _       => promotionId
+        }
 
-          val params = new SkuRequest(
-            maxItemPerPage,
-            pageOffset,
-            id,
-            productId,
-            xtype,
-            name,
-            code,
-            categoryPath,
-            brandId,
-            tagName,
-            notations,
-            priceRange,
-            creationDateMin,
-            featured,
-            orderBy,
-            orderDirection,
-            lang,
-            currencyCode,
-            countryCode,
-            promotionIds,
-            hasPromotion,
-            inStockOnly,
-            property,
-            feature,
-            variations
-          )
-          handleCall(skuHandler.querySkusByCriteria(storeCode, params),
-                     (json: JValue) => complete(StatusCodes.OK, json))
+        val skuRequest = SkuRequest(
+          maxItemPerPage,
+          pageOffset,
+          id,
+          productId,
+          xtype,
+          name,
+          code,
+          categoryPath,
+          brandId,
+          tagName,
+          notations,
+          priceRange,
+          creationDateMin,
+          featured,
+          orderBy,
+          orderDirection,
+          lang,
+          currency,
+          country,
+          promotionIds,
+          hasPromotion,
+          inStockOnly,
+          property,
+          feature,
+          variations
+        )
+        handleCall(skuHandler.querySkusByCriteria(storeCode, skuRequest),
+                   (json: JValue) => complete(StatusCodes.OK, json))
       }
     }
   }

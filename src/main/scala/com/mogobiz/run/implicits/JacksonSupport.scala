@@ -15,14 +15,13 @@ import com.mogobiz.run.model.Mogobiz.ReductionRuleType.ReductionRuleType
 import com.mogobiz.run.model.Mogobiz.ReturnStatus.ReturnStatus
 import com.mogobiz.run.model.Mogobiz.ReturnedItemStatus.ReturnedItemStatus
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-import org.json4s._
+import org.json4s.{CustomSerializer, DefaultFormats, Formats, JString, jackson}
 import org.json4s.ext.JodaTimeSerializers
 
 /**
   *
   */
-object Json4sProtocol {
-  import Json4sSupport._
+trait JacksonSupport extends Json4sSupport {
   class ProductTypeSerializer
       extends CustomSerializer[ProductType](
         format =>
@@ -178,4 +177,9 @@ object Json4sProtocol {
       new DeliveryStatusSerializer() +
       new ReturnedItemStatusSerializer() +
       new ReturnStatusSerializer()
+
+  implicit val serialization = jackson.Serialization
+
 }
+
+object JacksonSupport extends JacksonSupport

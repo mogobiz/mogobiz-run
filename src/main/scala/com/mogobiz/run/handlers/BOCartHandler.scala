@@ -6,7 +6,7 @@ import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
 import com.mogobiz.es.EsClient
 import com.mogobiz.json.JacksonConverter
 import com.mogobiz.pay.common.ExternalCode
-import com.mogobiz.pay.model.AccountAddress
+import com.mogobiz.pay.model.Mogopay.AccountAddress
 import com.mogobiz.pay.sql.BOTransactionDAO
 import com.mogobiz.run.model.Mogobiz._
 import com.mogobiz.run.model.Render.RegisteredCartItem

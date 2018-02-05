@@ -13,7 +13,9 @@ import scala.util.Try
 
 trait MogobizTypesafeConfig extends TypesafeConfig {
 
-  lazy val config: Config = ConfigFactory.load("mogobiz").withFallback(ConfigFactory.load("default-mogobiz"))
+  lazy val config: Config = ConfigFactory
+    .load("mogobiz")
+    .withFallback(ConfigFactory.load("default-mogobiz"))
 }
 
 case class MogobizDBsWithEnv(envValue: String)
@@ -29,7 +31,9 @@ object Settings {
 
   //val default = ConfigFactory.load()
 
-  lazy val config: Config = ConfigFactory.load("mogobiz").withFallback(ConfigFactory.load("default-mogobiz"))
+  lazy val config: Config = ConfigFactory
+    .load("mogobiz")
+    .withFallback(ConfigFactory.load("default-mogobiz"))
 
   val CookieTracking = config getString "mogobiz.cookie-tracking"
 
@@ -42,25 +46,22 @@ object Settings {
   //  val RememberCookieName = config getString "session.remember.cookie.name"
   //  val RememberCookieMaxAge = config getLong "session.remember.cookie.maxage"
 
-  val AccessUrl          = config getString "mogobiz.accessUrl"
+  val AccessUrl = config getString "mogobiz.accessUrl"
   val jahiaClearCacheUrl = config getString "mogobiz.jahiaClearCacheUrl"
 
   object Externals {
-    private val providers = (config getString "mogobiz.externals.providers").toLowerCase.split(",").toList
-    val mirakl            = providers.contains("mirakl")
-
-    object Mirakl {
-      lazy val url         = if (mirakl) config getString "mogobiz.externals.mirakl.url" else ""
-      lazy val frontApiKey = if (mirakl) config getString "mogobiz.externals.mirakl.frontApiKey" else ""
-    }
+    private val providers =
+      (config getString "mogobiz.externals.providers").toLowerCase
+        .split(",")
+        .toList
   }
 
   object Cart {
     val Lifetime = config.getInt("mogobiz.cart.lifetime")
 
     object CleanJob {
-      val Delay     = config.getInt("mogobiz.cart.cleanJob.delay")
-      val Interval  = config.getInt("mogobiz.cart.cleanJob.interval")
+      val Delay = config.getInt("mogobiz.cart.cleanJob.delay")
+      val Interval = config.getInt("mogobiz.cart.cleanJob.interval")
       val QuerySize = config.getInt("mogobiz.cart.cleanJob.querySize")
     }
 
@@ -71,10 +72,10 @@ object Settings {
   }
 
   object clickatell {
-    val user     = ""
+    val user = ""
     val password = ""
-    val apiId    = ""
-    val sender   = ""
+    val apiId = ""
+    val sender = ""
   }
 
   object Learning {
@@ -88,51 +89,53 @@ object Settings {
   object Mail {
 
     object Smtp {
-      val Host                     = config.getString("mail.smtp.host")
-      val Port                     = config.getInt("mail.smtp.port")
-      val SslPort                  = config.getInt("mail.smtp.sslport")
-      val Username                 = config.getString("mail.smtp.username")
-      val Password                 = config.getString("mail.smtp.password")
-      val IsSSLEnabled             = config.getBoolean("mail.smtp.ssl")
-      val IsSSLCheckServerIdentity = config.getBoolean("mail.smtp.checkserveridentity")
-      val IsStartTLSEnabled        = config.getBoolean("mail.smtp.starttls")
+      val Host = config.getString("mail.smtp.host")
+      val Port = config.getInt("mail.smtp.port")
+      val SslPort = config.getInt("mail.smtp.sslport")
+      val Username = config.getString("mail.smtp.username")
+      val Password = config.getString("mail.smtp.password")
+      val IsSSLEnabled = config.getBoolean("mail.smtp.ssl")
+      val IsSSLCheckServerIdentity =
+        config.getBoolean("mail.smtp.checkserveridentity")
+      val IsStartTLSEnabled = config.getBoolean("mail.smtp.starttls")
 
       implicit val MailSettings = MailConfig(
-          host = Host,
-          port = Port,
-          sslPort = SslPort,
-          username = Username,
-          password = Password,
-          sslEnabled = IsSSLEnabled,
-          sslCheckServerIdentity = IsSSLCheckServerIdentity,
-          startTLSEnabled = IsStartTLSEnabled
+        host = Host,
+        port = Port,
+        sslPort = SslPort,
+        username = Username,
+        password = Password,
+        sslEnabled = IsSSLEnabled,
+        sslCheckServerIdentity = IsSSLCheckServerIdentity,
+        startTLSEnabled = IsStartTLSEnabled
       )
     }
 
     val DefaultFrom = config getString "mail.from"
-    val MaxAge      = (config getInt "mail.confirmation.maxage")
+    val MaxAge = (config getInt "mail.confirmation.maxage")
   }
 
-  val Dialect = if (config hasPath "dialect") config getString "dialect" else "test"
+  val Dialect =
+    if (config hasPath "dialect") config getString "dialect" else "test"
   val NextVal = config getString s"$Dialect.db.default.nextval"
 
   MogobizDBsWithEnv(Dialect).setupAll()
 
-  val EsHost     = config getString "elastic.host"
+  val EsHost = config getString "elastic.host"
   val EsHttpPort = config getInt "elastic.httpPort"
-  val EsPort     = config getInt "elastic.port"
-  val EsIndex    = config getString "elastic.index"
-  val EsMLIndex  = config getString "elastic.mlindex"
-  val EsCluster  = config getString "elastic.cluster"
-  val EsFullUrl  = s"$EsHost:$EsHttpPort"
-  val EsDebug    = config getBoolean "elastic.debug"
+  val EsPort = config getInt "elastic.port"
+  val EsIndex = config getString "elastic.index"
+  val EsMLIndex = config getString "elastic.mlindex"
+  val EsCluster = config getString "elastic.cluster"
+  val EsFullUrl = s"$EsHost:$EsHttpPort"
+  val EsDebug = config getBoolean "elastic.debug"
   val EsEmbedded = {
     val e = config getString "elastic.embedded"
     Try(getClass.getResource(e).getPath) getOrElse e
   }
 
   val ResourcesRootPath = config getString "resources.rootPath"
-  val TemplatesPath     = config.getString("templates.path")
+  val TemplatesPath = config.getString("templates.path")
 
   //  require(ApplicationSecret.nonEmpty, "application.secret must be non-empty")
   //  require(SessionCookieName.nonEmpty, "session.cookie.name must be non-empty")

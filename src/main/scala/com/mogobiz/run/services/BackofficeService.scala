@@ -5,21 +5,23 @@
 package com.mogobiz.run.services
 
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.{Directive1, Directives}
+import akka.http.scaladsl.server.Directives
 import com.mogobiz.pay.implicits.Implicits.MogopaySession
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.exceptions.SomeParameterIsMissingException
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+
 import com.mogobiz.run.model.RequestParameters.{
   BOListCustomersRequest,
   BOListOrdersRequest,
   CreateBOReturnedItemRequest,
   UpdateBOReturnedItemRequest
 }
+
 import com.mogobiz.run.utils.Paging
 import com.mogobiz.session.SessionESDirectives._
-import org.json4s.JsonAST.JValue
-import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+import org.json4s.JValue
 
 class BackofficeService extends Directives with DefaultComplete {
 
@@ -27,14 +29,11 @@ class BackofficeService extends Directives with DefaultComplete {
     optionalSession { optSession =>
       val accountUuid = optSession.flatMap(_.sessionData.accountId)
       val locale = optSession.flatMap(_.sessionData.locale)
+
       pathPrefix(Segment / "backoffice") { implicit storeCode =>
         path("shipping-webhook" / Segment) { webhookProvider =>
           post {
-            def rawData: Directive1[String] = extract {
-              _.request.entity.asString
-            }
-
-            rawData { postData =>
+            entity(as[String]) { postData =>
               handleCall(backofficeHandler.shippingWebhook(storeCode,
                                                            webhookProvider,
                                                            postData),
@@ -132,7 +131,7 @@ class BackofficeService extends Directives with DefaultComplete {
           boCartItemUuid,
           req,
           locale),
-        (res: Unit) => complete(StatusCodes.OK)
+        (_: Unit) => complete(StatusCodes.OK)
       )
     }
 
@@ -154,8 +153,7 @@ class BackofficeService extends Directives with DefaultComplete {
           req,
           locale
         ),
-        (res: Unit) => complete(StatusCodes.OK)
+        (_: Unit) => complete(StatusCodes.OK)
       )
     }
-
 }

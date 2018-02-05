@@ -4,18 +4,13 @@
 
 package com.mogobiz.run.services
 
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives
 import com.mogobiz.run.config.DefaultComplete
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import com.mogobiz.run.model.RequestParameters.FacetRequest
-import com.mogobiz.run.implicits.Json4sProtocol
-import Json4sProtocol._
-import akka.http.scaladsl.common.NameReceptacle
-import akka.http.scaladsl.server.Directives
-import akka.shapeless.HNil
-import org.json4s._
-
-import scala.concurrent.ExecutionContext
-import scala.util.Try
+import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
+import org.json4s.JValue
 
 class FacetService extends Directives with DefaultComplete {
 
@@ -25,81 +20,113 @@ class FacetService extends Directives with DefaultComplete {
     }
   }
 
-  import akka.shapeless._
-
   def getFacets(implicit storeCode: String) =
     pathEnd {
       get {
-        parameters(
-          'priceInterval.as[Long],
-          'xtype.?,
-          'name.?,
-          'code.?,
-          'rootCategoryPath.?,
-          'categoryPath.?,
-          'brandId.?,
-          'tags.?,
-          'notations.?,
-          'priceRange.?,
-          'creationDateMin.?,
-          'featured.as[Boolean].?,
-          'lang ? "_all",
-          'country.?,
-          'promotionId.?,
-          'hasPromotion.as[Boolean].?,
-          'inStockOnly.as[Boolean].?,
-          'property.?,
-          'features.?,
-          'variations.?,
-          'brandName.?,
-          'categoryName.?,
-          'multiCategory.as[Boolean].?,
-          'multiBrand.as[Boolean].?,
-          'multiTag.as[Boolean].?,
-          'multiFeatures.as[Boolean].?,
-          'multiVariations.as[Boolean].?,
-          'multiNotation.as[Boolean].?,
-          'multiPrices.as[Boolean].?
-        ) { facetParam =>
-          }
+        parameterMap { params =>
+          val priceInterval = params("priceInterval").toLong
+          val xtype = params.get("xtype")
+          val name = params.get("name")
+          val code = params.get("code")
+          val rootCategoryPath = params.get("rootCategoryPath")
+          val categoryPath = params.get("categoryPath")
+          val brandId = params.get("brandId")
+          val tags = params.get("tags")
+          val notations = params.get("notations")
+          val priceRange = params.get("priceRange")
+          val creationDateMin = params.get("creationDateMin")
+          val featured = params.get("featured").map(_.toBoolean)
+          val lang = params.getOrElse("lang", "_all")
+          val country = params.get("country")
+          val promotionId = params.get("promotionId")
+          val hasPromotion = params.get("hasPromotion").map(_.toBoolean)
+          val inStockOnly = params.get("inStockOnly").map(_.toBoolean)
+          val property = params.get("property")
+          val features = params.get("features")
+          val variations = params.get("variations")
+          val brandName = params.get("brandName")
+          val categoryName = params.get("categoryName")
+          val multiCategory = params.get("multiCategory").map(_.toBoolean)
+          val multiBrand = params.get("multiBrand").map(_.toBoolean)
+          val multiTag = params.get("multiTag").map(_.toBoolean)
+          val multiFeatures = params.get("multiFeatures").map(_.toBoolean)
+          val multiVariations = params.get("multiVariations").map(_.toBoolean)
+          val multiNotation = params.get("multiNotation").map(_.toBoolean)
+          val multiPrices = params.get("multiPrices").map(_.toBoolean)
+          val param = FacetRequest(
+            priceInterval,
+            None,
+            xtype,
+            name,
+            code,
+            rootCategoryPath,
+            categoryPath,
+            brandId,
+            tags,
+            notations,
+            priceRange,
+            creationDateMin,
+            featured,
+            lang,
+            country,
+            promotionId,
+            hasPromotion,
+            inStockOnly,
+            property,
+            features,
+            variations,
+            brandName,
+            categoryName,
+            multiCategory,
+            multiBrand,
+            multiTag,
+            multiFeatures,
+            multiVariations,
+            multiNotation,
+            multiPrices
+          )
 
-        val facetParam = parameters(
-          'priceInterval.as[Long] ::
-            'xtype.? ::
-            'name.? ::
-            'code.? ::
-            'rootCategoryPath.? ::
-            'categoryPath.? ::
-            'brandId.? ::
-            'tags.? ::
-            'notations.? ::
-            'priceRange.? ::
-            'creationDateMin.? ::
-            'featured.?.as[Option[Boolean]] ::
-            'lang ? "_all" ::
-            'country.? ::
-            'promotionId.? ::
-            'hasPromotion.?.as[Option[Boolean]] ::
-            'inStockOnly.?.as[Option[Boolean]] ::
-            'property.? ::
-            'features.? ::
-            'variations.? ::
-            'brandName.? ::
-            'categoryName.? ::
-            'multiCategory.?.as[Option[Boolean]] ::
-            'multiBrand.?.as[Option[Boolean]] ::
-            'multiTag.?.as[Option[Boolean]] ::
-            'multiFeatures.?.as[Option[Boolean]] ::
-            'multiVariations.?.as[Option[Boolean]] ::
-            'multiNotation.?.as[Option[Boolean]] ::
-            'multiPrices.?.as[Option[Boolean]] ::
-            HNil)
-
-        facetParam.happly {
-          case (priceInterval :: xtype :: name :: code :: rootCategoryPath :: categoryPath :: brandId :: tags :: notations :: priceRange :: creationDateMin :: featured :: lang :: country :: promotionId :: hasPromotion :: inStockOnly :: property :: features :: variations :: brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations :: multiNotation :: multiPrices :: HNil) =>
-            val param = new FacetRequest(
+          handleCall(facetHandler.getProductCriteria(storeCode, param),
+                     (json: JValue) => complete(StatusCodes.OK, json))
+        }
+      }
+    } ~ pathPrefix("skus") {
+      pathEnd {
+        get {
+          parameterMap { params =>
+            val priceInterval = params("priceInterval").toLong
+            val productId = params.get("productId")
+            val xtype = params.get("xtype")
+            val name = params.get("name")
+            val code = params.get("code")
+            val rootCategoryPath = params.get("rootCategoryPath")
+            val categoryPath = params.get("categoryPath")
+            val brandId = params.get("brandId")
+            val tags = params.get("tags")
+            val notations = params.get("notations")
+            val priceRange = params.get("priceRange")
+            val creationDateMin = params.get("creationDateMin")
+            val featured = params.get("featured").map(_.toBoolean)
+            val lang = params.getOrElse("lang", "_all")
+            val country = params.get("country")
+            val promotionId = params.get("promotionId")
+            val hasPromotion = params.get("hasPromotion").map(_.toBoolean)
+            val inStockOnly = params.get("inStockOnly").map(_.toBoolean)
+            val property = params.get("property")
+            val features = params.get("features")
+            val variations = params.get("variations")
+            val brandName = params.get("brandName")
+            val categoryName = params.get("categoryName")
+            val multiCategory = params.get("multiCategory").map(_.toBoolean)
+            val multiBrand = params.get("multiBrand").map(_.toBoolean)
+            val multiTag = params.get("multiTag").map(_.toBoolean)
+            val multiFeatures = params.get("multiFeatures").map(_.toBoolean)
+            val multiVariations = params.get("multiVariations").map(_.toBoolean)
+            val multiNotation = params.get("multiNotation").map(_.toBoolean)
+            val multiPrices = params.get("multiPrices").map(_.toBoolean)
+            val param = FacetRequest(
               priceInterval,
-              None,
+              productId,
               xtype,
               name,
               code,
@@ -130,82 +157,8 @@ class FacetService extends Directives with DefaultComplete {
               multiPrices
             )
 
-            handleCall(facetHandler.getProductCriteria(storeCode, param),
+            handleCall(facetHandler.getSkuCriteria(storeCode, param),
                        (json: JValue) => complete(StatusCodes.OK, json))
-        }
-      }
-    } ~ pathPrefix("skus") {
-      pathEnd {
-        get {
-          val facetParam = parameters(
-            'priceInterval.as[Long] ::
-              'productId.? ::
-              'xtype.? ::
-              'name.? ::
-              'code.? ::
-              'rootCategoryPath.? ::
-              'categoryPath.? ::
-              'brandId.? ::
-              'tags.? ::
-              'notations.? ::
-              'priceRange.? ::
-              'creationDateMin.? ::
-              'featured.?.as[Option[Boolean]] ::
-              'lang ? "_all" ::
-              'country.? ::
-              'promotionId.? ::
-              'hasPromotion.?.as[Option[Boolean]] ::
-              'inStockOnly.?.as[Option[Boolean]] ::
-              'property.? ::
-              'features.? ::
-              'variations.? ::
-              'brandName.? ::
-              'categoryName.? ::
-              'multiCategory.?.as[Option[Boolean]] ::
-              'multiBrand.?.as[Option[Boolean]] ::
-              'multiTag.?.as[Option[Boolean]] ::
-              'multiFeatures.?.as[Option[Boolean]] ::
-              'multiVariations.?.as[Option[Boolean]] ::
-              'multiNotation.?.as[Option[Boolean]] ::
-              'multiPrices.?.as[Option[Boolean]] ::
-              HNil)
-          facetParam.happly {
-            case (priceInterval :: productId :: xtype :: name :: code :: rootCategoryPath :: categoryPath :: brandId :: tags :: notations :: priceRange :: creationDateMin :: featured :: lang :: country :: promotionId :: hasPromotion :: inStockOnly :: property :: features :: variations :: brandName :: categoryName :: multiCategory :: multiBrand :: multiTag :: multiFeatures :: multiVariations :: multiNotation :: multiPrices :: HNil) =>
-              val param = new FacetRequest(
-                priceInterval,
-                productId,
-                xtype,
-                name,
-                code,
-                rootCategoryPath,
-                categoryPath,
-                brandId,
-                tags,
-                notations,
-                priceRange,
-                creationDateMin,
-                featured,
-                lang,
-                country,
-                promotionId,
-                hasPromotion,
-                inStockOnly,
-                property,
-                features,
-                variations,
-                brandName,
-                categoryName,
-                multiCategory,
-                multiBrand,
-                multiTag,
-                multiFeatures,
-                multiVariations,
-                multiNotation,
-                multiPrices
-              )
-
-              handleCall(facetHandler.getSkuCriteria(storeCode, param),
-                         (json: JValue) => complete(StatusCodes.OK, json))
           }
         }
       }

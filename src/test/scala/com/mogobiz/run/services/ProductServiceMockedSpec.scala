@@ -6,15 +6,19 @@ package com.mogobiz.run.services
 
 import java.util.{Date, UUID}
 
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.run.model.RequestParameters.{CommentPutRequest, CommentRequest, NoteCommentRequest}
+import com.mogobiz.run.model.RequestParameters.{
+  CommentPutRequest,
+  CommentRequest,
+  NoteCommentRequest
+}
 import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
 
 /**
   */
 class ProductServiceMockedSpec extends MogobizRouteTest {
 
-  override lazy val apiRoutes = (new ProductService() with DefaultCompleteMocked).route
+  override lazy val apiRoutes =
+    (new ProductService() with DefaultCompleteMocked).route
   val rootPath = "/store/" + STORE + "/products"
 
   " product route " should " be successful when getting a product detail " in {
@@ -39,7 +43,7 @@ class ProductServiceMockedSpec extends MogobizRouteTest {
 
   it should " be successful when creating a product comment " in {
 
-    import Json4sProtocol._
+    import JacksonSupport._
 
     //val productUuid = UUID.randomUUID().toString
     val productId = 1234
@@ -53,7 +57,7 @@ class ProductServiceMockedSpec extends MogobizRouteTest {
 
   it should " be successful when updating a product comment " in {
 
-    import Json4sProtocol._
+    import JacksonSupport._
 
     //val productUuid = UUID.randomUUID().toString
     val productId = 1234
@@ -68,7 +72,7 @@ class ProductServiceMockedSpec extends MogobizRouteTest {
 
   it should " be successful when updating a product comment notation" in {
 
-    import Json4sProtocol._
+    import JacksonSupport._
 
     //val productUuid = UUID.randomUUID().toString
     val productId = 1234
@@ -83,7 +87,7 @@ class ProductServiceMockedSpec extends MogobizRouteTest {
 
   it should " be successful when deleting a product comment " in {
 
-    import Json4sProtocol._
+    import JacksonSupport._
 
     //val productUuid = UUID.randomUUID().toString
     val productId = 1234
@@ -94,7 +98,6 @@ class ProductServiceMockedSpec extends MogobizRouteTest {
       status.isSuccess should be(true)
     }
   }
-
 
   it should " be successful when finding a product with default parameters " in {
     val path = rootPath + "/find?query=somethingtosearch"
@@ -149,7 +152,6 @@ class ProductServiceMockedSpec extends MogobizRouteTest {
       status.isSuccess should be(true)
     }
   }
-
 
   " history route " should " respond when ask for history " in {
     val rootPath = "/store/" + STORE + "/history"

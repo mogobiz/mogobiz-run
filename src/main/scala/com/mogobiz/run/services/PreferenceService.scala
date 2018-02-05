@@ -14,8 +14,6 @@ import akka.http.scaladsl.model.headers.HttpCookie
 import akka.http.scaladsl.server.Directives
 import com.mogobiz.run.model.Prefs
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.json.JacksonConverter._
 
 import scala.util.{Failure, Success, Try}
 

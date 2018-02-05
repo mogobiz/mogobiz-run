@@ -10,8 +10,6 @@ import akka.http.scaladsl.server.Directives
 import akka.http.scaladsl.settings.RoutingSettings
 import com.mogobiz.run.config.MogobizHandlers.handlers._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport._
-import com.mogobiz.run.implicits.Json4sProtocol
-import com.mogobiz.json.JacksonConverter._
 
 class ResourceService(implicit settings: RoutingSettings,
                       refFactory: ActorRefFactory)

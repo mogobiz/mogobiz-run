@@ -7,14 +7,18 @@ package com.mogobiz.run.services
 import java.util.UUID
 
 import com.mogobiz.{DefaultCompleteMocked, MogobizRouteTest}
-import com.mogobiz.run.model.RequestParameters.{CreateBOReturnedItemRequest, UpdateBOReturnedItemRequest}
+import com.mogobiz.run.model.RequestParameters.{
+  CreateBOReturnedItemRequest,
+  UpdateBOReturnedItemRequest
+}
 import spray.http.HttpEntity
 
 /**
   */
 class BackofficeServiceMockedSpec extends MogobizRouteTest {
 
-  override lazy val apiRoutes = (new BackofficeService() with DefaultCompleteMocked).route
+  override lazy val apiRoutes =
+    (new BackofficeService() with DefaultCompleteMocked).route
 
   " backoffice route " should " respond when get list orders" in {
     val path = "/store/" + STORE + "/backoffice/listOrders"
@@ -42,8 +46,7 @@ class BackofficeServiceMockedSpec extends MogobizRouteTest {
   }
 
   it should "respond when create item" in {
-    import com.mogobiz.run.implicits.Json4sProtocol
-    import Json4sProtocol._
+    import JacksonSupport._
 
     val transactionUuid = UUID.randomUUID().toString
     val boCartItemUuid = UUID.randomUUID().toString
@@ -57,14 +60,16 @@ class BackofficeServiceMockedSpec extends MogobizRouteTest {
   }
 
   it should "respond when update item" in {
-    import com.mogobiz.run.implicits.Json4sProtocol
-    import Json4sProtocol._
 
     val transactionUuid = UUID.randomUUID().toString
     val boCartItemUuid = UUID.randomUUID().toString
     val boReturnedUuid = UUID.randomUUID().toString
 
-    val obj = UpdateBOReturnedItemRequest("refuned", 1, 10, "return status", "motivation")
+    val obj = UpdateBOReturnedItemRequest("refuned",
+                                          1,
+                                          10,
+                                          "return status",
+                                          "motivation")
     val path = "/store/" + STORE + "/backoffice/cartDetails/" + transactionUuid + "/" + boCartItemUuid + "/" + boReturnedUuid
     Put(path, obj) ~> sealRoute(routes) ~> check {
       status.intValue should be(200)
